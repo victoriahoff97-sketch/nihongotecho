@@ -1,0 +1,661 @@
+/* Nihongo Techō – Dokument-Viewer mit Stiftnotizen (PDF, Bilder, Notizblätter) */
+'use strict';
+(function (App) {
+  const { $, $$, esc, icon } = App;
+  const INK = App.ink = {};
+  const UL = App.uLogic;
+
+  // ---------- pdf.js bei Bedarf laden ----------
+  let pdfP = null;
+  const loadScript = (src) => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Konnte ' + src + ' nicht laden')); document.head.appendChild(s); });
+  INK.pdfjs = () => {
+    if (pdfP) return pdfP;
+    pdfP = (async () => {
+      await loadScript('vendor/pdfjs/pdf.min.js');
+      // Bei file:// sind Web-Worker gesperrt → Worker-Code im Hauptthread laden
+      if (location.protocol === 'file:') await loadScript('vendor/pdfjs/pdf.worker.min.js');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdfjs/pdf.worker.min.js';
+      return window.pdfjsLib;
+    })();
+    return pdfP;
+  };
+
+  const PEN_COLORS = ['#1f2430', '#1c4fd8', '#c8402a', '#2f7d32', '#9c36b5'];
+  const MARK_COLORS = ['#ffe066', '#8ce99a', '#fcc2d7', '#a5d8ff'];
+  const WIDTHS = { pen: [0.0022, 0.0038, 0.006], marker: [0.012, 0.02, 0.03] };
+  const A4 = 842 / 595;
+
+  // ---------- Papier-Hintergründe ----------
+  const drawPaper = INK.drawPaper = function (ctx, W, H, paper) {
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    if (paper === 'lines') {
+      ctx.strokeStyle = '#c9d6ea'; ctx.lineWidth = Math.max(1, W * 0.0015);
+      for (let y = W * 0.12; y < H - W * 0.04; y += W * 0.045) { ctx.beginPath(); ctx.moveTo(W * 0.06, y); ctx.lineTo(W * 0.94, y); ctx.stroke(); }
+      ctx.strokeStyle = '#f1b8ae'; ctx.beginPath(); ctx.moveTo(W * 0.12, 0); ctx.lineTo(W * 0.12, H); ctx.stroke();
+    } else if (paper === 'grid') {
+      ctx.strokeStyle = '#dde3ec'; ctx.lineWidth = Math.max(1, W * 0.001);
+      const s = W * 0.035;
+      for (let x = s; x < W; x += s) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = s; y < H; y += s) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    } else if (paper === 'kanji') {
+      const cols = 8, m = W * 0.06, s = (W - 2 * m) / cols;
+      const rows = Math.floor((H - 2 * m) / s);
+      ctx.strokeStyle = '#e8a598'; ctx.lineWidth = Math.max(1, W * 0.0016);
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) ctx.strokeRect(m + c * s, m + r * s, s, s);
+      ctx.setLineDash([W * 0.004, W * 0.004]); ctx.strokeStyle = '#f3cdc5'; ctx.lineWidth = Math.max(1, W * 0.001);
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const x = m + c * s, y = m + r * s;
+        ctx.beginPath(); ctx.moveTo(x + s / 2, y); ctx.lineTo(x + s / 2, y + s); ctx.moveTo(x, y + s / 2); ctx.lineTo(x + s, y + s / 2); ctx.stroke();
+      }
+    } else if (paper === 'dots') {
+      ctx.fillStyle = '#c3cad6'; const s = W * 0.035;
+      for (let x = s; x < W; x += s) for (let y = s; y < H; y += s) { ctx.beginPath(); ctx.arc(x, y, Math.max(1, W * 0.0015), 0, 7); ctx.fill(); }
+    }
+    ctx.restore();
+  };
+
+  // ---------- Papierwahl ----------
+  INK.pickPaper = ({ title, current } = {}) => new Promise((res) => {
+    let done = false;
+    const md = App.modal({ title, body: `<p class="muted">Welches Papier?</p><div class="chips">${UL.PAPERS.map(([k, l]) => `<button class="chip ${k === current ? 'on' : ''}" data-paper="${k}">${l}</button>`).join('')}</div>`, foot: false, onClose: () => { if (!done) res(null); } });
+    md.el.addEventListener('click', (ev) => { const b = ev.target.closest('[data-paper]'); if (b) { done = true; res(b.dataset.paper); md.close(); } });
+  });
+
+  // ---------- Striche zeichnen ----------
+  function drawStroke(ctx, s, W) {
+    const pts = s.pts;
+    if (!pts.length) return;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (s.t === 'fp') {
+      ctx.fillStyle = s.c;
+      const o = App.inkPen.fountainOutline(pts, W, s);
+      if (o.length) { ctx.beginPath(); ctx.moveTo(o[0][0], o[0][1]); for (let i = 1; i < o.length; i++) ctx.lineTo(o[i][0], o[i][1]); ctx.closePath(); ctx.fill(); }
+    } else if (s.t === 'marker') {
+      ctx.globalAlpha = 0.38; ctx.globalCompositeOperation = 'multiply';
+      ctx.strokeStyle = s.c; ctx.lineWidth = s.w * W; ctx.lineCap = 'square';
+      ctx.beginPath(); ctx.moveTo(pts[0][0] * W, pts[0][1] * W);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * W, pts[i][1] * W);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = s.c; ctx.fillStyle = s.c;
+      if (pts.length === 1) { ctx.beginPath(); ctx.arc(pts[0][0] * W, pts[0][1] * W, s.w * W * 0.6, 0, 7); ctx.fill(); }
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        const p = (a[2] + b[2]) / 2;
+        ctx.lineWidth = s.w * W * (0.45 + p * 1.1);
+        ctx.beginPath();
+        if (i > 1) { const z = pts[i - 2]; ctx.moveTo(((z[0] + a[0]) / 2) * W, ((z[1] + a[1]) / 2) * W); ctx.quadraticCurveTo(a[0] * W, a[1] * W, ((a[0] + b[0]) / 2) * W, ((a[1] + b[1]) / 2) * W); }
+        else { ctx.moveTo(a[0] * W, a[1] * W); ctx.lineTo(((a[0] + b[0]) / 2) * W, ((a[1] + b[1]) / 2) * W); }
+        ctx.stroke();
+      }
+      const l = pts[pts.length - 1], k = pts[pts.length - 2];
+      if (k) { ctx.lineWidth = s.w * W * (0.45 + l[2] * 1.1); ctx.beginPath(); ctx.moveTo(((k[0] + l[0]) / 2) * W, ((k[1] + l[1]) / 2) * W); ctx.lineTo(l[0] * W, l[1] * W); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+
+  // Bilder: einmal dekodieren, pro id zwischenspeichern (modulweit, damit auch INK.preview darauf zugreifen kann)
+  const imgCache = new Map();
+  const imgEl = (im, onload) => {
+    let el = imgCache.get(im.id);
+    if (!el) {
+      el = new Image();
+      if (onload) el.onload = onload;
+      el.src = im.src;
+      imgCache.set(im.id, el);
+    }
+    return el.complete && el.naturalWidth ? el : null;
+  };
+  const drawImages = (ctx, p, W) => p.images.forEach((im) => { const el = imgEl(im); if (el) ctx.drawImage(el, im.x * W, im.y * W, im.w * W, im.h * W); });
+
+  // ---------- Vorschau: eine Seite verkleinert, schreibgeschützt ----------
+  // opts: { page = 0, maxH = 220, crop = true } – zeichnet Papier + Bilder + Striche in Canvas-Breite (canvas.clientWidth).
+  // Liefert false (Canvas bleibt leer) ohne Striche/Bilder, sonst true.
+  INK.preview = App.ink.preview = async function (canvas, fileId, { page = 0, maxH = 220, crop = true } = {}) {
+    const f = App.store.files.get(fileId);
+    if (!f) return false;
+    const row = await App.db.get('ink', fileId + ':' + page);
+    const strokes = (row && row.strokes) || [];
+    const images = (row && row.images) || [];
+    if (!strokes.length && !images.length) { canvas.width = canvas.width; return false; }
+    // Bilder vor dem Zeichnen dekodieren (wie beim Drucken), sonst fehlen sie in der ersten Vorschau
+    for (const im of images) { imgEl(im); try { await imgCache.get(im.id).decode(); } catch (e) { /* kaputtes Bild auslassen */ } }
+    const kind = App.fileKind(f);
+    // Nur Notizblatt-Seiten haben ein Papiermuster; PDF-/Bildseiten bekommen nur weißen Grund (kein pdf.js-Rendern in Vorschauen)
+    const paper = kind === 'notebook' ? ((f.pagePapers || [])[page] ?? f.paper ?? 'lines') : null;
+    const cssW = canvas.clientWidth || canvas.width || 300;
+    const fullH = cssW * A4;
+    let cssH;
+    if (crop) {
+      let maxY = 0;
+      strokes.forEach((s) => s.pts.forEach((pt) => { if (pt[1] > maxY) maxY = pt[1]; }));
+      images.forEach((im) => { const b = im.y + im.h; if (b > maxY) maxY = b; });
+      cssH = Math.min(maxH, maxY * cssW + 24);
+    } else {
+      cssH = Math.min(maxH, fullH);
+    }
+    cssH = Math.max(cssH, 1);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = Math.round(cssW * dpr), H = Math.round(cssH * dpr);
+    canvas.width = W; canvas.height = H;
+    canvas.style.height = cssH + 'px';
+    const ctx = canvas.getContext('2d');
+    drawPaper(ctx, W, H, paper);
+    drawImages(ctx, { images }, W);
+    strokes.forEach((s) => drawStroke(ctx, s, W));
+    return true;
+  };
+
+  // ---------- Schreibfläche (eingebettet oder Vollbild) ----------
+  // opts: { embedded, extraTools: [{ id, label, icon, onClick }], onFullscreen, onClose }
+  INK.mount = async (root, fileId, opts = {}) => {
+    const f = App.store.files.get(fileId);
+    if (!f) return null;
+    const embedded = !!opts.embedded;
+    const kind = App.fileKind(f);
+    const S = App.store.settings;
+    const II = App.inkImages;
+    const TOOLS = ['hand', 'select', 'pen', 'fountain', 'marker', 'eraser'];
+    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null };
+    root.classList.add(embedded ? 'ink-embed' : 'viewer');
+    root.innerHTML = `<div class="viewer-bar">
+      ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
+      <div class="title">${esc(f.name)}</div>
+      <div class="grp">
+        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Bilder verschieben und skalieren'],
+          ['pen', 'ballpen', 'Stift', 'Stift'], ['fountain', 'fountain', 'Füller', 'Füller (druckempfindlich)'], ['marker', 'highlighter', 'Marker', 'Textmarker'],
+          ['eraser', 'eraser', 'Radierer', 'Radierer (ganze Striche)']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}">${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
+        <button class="icon-btn tool-btn" data-v="image" title="Bild einfügen (Strg+V)">${icon('imagePlus')}<span class="tool-swatch"></span><span class="tool-lbl">Bild</span></button>
+      </div>
+      <div class="grp" data-colors></div>
+      <div class="grp"><button class="btn btn-sm btn-ghost" data-v="width" title="Strichstärke">●●</button></div>
+      <div class="grp"><button class="icon-btn" data-v="undo" title="Rückgängig">${icon('undo')}</button><button class="icon-btn" data-v="redo" title="Wiederholen">${icon('redo')}</button></div>
+      <div class="grp"><button class="icon-btn" data-v="zout" title="Verkleinern">${icon('zoomOut')}</button><button class="btn btn-sm btn-ghost" data-v="fit" title="Einpassen">100%</button><button class="icon-btn" data-v="zin" title="Vergrößern">${icon('zoomIn')}</button></div>
+      <div class="grp">
+        <button class="btn btn-sm ${st.penOnly ? 'btn-sec' : ''}" data-v="penonly" title="Wenn aktiv: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">✍ Nur Stift</button>
+        <button class="icon-btn" data-v="addpage" title="Leere Seite anhängen">${icon('filePlus')}</button>
+        <button class="icon-btn" data-v="print" title="Drucken / als PDF speichern">${icon('print')}</button>
+        ${kind === 'pdf' ? `<button class="btn btn-sm" data-v="vocab" title="Vokabeln aus dieser PDF importieren">${icon('vocab')} Vokabeln auslesen</button>` : ''}
+        ${embedded && opts.onFullscreen ? `<button class="icon-btn" data-v="full" title="Vollbild">⛶</button>` : ''}
+      </div>
+      ${(opts.extraTools || []).length ? `<div class="grp">${opts.extraTools.map((t) => `<button class="btn btn-sm" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''} ${esc(t.label)}</button>`).join('')}</div>` : ''}</div>
+      <div class="viewer-scroll"><div class="viewer-pages"></div></div>`;
+    root.style.setProperty('--sec', 'var(--sora)');
+    if (!embedded) document.body.style.overflow = 'hidden';
+    const scroller = root.querySelector('.viewer-scroll');
+    const pagesEl = root.querySelector('.viewer-pages');
+    const note = (t, ms = 2200) => { const n = document.createElement('div'); n.className = 'viewer-note'; n.textContent = t; scroller.appendChild(n); setTimeout(() => n.remove(), ms); };
+
+    // Farben
+    const drawColors = () => {
+      const cs = st.tool === 'marker' ? MARK_COLORS : PEN_COLORS;
+      const cur = st.tool === 'marker' ? st.mcolor : st.color;
+      $$('[data-sw]', root).forEach((s) => { s.style.background = s.dataset.sw === 'marker' ? st.mcolor : st.color; });
+      root.querySelector('[data-colors]').innerHTML = cs.map((c) => `<button class="color ${c === cur ? 'on' : ''}" style="background:${c}" data-color="${c}"></button>`).join('');
+      root.querySelector('[data-colors]').style.display = st.tool === 'pen' || st.tool === 'fountain' || st.tool === 'marker' ? '' : 'none';
+      root.querySelector('[data-v=width]').textContent = st.tool === 'fountain' ? ['fein', 'mittel', 'breit'][st.wIdx] : ['●', '●●', '●●●'][st.wIdx];
+    };
+    drawColors();
+
+    // Füller: Stärke + Druckempfindlichkeit
+    const toggleFpPop = (btn) => {
+      const old = root.querySelector('.fp-pop');
+      if (old) { old.remove(); return; }
+      const pop = document.createElement('div');
+      pop.className = 'fp-pop card';
+      const th = App.inkPen.clampThinning(S.inkThinning);
+      pop.innerHTML = `<div class="chips">${['fein', 'mittel', 'breit'].map((l, i) => `<button class="chip ${i === st.wIdx ? 'on' : ''}" data-fpw="${i}">${l}</button>`).join('')}</div>
+        <label class="small muted" style="display:block;margin-top:10px">Druckempfindlichkeit</label>
+        <input type="range" min="0.3" max="0.9" step="0.05" value="${th}" data-fpth style="width:100%">
+        <div class="row between small muted"><span>gleichmäßig</span><span>stark</span></div>`;
+      const r = btn.getBoundingClientRect(), rr = root.getBoundingClientRect();
+      pop.style.left = Math.max(8, r.left - rr.left - 80) + 'px';
+      pop.style.top = r.bottom - rr.top + 6 + 'px';
+      root.appendChild(pop);
+      pop.addEventListener('click', (e) => { const b = e.target.closest('[data-fpw]'); if (b) { st.wIdx = +b.dataset.fpw; drawColors(); pop.remove(); } });
+      pop.querySelector('[data-fpth]').addEventListener('change', (e) => App.saveSettings({ inkThinning: App.inkPen.clampThinning(e.target.value) }));
+    };
+
+    // ---------- Seiten vorbereiten ----------
+    let pdf = null, img = null;
+    const pageDefs = [];
+    try {
+      if (kind === 'pdf') {
+        note('PDF wird geladen …');
+        const lib = await INK.pdfjs();
+        const buf = await (await App.fileBlob(f.id)).arrayBuffer();
+        pdf = await lib.getDocument({
+          data: buf,
+          cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true,
+          standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/',
+        }).promise;
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const p = await pdf.getPage(i);
+          const vp = p.getViewport({ scale: 1 });
+          pageDefs.push({ kind: 'pdf', n: i, ratio: vp.height / vp.width, page: p });
+        }
+      } else if (kind === 'image') {
+        const url = URL.createObjectURL(await App.fileBlob(f.id));
+        img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
+        pageDefs.push({ kind: 'image', ratio: img.naturalHeight / img.naturalWidth });
+      } else {
+        for (let i = 0; i < (f.pages || 1); i++) pageDefs.push({ kind: 'paper', ratio: A4, paper: UL.pagePaper(f, i) });
+      }
+    } catch (e) {
+      console.error(e);
+      pagesEl.innerHTML = `<div class="card" style="max-width:520px"><h3>Datei konnte nicht geöffnet werden</h3><p class="muted">${esc(e.message || e)}</p></div>`;
+    }
+    const extra = kind === 'notebook' ? 0 : (f.extraPages || 0);
+    for (let j = 0; j < extra; j++) pageDefs.push({ kind: 'paper', ratio: A4, paper: UL.extraPaper(f, j), extra: true });
+
+    // Tinte laden
+    const inkRows = await App.db.all('ink');
+    const inkMap = new Map(inkRows.filter((r) => r.fileId === f.id).map((r) => [r.page, { strokes: r.strokes || [], images: r.images || [] }]));
+    // Alle geänderten Seiten speichern (nicht nur die zuletzt beschriebene)
+    const dirty = new Set();
+    const flushAll = () => {
+      if (!dirty.size) return;
+      dirty.forEach((pi) => {
+        const p = st.pages[pi];
+        App.db.put('ink', { key: f.id + ':' + pi, fileId: f.id, page: pi, strokes: p.strokes, images: p.images })
+          .catch((e) => { console.error(e); if (p.images.length) App.toast('Bild konnte nicht gespeichert werden'); });
+      });
+      dirty.clear();
+      let n = 0; st.pages.forEach((p) => { if (App.inkImages.hasInk(p)) n++; });
+      App.store.inkCount.set(f.id, n);
+    };
+    const saveInk = App.debounce(flushAll, 500);
+    // Fenster/Tab wird geschlossen oder in den Hintergrund geschickt → sofort sichern
+    const onHide = () => { if (document.visibilityState !== 'visible') flushAll(); };
+    window.addEventListener('pagehide', flushAll);
+    document.addEventListener('visibilitychange', onHide);
+
+    const baseWidth = () => Math.min(scroller.clientWidth - 44, 1100);
+    const buildPage = (def, i) => {
+      const el = document.createElement('div');
+      el.className = 'vpage';
+      el.innerHTML = `<canvas class="bgc"></canvas><canvas class="inkc"></canvas><canvas class="livec"></canvas><div class="loading">…</div><span class="pno">${i + 1}${def.extra ? ' · Zusatzseite' : ''}</span>`;
+      pagesEl.appendChild(el);
+      const pg = { def, el, bg: el.querySelector('.bgc'), ink: el.querySelector('.inkc'), live: el.querySelector('.livec'), strokes: (inkMap.get(i) || {}).strokes || [], images: (inkMap.get(i) || {}).images || [], renderedW: 0, visible: false, i };
+      st.pages.push(pg);
+      return pg;
+    };
+    pageDefs.forEach(buildPage);
+    const layout = () => {
+      const W = baseWidth() * st.zoom;
+      if (W > 0) st.pages.forEach((p) => { p.el.style.width = W + 'px'; p.el.style.height = W * p.def.ratio + 'px'; });
+      root.querySelector('[data-v=fit]').textContent = Math.round(st.zoom * 100) + '%';
+    };
+    layout();
+
+    const renderPage = async (p) => {
+      const W = p.el.clientWidth, H = p.el.clientHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const tw = Math.round(W * dpr);
+      if (p.renderedW === tw || p.busy) { drawInk(p); return; }
+      p.busy = true;
+      const th = Math.round(H * dpr);
+      const off = document.createElement('canvas'); off.width = tw; off.height = th;
+      const ctx = off.getContext('2d');
+      try {
+        if (p.def.kind === 'pdf') {
+          const vp = p.def.page.getViewport({ scale: tw / p.def.page.getViewport({ scale: 1 }).width });
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, tw, th);
+          await p.def.page.render({ canvasContext: ctx, viewport: vp }).promise;
+        } else if (p.def.kind === 'image') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, tw, th); ctx.drawImage(img, 0, 0, tw, th); }
+        else drawPaper(ctx, tw, th, p.def.paper);
+        p.bg.width = tw; p.bg.height = th; p.bg.getContext('2d').drawImage(off, 0, 0);
+        p.renderedW = tw;
+        p.el.querySelector('.loading').hidden = true;
+      } catch (e) { console.error(e); }
+      p.busy = false;
+      p.ink.width = tw; p.ink.height = th; p.live.width = tw; p.live.height = th;
+      drawInk(p);
+      if (p.renderedW !== Math.round(p.el.clientWidth * dpr)) renderPage(p);
+    };
+    // Bilder: nach dem Laden sichtbare Seiten neu zeichnen (Dekodieren/Cache übernimmt das modulweite imgEl)
+    const drawInk = (p) => {
+      const c = p.ink.getContext('2d');
+      c.clearRect(0, 0, p.ink.width, p.ink.height);
+      p.images.forEach((im) => { if (!imgCache.get(im.id)) imgEl(im, () => { if (p.visible) drawInk(p); }); });
+      drawImages(c, p, p.ink.width);
+      p.strokes.forEach((s) => drawStroke(c, s, p.ink.width));
+    };
+    const io = new IntersectionObserver((ents) => ents.forEach((en) => {
+      const p = st.pages.find((x) => x.el === en.target);
+      if (!p) return;
+      p.visible = en.isIntersecting;
+      if (en.isIntersecting) renderPage(p);
+    }), { root: scroller, rootMargin: '600px 0px' });
+    st.pages.forEach((p) => io.observe(p.el));
+    // Sprung zu einer Seite (z. B. Treffer aus der Suche)
+    if (opts.page > 1 && st.pages[opts.page - 1]) scroller.scrollTop += st.pages[opts.page - 1].el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 12;
+    const rerender = App.debounce(() => st.pages.forEach((p) => { if (p.visible) renderPage(p); }), 250);
+    // Breite ändert sich (Tablet gedreht, Sidebar, Pane war versteckt) → Seiten neu einpassen
+    let lastW = scroller.clientWidth;
+    const ro = new ResizeObserver(() => { const w = scroller.clientWidth; if (w && w !== lastW) { lastW = w; layout(); st.pages.forEach((p) => { if (p.visible) drawInk(p); }); rerender(); } });
+    ro.observe(scroller);
+    const setZoom = (z, cx, cy) => {
+      z = App.clamp(z, 0.4, 4);
+      const r = scroller.getBoundingClientRect();
+      cx = cx ?? r.width / 2; cy = cy ?? r.height / 2;
+      const fx = (scroller.scrollLeft + cx) / pagesEl.scrollWidth, fy = (scroller.scrollTop + cy) / pagesEl.scrollHeight;
+      st.zoom = z; layout();
+      scroller.scrollLeft = fx * pagesEl.scrollWidth - cx; scroller.scrollTop = fy * pagesEl.scrollHeight - cy;
+      st.pages.forEach((p) => { if (p.visible) drawInk(p); });
+      rerender();
+    };
+
+    // ---------- Eingabe ----------
+    const touches = new Map();
+    let pinch = null, drawing = null;
+    const pageAt = (x, y) => st.pages.find((p) => { const r = p.el.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; });
+    const norm = (p, e) => { const r = p.el.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width, e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5]; };
+    const eraseAt = (p, pt, act) => {
+      const rad = 0.012 / st.zoom + 0.004;
+      const keep = [];
+      p.strokes.forEach((s) => {
+        const hit = s.pts.some((q) => Math.hypot(q[0] - pt[0], q[1] - pt[1]) < rad + s.w / 2);
+        if (hit) act.removed.push(s); else keep.push(s);
+      });
+      if (keep.length !== p.strokes.length) { p.strokes = keep; drawInk(p); }
+    };
+    scroller.addEventListener('pointerdown', (e) => {
+      if (e.target.closest && e.target.closest('[data-del]')) { e.preventDefault(); deleteSel(); return; }
+      const useTouchNav = e.pointerType === 'touch' && (st.penOnly || st.tool === 'hand');
+      if (useTouchNav || st.tool === 'hand' || e.button === 1) {
+        touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        scroller.setPointerCapture(e.pointerId);
+        if (touches.size === 2) {
+          const [a, b] = Array.from(touches.values());
+          pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: st.zoom };
+        }
+        return;
+      }
+      if (e.button > 0 && e.pointerType === 'mouse') return;
+      const p = pageAt(e.clientX, e.clientY);
+      if (!p) return;
+      e.preventDefault();
+      scroller.setPointerCapture(e.pointerId);
+      if (st.tool === 'select') {
+        const pt = norm(p, e), cur = selImg();
+        const h = cur && st.sel.p === p ? II.handleAt(cur, pt, 0.02 / st.zoom) : null;
+        const im = h ? cur : II.hit(p.images, pt);
+        if (!im) { clearSel(); return; }
+        select(p, im.id);
+        drawing = { p, img: im, handle: h, start: pt, before: { x: im.x, y: im.y, w: im.w, h: im.h } };
+        return;
+      }
+      const erasing = st.tool === 'eraser' || (e.pointerType === 'pen' && (e.buttons & 32));
+      if (erasing) { drawing = { p, erase: true, act: { type: 'erase', pi: p.i, removed: [] } }; eraseAt(p, norm(p, e), drawing.act); return; }
+      if (st.tool === 'fountain') {
+        drawing = { p, s: { t: 'fp', c: st.color, w: App.inkPen.FOUNTAIN_WIDTHS[st.wIdx], th: App.inkPen.clampThinning(S.inkThinning), sim: e.pointerType !== 'pen', pts: [norm(p, e)] }, pid: e.pointerId };
+        return;
+      }
+      const marker = st.tool === 'marker';
+      const s = { t: marker ? 'marker' : 'pen', c: marker ? st.mcolor : st.color, w: WIDTHS[marker ? 'marker' : 'pen'][st.wIdx], pts: [norm(p, e)] };
+      drawing = { p, s, pid: e.pointerId };
+    });
+    scroller.addEventListener('pointermove', (e) => {
+      if (touches.has(e.pointerId)) {
+        const prev = touches.get(e.pointerId);
+        touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (touches.size === 1) { scroller.scrollLeft -= e.clientX - prev.x; scroller.scrollTop -= e.clientY - prev.y; }
+        else if (pinch && touches.size === 2) {
+          const [a, b] = Array.from(touches.values());
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          const r = scroller.getBoundingClientRect();
+          setZoom(pinch.z * d / pinch.d, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+        }
+        return;
+      }
+      if (!drawing) return;
+      const p = drawing.p;
+      if (drawing.img) {
+        const pt = norm(p, e), b = drawing.before;
+        Object.assign(drawing.img, drawing.handle ? II.resize(b, drawing.handle, pt) : II.move(b, pt[0] - drawing.start[0], pt[1] - drawing.start[1], p.def.ratio));
+        drawInk(p); updateSel();
+        return;
+      }
+      if (drawing.erase) { eraseAt(p, norm(p, e), drawing.act); return; }
+      const ce = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+      const evs = ce.length ? ce : [e];
+      const c = p.ink.getContext('2d');
+      evs.forEach((ev) => drawing.s.pts.push(norm(p, ev)));
+      // live zeichnen (nur letzte Abschnitte)
+      if (drawing.s.t === 'fp') { const lc = p.live.getContext('2d'); lc.clearRect(0, 0, p.live.width, p.live.height); drawStroke(lc, drawing.s, p.live.width); }
+      else if (drawing.s.t === 'marker') { drawInk(p); drawStroke(c, drawing.s, p.ink.width); }
+      else { const n = drawing.s.pts.length; drawStroke(c, { ...drawing.s, pts: drawing.s.pts.slice(Math.max(0, n - evs.length - 2)) }, p.ink.width); }
+    });
+    const up = (e) => {
+      if (touches.has(e.pointerId)) { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; return; }
+      if (!drawing) return;
+      const p = drawing.p;
+      if (drawing.img) {
+        const im = drawing.img, b = drawing.before;
+        ['x', 'y', 'w', 'h'].forEach((k) => { im[k] = +im[k].toFixed(4); });
+        if (['x', 'y', 'w', 'h'].some((k) => im[k] !== b[k])) {
+          st.undo.push({ type: 'img-edit', pi: p.i, id: im.id, before: b, after: { x: im.x, y: im.y, w: im.w, h: im.h } }); st.redo = [];
+          markDirty(p);
+        }
+        drawInk(p); updateSel();
+        drawing = null;
+        return;
+      }
+      if (drawing.erase) { if (drawing.act.removed.length) { st.undo.push(drawing.act); st.redo = []; dirty.add(p.i); saveInk(p.i); } }
+      else {
+        const s = drawing.s;
+        s.pts = s.pts.map((q) => [+q[0].toFixed(4), +q[1].toFixed(4), +q[2].toFixed(2)]);
+        if (s.t === 'fp') p.live.getContext('2d').clearRect(0, 0, p.live.width, p.live.height);
+        p.strokes.push(s); st.undo.push({ type: 'add', pi: p.i, s }); st.redo = [];
+        drawInk(p); dirty.add(p.i); saveInk(p.i);
+      }
+      drawing = null;
+    };
+    scroller.addEventListener('pointerup', up);
+    scroller.addEventListener('pointercancel', up);
+    scroller.addEventListener('wheel', (e) => { if (e.ctrlKey) { e.preventDefault(); const r = scroller.getBoundingClientRect(); setZoom(st.zoom * (e.deltaY < 0 ? 1.1 : 0.9), e.clientX - r.left, e.clientY - r.top); } }, { passive: false });
+
+    // ---------- Bilder: Auswahl, Löschen, Einfügen ----------
+    const selImg = () => st.sel && st.sel.p.images.find((x) => x.id === st.sel.id);
+    const updateSel = () => {
+      const old = root.querySelector('.ink-sel');
+      const im = selImg();
+      if (!im) { st.sel = null; if (old) old.remove(); return; }
+      let el = old;
+      if (!el || el.parentNode !== st.sel.p.el) {
+        if (old) old.remove();
+        el = document.createElement('div');
+        el.className = 'ink-sel';
+        el.innerHTML = ['nw', 'ne', 'sw', 'se'].map((h) => `<span class="h" data-h="${h}"></span>`).join('') + `<button class="ink-sel-del" data-del title="Bild löschen">${icon('trash')}</button>`;
+        st.sel.p.el.appendChild(el);
+      }
+      const r = st.sel.p.def.ratio;
+      Object.assign(el.style, { left: im.x * 100 + '%', top: (im.y / r) * 100 + '%', width: im.w * 100 + '%', height: (im.h / r) * 100 + '%' });
+    };
+    const select = (p, id) => { st.sel = { p, id }; updateSel(); };
+    const clearSel = () => { st.sel = null; updateSel(); };
+    const deleteSel = () => {
+      const im = selImg(); if (!im) return;
+      const p = st.sel.p, idx = p.images.indexOf(im);
+      p.images.splice(idx, 1);
+      st.undo.push({ type: 'img-del', pi: p.i, im, idx }); st.redo = [];
+      clearSel(); drawInk(p); markDirty(p);
+    };
+    const setTool = (t) => {
+      if (t !== 'select') clearSel();
+      st.tool = t;
+      $$('[data-tool]', root).forEach((b) => b.classList.toggle('active', b.dataset.tool === t));
+      drawColors();
+      const fp = root.querySelector('.fp-pop'); if (fp) fp.remove();
+    };
+    // Zielseite = größte sichtbare Fläche; Bild mittig im sichtbaren Ausschnitt
+    const insertImage = async (blob) => {
+      let bmp;
+      try { bmp = await createImageBitmap(blob); } catch (e) { note('Bild konnte nicht gelesen werden'); return; }
+      const sz = II.fitSize(bmp.width, bmp.height, II.MAX_PX);
+      const cv = document.createElement('canvas'); cv.width = sz.w; cv.height = sz.h;
+      cv.getContext('2d').drawImage(bmp, 0, 0, sz.w, sz.h);
+      if (bmp.close) bmp.close();
+      const src = cv.toDataURL('image/webp', 0.9);
+      const sr = scroller.getBoundingClientRect();
+      let best = null;
+      st.pages.forEach((p) => {
+        const r = p.el.getBoundingClientRect();
+        const vx = Math.max(r.left, sr.left), vy = Math.max(r.top, sr.top);
+        const w = Math.min(r.right, sr.right) - vx, h = Math.min(r.bottom, sr.bottom) - vy;
+        if (w > 0 && h > 0 && (!best || w * h > best.w * best.h)) best = { p, r, vx, vy, w, h };
+      });
+      if (!best) return;
+      const { p, r } = best, W = r.width;
+      const view = { x: (best.vx - r.left) / W, y: (best.vy - r.top) / W, w: best.w / W, h: best.h / W, pageH: p.def.ratio };
+      const im = { id: II.newId(), src, ...II.place(sz.w, sz.h, view) };
+      p.images.push(im);
+      st.undo.push({ type: 'img-add', pi: p.i, im }); st.redo = [];
+      drawInk(p); markDirty(p);
+      setTool('select'); select(p, im.id);
+    };
+    // Knopf: Zwischenablage lesen, sonst Datei wählen
+    const pickImage = async () => {
+      try {
+        for (const it of await navigator.clipboard.read()) {
+          const t = it.types.find((x) => x.startsWith('image/'));
+          if (t) { insertImage(await it.getType(t)); return; }
+        }
+        note('Kein Bild in der Zwischenablage');
+      } catch (e) { /* keine Berechtigung → Dateiauswahl */ }
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = () => { if (inp.files[0]) insertImage(inp.files[0]); };
+      inp.click();
+    };
+    const markDirty = (p) => { dirty.add(p.i); saveInk(); };
+    const doUndo = (from, to) => {
+      const a = from.pop(); if (!a) return;
+      const p = st.pages[a.pi];
+      const back = from === st.undo;
+      if (a.type === 'add') { if (back) p.strokes = p.strokes.filter((x) => x !== a.s); else p.strokes.push(a.s); }
+      else if (a.type === 'erase') { if (back) p.strokes = p.strokes.concat(a.removed); else p.strokes = p.strokes.filter((x) => !a.removed.includes(x)); }
+      else if (a.type === 'img-add') { if (back) p.images = p.images.filter((x) => x !== a.im); else p.images.push(a.im); }
+      else if (a.type === 'img-del') { if (back) p.images.splice(Math.min(a.idx, p.images.length), 0, a.im); else p.images = p.images.filter((x) => x !== a.im); }
+      else if (a.type === 'img-edit') { const im = p.images.find((x) => x.id === a.id); if (im) Object.assign(im, back ? a.before : a.after); }
+      to.push(a); drawInk(p); markDirty(p); updateSel();
+    };
+
+    // ---------- Toolbar ----------
+    let destroyed = false;
+    const destroy = () => {
+      if (destroyed) return;
+      destroyed = true;
+      INK.lastState = { fileId: f.id, defaultTool: st.tool, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx };
+      flushAll(); io.disconnect(); ro.disconnect();
+      // Bild-Cache dieser Datei freigeben (sonst wächst er mit jedem geöffneten Blatt)
+      st.pages.forEach((p) => (p.images || []).forEach((im) => imgCache.delete(im.id)));
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('paste', onPaste);
+      window.removeEventListener('pagehide', flushAll);
+      document.removeEventListener('visibilitychange', onHide);
+      root.innerHTML = '';
+      root.classList.remove('ink-embed');
+      if (!embedded) { document.body.style.overflow = ''; App.emit('files'); }
+    };
+    const close = () => { if (opts.onClose) opts.onClose(); else destroy(); };
+    // Tasten/Einfügen nur, wenn diese Schreibfläche gemeint ist (kein Modal, kein Eingabefeld, nicht unter dem Vollbild, sichtbar)
+    const inactive = (e) => $('.modal-back') || (e.target.matches && e.target.matches('input, textarea, select, [contenteditable="true"]'))
+      || (embedded && $('.viewer')) || !root.getClientRects().length;
+    const onPaste = (e) => {
+      if (inactive(e)) return;
+      const it = Array.from((e.clipboardData && e.clipboardData.items) || []).find((x) => x.type.startsWith('image/'));
+      if (!it) return;
+      e.preventDefault();
+      insertImage(it.getAsFile());
+    };
+    document.addEventListener('paste', onPaste);
+    const onKey = (e) => {
+      if (inactive(e)) return;
+      if (st.sel && e.key === 'Escape') { clearSel(); return; }
+      if (st.sel && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSel(); return; }
+      if (e.key === 'Escape' && !embedded) close();
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); doUndo(st.undo, st.redo); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); doUndo(st.redo, st.undo); }
+    };
+    document.addEventListener('keydown', onKey);
+    root.querySelector('.viewer-bar').addEventListener('click', async (e) => {
+      const t = e.target.closest('[data-tool]');
+      if (t) { setTool(t.dataset.tool); return; }
+      const c = e.target.closest('[data-color]');
+      if (c) { if (st.tool === 'marker') st.mcolor = c.dataset.color; else st.color = c.dataset.color; drawColors(); return; }
+      const x = e.target.closest('[data-x]');
+      if (x) { const t = (opts.extraTools || []).find((y) => y.id === x.dataset.x); if (t) t.onClick(); return; }
+      const v = e.target.closest('[data-v]'); if (!v) return;
+      const a = v.dataset.v;
+      if (a === 'close') close();
+      if (a === 'full') { flushAll(); opts.onFullscreen(); }
+      if (a === 'undo') doUndo(st.undo, st.redo);
+      if (a === 'redo') doUndo(st.redo, st.undo);
+      if (a === 'zin') setZoom(st.zoom * 1.2);
+      if (a === 'zout') setZoom(st.zoom / 1.2);
+      if (a === 'fit') setZoom(1);
+      if (a === 'width') {
+        if (st.tool === 'fountain') { toggleFpPop(v); return; }
+        st.wIdx = (st.wIdx + 1) % 3; v.textContent = ['●', '●●', '●●●'][st.wIdx];
+      }
+      if (a === 'penonly') {
+        st.penOnly = !st.penOnly; v.classList.toggle('btn-sec', st.penOnly); App.saveSettings({ penOnly: st.penOnly });
+        note(st.penOnly ? 'Nur der Stift schreibt – mit dem Finger scrollen & zoomen' : 'Finger schreibt jetzt auch');
+      }
+      if (a === 'addpage') {
+        const last = st.pages[st.pages.length - 1];
+        const paper = await INK.pickPaper({ title: 'Leere Seite anhängen', current: (last && last.def.paper) || f.paper || 'lines' });
+        if (!paper) return;
+        UL.appendPaper(f, paper, kind === 'notebook');
+        await App.updateFile(f);
+        const pg = buildPage({ kind: 'paper', ratio: A4, paper, extra: kind !== 'notebook' }, st.pages.length);
+        layout(); io.observe(pg.el);
+        pg.el.scrollIntoView({ behavior: 'smooth' });
+      }
+      if (a === 'print') printAll();
+      if (a === 'image') pickImage();
+      if (a === 'vocab') App.importVocab({ fileId: f.id });
+    });
+
+    // Drucken / als PDF speichern
+    const printAll = async () => {
+      note('Seiten werden vorbereitet …', 4000);
+      let pr = $('#print-root');
+      if (!pr) { pr = document.createElement('div'); pr.id = 'print-root'; document.body.appendChild(pr); }
+      pr.innerHTML = '';
+      const W = 1240;
+      for (const p of st.pages) {
+        const H = Math.round(W * p.def.ratio);
+        const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+        if (p.def.kind === 'pdf') await p.def.page.render({ canvasContext: ctx, viewport: p.def.page.getViewport({ scale: W / p.def.page.getViewport({ scale: 1 }).width }) }).promise;
+        else if (p.def.kind === 'image') ctx.drawImage(img, 0, 0, W, H);
+        else drawPaper(ctx, W, H, p.def.paper);
+        for (const im of p.images) { imgEl(im); try { await imgCache.get(im.id).decode(); } catch (e) { /* kaputtes Bild auslassen */ } }
+        drawImages(ctx, p, W);
+        p.strokes.forEach((s) => drawStroke(ctx, s, W));
+        const im = document.createElement('img'); im.src = cv.toDataURL('image/jpeg', 0.9); pr.appendChild(im);
+      }
+      setTimeout(() => { window.print(); }, 300);
+      App.toast('Tipp: Drucker „Microsoft Print to PDF“ wählen, um die Hausaufgabe als PDF zu speichern.');
+    };
+
+    if (!st.pages.length && !pagesEl.children.length) pagesEl.innerHTML = '<div class="card">Keine Seiten.</div>';
+    if (st.penOnly && !embedded) note('✍ Stift schreibt · Finger scrollt & zoomt');
+    return { flush: flushAll, destroy, state: () => ({ defaultTool: st.tool, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx }) };
+  };
+
+  // ---------- Vollbild-Viewer ----------
+  // opts: Werkzeug-Zustand übernehmen (defaultTool, color, mcolor, wIdx)
+  INK.open = async (fileId, opts = {}) => {
+    const root = document.createElement('div');
+    $('#overlay-root').appendChild(root);
+    const ctrl = await INK.mount(root, fileId, { ...opts, embedded: false, onClose: () => { ctrl.destroy(); root.remove(); } });
+    if (!ctrl) root.remove();
+  };
+})(window.App);

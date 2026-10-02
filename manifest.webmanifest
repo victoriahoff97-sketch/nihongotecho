@@ -1,0 +1,17 @@
+{
+  "name": "Nihongo Techō · 日本語手帳",
+  "short_name": "Nihongo Techō",
+  "description": "Japanisch lernen: Vokabeln, Grammatik, Kanji, Unterrichtsnotizen mit Stift.",
+  "lang": "de",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f3ec",
+  "theme_color": "#f7f3ec",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nihongo Techō · 日本語手帳</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c8402a'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='white' font-family='serif'%3E日%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f7f3ec">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <a class="brand" href="#/">
+      <span class="brand-mark">日</span>
+      <span class="brand-text"><b>Nihongo Techō</b><small>日本語手帳</small></span>
+    </a>
+    <nav id="nav"></nav>
+    <div class="sidebar-foot">
+      <button class="nav-link" data-action="toggle-sidebar" title="Seitenleiste ein-/ausklappen"><span class="ico" data-ico="sidebar"></span><span class="lbl">Einklappen</span></button>
+    </div>
+  </aside>
+  <div id="main">
+    <header id="topbar">
+      <button class="icon-btn only-mobile" data-action="open-sidebar" aria-label="Menü"><span class="ico" data-ico="menu"></span></button>
+      <div class="search-wrap">
+        <span class="ico" data-ico="search"></span>
+        <input id="global-search" type="search" placeholder="Suchen … Deutsch, かな, 漢字 oder Romaji (z. B. taberu)" autocomplete="off">
+        <kbd class="hide-mobile">Strg K</kbd>
+        <div id="search-pop" class="search-pop" hidden></div>
+      </div>
+      <button class="btn btn-primary" data-action="quick-add"><span class="ico" data-ico="plus"></span><span class="hide-mobile">Speichern</span></button>
+      <button class="icon-btn" data-action="toggle-theme" title="Hell/Dunkel"><span class="ico" data-ico="moon"></span></button>
+    </header>
+    <main id="view" tabindex="-1"></main>
+  </div>
+</div>
+<div id="overlay-root"></div>
+<div id="toasts"></div>
+
+<!-- Daten -->
+<script src="data/kanjivg.js"></script>
+<script src="packs/manifest.js"></script>
+<script src="packs/level-index.js"></script>
+<script src="data/seed-vocab-1.js"></script>
+<script src="data/seed-vocab-2.js"></script>
+<script src="data/seed-grammar.js"></script>
+<script src="data/seed-kanji.js"></script>
+<script src="data/seed-phrases.js"></script>
+<script src="data/seed-sample.js"></script>
+<script src="data/seed-prompts.js"></script>
+<!-- App -->
+<script src="js/core.js"></script>
+<script src="js/jp.js"></script>
+<script src="js/level.js"></script>
+<script src="js/merge.js"></script>
+<script src="js/deinflect.js"></script>
+<script src="js/dictscan.js"></script>
+<script src="js/dict.js"></script>
+<script src="js/packs.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/editors.js"></script>
+<script src="js/stroke.js"></script>
+<script src="vendor/perfect-freehand/perfect-freehand.js"></script>
+<script src="js/ink-pen.js"></script>
+<script src="js/ink-images.js"></script>
+<script src="js/unterricht-logic.js"></script>
+<script src="js/apply-logic.js"></script>
+<script src="js/ink.js"></script>
+<script src="js/pdftext.js"></script>
+<script src="js/writearea.js"></script>
+<script src="js/views.js"></script>
+<script src="js/views-more.js"></script>
+<script src="js/lessons.js"></script>
+<script src="js/apply.js"></script>
+<script src="js/practice.js"></script>
+<script src="js/vocabcheck.js"></script>
+<script src="js/sentences.js"></script>
+<script src="js/pwa.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+Nihongo Techō – Quellen und Lizenzen der Paketdateien (packs/)
+================================================================
+
+Diese Pakete (packs/n5/…, packs/dict-common/…, packs/dict-full/…,
+packs/level-index.js, packs/manifest.js) wurden aus den folgenden Quellen
+erzeugt. Geprüft am 2026-09-28. Alle daraus erzeugten Paketdateien stehen
+selbst unter CC-BY-SA 4.0 (siehe Kopfkommentar jeder Datei).
+
+JMdict, KANJIDIC2
+  Herausgeber: Electronic Dictionary Research and Development Group (EDRDG)
+  Lizenz:      CC-BY-SA 4.0
+  Link:        https://www.edrdg.org/edrdg/licence.html
+  Bezug:       jmdict-simplified (JSON-Export) https://github.com/scriptin/jmdict-simplified
+  Verwendet für: Lesungen, Wortarten, englische und deutsche Bedeutungen,
+                 Kanji-Lesungen/Bedeutungen/Strichzahlen, Wörterbuch-Pakete.
+
+Tatoeba
+  Lizenz: CC-BY 2.0 FR
+  Link:   https://tatoeba.org
+  Verwendet für: Beispielsätze und Furigana-Transkriptionen.
+
+open-anki-jlpt-decks
+  Lizenz: MIT
+  Link:   https://github.com/jamsinclair/open-anki-jlpt-decks
+  Basiert auf Jonathan Wallers JLPT-Listen (CC-BY, http://www.tanos.co.uk/jlpt/).
+  Verwendet für: Wortlisten je JLPT-Niveau, Bedeutungen als Rückfallebene,
+                 wenn JMdict keinen passenden Eintrag liefert.
+
+kanji-data (davidluzgouveia)
+  Lizenz: MIT
+  Link:   https://github.com/davidluzgouveia/kanji-data
+  Verwendet für: Zuordnung Kanji -> JLPT-Niveau (Feld jlpt_new). Andere
+  Felder (z. B. WaniKani-Daten) werden nicht übernommen.
+
+KanjiVG
+  Lizenz: CC-BY-SA 3.0
+  Link:   https://kanjivg.tagaini.net
+  Bereits vor diesem Vorhaben in der App verwendet (Strichfolgen-Grafiken),
+  unverändert.
+
+Nur zum Abgleich verwendet, keine Inhaltsübernahme
+---------------------------------------------------
+Die folgenden Quellen dienten ausschließlich dazu, die JLPT-N5-Zuordnung von
+Vokabeln, Kanji und Grammatikmustern gegenzuprüfen (Mehrheitsabgleich mehrerer
+Listen). Aus ihnen wurden keine Texte, Erklärungen oder Beispiele übernommen:
+
+  - jlpt-vocab-api (https://jlpt-vocab-api.vercel.app) – nur als zusätzliche
+    Stimme beim Level-Abgleich der Vokabeln.
+  - JLPT Sensei (N5-Grammatikliste) – nur Musternamen/Level zum Abgleich.
+  - Bunpro (JLPT5-Liste) – nur Musternamen/Level zum Abgleich.
+  - Lokale PDF-Listen (Vocabulary_of_JLPT_N5.pdf, kanjibookjlptn5.pdf,
+    jlpt-n5-grammar-list.pdf) – nur Musternamen/Wörter/Level zum Abgleich.
+
+Die Titel, Zusammenfassungen und Beispiele der N5-Grammatikpunkte
+(packs/n5/grammar.js) sind selbst verfasst oder stammen aus Tatoeba.
+
+JMdict-Version
+--------------
+Die jeweils verwendete jmdict-simplified-Version und der JMdict-Datenstand
+stehen im Kopfkommentar jeder Paketdatei sowie in packs/manifest.js
+(window.PACK_CREDITS) und werden dort bei jedem Build aktualisiert.
