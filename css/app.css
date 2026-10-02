@@ -834,3 +834,4 @@ details.adv[open] summary { margin-bottom: 12px; }
 .hw-pop .hw-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .hw-pop .hw-ja .chip { font-family: var(--font-kanji); font-size: 20px; padding: 4px 12px; }
 .hw-pop .hw-de .chip { font-size: 14px; }
+.lookup-pop .lk-install { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }

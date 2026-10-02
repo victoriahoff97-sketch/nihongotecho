@@ -75,6 +75,44 @@
     return out;
   };
 
-  const P = { isJp, glossScore, rankDict, dictResult, dedupe, uniq, ownMatch, dictForms, mergeDict };
+  // ---------- Eigene Vokabeln wie Wörterbuch-Einträge, damit der Satz-Scan (App.scanUnknown) gebeugte Formen und Sätze auflöst ----------
+  const ownTags = (it) => {
+    if (it.pos === 'verb') {
+      const cls = (it.v || {}).cls;
+      if (cls === 'ru') return ['v1'];
+      if (cls === 'u') return ['v5'];
+      if (cls === 'irr') return String(it.kana || '').endsWith('くる') ? ['vk'] : ['vs-i'];
+    }
+    return it.pos === 'i-adj' ? ['adj-i'] : [];
+  };
+  // Map Form (Schreibung oder Lesung) -> Einträge { id, k, r, de, en, c, p, own }
+  const ownIndex = (items) => {
+    const map = new Map();
+    for (const it of items) {
+      if (it.type !== 'vocab' || !it.kana) continue;
+      const e = { id: it.id, k: it.kanji ? [it.kanji] : [], r: [it.kana], de: it.de || '', en: it.en || '', c: 1, p: ownTags(it), own: it };
+      for (const f of new Set([it.kanji, it.kana])) { if (f) { if (!map.has(f)) map.set(f, []); map.get(f).push(e); } }
+    }
+    return map;
+  };
+  // Lookup für den Scan: eigene Einträge zuerst, dann das Wörterbuch (dictLookup darf fehlen)
+  const combineLookups = (ownMap, dictLookup) => async (forms) => {
+    const dict = dictLookup ? await dictLookup(forms) : new Map();
+    return new Map(forms.map((f) => [f, (ownMap.get(f) || []).concat(dict.get(f) || [])]));
+  };
+
+  // Alle Einträge, die zu einer (evtl. gebeugten) Form passen: cands aus App.deinflect, map aus dem Lookup ihrer Grundformen.
+  // いきました kann 行く oder 生きる sein → beide zeigen; eigene Wörter zuerst, dann häufige.
+  const surfaceEntries = (cands, map, posMatches) => {
+    const seen = new Set(), out = [];
+    for (const c of cands) for (const e of map.get(c.base) || []) {
+      if (seen.has(e.id) || !posMatches(e.p || [], c.type)) continue;
+      seen.add(e.id); out.push(e);
+    }
+    const rank = (e) => (e.own ? 2 : 0) + (e.c ? 1 : 0);
+    return out.map((e, i) => ({ e, i })).sort((a, b) => rank(b.e) - rank(a.e) || a.i - b.i).map((x) => x.e);
+  };
+
+  const P = { isJp, glossScore, rankDict, dictResult, dedupe, uniq, ownMatch, dictForms, mergeDict, ownTags, ownIndex, combineLookups, surfaceEntries };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.lookupLogic = P;
 })(this);

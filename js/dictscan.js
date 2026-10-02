@@ -11,6 +11,8 @@
   const STOP = ['です', 'でした', 'ます', 'ました', 'だ', 'だった', 'ではありません', 'じゃない', 'でしょう', 'という', 'の', 'こと'];
   const FUNC_POS = new Set(['prt', 'aux', 'aux-v', 'cop']);
   const MAX_LEN = 12;
+  // auch fürs Nachschlagen (lookup-logic.surfaceEntries)
+  App.posMatches = (tags, type) => posMatches(tags, type);
 
   // Prueft, ob die Wortarten-Tags eines Eintrags zum Kandidaten-Typ aus App.deinflect passen
   function posMatches(tags, type) {

@@ -47,8 +47,36 @@
         rows = LL.mergeDict(kana, q.length < 2 ? [] : LL.rankDict(await glossList(), q, MAX), MAX);
       }
     }
-    return { own, dict: LL.dedupe(own, rows.map(LL.dictResult)).slice(0, MAX), dictInstalled };
+    // Gebeugte Formen, Wort + Partikel, ganze Sätze: in Grundformen zerlegen (たべます → 食べる, 今日は → 今日)
+    const scanQ = LL.isJp(q) ? q : kanaQ;
+    let scanOwn = [], scanDict = [];
+    if (scanQ) {
+      const lookup = LL.combineLookups(ownIx(), dictInstalled ? App.dict.lookup : null);
+      // alle Grundformen, die zu einer Form passen (いきました = 行く oder 生きる), eigene zuerst
+      const entriesFor = async (surface) => {
+        const cands = App.deinflect(surface);
+        return LL.surfaceEntries(cands, await lookup([...new Set(cands.map((c) => c.base))]), App.posMatches);
+      };
+      let found = [];
+      try {
+        found = await entriesFor(scanQ); // die ganze Eingabe als ein Wort
+        // Satz: einmal nur mit eigenen Wörtern zerlegen (今日は → 今日, auch wenn das Wörterbuch 今日は als Ganzes kennt), einmal mit allem
+        const hits = (await App.scanUnknown(scanQ, [], LL.combineLookups(ownIx(), null))).concat(dictInstalled ? await App.scanUnknown(scanQ, [], lookup) : []);
+        for (const h of hits) if (h.surface !== scanQ) found = found.concat((await entriesFor(h.surface)).slice(0, 3)); // je Stelle höchstens 3
+      } catch (e) { console.error(e); }
+      const seen = new Set();
+      found = found.filter((e) => !seen.has(e.id) && seen.add(e.id));
+      scanOwn = found.filter((e) => e.own).map((e) => ownResult(e.own));
+      scanDict = found.filter((e) => !e.own).map(LL.dictResult);
+    }
+    const allOwn = LL.uniq(scanOwn.concat(own)).slice(0, MAX);
+    return { own: allOwn, dict: LL.dedupe(allOwn, LL.uniq(scanDict.concat(rows.map(LL.dictResult)))).slice(0, MAX), dictInstalled };
   };
+
+  // Eigene Vokabeln als Scan-Index; neu, sobald sich Einträge ändern
+  let ownMap = null;
+  const ownIx = () => ownMap || (ownMap = LL.ownIndex(App.store.items.values()));
+  App.onChange(() => { ownMap = null; });
 
   const rowHtml = (r, i, grp) => `<button class="lk-row" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</span><span class="lk-de">${r.lang === 'en' ? '<span class="badge">EN</span> ' : ''}${esc(r.meaning)}</span></span></button>`;
 
@@ -65,10 +93,29 @@
     const input = pop.querySelector('input'), body = pop.querySelector('.lk-body');
     let run = 0, last = { q: '', own: [], dict: [] };
 
+    // Ohne Offline-Wörterbuch gibt es nur eigene Wörter: direkt hier installieren (kein Seitenwechsel, geht auch im Vollbild)
+    const DICT_ID = 'dict-common';
+    const installHint = () => {
+      const p = App.packById(DICT_ID);
+      if (!p || !p.available) return '';
+      return `<div class="lk-install small muted">Mehr Treffer mit dem Offline-Wörterbuch (${Math.round(p.entries / 1000)}.000 häufige Wörter, etwa ${Math.round(p.sizeKB / 1024)} MB).
+        <button class="btn btn-sm btn-sec" data-lkinstall>${icon('download')} Wörterbuch installieren</button></div>`;
+    };
+    const install = async (btn) => {
+      const box = btn.closest('.lk-install');
+      btn.disabled = true;
+      try {
+        await App.dict.install(DICT_ID, (frac, text) => { if (box.isConnected) btn.textContent = `${Math.round(frac * 100)} % – ${text}`; });
+        search();
+      } catch (e) {
+        console.error(e);
+        if (box.isConnected) box.innerHTML = `Wörterbuch konnte nicht installiert werden: ${esc(e.message || e)}`;
+      }
+    };
     const list = (res) => {
       last = res;
       if (!res.q) { body.innerHTML = '<p class="muted small">Wort eingeben – Treffer antippen, um es groß mit Strichfolge zu sehen.</p>'; return; }
-      const hint = res.dictInstalled ? '' : '<p class="small muted"><a href="#/pakete">Mehr Treffer mit dem Offline-Wörterbuch unter Pakete</a></p>';
+      const hint = res.dictInstalled ? '' : installHint();
       if (!res.own.length && !res.dict.length) { body.innerHTML = '<p class="muted">Nichts gefunden</p>' + hint; return; }
       body.innerHTML = (res.own.length ? `<div class="lk-sec">Deine Wörter</div>${res.own.map((r, i) => rowHtml(r, i, 'own')).join('')}` : '')
         + (res.dict.length ? `<div class="lk-sec">Wörterbuch</div>${res.dict.map((r, i) => rowHtml(r, i, 'dict')).join('')}` : '') + hint;
@@ -100,6 +147,8 @@
     pop.addEventListener('click', (e) => {
       if (e.target.closest('[data-lkclose]')) { close(); return; }
       if (e.target.closest('[data-lkback]')) { list(last); return; }
+      const inst = e.target.closest('[data-lkinstall]');
+      if (inst) { install(inst); return; }
       const row = e.target.closest('[data-lk]');
       if (row) { const [grp, i] = row.dataset.lk.split(':'); detail(last[grp][+i]); }
     });
