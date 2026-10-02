@@ -811,3 +811,26 @@ details.adv[open] summary { margin-bottom: 12px; }
   .cmp-grid { grid-template-columns: 1fr; }
   .cmp-arrow { padding-top: 0; transform: rotate(90deg); }
 }
+/* Nachschlagen-Fenster auf Stift-Seiten */
+.lookup-pop { position: absolute; right: 12px; z-index: 4; width: 320px; max-width: calc(100% - 24px); max-height: 70%; display: flex; flex-direction: column; padding: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.28); }
+.lookup-pop .lk-head { display: flex; gap: 6px; align-items: center; }
+.lookup-pop .lk-head .input { flex: 1; min-width: 0; }
+.lookup-pop .lk-body { overflow: auto; margin-top: 8px; min-height: 40px; }
+.lookup-pop .lk-sec { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 8px 2px 4px; }
+.lookup-pop .lk-row { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; padding: 7px 8px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); cursor: pointer; font: inherit; }
+.lookup-pop .lk-row:hover { background: var(--paper-2); }
+.lookup-pop .lk-jp { font-family: var(--font-kanji); font-size: 24px; line-height: 1.2; flex: none; max-width: 45%; }
+.lookup-pop .lk-txt { display: flex; flex-direction: column; min-width: 0; }
+.lookup-pop .lk-kana { font-size: 13px; color: var(--muted); }
+.lookup-pop .lk-de { font-size: 14px; }
+.lookup-pop .lk-big { font-family: var(--font-kanji); font-size: 64px; line-height: 1.15; text-align: center; margin-top: 6px; word-break: break-all; }
+.lookup-pop .lk-big + .lk-kana, .lookup-pop .lk-big + .lk-kana + .lk-de { text-align: center; }
+.lookup-pop .lk-big + .lk-kana { font-size: 18px; }
+.lookup-pop .lk-strokes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.lookup-pop .lk-stroke .stroke-box { padding: 6px; border-radius: 12px; box-shadow: none; }
+/* Erkennen: Vorschläge an der eingekreisten Stelle */
+.vpage .hw-pop { position: absolute; z-index: 2; margin-top: 8px; max-width: 44%; min-width: 120px; padding: 8px 8px 8px 10px; display: flex; gap: 6px; align-items: flex-start; box-shadow: 0 6px 22px rgba(0,0,0,.28); }
+.hw-pop .hw-list { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hw-pop .hw-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.hw-pop .hw-ja .chip { font-family: var(--font-kanji); font-size: 20px; padding: 4px 12px; }
+.hw-pop .hw-de .chip { font-size: 14px; }

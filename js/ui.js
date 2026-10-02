@@ -62,9 +62,9 @@
     setTimeout(() => { const f = m.querySelector('[autofocus]'); if (f) f.focus(); }, 30);
     return { el: m, body: bodyEl, close };
   };
-  App.confirm = (msg, { ok = 'Löschen', danger = true } = {}) => new Promise((res) => {
+  App.confirm = (msg, { ok = 'Löschen', danger = true, title = 'Bist du sicher?' } = {}) => new Promise((res) => {
     const md = App.modal({
-      title: 'Bist du sicher?', body: `<p>${esc(msg)}</p>`,
+      title, body: `<p>${esc(msg)}</p>`,
       foot: `<button class="btn" data-no>Abbrechen</button><button class="btn ${danger ? 'btn-primary' : 'btn-primary'}" data-ok>${esc(ok)}</button>`,
       onClose: () => res(false),
     });

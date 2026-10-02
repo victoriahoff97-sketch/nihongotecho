@@ -157,17 +157,18 @@
     const kind = App.fileKind(f);
     const S = App.store.settings;
     const II = App.inkImages;
-    const TOOLS = ['hand', 'select', 'pen', 'fountain', 'marker', 'eraser'];
+    const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser'];
     const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null };
     root.classList.add(embedded ? 'ink-embed' : 'viewer');
     root.innerHTML = `<div class="viewer-bar">
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
       <div class="title">${esc(f.name)}</div>
       <div class="grp">
-        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Bilder verschieben und skalieren'],
+        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Bilder verschieben und skalieren'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen und nachschlagen'],
           ['pen', 'ballpen', 'Stift', 'Stift'], ['fountain', 'fountain', 'Füller', 'Füller (druckempfindlich)'], ['marker', 'highlighter', 'Marker', 'Textmarker'],
           ['eraser', 'eraser', 'Radierer', 'Radierer (ganze Striche)']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}">${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
         <button class="icon-btn tool-btn" data-v="image" title="Bild einfügen (Strg+V)">${icon('imagePlus')}<span class="tool-swatch"></span><span class="tool-lbl">Bild</span></button>
+        <button class="icon-btn tool-btn" data-v="lookup" title="Nachschlagen (Wörterbuch)">${icon('search')}<span class="tool-swatch"></span><span class="tool-lbl">Nachschlagen</span></button>
       </div>
       <div class="grp" data-colors></div>
       <div class="grp"><button class="btn btn-sm btn-ghost" data-v="width" title="Strichstärke">●●</button></div>
@@ -388,6 +389,7 @@
         drawing = { p, img: im, handle: h, start: pt, before: { x: im.x, y: im.y, w: im.w, h: im.h } };
         return;
       }
+      if (st.tool === 'lasso') { closeHw(); drawing = { p, lasso: [norm(p, e)] }; return; }
       const erasing = st.tool === 'eraser' || (e.pointerType === 'pen' && (e.buttons & 32));
       if (erasing) { drawing = { p, erase: true, act: { type: 'erase', pi: p.i, removed: [] } }; eraseAt(p, norm(p, e), drawing.act); return; }
       if (st.tool === 'fountain') {
@@ -419,6 +421,7 @@
         drawInk(p); updateSel();
         return;
       }
+      if (drawing.lasso) { drawing.lasso.push(norm(p, e)); drawLasso(p, drawing.lasso); return; }
       if (drawing.erase) { eraseAt(p, norm(p, e), drawing.act); return; }
       const ce = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
       const evs = ce.length ? ce : [e];
@@ -442,6 +445,13 @@
         }
         drawInk(p); updateSel();
         drawing = null;
+        return;
+      }
+      if (drawing.lasso) {
+        const poly = drawing.lasso;
+        p.live.getContext('2d').clearRect(0, 0, p.live.width, p.live.height);
+        drawing = null;
+        recognize(p, poly);
         return;
       }
       if (drawing.erase) { if (drawing.act.removed.length) { st.undo.push(drawing.act); st.redo = []; dirty.add(p.i); saveInk(p.i); } }
@@ -484,7 +494,56 @@
       st.undo.push({ type: 'img-del', pi: p.i, im, idx }); st.redo = [];
       clearSel(); drawInk(p); markDirty(p);
     };
+    // ---------- Erkennen: eingekreiste Striche an den Handschrift-Dienst, Vorschlag antippen = nachschlagen ----------
+    const HW = App.hwLogic;
+    let hwRun = 0;
+    const closeHw = () => { hwRun++; const el = root.querySelector('.hw-pop'); if (el) el.remove(); };
+    const drawLasso = (p, pts) => {
+      const c = p.live.getContext('2d'), W = p.live.width, k = W / p.el.clientWidth;
+      c.clearRect(0, 0, W, p.live.height);
+      c.save();
+      c.strokeStyle = '#2b8a8f'; c.lineWidth = 2 * k; c.setLineDash([6 * k, 5 * k]); c.lineJoin = 'round';
+      c.beginPath();
+      pts.forEach((q, i) => (i ? c.lineTo(q[0] * W, q[1] * W) : c.moveTo(q[0] * W, q[1] * W)));
+      c.closePath(); c.stroke();
+      c.restore();
+    };
+    const hwFetch = async (sel, lang, max) => {
+      const r = await fetch(HW.HW_URL(lang), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(HW.inkPayload(sel, lang)), signal: AbortSignal.timeout(8000) });
+      return HW.parseCandidates(await r.json(), max);
+    };
+    const recognize = async (p, poly) => {
+      const sel = HW.strokesInLasso(p.strokes, poly);
+      if (!sel.length) { note('Nichts eingekreist'); return; }
+      if (sel.length > HW.MAX_STROKES) { note('Zu viel eingekreist – bitte ein Wort'); return; }
+      if (!App.store.settings.hwConsent) {
+        const ok = await App.confirm('Zum Erkennen werden die eingekreisten Striche an Google gesendet (nur die Linien dieses Wortes, nicht die Seite). Einverstanden?', { ok: 'Einverstanden', danger: false, title: 'Handschrift erkennen' });
+        if (!ok) return;
+        await App.saveSettings({ hwConsent: true });
+      }
+      closeHw();
+      const run = hwRun;
+      let x0 = Infinity, y1 = -Infinity;
+      sel.forEach((s) => s.pts.forEach((q) => { x0 = Math.min(x0, q[0]); y1 = Math.max(y1, q[1]); }));
+      const pop = document.createElement('div');
+      pop.className = 'hw-pop card';
+      pop.innerHTML = '<span class="muted">…</span>';
+      Object.assign(pop.style, { left: App.clamp(x0, 0.01, 0.55) * 100 + '%', top: (y1 / p.def.ratio) * 100 + '%' });
+      pop.addEventListener('pointerdown', (e) => e.stopPropagation());
+      pop.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-hw]');
+        if (chip) App.lookup.open(root, chip.dataset.hw);
+        else if (e.target.closest('[data-hwclose]')) closeHw();
+      });
+      p.el.appendChild(pop);
+      const [ja, de] = (await Promise.allSettled([hwFetch(sel, 'ja', 5), hwFetch(sel, 'de', 3)])).map((r) => (r.status === 'fulfilled' ? r.value : []));
+      if (run !== hwRun || !pop.isConnected) return; // inzwischen geschlossen oder neues Lasso
+      if (!ja.length && !de.length) { closeHw(); note('Erkennung gerade nicht erreichbar'); return; }
+      const chips = (list, cls) => (list.length ? `<div class="hw-row ${cls}">${list.map((t) => `<button class="chip" data-hw="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : '');
+      pop.innerHTML = `<div class="hw-list">${chips(ja, 'hw-ja')}${chips(de, 'hw-de')}</div><button class="icon-btn sm" data-hwclose title="Schließen">${icon('close')}</button>`;
+    };
     const setTool = (t) => {
+      closeHw();
       if (t !== 'select') clearSel();
       st.tool = t;
       $$('[data-tool]', root).forEach((b) => b.classList.toggle('active', b.dataset.tool === t));
@@ -555,6 +614,8 @@
       st.pages.forEach((p) => (p.images || []).forEach((im) => imgCache.delete(im.id)));
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('paste', onPaste);
+      if (root._lookup) root._lookup.close();
+      closeHw();
       window.removeEventListener('pagehide', flushAll);
       document.removeEventListener('visibilitychange', onHide);
       root.innerHTML = '';
@@ -564,7 +625,7 @@
     const close = () => { if (opts.onClose) opts.onClose(); else destroy(); };
     // Tasten/Einfügen nur, wenn diese Schreibfläche gemeint ist (kein Modal, kein Eingabefeld, nicht unter dem Vollbild, sichtbar)
     const inactive = (e) => $('.modal-back') || (e.target.matches && e.target.matches('input, textarea, select, [contenteditable="true"]'))
-      || (embedded && $('.viewer')) || !root.getClientRects().length;
+      || (e.target.closest && e.target.closest('.lookup-pop')) || (embedded && $('.viewer')) || !root.getClientRects().length;
     const onPaste = (e) => {
       if (inactive(e)) return;
       const it = Array.from((e.clipboardData && e.clipboardData.items) || []).find((x) => x.type.startsWith('image/'));
@@ -574,8 +635,11 @@
     };
     document.addEventListener('paste', onPaste);
     const onKey = (e) => {
+      // Escape schließt zuerst das Nachschlagen-Fenster (auch wenn der Fokus auf einem seiner Knöpfe oder auf der Seite liegt)
+      if (e.key === 'Escape' && root._lookup && !$('.modal-back') && !(embedded && $('.viewer'))) { root._lookup.close(); return; }
       if (inactive(e)) return;
       if (st.sel && e.key === 'Escape') { clearSel(); return; }
+      if (e.key === 'Escape' && root.querySelector('.hw-pop')) { closeHw(); return; }
       if (st.sel && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSel(); return; }
       if (e.key === 'Escape' && !embedded) close();
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); doUndo(st.undo, st.redo); }
@@ -618,6 +682,7 @@
       }
       if (a === 'print') printAll();
       if (a === 'image') pickImage();
+      if (a === 'lookup') App.lookup.open(root);
       if (a === 'vocab') App.importVocab({ fileId: f.id });
     });
 

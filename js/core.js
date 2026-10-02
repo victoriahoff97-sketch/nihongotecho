@@ -51,6 +51,7 @@ window.App = window.App || {};
     ballpen: '<path d="M17.5 3.5l3 3L9 18l-4.5 1.5L6 15z"/><path d="M15.5 5.5l3 3"/><path d="M19 2l3 3"/>',
     fountain: '<path d="M12 21.5l-5.5-9.5L9 4.5h6l2.5 7.5z"/><path d="M12 21.5V13"/><circle cx="12" cy="11.5" r="1.4"/><path d="M9 4.5V2h6v2.5"/>',
     highlighter: '<path d="M14 3l7 7-6.5 6.5-7-7z"/><path d="M8 9.5L4.5 17l2.5 2.5L14.5 16"/><path d="M3 21.5h8"/>',
+    lasso: '<path stroke-dasharray="3 2.6" d="M12 3.5c-4.7 0-8.5 2.6-8.5 5.9s3.8 5.9 8.5 5.9 8.5-2.6 8.5-5.9S16.7 3.5 12 3.5z"/><path d="M7.5 14.6c-.6 1.4.9 2.2.9 3.9 0 1.2-.8 2-1.9 2"/>',
     pointer: '<path d="M5 3l6.5 17 2.6-7.2L21 10.2z"/><path d="M14.3 13l5.2 5.2"/>',
     imagePlus: '<path d="M21 12V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h7"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/><path d="M19 16v6M16 19h6"/>',
     marker: '<path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 01-2.8 0l-5.2-5.2a2 2 0 010-2.8L14 4"/>',
