@@ -62,8 +62,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     if (type === 'kanji') items = items.filter((i) => i.char !== '々');
     return items;
   };
-  App.route('/ueben/karten', (view, p, q) => {
-    const sec = App.SECTIONS.practice;
+  // Lernrunde einer Auswahl: fällige Karten (älteste zuerst) + neue Karten in Lernreihenfolge. Auch für die Kacheln der Startseite.
+  App.cardQueue = (q = {}) => {
     const type = q.type || 'vocab';
     const items = cardFilter(q);
     const now = Date.now();
@@ -71,6 +71,12 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     // Vokabeln/Kanji: neu sind nur Einträge aus dem Lernstapel (ungeprüfte erst einstufen). Grammatik: Lernstapel inkl. „im Unterricht behandelt“. Ausdrücke: alles Ungeübte.
     const fresh = items.filter((i) => { const s = S.srs.get(i.id); return type === 'phrase' ? (!s || !s.reps) : type === 'grammar' ? (App.vocabStatus(i.id) === 'learn' && (!s || !s.reps)) : (s && !s.reps && s.check === 'learn'); })
       .sort((a, b) => (lessonNum(a) ?? 99) - (lessonNum(b) ?? 99) || App.ord(a) - App.ord(b));
+    return { items, due, fresh };
+  };
+  App.route('/ueben/karten', (view, p, q) => {
+    const sec = App.SECTIONS.practice;
+    const type = q.type || 'vocab';
+    const { items, due, fresh } = App.cardQueue(q);
     const unchecked = type !== 'phrase' ? items.filter((i) => i.char !== '々' && App.vocabStatus(i.id) === 'unchecked').length : 0;
     const dir = q.dir || 'jp';
     const allOfType = App.itemsOf(type);

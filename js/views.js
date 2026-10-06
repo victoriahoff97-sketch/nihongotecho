@@ -116,7 +116,12 @@
     const h = new Date().getHours();
     const greet = h < 11 ? 'おはようございます' : h < 18 ? 'こんにちは' : 'こんばんは';
     const count = (t) => App.itemsOf(t).length;
-    const due = App.dueCount();
+    // Wiederholungs-Kacheln: ein Tipp startet direkt die Lernrunde (fällige + neue Karten) des Typs
+    const queues = [['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['grammar', 'Grammatik'], ['phrase', 'Ausdrücke']].map(([type, label]) => {
+      const { due, fresh } = App.cardQueue({ type });
+      return { label, due: due.length, fresh: Math.min(fresh.length, S.settings.newPerDay), href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}auto=1` };
+    });
+    const queueTile = (x) => `<a class="queue-tile ${x.due ? 'due' : ''}" href="${x.href}"><span class="n">${x.due}</span><span class="t"><b>${x.label}</b><span>${x.due ? 'fällig' : 'nichts fällig'}${x.fresh ? ` · ${x.fresh} neu` : ''}</span></span>${x.due || x.fresh ? icon('play') : ''}</a>`;
     const vocab = App.itemsOf('vocab');
     const sessions = App.itemsOf('session').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const recent = Array.from(S.items.values()).filter((i) => i.created && i.type !== 'session' && !App.APPLY_TYPES.includes(i.type)).sort((a, b) => b.created - a.created).slice(0, 8);
@@ -128,11 +133,9 @@
     const stat = (t, n, sub) => { const s = App.SECTIONS[t]; return `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; };
     view.innerHTML = `<div class="sec-home">
       <div class="hero"><div class="big-jp">日本語</div>
-        <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
-        <p>Dein Japanisch-Notizbuch: Grammatik, Vokabeln, Kanji und Unterricht an einem Ort. Heute ${due ? `warten <b>${due} Karten</b> auf dich.` : 'ist nichts fällig – Zeit für Neues!'}</p>
-        <div class="row"><a class="btn solid" href="#/ueben/karten">${icon('practice')} ${due ? 'Jetzt wiederholen' : 'Karteikarten'}</a>
-        <a class="btn" href="#/ueben/saetze">${icon('sparkle')} Übersetzen üben</a>
-        <button class="btn" data-action="new-session">${icon('session')} Neue Unterrichtsstunde</button></div></div>
+        <div class="hero-head"><h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
+        <button class="btn" data-action="new-session">${icon('session')} Neue Unterrichtsstunde</button></div>
+        <div class="queue-row">${queues.map(queueTile).join('')}</div></div>
       ${readStrip()}
       <div class="section-title" style="margin-top:20px">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>
       <div class="stat-grid" style="margin-top:0">
