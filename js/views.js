@@ -116,12 +116,14 @@
     const h = new Date().getHours();
     const greet = h < 11 ? 'おはようございます' : h < 18 ? 'こんにちは' : 'こんばんは';
     const count = (t) => App.itemsOf(t).length;
-    // Wiederholungs-Kacheln: ein Tipp startet direkt die Lernrunde (fällige + neue Karten) des Typs
-    const queues = [['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['grammar', 'Grammatik'], ['phrase', 'Ausdrücke']].map(([type, label]) => {
+    // Wiederholen: der Knopf startet direkt die Lernrunde des ersten Kartentyps mit fälligen (sonst neuen) Karten
+    const queues = [['vocab', 'Vokabeln', 'Vokabel'], ['kanji', 'Kanji', 'Kanji'], ['grammar', 'Grammatik', 'Grammatik'], ['phrase', 'Ausdrücke', 'Ausdruck']].map(([type, label, one]) => {
       const { due, fresh } = App.cardQueue({ type });
-      return { label, due: due.length, fresh: Math.min(fresh.length, S.settings.newPerDay), href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}auto=1` };
+      return { label: due.length === 1 ? one : label, due: due.length, fresh: fresh.length, href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}auto=1` };
     });
-    const queueTile = (x) => `<a class="queue-tile ${x.due ? 'due' : ''}" href="${x.href}"><span class="n">${x.due}</span><span class="t"><b>${x.label}</b><span>${x.due ? 'fällig' : 'nichts fällig'}${x.fresh ? ` · ${x.fresh} neu` : ''}</span></span>${x.due || x.fresh ? icon('play') : ''}</a>`;
+    const dueQ = queues.filter((x) => x.due), due = dueQ.reduce((n, x) => n + x.due, 0);
+    const next = dueQ[0] || queues.find((x) => x.fresh);
+    const action = (cls, attrs, ico, title, sub) => `<${attrs.startsWith('href') ? 'a' : 'button'} class="home-act ${cls}" ${attrs}><span class="i">${icon(ico)}</span><span><b>${title}</b><small>${sub}</small></span></${attrs.startsWith('href') ? 'a' : 'button'}>`;
     const vocab = App.itemsOf('vocab');
     const sessions = App.itemsOf('session').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const recent = Array.from(S.items.values()).filter((i) => i.created && i.type !== 'session' && !App.APPLY_TYPES.includes(i.type)).sort((a, b) => b.created - a.created).slice(0, 8);
@@ -133,9 +135,14 @@
     const stat = (t, n, sub) => { const s = App.SECTIONS[t]; return `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; };
     view.innerHTML = `<div class="sec-home">
       <div class="hero"><div class="big-jp">日本語</div>
-        <div class="hero-head"><h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
-        <button class="btn" data-action="new-session">${icon('session')} Neue Unterrichtsstunde</button></div>
-        <div class="queue-row">${queues.map(queueTile).join('')}</div></div>
+        <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
+        <p>${due ? `Heute ${due === 1 ? 'wartet <b>1 Karte</b>' : `warten <b>${due} Karten</b>`} auf dich: ${dueQ.map((x) => `<a href="${x.href}">${x.due} ${x.label}</a>`).join(' · ')}` : `Heute ist nichts fällig${next ? ' – Zeit für neue Karten aus dem Lernstapel.' : '.'}`}</p>
+        <div class="row"><a class="btn solid" href="${next ? next.href : '#/ueben/karten'}">${icon(next ? 'play' : 'practice')} ${due ? 'Weiter wiederholen' : next ? 'Neue Karten lernen' : 'Karteikarten'}</a></div></div>
+      <div class="home-actions">
+        ${action('sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze erkennen', 'Text einfügen, Vokabeln finden')}
+        ${action('sec-vocab', 'data-new-vocab', 'plus', 'Neue Vokabel', 'Ein Wort schnell speichern')}
+        ${action('sec-session', 'data-action="new-session"', 'session', 'Neue Unterrichtsstunde', 'Mitschrift für heute anlegen')}
+      </div>
       ${readStrip()}
       <div class="section-title" style="margin-top:20px">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>
       <div class="stat-grid" style="margin-top:0">
@@ -170,6 +177,7 @@
         <div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
           <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>
       </div></div>`;
+    view.querySelector('[data-new-vocab]').onclick = () => App.editItem({ type: 'vocab' });
   });
 
   // =========================================================
