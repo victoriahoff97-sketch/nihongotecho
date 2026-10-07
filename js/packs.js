@@ -3,7 +3,6 @@
 (function (App) {
   const { esc, icon } = App;
   const S = App.store;
-  const SESSION_KEYS = ['grammarIds', 'vocabIds', 'kanjiIds', 'phraseIds'];
 
   // Level-Paketdateien laden (bereits geladene Daten werden wiederverwendet)
   async function loadLevelItems(pack) {
@@ -82,8 +81,7 @@
     remove: async (id) => {
       const pack = App.packById(id);
       if (pack && pack.kind === 'dict') { await App.dict.remove(id); return { removed: 0, kept: 0 }; }
-      const sessionRefs = new Set();
-      App.itemsOf('session').forEach((s) => SESSION_KEYS.forEach((k) => (s[k] || []).forEach((x) => sessionRefs.add(x))));
+      const sessionRefs = App.sessionRefs();
       const del = [];
       const upd = [];
       let kept = 0;
@@ -236,6 +234,8 @@
     view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Pakete <span class="jp-title">包</span></h1>
       <p>JLPT-Wortschatz, Kanji und Grammatik freischalten und das Wörterbuch für den Satz-Scan installieren. Alles bleibt offline in diesem Browser.</p></div>
       <a class="btn btn-sm" href="#/lizenzen">${icon('info')} Lizenzen</a></div>
+      ${App.genki && App.genki.present() ? `<div class="section-title">Lehrbuch</div>
+      ${App.genki.card()}` : ''}
       <div class="section-title">JLPT-Niveaus</div>
       <div class="grid cols-3">${packs.filter((p) => p.kind === 'level').map(packCard).join('')}</div>
       <div class="section-title">Wörterbuch</div>

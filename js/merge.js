@@ -67,6 +67,7 @@
     for (const m of idMatch.concat(ruleMatches)) byId.set(m.id, m);
     return [...byId.values()];
   };
+  App.findMatches = findMatches;
 
   // Ermittelt adds/updates fuer ein Level-Paket, ohne existing zu mutieren
   App.planMerge = (packItems, existing, opts) => {
@@ -164,11 +165,90 @@
     return true;
   };
 
+  // IDs aller Einträge, die in einer Unterrichtsstunde verwendet werden (für App.isRemovable)
+  const SESSION_KEYS = ['grammarIds', 'vocabIds', 'kanjiIds', 'phraseIds'];
+  App.sessionRefs = () => {
+    const refs = new Set();
+    App.itemsOf('session').forEach((s) => SESSION_KEYS.forEach((k) => (s[k] || []).forEach((x) => refs.add(x))));
+    return refs;
+  };
+
+  // Umgekehrte Reihenfolge zu planMerge: neue Seed-Einträge (freshSeeds, noch nicht im Bestand) kommen dazu,
+  // nachdem schon ein Level-Paket installiert wurde. Treffer nach denselben Regeln wie planMerge (findMatches,
+  // vom Paket-Eintrag aus gesehen; eine Lesung ist mehrdeutig, wenn sie unter den Einträgen desselben Pakets
+  // mehrfach vorkommt). Ergebnis, ohne die Eingaben zu verändern:
+  //   del  – IDs unberührter Paket-Einträge (App.isRemovable), die dem Seed-Eintrag weichen
+  //   tag  – Seed-ID → { packs, level }: was der Seed-Eintrag dafür übernimmt (als wäre er zuerst da gewesen)
+  //   skip – Seed-IDs, die nicht angelegt werden, weil ein berührter Paket-Eintrag (Lernstand, bearbeitet,
+  //          markiert, in einer Stunde verwendet) dasselbe Wort schon führt
+  // Treffen mehrere Paket-Einträge denselben Seed-Eintrag, genügt ein berührter, damit er übersprungen wird.
+  // Ausnahme Grammatik (type 'grammar'): nie skip. Ein berührter Paket-Eintrag bleibt, der Genki-Eintrag wird
+  // trotzdem angelegt (ohne tag deswegen); unberührte Treffer werden wie sonst aufgenommen (del + tag).
+  const ABSORB_TYPES = new Set(['vocab', 'kanji', 'grammar']);
+  App.planSeedAbsorb = (freshSeeds, existing, ctx) => {
+    const out = { del: [], skip: [], tag: new Map() };
+    const packItems = existing.filter((it) => it && it._pack && ABSORB_TYPES.has(it.type));
+    if (!packItems.length || !freshSeeds.length) return out;
+
+    // Lesungen je Paket zählen – über alle Vokabeln, die zum Paket gehören: eigene Paket-Einträge (_pack) und
+    // Einträge mit der Paket-Kennung in packs (z. B. ein Seed-Eintrag, in dem ein Paket-Eintrag schon aufgegangen
+    // ist). Sonst würde eine im Paket mehrdeutige Lesung nach dem ersten Zusammenführen als eindeutig gelten.
+    const readingKey = (packId, it) => packId + '|' + App.jp.toHira(norm(it.kana || ''));
+    const reading = (it) => readingKey(it._pack, it);
+    const readingCounts = new Map();
+    existing.forEach((it) => {
+      if (!it || it.type !== 'vocab') return;
+      const ids = new Set(Array.isArray(it.packs) ? it.packs : []);
+      if (it._pack) ids.add(it._pack);
+      ids.forEach((packId) => { const k = readingKey(packId, it); readingCounts.set(k, (readingCounts.get(k) || 0) + 1); });
+    });
+
+    const hits = new Map(); // Seed-ID → treffende Paket-Einträge (in Bestands-Reihenfolge)
+    packItems.forEach((p) => {
+      const ambiguousReading = p.type === 'vocab' && readingCounts.get(reading(p)) > 1;
+      findMatches(p, freshSeeds, p._pack, ambiguousReading).forEach((s) => {
+        if (!hits.has(s.id)) hits.set(s.id, []);
+        hits.get(s.id).push(p);
+      });
+    });
+
+    const del = new Set();
+    const skip = new Set();
+    freshSeeds.forEach((s) => {
+      let ps = hits.get(s.id);
+      if (!ps || out.tag.has(s.id) || skip.has(s.id)) return;
+      if (s.type === 'grammar') {
+        // Ausnahme Grammatik: berührte Paket-Einträge bleiben stehen, unterdrücken den Genki-Eintrag aber nie
+        // (er trägt die ausführliche deutsche Erklärung); nur unberührte werden aufgenommen
+        ps = ps.filter((p) => App.isRemovable(p, ctx));
+        if (!ps.length) return;
+      } else if (ps.some((p) => !App.isRemovable(p, ctx))) { skip.add(s.id); return; }
+      const packs = [];
+      ps.forEach((p) => (Array.isArray(p.packs) && p.packs.length ? p.packs : [p._pack]).forEach((x) => { if (!packs.includes(x)) packs.push(x); }));
+      const t = { packs };
+      if (ps[0].level !== undefined) t.level = ps[0].level;
+      out.tag.set(s.id, t);
+      ps.forEach((p) => del.add(p.id));
+    });
+    out.skip = [...skip];
+    out.del = packItems.filter((p) => del.has(p.id)).map((p) => p.id);
+    return out;
+  };
+
   // Bereinigung nach dem Zusammenlegen doppelter Seed-Einträge (map: alte ID → verbleibende ID, siehe SEED_MERGED).
   // Liefert, was zu löschen/speichern ist, ohne items oder srs zu verändern. Der Lernstand (Lesen und Schreiben)
   // geht auf den verbleibenden Eintrag über; haben beide einen, gewinnt der weiter fortgeschrittene.
   // Vom Nutzer bearbeitete Einträge bleiben stehen.
   const REF_KEYS = ['grammarIds', 'vocabIds', 'kanjiIds', 'phraseIds', 'newIds', 'links'];
+
+  // IDs aller Einträge, auf die irgendein Eintrag verweist (Stunden, Tagebuch, Antworten, Verknüpfungen) oder
+  // an denen eine Datei hängt (itemId) – weiter gefasst als App.sessionRefs, für das Löschen ohne Zutun des Nutzers
+  App.allRefs = (items, files) => {
+    const refs = new Set();
+    for (const it of items) for (const k of REF_KEYS) if (Array.isArray(it[k])) it[k].forEach((id) => refs.add(id));
+    for (const f of files || []) if (f && f.itemId) refs.add(f.itemId);
+    return refs;
+  };
   App.planSeedCleanup = (map, items, srs) => {
     const out = { delItems: [], putItems: [], putSrs: [], delSrs: [] };
     const byId = new Map(items.map((it) => [it.id, it]));

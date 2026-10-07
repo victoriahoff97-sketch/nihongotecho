@@ -137,7 +137,10 @@
       return { l, pct: vs.length ? Math.round((learned / vs.length) * 100) : 0, n: vs.length };
     });
     const stat = (t, n, sub) => { const s = App.SECTIONS[t]; return `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; };
+    // Genki-Freischaltung: auf der Startseite nur, solange sie noch aussteht (nicht bei none/open)
+    const genkiCard = App.genki && ['locked', 'stale'].includes(App.genki.state()) ? `<div style="margin-bottom:18px">${App.genki.card()}</div>` : '';
     view.innerHTML = `<div class="sec-home">
+      ${genkiCard}
       <div class="hero"><div class="big-jp">日本語</div>
         <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
         <p>${due ? `Heute ${due === 1 ? 'wartet <b>1 Karte</b>' : `warten <b>${due} Karten</b>`} auf dich: ${dueQ.map((x) => `<a href="${x.href}">${x.due} ${x.label}</a>`).join(' · ')}` : `Heute ist nichts fällig${next ? ' – Zeit für neue Karten aus dem Lernstapel.' : '.'}`}</p>
@@ -177,9 +180,9 @@
           <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
           <a class="btn ${todo ? 'btn-sec' : ''}" href="#/ueben/kanji${todo ? '?auto=1' : ''}">${icon('pen')} ${wq.due.length ? `${wq.due.length} schreiben` : 'Schreiben üben'}</a></div>`; })()}</div>`; })()}
-      <div class="section-title">Genki I – Vokabel-Fortschritt je Lektion</div>
+      ${vocab.some((v) => v.source === 'Genki I') ? `<div class="section-title">Genki I – Vokabel-Fortschritt je Lektion</div>
       <div class="card"><div class="lesson-strip">${lessons.map((x) => `<a href="#/vokabeln?src=Genki%20I&l=${x.l}" title="${x.pct}% von ${x.n} Wörtern gelernt">L${x.l}<i style="width:${x.pct}%"></i></a>`).join('')}</div>
-        <div class="small muted" style="margin-top:8px">Der grüne Balken zeigt, wie viele Wörter der Lektion du schon mit Karteikarten gelernt hast.</div></div>
+        <div class="small muted" style="margin-top:8px">Der grüne Balken zeigt, wie viele Wörter der Lektion du schon mit Karteikarten gelernt hast.</div></div>` : ''}
       <div class="grid cols-2" style="margin-top:22px">
         <div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
           <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>

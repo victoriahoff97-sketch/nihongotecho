@@ -366,10 +366,13 @@ window.App = window.App || {};
   const ORD = new Map();
   App.ord = (it) => (ORD.has(it.id) ? ORD.get(it.id) : 1e6 + (it.created || 0) / 1e7);
   const hash = (o) => { const s = JSON.stringify(o); let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; };
-  async function seed() {
+  // Liefert die Zahl der neu angelegten Einträge; stat.changed sagt, ob sich überhaupt etwas geändert hat
+  async function seed(stat = {}) {
     const deleted = new Set(((await App.db.get('meta', 'deletedSeeds')) || {}).value || []);
     const puts = [];
+    let created = 0;
     (window.SEED || []).forEach((raw, i) => { if (raw) ORD.set(raw.id, i); });
+    const absorbed = await absorbPackItems(deleted);
     for (const raw of (window.SEED || [])) {
       if (!raw || !raw.id || deleted.has(raw.id)) continue;
       const h = hash(raw);
@@ -380,18 +383,71 @@ window.App = window.App || {};
       // Seed-Daten tragen pauschal level:"N5" – das JLPT-Niveau kommt aus dem Index (außer bei manueller Wahl)
       if (it.levelManual && cur) it.level = cur.level; // manuelle Wahl bleibt
       else if ((it.type === 'vocab' || it.type === 'kanji') && App.levelFor) it.level = App.levelFor(it);
+      // Eintrag ersetzt einen unberührten Paket-Eintrag: Paket-Kennung und -Niveau wie nach einer Paket-Installation
+      const t = absorbed.tag.get(raw.id);
+      if (t) {
+        it.packs = [...new Set([...(Array.isArray(it.packs) ? it.packs : []), ...t.packs])];
+        if (!it.levelManual && t.level !== undefined) it.level = t.level;
+      }
+      if (!cur) created++;
       S.items.set(it.id, it);
       puts.push(it);
     }
     if (puts.length) await App.db.putMany('items', puts);
-    await cleanupMergedSeeds();
+    const cleaned = await cleanupMergedSeeds();
+    stat.changed = !!(puts.length || absorbed.changed || cleaned);
+    return created;
   }
+
+  // Seed-Einträge kommen erst nach einem Level-Paket dazu (Genki-Freischaltung im Web, neue Seed-Einträge nach
+  // einem Update): dasselbe Wort soll nicht doppelt stehen. Unberührte Paket-Einträge werden gelöscht und ihr
+  // Seed-Eintrag übernimmt Paket-Kennung und Niveau (tag); führt ein berührter Paket-Eintrag das Wort schon,
+  // wird der Seed-Eintrag wie ein gelöschter behandelt (deleted + meta.deletedSeeds). Regeln: App.planSeedAbsorb.
+  async function absorbPackItems(deleted) {
+    const none = { tag: new Map(), changed: false };
+    if (!App.planSeedAbsorb || !App.allRefs) return none;
+    let hasPack = false;
+    for (const it of S.items.values()) if (it._pack) { hasPack = true; break; }
+    if (!hasPack) return none;
+    const fresh = (window.SEED || []).filter((raw) => raw && raw.id && !deleted.has(raw.id) && !S.items.has(raw.id));
+    if (!fresh.length) return none;
+    // „berührt“ weiter gefasst als beim Paket-Entfernen: hier löscht die App von sich aus, also bleibt auch stehen,
+    // worauf Tagebuch, Antworten oder Verknüpfungen zeigen und woran eine Datei hängt (App.allRefs)
+    const all = Array.from(S.items.values());
+    const r = App.planSeedAbsorb(fresh, all, { srs: S.srs, sessionRefs: App.allRefs(all, S.files.values()) });
+    if (r.skip.length) {
+      const m = (await App.db.get('meta', 'deletedSeeds')) || { key: 'deletedSeeds', value: [] };
+      r.skip.forEach((id) => { deleted.add(id); if (!m.value.includes(id)) m.value.push(id); });
+      await App.db.put('meta', m);
+    }
+    if (r.del.length) {
+      // nicht über App.deleteItem: der Nutzer hat nichts gelöscht (kein Eintrag in meta.deletedPackItems)
+      // erst die Datenbank, dann der Speicher: scheitert das Löschen, bleiben beide gleich
+      const delSrs = [];
+      r.del.forEach((id) => [id, 'w:' + id].forEach((k) => { if (S.srs.has(k)) delSrs.push(k); })); // unberührt = ohne Lernstand, nur zur Sicherheit
+      await App.db.delMany('items', r.del);
+      r.del.forEach((id) => S.items.delete(id));
+      if (delSrs.length) {
+        await App.db.delMany('srs', delSrs);
+        delSrs.forEach((k) => S.srs.delete(k));
+      }
+    }
+    return { tag: r.tag, changed: !!(r.skip.length || r.del.length) };
+  }
+
+  // Seed erneut einspielen (nach dem Freischalten von Genki): liefert die Zahl der neu angelegten Einträge
+  App.reseed = async () => {
+    const stat = {};
+    const created = await seed(stat);
+    if (stat.changed) emit('items');
+    return created;
+  };
 
   // Früher doppelt geführte Seed-Einträge (SEED_MERGED) aus dem Bestand entfernen, Lernstand und Verweise umhängen
   async function cleanupMergedSeeds() {
-    if (!window.SEED_MERGED || !App.planSeedCleanup) return;
+    if (!window.SEED_MERGED || !App.planSeedCleanup) return false;
     const r = App.planSeedCleanup(window.SEED_MERGED, Array.from(S.items.values()), S.srs);
-    if (!r.delItems.length) return;
+    if (!r.delItems.length) return false;
     r.putSrs.forEach((s) => S.srs.set(s.id, s));
     r.delSrs.forEach((id) => S.srs.delete(id));
     r.putItems.forEach((it) => S.items.set(it.id, it));
@@ -400,6 +456,7 @@ window.App = window.App || {};
     if (r.putItems.length) await App.db.putMany('items', r.putItems);
     await App.db.delMany('srs', r.delSrs);
     await App.db.delMany('items', r.delItems);
+    return true;
   }
 
   // JLPT-Niveau einmalig pro Index-Version für alle Einträge setzen (Einträge mit levelManual bleiben unverändert)
@@ -425,6 +482,8 @@ window.App = window.App || {};
     S.settings = Object.assign({}, DEFAULT_SETTINGS, settings ? settings.value : {});
     // neue Standardquellen ergänzen
     App.DEFAULT_SOURCES.forEach((d) => { if (!S.settings.sources.some((s) => s.name === d.name)) S.settings.sources.push(d); });
+    // Genki-Daten (nur Web-Version): schon freigeschaltet? Ein Fehler hier darf den Start nie verhindern
+    if (App.genki) { try { await App.genki.loadIfOpen(); } catch (e) { console.error('Genki: Laden fehlgeschlagen', e); } }
     await seed();
     await applyJlptIndexOnce();
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* egal */ }
