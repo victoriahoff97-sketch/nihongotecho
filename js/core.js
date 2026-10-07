@@ -224,6 +224,7 @@ window.App = window.App || {};
   const DEFAULT_SETTINGS = {
     name: '', theme: 'auto', furigana: 'on', course: 'VHS Japanisch A1', level: 12,
     sources: App.DEFAULT_SOURCES, penOnly: true, ttsRate: 0.9, newPerDay: 15, checkBatch: 15, sidebarCollapsed: false,
+    kanjiFocus: 'both', // Kanji-Schwerpunkt: both | read | write
   };
 
   App.onChange = (fn) => S.listeners.add(fn);
@@ -262,6 +263,7 @@ window.App = window.App || {};
     await App.db.del('items', id);
     await App.db.del('srs', id);
     S.srs.delete(id);
+    if (S.srs.delete(App.writeLogic.id(id))) await App.db.del('srs', App.writeLogic.id(id)); // Schreib-Stand
     if (it._seed) {
       const m = (await App.db.get('meta', 'deletedSeeds')) || { key: 'deletedSeeds', value: [] };
       m.value.push(id);

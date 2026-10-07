@@ -125,7 +125,8 @@
             <div class="row" style="margin-top:6px">${App.levelBadge(it)}${App.srcBadge(it)}<span class="badge">${esc(it.strokes || '?')} Striche</span></div></div>
             <div class="row">${`<button class="icon-btn ${it.star ? 'active' : ''}" data-star="${it.id}">${icon(it.star ? 'starFill' : 'star')}</button><button class="btn btn-sm" data-edit="${it.id}">${icon('edit')} Bearbeiten</button>`}</div></div>
           <div class="stack" style="gap:8px">
-            <div class="seg" data-vst style="align-self:flex-start">${Object.entries(App.STATUS).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
+            <div class="row" style="align-items:center"><span class="small muted" style="min-width:70px">Lesen</span><div class="seg" data-vst>${Object.entries(App.STATUS).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div></div>
+            <div class="row" style="align-items:center"><span class="small muted" style="min-width:70px">Schreiben</span><span data-wst></span></div>
             ${App.marksChips(it)}</div>
           <div class="readings">
             ${(it.on || []).length ? `<div class="r-line"><span class="lab">On</span>${it.on.map((r) => `<span class="r" lang="ja">${esc(r)}</span>`).join('')}</div>` : ''}
@@ -142,9 +143,17 @@
       </div><aside>${App.relatedHtml(it)}</aside></div></div>`;
     App.stroke.animator(view.querySelector('[data-anim]'), it.char);
     App.stroke.pad(view.querySelector('[data-pad]'), it.char);
+    // Schreib-Stand: eigener Lernstand, entsteht beim Schreiben im Kanji-Quiz
+    const wst = () => {
+      const W = App.writeLogic, ws = App.srsOf(W.id(it.id));
+      const st = W.STATUS[!ws && !W.unlocked(S.srs, it.id) ? 'locked' : W.status(S.srs, it.id)];
+      view.querySelector('[data-wst]').innerHTML = `<span class="badge vst" style="color:${st.color}">${st.dot} ${st.label}</span> <span class="small muted">${ws ? `nächste Wiederholung ${App.fmtDate(ws.due)}` : st === W.STATUS.locked ? 'kommt dran, sobald du es lesen kannst' : 'kommt beim nächsten „Schreiben lernen“ dran'}</span>`;
+    };
+    wst();
     view.querySelector('[data-vst]').onclick = async (e) => {
       const b = e.target.closest('[data-v]'); if (!b) return;
       await App.setCheck(it.id, b.dataset.v);
+      wst();
       view.querySelectorAll('[data-vst] [data-v]').forEach((x) => x.classList.toggle('on', x === b));
       App.toast('Lernstand: ' + App.STATUS[b.dataset.v].label);
     };
@@ -201,7 +210,7 @@
   const blobToB64 = (blob) => new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
   const b64ToBlob = async (d) => (await fetch(d)).blob();
   App.exportData = async ({ withFiles = true, share = false, sections = null, sources = null } = {}) => {
-    let items = Array.from(S.items.values()).filter((i) => !i._seed || i._edited || (!share && (S.srs.has(i.id) || i.star)));
+    let items = Array.from(S.items.values()).filter((i) => !i._seed || i._edited || (!share && (S.srs.has(i.id) || S.srs.has('w:' + i.id) || i.star)));
     if (share) {
       // unberührte Paket-Einträge nicht teilen – Freunde schalten das Paket selbst frei
       items = Array.from(S.items.values()).filter((i) => (!i._seed || i._edited) && !(i._pack && !i._edited));
@@ -281,6 +290,7 @@
         <div class="field"><label>Furigana</label><select class="input" data-s="furigana"><option value="on" ${st.furigana === 'on' ? 'selected' : ''}>Immer anzeigen</option><option value="hover" ${st.furigana === 'hover' ? 'selected' : ''}>Nur beim Antippen</option></select></div></div>
         <div class="two"><div class="field"><label>Neue Karten pro Sitzung</label><input class="input" type="number" min="1" max="100" data-s="newPerDay" value="${st.newPerDay}"></div>
         <div class="field"><label>Wörter pro Einstufungs-Runde</label><input class="input" type="number" min="3" max="100" data-s="checkBatch" value="${st.checkBatch || 15}"></div></div>
+        <div class="field"><label>Kanji-Schwerpunkt <small>was Startseite und „fällig“ in den Vordergrund stellen</small></label><select class="input" data-s="kanjiFocus">${[['both', 'Lesen und Schreiben'], ['write', 'Schreiben – Lesen lerne ich woanders (z. B. WaniKani)'], ['read', 'Lesen – Schreiben brauche ich nicht']].map(([k, l]) => `<option value="${k}" ${App.writeLogic.focus(st) === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="two">
         <div class="field"><label>Sprechtempo <small>${st.ttsRate}</small></label><div class="row"><input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}" class="grow">${App.speakBtn('こんにちは、日本語を勉強しています。')}</div></div></div>
       </div></div>

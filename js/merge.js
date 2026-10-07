@@ -159,7 +159,7 @@
     if (it._edited) return false;
     if (it.star) return false;
     if (Array.isArray(it.marks) && it.marks.length) return false;
-    if (srs && srs.has(it.id)) return false;
+    if (srs && (srs.has(it.id) || srs.has('w:' + it.id))) return false; // Lese- oder Schreib-Stand
     if (sessionRefs && sessionRefs.has(it.id)) return false;
     return true;
   };

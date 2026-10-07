@@ -122,7 +122,7 @@
           ${!c.unchecked && c.total ? '<span class="verdict ok">✓ Alles in dieser Auswahl ist eingestuft</span>' : ''}</div>
         ${App.sourceChips(all, q.src)}
         ${App.levelChips(q.lvl)}
-        <div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (kommt nach einigen Wochen einmal zur Kontrolle). „Lernen“ = kommt in deine Karteikarten.</div>
+        <div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (kommt nach einigen Wochen einmal zur Kontrolle). „Lernen“ = kommt in deine Karteikarten.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>
       </div></div>
       <div data-stage style="margin-top:18px"></div></div>`;
     const bi = view.querySelector('[data-batch]');

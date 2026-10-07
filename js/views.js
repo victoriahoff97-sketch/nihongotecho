@@ -117,10 +117,14 @@
     const greet = h < 11 ? 'おはようございます' : h < 18 ? 'こんにちは' : 'こんばんは';
     const count = (t) => App.itemsOf(t).length;
     // Wiederholen: der Knopf startet direkt die Lernrunde des ersten Kartentyps mit fälligen (sonst neuen) Karten
-    const queues = [['vocab', 'Vokabeln', 'Vokabel'], ['kanji', 'Kanji', 'Kanji'], ['grammar', 'Grammatik', 'Grammatik'], ['phrase', 'Ausdrücke', 'Ausdruck']].map(([type, label, one]) => {
-      const { due, fresh } = App.cardQueue({ type });
-      return { label: due.length === 1 ? one : label, due: due.length, fresh: fresh.length, href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}auto=1` };
+    // Kanji-Schwerpunkt (Einstellungen): „Schreiben“ blendet die Lese-Karten der Kanji aus und stellt das Schreiben nach vorn, „Lesen“ umgekehrt
+    const focus = App.writeLogic.focus(S.settings);
+    const queues = [['vocab', 'Vokabeln', 'Vokabel'], ['kanji', 'Kanji', 'Kanji'], ['grammar', 'Grammatik', 'Grammatik'], ['phrase', 'Ausdrücke', 'Ausdruck']].filter(([type]) => type !== 'kanji' || focus !== 'write').map(([type, label, one]) => {
+      const { due, fresh } = App.cardQueue({ type, dir: 'jp' });
+      return { label: due.length === 1 ? one : label, due: due.length, fresh: fresh.length, href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}${type === 'kanji' ? 'dir=jp&' : ''}auto=1` };
     });
+    const wq = App.writeQueue();
+    if (focus !== 'read') queues.splice(focus === 'write' ? 0 : 2, 0, { label: 'Kanji schreiben', due: wq.due.length, fresh: wq.fresh.length, href: '#/ueben/kanji?auto=1' });
     const dueQ = queues.filter((x) => x.due), due = dueQ.reduce((n, x) => n + x.due, 0);
     const next = dueQ[0] || queues.find((x) => x.fresh);
     const action = (cls, attrs, ico, title, sub) => `<${attrs.startsWith('href') ? 'a' : 'button'} class="home-act ${cls}" ${attrs}><span class="i">${icon(ico)}</span><span><b>${title}</b><small>${sub}</small></span></${attrs.startsWith('href') ? 'a' : 'button'}>`;
@@ -167,7 +171,12 @@
         <a href="#/kanji?st=known" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
         <a href="#/kanji?mark=${encodeURIComponent(App.MARK_CLASS)}" style="text-decoration:none"><b style="font-size:26px;color:var(--shu)">${inClass}</b> im Unterricht</a></div>
         ${c.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?type=kanji&auto=1">${icon('check')} Nächste ${Math.min(c.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}</div>
-        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div></div>`; })()}
+        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
+        ${(() => { if (focus === 'read') return ''; const w = App.writeLogic.counts(wq.items, S.srs); const todo = wq.due.length + wq.fresh.length; return `<div class="row between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div class="row" style="gap:22px"><b>Schreiben</b>
+          <span><b style="font-size:20px;color:var(--matcha)">${w.known}</b> kann ich</span>
+          <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
+          <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
+          <a class="btn ${todo ? 'btn-sec' : ''}" href="#/ueben/kanji${todo ? '?auto=1' : ''}">${icon('pen')} ${wq.due.length ? `${wq.due.length} schreiben` : 'Schreiben üben'}</a></div>`; })()}</div>`; })()}
       <div class="section-title">Genki I – Vokabel-Fortschritt je Lektion</div>
       <div class="card"><div class="lesson-strip">${lessons.map((x) => `<a href="#/vokabeln?src=Genki%20I&l=${x.l}" title="${x.pct}% von ${x.n} Wörtern gelernt">L${x.l}<i style="width:${x.pct}%"></i></a>`).join('')}</div>
         <div class="small muted" style="margin-top:8px">Der grüne Balken zeigt, wie viele Wörter der Lektion du schon mit Karteikarten gelernt hast.</div></div>
