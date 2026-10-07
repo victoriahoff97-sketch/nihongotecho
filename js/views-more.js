@@ -147,7 +147,7 @@
     const wst = () => {
       const W = App.writeLogic, ws = App.srsOf(W.id(it.id));
       const st = W.STATUS[!ws && !W.unlocked(S.srs, it.id) ? 'locked' : W.status(S.srs, it.id)];
-      view.querySelector('[data-wst]').innerHTML = `<span class="badge vst" style="color:${st.color}">${st.dot} ${st.label}</span> <span class="small muted">${W.isMarkedKnown(S.srs, it.id) ? 'als gelernt eingestuft – wird nicht mehr abgefragt' : ws ? `nächste Wiederholung ${App.fmtDate(ws.due)}` : st === W.STATUS.locked ? 'kommt dran, sobald du es lesen kannst' : 'kommt beim nächsten „Schreiben lernen“ dran'}</span>${ws ? ' <button class="btn btn-sm btn-ghost" data-wreset title="Schreib-Stand löschen – das Kanji kommt wieder neu in die Schreib-Runde">zurücksetzen</button>' : ''}`;
+      view.querySelector('[data-wst]').innerHTML = `<span class="badge vst" style="color:${st.color}">${st.dot} ${st.label}</span> <span class="small muted">${W.isMarkedKnown(S.srs, it.id) ? 'als gelernt eingestuft – wird nicht mehr abgefragt' : W.isKnown(ws) ? 'gelernt – wird nicht mehr abgefragt' : ws ? `nächste Wiederholung ${App.fmtDate(ws.due)}` : st === W.STATUS.locked ? 'kommt dran, sobald du es lesen kannst' : 'kommt beim nächsten „Schreiben lernen“ dran'}</span>${ws ? ' <button class="btn btn-sm btn-ghost" data-wreset title="Schreib-Stand löschen – das Kanji kommt wieder neu in die Schreib-Runde">zurücksetzen</button>' : ''}`;
       const rs = view.querySelector('[data-wreset]');
       if (rs) rs.onclick = async () => { await App.resetWrite(it.id); wst(); App.toast('Schreib-Stand zurückgesetzt'); };
     };

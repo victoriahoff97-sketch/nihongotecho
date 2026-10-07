@@ -15,11 +15,16 @@
   // Freigeschaltet fürs Schreiben ist, was man lesen kann: als „Kann ich“ eingestuft oder mit Karten schon gewusst
   W.unlocked = (srs, id) => { const s = srs.get(id); return !!s && s.check !== 'unchecked' && (s.check === 'known' || s.reps > 0); };
 
+  // „Kann ich“ gilt für jeden Lernstand gleich (Lesen, Schreiben, Aktiv): so eingestuft oder mit Karten bis 3 Wochen Abstand geübt.
+  // Was „Kann ich“ ist, wird im Lernplan nicht mehr abgefragt – nur „Zufällig üben“ zieht weiter aus allem;
+  // dort falsch Beantwortetes fällt zurück in den Stapel.
+  W.isKnown = (s) => !!s && (s.check === 'known' || (s.reps > 0 && s.ivl >= W.KNOWN_IVL));
+
   // new = noch nie geschrieben · learn = übe ich · known = kann ich schreiben
   W.status = (srs, id) => {
     const s = srs.get(W.id(id));
     if (!s) return 'new';
-    return s.check === 'known' || (s.reps > 0 && s.ivl >= W.KNOWN_IVL) ? 'known' : 'learn';
+    return W.isKnown(s) ? 'known' : 'learn';
   };
   W.STATUS = {
     locked: { label: 'Noch nicht freigeschaltet', color: 'var(--muted)', dot: '○' },
@@ -37,7 +42,7 @@
   // Schreib-Runde: fällige (älteste zuerst) + neue = freigeschaltet, aber noch nie geschrieben (Reihenfolge der Liste)
   W.queue = (items, srs, now) => {
     const rec = (i) => srs.get(W.id(i.id));
-    const due = items.filter((i) => { const s = rec(i); return s && s.check !== 'known' && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
+    const due = items.filter((i) => { const s = rec(i); return s && !W.isKnown(s) && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
     const fresh = items.filter((i) => !rec(i) && W.unlocked(srs, i.id));
     return { due, fresh };
   };
@@ -47,18 +52,23 @@
     return c;
   };
 
+  // Lese-Runde (Japanisch → Deutsch): fällig ist, was schon einmal gewusst wurde und noch nicht „Kann ich“ ist.
+  // Ausdrücke haben keinen Lernstand – sie bleiben im Wiederholungsplan.
+  W.readAsked = (it, s) => !!s && s.reps > 0 && !(it.type !== 'phrase' && W.isKnown(s));
+  W.readDue = (items, srs, now) => items.filter((i) => { const s = srs.get(i.id); return W.readAsked(i, s) && s.due <= now; }).sort((a, b) => srs.get(a.id).due - srs.get(b.id).due);
+
   // Fällige Karten insgesamt – der Schwerpunkt blendet bei Kanji die jeweils andere Seite aus
   W.dueCount = (srs, items, focus, now) => {
     let n = 0;
     srs.forEach((s) => {
       if (W.isId(s.id)) {
         const wi = items.get(W.itemId(s.id));
-        if (!wi || s.due > now) return;
-        if (wi.type === 'vocab' ? s.reps > 0 : (focus !== 'read' && s.check !== 'known')) n++; // Vokabeln aktiv · Kanji schreiben
+        if (!wi || s.due > now || W.isKnown(s)) return;
+        if (wi.type === 'vocab' ? s.reps > 0 : focus !== 'read') n++; // Vokabeln aktiv · Kanji schreiben
         return;
       }
       const it = items.get(s.id);
-      if (!it || !(s.reps > 0) || s.due > now) return;
+      if (!it || !W.readAsked(it, s) || s.due > now) return;
       if (focus === 'write' && it.type === 'kanji') return;
       n++;
     });
@@ -67,19 +77,19 @@
 
   // ---------- Vokabeln aktiv (Deutsch → Japanisch) ----------
   // Zweiter Lernstand je Vokabel, ebenfalls unter „w:<Id>“. Anders als beim Kanji-Schreiben läuft er wie der Lese-Stand:
-  // erst einstufen („Kann ich“ kommt nach einigen Wochen einmal zur Kontrolle, „Lernen“ geht in den Aktiv-Lernstapel), dann Karten.
+  // erst einstufen („Kann ich“ wird nicht mehr abgefragt, „Lernen“ geht in den Aktiv-Lernstapel), dann Karten.
   // locked = kann ich noch nicht lesen · unchecked = aktiv noch nicht eingestuft · learn = Aktiv-Lernstapel · known = kann ich aktiv
   // needsCheck(it): wird der Eintrag überhaupt eingestuft? Eigene Wörter gehen wie beim Lesen direkt in den Lernstapel.
   W.activeStatus = (srs, it, needsCheck) => {
     const s = srs.get(W.id(it.id));
-    if (s) return s.check === 'known' || (s.reps > 0 && s.ivl >= W.KNOWN_IVL) ? 'known' : 'learn';
+    if (s) return W.isKnown(s) ? 'known' : 'learn';
     if (!W.unlocked(srs, it.id)) return 'locked';
     return needsCheck(it) ? 'unchecked' : 'learn';
   };
   // Aktiv-Runde: fällige (älteste zuerst) + neue = im Aktiv-Lernstapel, aber noch nie gewusst (Reihenfolge der Liste)
   W.activeQueue = (items, srs, now, needsCheck) => {
     const rec = (i) => srs.get(W.id(i.id));
-    const due = items.filter((i) => { const s = rec(i); return s && s.reps > 0 && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
+    const due = items.filter((i) => { const s = rec(i); return s && s.reps > 0 && !W.isKnown(s) && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
     const fresh = items.filter((i) => { const s = rec(i); return (!s || !s.reps) && W.activeStatus(srs, i, needsCheck) === 'learn'; });
     return { due, fresh };
   };

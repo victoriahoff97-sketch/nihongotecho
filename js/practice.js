@@ -86,7 +86,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     if (type === 'vocab' && cardDir(q) === 'de') return App.activeQueue(q);
     const items = cardFilter(q);
     const now = Date.now();
-    const due = items.filter((i) => { const s = S.srs.get(i.id); return s && s.reps > 0 && s.due <= now; }).sort((a, b) => S.srs.get(a.id).due - S.srs.get(b.id).due);
+    const due = W.readDue(items, S.srs, now);
     // Vokabeln/Kanji: neu sind nur Einträge aus dem Lernstapel (ungeprüfte erst einstufen; eigene Einträge sind es ohne Einstufung). Grammatik: Lernstapel inkl. „im Unterricht behandelt“. Ausdrücke: alles Ungeübte.
     const fresh = items.filter((i) => { const s = S.srs.get(i.id); return type === 'phrase' ? (!s || !s.reps) : (App.vocabStatus(i.id) === 'learn' && (!s || !s.reps)); })
       .sort(learnOrder);

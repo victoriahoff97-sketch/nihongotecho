@@ -39,8 +39,8 @@
       return;
     }
     if (st === 'known') {
-      // gilt als gelernt; kommt nach 3–6 Wochen einmal zur Kontrolle wieder
-      const ivl = 21 + Math.round(Math.random() * 21);
+      // gilt als gelernt und wird nicht mehr abgefragt; Abstand und Termin zählen erst wieder, wenn die Karte beim freien Üben zurückfällt
+      const ivl = App.furiLogic.KNOWN_IVL;
       s = { id, check: 'known', ivl, ease: 2.6, reps: 3, lapses: 0, due: now + ivl * DAY, last: now, checked: now };
     } else {
       s = { id, check: 'learn', ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: now, last: 0, checked: now };
@@ -53,6 +53,8 @@
     items.forEach((v) => c[App.vocabStatus(v.id)]++);
     return c;
   };
+  // Zeile unter dem Lernstand: „Kann ich“ hat keinen nächsten Termin mehr
+  App.srsNote = (s) => `${s.check === 'known' ? 'als gelernt markiert' : s.reps + '× gewusst'} · ${App.writeLogic.isKnown(s) ? 'wird nicht mehr abgefragt' : 'nächste Wiederholung ' + App.fmtDate(s.due)}`;
   App.statusBadge = (id) => { const st = App.STATUS[App.vocabStatus(id)]; return `<span class="badge vst" style="color:${st.color}" title="Lernstand">${st.dot} ${st.label}</span>`; };
 
   // ---------- Markierungen für Kanji (z. B. „Im Unterricht gelernt“) ----------
@@ -134,7 +136,7 @@
           ${!c.unchecked && c.total ? `<span class="verdict ok">✓ ${active && !(c.learn + c.known) ? 'Noch nichts einzustufen' : 'Alles in dieser Auswahl ist eingestuft'}</span>` : ''}</div>
         ${App.sourceChips(all, q.src)}
         ${App.levelChips(q.lvl)}
-        ${active ? `<div class="small muted">Tipp: Tippe auf die Bedeutung, um das japanische Wort zu sehen. „Kann ich“ = weiß ich aus dem Deutschen heraus (kommt nach einigen Wochen einmal zur Kontrolle). „Lernen“ = kommt in die Karteikarten Deutsch → Japanisch. Der Lese-Lernstand bleibt davon unberührt.${c.locked ? ` ${c.locked} ${c.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} dazu, sobald du ${c.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : `<div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (kommt nach einigen Wochen einmal zur Kontrolle). „Lernen“ = kommt in deine Karteikarten.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>`}
+        ${active ? `<div class="small muted">Tipp: Tippe auf die Bedeutung, um das japanische Wort zu sehen. „Kann ich“ = weiß ich aus dem Deutschen heraus (wird nicht mehr abgefragt). „Lernen“ = kommt in die Karteikarten Deutsch → Japanisch. Der Lese-Lernstand bleibt davon unberührt.${c.locked ? ` ${c.locked} ${c.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} dazu, sobald du ${c.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : `<div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (wird nicht mehr abgefragt). „Lernen“ = kommt in deine Karteikarten.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>`}
       </div></div>
       <div data-stage style="margin-top:18px"></div></div>`;
     const bi = view.querySelector('[data-batch]');
