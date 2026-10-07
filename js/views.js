@@ -96,10 +96,17 @@
     const next = levels[levels.indexOf(cur) + 1];
     const nextTxt = next ? ` · als Nächstes: ${next.level}${App.packs.status(next) === 'unavailable' ? ' (kommt später)' : ''}` : '';
     const num = (x, label, href) => `<a href="${href}" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${x.known}</b> <span class="muted">/ ${x.total} ${label}</span></a>`;
-    // Ohne Einstufen gibt es keine neuen Karteikarten – deshalb zuerst dorthin, solange etwas ungeprüft ist
-    const cta = c.vocab.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?lvl=${lvl}&auto=1">${icon('check')} ${lvl} einstufen</a>`
-      : c.kanji.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?type=kanji&lvl=${lvl}&auto=1">${icon('check')} ${lvl}-Kanji einstufen</a>`
-      : `<a class="btn btn-sec" href="#/ueben/karten?lvl=${lvl}">${icon('practice')} ${lvl} üben</a>`;
+    // Einstufen und Lernen stehen nebeneinander: Was schon im Lernstapel liegt, lässt sich sofort lernen – auch wenn der Rest noch ungeprüft ist
+    const check = c.vocab.unchecked ? `<a class="btn" href="#/ueben/einstufen?lvl=${lvl}&auto=1">${icon('check')} ${lvl} einstufen</a>`
+      : c.kanji.unchecked ? `<a class="btn" href="#/ueben/einstufen?type=kanji&lvl=${lvl}&auto=1">${icon('check')} ${lvl}-Kanji einstufen</a>` : '';
+    const todo = ['vocab', 'kanji', 'grammar'].filter((type) => type !== 'kanji' || App.writeLogic.focus(S.settings) !== 'write').map((type) => {
+      const { due, fresh } = App.cardQueue({ type, lvl, dir: 'jp' });
+      return { n: due.length + Math.min(fresh.length, S.settings.newPerDay), href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}${type === 'kanji' ? 'dir=jp&' : ''}lvl=${lvl}&auto=1` };
+    }).filter((x) => x.n);
+    const learnN = todo.reduce((n, x) => n + x.n, 0);
+    const learn = learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} ${lvl} lernen <span class="badge">${learnN}</span></a>`
+      : check ? '' : `<a class="btn btn-sec" href="#/ueben/karten?lvl=${lvl}">${icon('practice')} ${lvl} üben</a>`;
+    const cta = `<div class="row">${learn}${check}</div>`;
     return `<div class="section-title">JLPT ${lvl} – Lernstand</div>
       <div class="card"><div class="row between"><div class="row" style="gap:22px">
         ${num(c.vocab, 'Vokabeln', `#/vokabeln?lvl=${lvl}`)}${num(c.kanji, 'Kanji', `#/kanji?lvl=${lvl}`)}${num(c.grammar, 'Grammatik', `#/grammatik?lvl=${lvl}`)}</div>
