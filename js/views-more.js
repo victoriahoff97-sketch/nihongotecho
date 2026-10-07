@@ -125,7 +125,7 @@
             <div class="row" style="margin-top:6px">${App.levelBadge(it)}${App.srcBadge(it)}<span class="badge">${esc(it.strokes || '?')} Striche</span></div></div>
             <div class="row">${`<button class="icon-btn ${it.star ? 'active' : ''}" data-star="${it.id}">${icon(it.star ? 'starFill' : 'star')}</button><button class="btn btn-sm" data-edit="${it.id}">${icon('edit')} Bearbeiten</button>`}</div></div>
           <div class="stack" style="gap:8px">
-            <div class="row" style="align-items:center"><span class="small muted" style="min-width:70px">Lesen</span><div class="seg" data-vst>${Object.entries(App.STATUS).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div></div>
+            <div class="row" style="align-items:center"><span class="small muted" style="min-width:70px">Lesen</span><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div></div>
             <div class="row" style="align-items:center"><span class="small muted" style="min-width:70px">Schreiben</span><span data-wst></span></div>
             ${App.marksChips(it)}</div>
           <div class="readings">

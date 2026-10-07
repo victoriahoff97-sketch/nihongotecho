@@ -11,10 +11,15 @@
   // „Kann ich“ ist, was so eingestuft wurde – oder was mit den Karten bis 3 Wochen Abstand gelernt ist (springt von allein um).
   // Grammatik, die mit einer Unterrichtsstunde verknüpft ist, gilt ohne Einstufung als „Lernstapel“.
   const autoLearn = (id) => { const it = S.items.get(id); return !!it && it.type === 'grammar' && App.sessionsFor(id).length > 0; };
+  // Eingestuft werden nur Vokabeln/Kanji aus Paketen (Genki, JLPT, Kanji) und aus importierten Listen.
+  // Eigene Einträge (selbst angelegt, aus Satzerkennung/Suche übernommen) sind nie „ungeprüft“ – sie sind direkt im Lernstapel.
+  App.needsCheck = (it) => !!it && !((it.type === 'vocab' || it.type === 'kanji') && !it._seed && !it._pack && !it.imported);
+  const ownWord = (id) => { const it = S.items.get(id); return !!it && !App.needsCheck(it); };
+  App.statusChoices = (it) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.needsCheck(it));
   App.vocabStatus = (id) => {
     const s = S.srs.get(id);
-    if (!s) return autoLearn(id) ? 'learn' : 'unchecked';
-    if (s.check === 'unchecked') return 'unchecked';
+    if (!s) return autoLearn(id) || ownWord(id) ? 'learn' : 'unchecked';
+    if (s.check === 'unchecked') return ownWord(id) ? 'learn' : 'unchecked';
     return App.furiLogic.readKnown(S.srs, id) ? 'known' : 'learn';
   };
   App.STATUS = {

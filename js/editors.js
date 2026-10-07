@@ -113,7 +113,7 @@
       ${exBlock(it.examples)}
       ${commonFields(it)}
       <div class="field"><label>Eigene Notizen</label><textarea class="input" name="notes" rows="2">${esc(it.notes || '')}</textarea></div>
-      ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In den Lernstapel (neues Wort)'], ['known', '● Kann ich schon'], ['unchecked', '○ Ungeprüft – später einstufen']].map(([k, l]) => `<option value="${k}" ${(it._check || 'learn') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
+      ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In den Lernstapel (neues Wort)'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}" ${(it._check || 'learn') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
       <details class="adv"><summary>${icon('sparkle')}&nbsp; Für den Übungsgenerator (optional)</summary>
         <div class="stack">
         <div class="hint">Mit diesen Angaben kann die App das Wort automatisch in Übersetzungsübungen einbauen. Das meiste wird automatisch erkannt.</div>
@@ -221,7 +221,7 @@
       <div class="field"><label>Beispielwörter <small>eine Zeile: 日本[にほん] = Japan</small></label><textarea class="input jp-in" name="words" rows="3">${esc((it.words || []).map((w) => `${w.jp} = ${App.meaning(w).text}`).join('\n'))}</textarea></div>
       <div class="field"><label>Eselsbrücke</label><input class="input" name="mnemonic" value="${esc(it.mnemonic || '')}"></div>
       <div class="field"><label>Markierungen</label>${catChips(App.kanjiMarks().map((m) => [esc(m), esc(m)]), (it.marks || []).map(esc), 'kmark')}</div>
-      ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In den Lernstapel'], ['known', '● Kann ich schon'], ['unchecked', '○ Ungeprüft – später einstufen']].map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>` : ''}
+      ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In den Lernstapel'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>` : ''}
       ${commonFields(it)}
       <div class="card row between" style="box-shadow:none;background:var(--murasaki-soft);border-color:transparent;padding:12px 16px">
         <div><b>Strichfolge</b> <span class="small muted">(Quelle: KanjiVG)</span><div class="small" data-kvg-msg>Kanji oben eingeben …</div></div>
@@ -365,7 +365,7 @@
   };
   // Öffnet den Vokabel-Editor vorbelegt mit dem Wörterbucheintrag; extra z. B. {examples, source}
   App.adoptDictEntry = (h, { extra, onSaved } = {}) => {
-    const defaults = Object.assign(App.dictVocabDefaults(h.entry, [h.surface, h.base]), { _check: 'unchecked' }, extra || {});
+    const defaults = Object.assign(App.dictVocabDefaults(h.entry, [h.surface, h.base]), extra || {});
     return App.editItem({ type: 'vocab', defaults, onSaved, single: true, title: 'Vokabel aus dem Wörterbuch' });
   };
 
