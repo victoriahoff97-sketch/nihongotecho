@@ -163,18 +163,18 @@
         ${stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')}
       </div>
       ${jlptCard()}
-      ${(() => { const c = App.vocabCounts(); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); return `<div class="section-title">Vokabel-Lernstand</div>
+      ${(() => { // Lesen und aktiv (Deutsch → Japanisch) zusammen gezählt; aktiv zählt mit, sobald ein Wort lesbar ist
+        const r = App.vocabCounts(), a = App.writeLogic.activeCounts(vocab, S.srs, App.needsCheck);
+        const c = { unchecked: r.unchecked + a.unchecked, learn: r.learn + a.learn, known: r.known + a.known };
+        const total = c.unchecked + c.learn + c.known, pc = (n) => (total ? (n / total) * 100 : 0);
+        const tip = (k) => `Japanisch → Deutsch: ${r[k]} · Deutsch → Japanisch: ${a[k]}`;
+        return `<div class="section-title">Vokabel-Lernstand</div>
       <div class="card sec-vocab"><div class="row between"><div class="row" style="gap:22px">
-        <a href="#/vokabeln?st=unchecked" style="text-decoration:none"><b style="font-size:26px;color:var(--muted)">${c.unchecked}</b> ungeprüft</a>
-        <a href="#/vokabeln?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
-        <a href="#/vokabeln?st=known" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a></div>
-        <div class="row">${c.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?auto=1">${icon('check')} Nächste ${Math.min(c.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button></div></div>
-        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
-        ${(() => { const a = App.writeLogic.activeCounts(vocab, S.srs, App.needsCheck); if (!(a.unchecked + a.learn + a.known)) return ''; const todo = aq.due.length + aq.fresh.length; return `<div class="row between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div class="row" style="gap:22px"><b title="Deutsch → Japanisch: eigener Lernstand für Wörter, die du schon lesen kannst">Aktiv <span class="small muted" style="font-weight:400">Deutsch → Japanisch</span></b>
-          <span><b style="font-size:20px;color:var(--muted)">${a.unchecked}</b> ungeprüft</span>
-          <span><b style="font-size:20px;color:var(--ai)">${a.learn}</b> im Lernstapel</span>
-          <span><b style="font-size:20px;color:var(--matcha)">${a.known}</b> kann ich</span></div>
-          <div class="row">${a.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?dir=de&auto=1">${icon('check')} Nächste ${Math.min(a.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}${todo ? `<a class="btn ${a.unchecked ? '' : 'btn-sec'}" href="#/ueben/karten?dir=de&auto=1">${icon('practice')} ${aq.due.length ? `${aq.due.length} fällig` : 'Neue Karten'}</a>` : ''}</div></div>`; })()}</div>`; })()}
+        <a href="#/vokabeln?st=unchecked" style="text-decoration:none" title="${tip('unchecked')}"><b style="font-size:26px;color:var(--muted)">${c.unchecked}</b> ungeprüft</a>
+        <a href="#/vokabeln?st=learn" style="text-decoration:none" title="${tip('learn')}"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
+        <a href="#/vokabeln?st=known" style="text-decoration:none" title="${tip('known')}"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a></div>
+        <div class="row">${c.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?${r.unchecked ? '' : 'dir=de&'}auto=1">${icon('check')} Nächste ${Math.min(r.unchecked || a.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button></div></div>
+        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div></div>`; })()}
       ${(() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `<div class="section-title">Kanji-Lernstand</div>
       <div class="card sec-kanji"><div class="row between"><div class="row" style="gap:22px">
         <a href="#/kanji?st=unchecked" style="text-decoration:none"><b style="font-size:26px;color:var(--muted)">${c.unchecked}</b> ungeprüft</a>
