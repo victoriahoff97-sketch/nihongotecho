@@ -32,6 +32,8 @@
   // Der erste Schreibversuch ist die Einstufung: auf Anhieb richtig → gleich ein langer Abstand
   W.firstKnown = (id, now) => ({ id: W.id(id), ivl: W.FIRST_IVL, ease: 2.6, reps: 3, lapses: 0, due: now + W.FIRST_IVL * DAY, last: now });
   W.isFirst = (srs, id) => !srs.has(W.id(id));
+  // „Kann ich“ beim ersten Mal, ohne zu schreiben: wie beim Lesen – kommt nach 3–6 Wochen einmal zur Kontrolle wieder
+  W.markedKnown = (id, now, rnd = Math.random()) => { const ivl = W.FIRST_IVL + Math.round(rnd * 21); return Object.assign(W.firstKnown(id, now), { ivl, due: now + ivl * DAY, check: 'known' }); };
 
   // Schreib-Runde: fällige (älteste zuerst) + neue = freigeschaltet, aber noch nie geschrieben (Reihenfolge der Liste)
   W.queue = (items, srs, now) => {
@@ -69,5 +71,11 @@
       return s;
     }
     return App.grade(W.id(id), g);
+  };
+  App.markWriteKnown = async (id) => {
+    const s = W.markedKnown(id, Date.now());
+    App.store.srs.set(s.id, s);
+    await App.db.put('srs', s);
+    return s;
   };
 })(window.App);

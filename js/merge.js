@@ -163,4 +163,42 @@
     if (sessionRefs && sessionRefs.has(it.id)) return false;
     return true;
   };
+
+  // Bereinigung nach dem Zusammenlegen doppelter Seed-Einträge (map: alte ID → verbleibende ID, siehe SEED_MERGED).
+  // Liefert, was zu löschen/speichern ist, ohne items oder srs zu verändern. Der Lernstand (Lesen und Schreiben)
+  // geht auf den verbleibenden Eintrag über; haben beide einen, gewinnt der weiter fortgeschrittene.
+  // Vom Nutzer bearbeitete Einträge bleiben stehen.
+  const REF_KEYS = ['grammarIds', 'vocabIds', 'kanjiIds', 'phraseIds', 'newIds', 'links'];
+  App.planSeedCleanup = (map, items, srs) => {
+    const out = { delItems: [], putItems: [], putSrs: [], delSrs: [] };
+    const byId = new Map(items.map((it) => [it.id, it]));
+    const gone = new Map();
+    for (const [old, kept] of Object.entries(map || {})) {
+      const o = byId.get(old);
+      if (o && o._seed && !o._edited && byId.has(kept)) gone.set(old, kept);
+    }
+    if (!gone.size) return out;
+    const ahead = (a, b) => (a.reps || 0) - (b.reps || 0) || (a.ivl || 0) - (b.ivl || 0);
+    for (const [old, kept] of gone) {
+      out.delItems.push(old);
+      for (const pre of ['', 'w:']) {
+        const so = srs.get(pre + old);
+        if (!so) continue;
+        const sk = srs.get(pre + kept);
+        if (!sk || ahead(so, sk) > 0) out.putSrs.push({ ...so, id: pre + kept });
+        out.delSrs.push(pre + old);
+      }
+    }
+    for (const it of items) {
+      if (gone.has(it.id)) continue;
+      let copy = null;
+      for (const k of REF_KEYS) {
+        if (!Array.isArray(it[k]) || !it[k].some((id) => gone.has(id))) continue;
+        copy = copy || { ...it };
+        copy[k] = [...new Set(it[k].map((id) => gone.get(id) || id))].filter((id) => id !== it.id);
+      }
+      if (copy) out.putItems.push(copy);
+    }
+    return out;
+  };
 })(window.App);

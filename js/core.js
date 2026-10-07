@@ -384,6 +384,22 @@ window.App = window.App || {};
       puts.push(it);
     }
     if (puts.length) await App.db.putMany('items', puts);
+    await cleanupMergedSeeds();
+  }
+
+  // Früher doppelt geführte Seed-Einträge (SEED_MERGED) aus dem Bestand entfernen, Lernstand und Verweise umhängen
+  async function cleanupMergedSeeds() {
+    if (!window.SEED_MERGED || !App.planSeedCleanup) return;
+    const r = App.planSeedCleanup(window.SEED_MERGED, Array.from(S.items.values()), S.srs);
+    if (!r.delItems.length) return;
+    r.putSrs.forEach((s) => S.srs.set(s.id, s));
+    r.delSrs.forEach((id) => S.srs.delete(id));
+    r.putItems.forEach((it) => S.items.set(it.id, it));
+    r.delItems.forEach((id) => S.items.delete(id));
+    if (r.putSrs.length) await App.db.putMany('srs', r.putSrs);
+    if (r.putItems.length) await App.db.putMany('items', r.putItems);
+    await App.db.delMany('srs', r.delSrs);
+    await App.db.delMany('items', r.delItems);
   }
 
   // JLPT-Niveau einmalig pro Index-Version für alle Einträge setzen (Einträge mit levelManual bleiben unverändert)

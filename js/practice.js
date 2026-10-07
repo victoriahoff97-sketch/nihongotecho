@@ -362,7 +362,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <span><b style="font-size:22px;color:var(--matcha)">${wc.known}</b> kann ich schreiben</span>
           <span><b style="font-size:22px;color:var(--ai)">${wc.learn}</b> übe ich</span>
           <span><b style="font-size:22px;color:var(--muted)">${wc.new}</b> noch nie geschrieben</span></div>
-        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: auf Anhieb richtig → erst in 3 Wochen wieder.${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>.` : ''}</div>` : ''}</div>
+        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: auf Anhieb richtig → erst in 3 Wochen wieder. Was du sicher schreiben kannst, nimmst du dort mit „Kann ich schon“ direkt aus der Runde.${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>.` : ''}</div>` : ''}</div>
       <div data-stage style="margin-top:16px"></div></div>`;
     const run = (queue) => { view.querySelector('[data-setup]').hidden = true; runKanjiQuiz(view.querySelector('[data-stage]'), pool, mode, queue); };
     view.querySelector('[data-go]').onclick = () => run();
@@ -388,7 +388,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         stage.innerHTML = `<div class="card pad-lg"><div class="row between"><div><div class="small muted">Kanji ${i + 1} / ${qs.length} – schreibe:${W.isFirst(S.srs, cur.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
           <div class="muted" lang="ja">${esc((cur.kun || []).concat(cur.on || []).slice(0, 4).join('、'))}</div></div></div>
           <div class="kanji-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
-          <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div>`;
+          <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button>${W.isFirst(S.srs, cur.id) ? `<button class="btn" style="background:var(--matcha-soft)" data-r="known" title="Ohne Schreiben als gekonnt einstufen – kommt nach einigen Wochen einmal zur Kontrolle">${icon('check')} Kann ich schon</button>` : ''}</div></div>`;
         App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false });
         stage.querySelector('[data-show]').onclick = () => {
           App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
@@ -416,8 +416,9 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       stage.addEventListener('click', async function h(e) {
         const b = e.target.closest('[data-r]'); if (!b) return;
         stage.removeEventListener('click', h);
-        const g = +b.dataset.r; if (g) score++;
-        await App.gradeWrite(cur.id, g);
+        const known = b.dataset.r === 'known'; // erster Versuch übersprungen: „Kann ich schon“
+        const g = known ? 2 : +b.dataset.r; if (g) score++;
+        await (known ? App.markWriteKnown(cur.id) : App.gradeWrite(cur.id, g));
         if (queue && !g) qs.splice(Math.min(i + 4, qs.length), 0, cur);
         i++; next();
       });
