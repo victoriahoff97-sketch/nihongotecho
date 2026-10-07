@@ -47,12 +47,65 @@
       <input class="input jp-in" data-ex="kana" placeholder="Lesung in Kana (optional – ergibt Furigana)" value="${esc(ex.kana || (ex.jp && JP.hasNotation(ex.jp) ? JP.kana(ex.jp) : ''))}">
       <input class="input" data-ex="de" placeholder="Deutsche Übersetzung" value="${esc(App.exMeaning(ex))}">
       <input class="input" data-ex="src" placeholder="Fundstelle (optional, z. B. NHK Easy 12.09.)" value="${esc(ex.src || '')}"></div>`;
-  const exBlock = (exs) => `<div class="field"><label>Beispielsätze</label><div class="stack" data-exs>${(exs && exs.length ? exs : [{}]).map(exRow).join('')}</div>
-      <button type="button" class="btn btn-sm" data-add-ex style="align-self:flex-start">${icon('plus')} Beispielsatz</button></div>`;
+  // suggest: Knopf „Satz vorschlagen“ (holt kurze Sätze zum Wort von Tatoeba, braucht Internet)
+  const exBlock = (exs, suggest) => `<div class="field"><label>Beispielsätze</label><div class="stack" data-exs>${(exs && exs.length ? exs : [{}]).map(exRow).join('')}</div>
+      <div class="row"><button type="button" class="btn btn-sm" data-add-ex>${icon('plus')} Beispielsatz</button>
+        ${suggest ? `<button type="button" class="btn btn-sm" data-suggest-ex>${icon('sparkle')} Satz vorschlagen</button>` : ''}</div>
+      ${suggest ? '<div class="sugg" data-sugg hidden></div>' : ''}</div>`;
   const bindEx = (root) => {
     root.addEventListener('click', (e) => {
       if (e.target.closest('[data-add-ex]')) { root.querySelector('[data-exs]').insertAdjacentHTML('beforeend', exRow()); App.hydrateIcons(root); }
       const rm = e.target.closest('[data-rm-ex]'); if (rm) rm.closest('.ex-row').remove();
+    });
+    if (root.querySelector('[data-sugg]')) bindSuggest(root);
+  };
+
+  // ---------- Satzvorschläge (Tatoeba) ----------
+  const SUGG_N = 8;
+  const bindSuggest = (root) => {
+    const box = root.querySelector('[data-sugg]');
+    let run = null; // laufende Suche: { search, shown: Map(id → Satz) }
+    const row = (ex) => `<button type="button" class="sugg-row" data-take="${ex.id}"><span class="jp-s" lang="ja">${JP.ruby(ex.furi)}</span><span class="small muted">${esc(ex.de || ex.en)}</span></button>`;
+    const foot = (html) => { box.querySelector('[data-sugg-foot]').innerHTML = html; };
+    const load = async () => {
+      const my = run;
+      foot('<span class="small muted">Suche Sätze …</span>');
+      let res;
+      try { res = await my.search.more(SUGG_N); }
+      catch (e) {
+        if (my !== run) return;
+        console.error(e);
+        const offline = navigator.onLine === false || e instanceof TypeError;
+        return foot(`<span class="small muted">${offline ? 'Keine Verbindung – Satzvorschläge brauchen Internet.' : 'Tatoeba ist gerade nicht erreichbar – später noch einmal versuchen.'}</span> <button type="button" class="btn btn-sm" data-sugg-more>Nochmal</button>`);
+      }
+      if (my !== run) return;
+      res.list.forEach((ex) => my.shown.set(String(ex.id), ex));
+      box.querySelector('[data-sugg-list]').insertAdjacentHTML('beforeend', res.list.map(row).join(''));
+      if (!my.shown.size) return foot('<span class="small muted">Keine kurzen Sätze zu diesem Wort gefunden.</span>');
+      foot(`${res.done ? '' : '<button type="button" class="btn btn-sm" data-sugg-more>Mehr laden</button>'}
+        <span class="small muted">${res.lang === 'eng' ? 'Keine deutsche Übersetzung gefunden – englische Sätze. ' : ''}Antippen übernimmt den Satz · Quelle: <a href="https://tatoeba.org" target="_blank" rel="noopener">tatoeba.org</a> (CC BY 2.0 FR)</span>`);
+    };
+    root.addEventListener('click', (e) => {
+      if (e.target.closest('[data-suggest-ex]')) {
+        const word = val(root, 'kanji') || val(root, 'kana');
+        if (!word) return App.toast('Erst das Wort eintragen (Kana oder Kanji)');
+        run = { search: App.tatoeba.search(word, (u, o) => fetch(u, o)), shown: new Map() };
+        box.hidden = false;
+        box.innerHTML = `<div class="small"><b>Vorschläge für <span lang="ja">${esc(word)}</span></b></div><div class="sugg-list" data-sugg-list></div><div class="row" data-sugg-foot></div>`;
+        load();
+        return;
+      }
+      if (e.target.closest('[data-sugg-more]') && run) return load();
+      const take = e.target.closest('[data-take]');
+      if (take && run) {
+        const ex = run.shown.get(take.dataset.take);
+        if (!ex) return;
+        const list = root.querySelector('[data-exs]');
+        const empty = $$('.ex-row', list).find((r) => !r.querySelector('[data-ex="jp"]').value.trim());
+        if (empty) empty.outerHTML = exRow(ex); else list.insertAdjacentHTML('beforeend', exRow(ex));
+        App.hydrateIcons(list);
+        take.remove();
+      }
     });
   };
   const readEx = (root) => $$('.ex-row', root).map((r) => {
@@ -111,7 +164,7 @@
       <div class="field"><label>Wortart</label><select class="input" name="pos"><option value="">–</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${it.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
       ${enLevelFields(it)}
       <div class="field"><label>Pitch Accent <small>0 = flach, 1 = Abfall nach der 1. More … · leer = automatisch</small></label><input class="input" name="accent" inputmode="numeric" style="max-width:120px" value="${esc(it.accent ?? '')}" placeholder="auto"></div>
-      ${exBlock(it.examples)}
+      ${exBlock(it.examples, true)}
       ${commonFields(it)}
       <div class="field"><label>Eigene Notizen</label><textarea class="input" name="notes" rows="2">${esc(it.notes || '')}</textarea></div>
       ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In den Lernstapel (neues Wort)'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}" ${(it._check || 'learn') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}

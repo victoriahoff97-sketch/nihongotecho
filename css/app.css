@@ -281,6 +281,12 @@ details.adv summary { cursor: pointer; font-weight: 800; color: var(--ink-2); mi
 details.adv[open] summary { margin-bottom: 12px; }
 .ex-row { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); position: relative; }
 .ex-row .rm { position: absolute; top: 6px; right: 6px; }
+.sugg { display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--line-2); border-radius: 12px; }
+.sugg[hidden] { display: none; }
+.sugg-list { display: grid; gap: 6px; }
+.sugg-row { display: grid; gap: 2px; text-align: left; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card-2); color: inherit; font: inherit; cursor: pointer; }
+.sugg-row:hover { border-color: var(--line-2); }
+.sugg-row .jp-s { font-family: var(--font-jp); font-size: 19px; line-height: 1.9; }
 
 /* ---------- Karten für Einträge ---------- */
 .item-card {
