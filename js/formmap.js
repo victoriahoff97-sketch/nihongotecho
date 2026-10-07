@@ -36,13 +36,15 @@
     return `<svg class="fm-svg" viewBox="0 0 ${map.w} ${map.h}" role="group" aria-label="Streckenplan ${esc(map.title)}">${tracks}${stations}</svg>`;
   };
 
-  // Fenster einer Station: Regel, Beispiele aus den eigenen Vokabeln, Abhaken, Link zur Grammatik
+  // Fenster einer Station: Regel, Beispiele aus den eigenen Vokabeln, Grammatik mit dieser Form, Abhaken
   const openForm = (id) => {
     const f = F.form(id);
     if (!f) return;
     const s = F.status(f, known());
     const prev = f.from.map(F.form);
     const g = App.item(f.grammar);
+    // Grammatik, die diese Form benutzt – nur Einträge, die es in der App (noch) gibt
+    const uses = F.usesOf(f).map(App.item).filter(Boolean);
     const rows = F.samples(f, App.itemsOf('vocab')).map((w) => {
       const ex = F.example(f, w);
       return `<div class="fm-row"><span class="jp" lang="ja">${ex.from ? `${JP.ruby(ex.from)} <span class="fm-arrow">→</span> ` : ''}<b>${JP.ruby(ex.to)}</b></span><span class="small muted">${esc(w.de || w.en || '')}</span></div>`;
@@ -53,6 +55,7 @@
         ${prev.length ? `<div class="small muted">Leitest du ab aus: ${prev.map((p) => `<b>${esc(p.label)}</b>`).join(', ')}</div>` : ''}
         <p style="margin:0">${esc(f.rule)}</p>
         <div class="fm-rows">${rows}</div>
+        ${uses.length ? `<div class="fm-uses"><div class="small muted" style="font-weight:800">Das kannst du mit dieser Form</div>${uses.map((x) => `<a class="fm-use" href="${App.link(x)}" data-grammar><span><b>${esc(x.title)}</b><span class="jp small" lang="ja">${JP.ruby(x.jp || '')}</span></span>${App.srcBadge(x)}</a>`).join('')}</div>` : ''}
         ${s === 'later' ? `<div class="small muted">Dafür fehlt dir noch: ${prev.filter((p) => F.status(p, known()) !== 'done').map((p) => esc(p.label)).join(', ')}.</div>` : ''}
       </div>`,
       foot: `${g ? `<a class="btn" href="${App.link(g)}" data-grammar>${icon('grammar')} Grammatik öffnen</a>` : ''}
@@ -62,8 +65,7 @@
       md.close();
       await App.saveSettings({ formsKnown: F.toggle(known(), id) });
     };
-    const ga = md.el.querySelector('[data-grammar]');
-    if (ga) ga.onclick = () => md.close();
+    md.el.querySelectorAll('[data-grammar]').forEach((el) => { el.onclick = () => md.close(); });
   };
 
   App.route('/karte', (view) => {

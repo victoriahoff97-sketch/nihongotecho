@@ -885,3 +885,8 @@ details.adv[open] summary { margin-bottom: 12px; }
 .wk-level { gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
 .wk-level b { min-width: 68px; }
 .wk-level input { width: 20px; height: 20px; flex: none; }
+.fm-uses { display: grid; gap: 6px; margin-top: 4px; }
+.fm-use { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.fm-use:hover { border-color: var(--ai); background: var(--ai-soft); }
+.fm-use > span:first-child { display: grid; gap: 1px; }
+.fm-use .jp { color: var(--ai); font-family: var(--font-jp); }
