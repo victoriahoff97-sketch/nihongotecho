@@ -134,7 +134,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const jpHtml = it.type === 'vocab' ? JP.wordRuby(it) : JP.ruby(it.jp);
     const reading = it.type === 'vocab' ? it.kana : JP.kana(it.jp);
     const ex = it.examples && it.examples[0];
-    const extra = (ex ? `<div style="margin-top:10px">${App.exampleHtml(ex)}</div>` : '') + (it.note ? `<div class="small muted">${esc(it.note)}</div>` : '');
+    const extra = (it.type === 'vocab' ? App.accentHtml(it) : '') + (ex ? `<div style="margin-top:10px">${App.exampleHtml(ex)}</div>` : '') + (it.note ? `<div class="small muted">${esc(it.note)}</div>` : '');
     const speakTxt = it.type === 'vocab' ? (it.kanji || it.kana) : it.jp;
     if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it)}</div>`, back: `<div class="ans jp" lang="ja">${jpHtml}</div>${App.levelBadge(it)}${extra}`, speak: speakTxt };
     return { front: `<div class="front" lang="ja">${App.askHtml(it)}</div>`, back: `<div class="jp" lang="ja" style="font-size:20px;color:var(--muted)">${esc(reading)}</div><div class="ans">${App.meaningHtml(it)}</div>${App.levelBadge(it)}${extra}`, speak: speakTxt };

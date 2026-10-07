@@ -295,7 +295,7 @@
           <div class="detail-hero"><div class="big" lang="ja">${JP.wordRuby(it)}</div>${App.speakBtn(it.kanji || it.kana, '')}</div>
           <div class="row">${detailActions(it)}</div></div>
           <div class="de-big" style="margin:4px 0 14px">${App.meaningHtml(it)}</div>
-          <dl class="kv">${it.level ? `<dt>JLPT</dt><dd>${App.levelBadge(it)}</dd>` : ''}<dt>Lesung</dt><dd lang="ja" style="font-size:18px">${esc(it.kana)}</dd>
+          <dl class="kv">${it.level ? `<dt>JLPT</dt><dd>${App.levelBadge(it)}</dd>` : ''}<dt>Lesung</dt><dd lang="ja" style="font-size:18px">${esc(it.kana)}</dd>${App.accentHtml(it) ? `<dt>Pitch Accent</dt><dd>${App.accentHtml(it)}</dd>` : ''}
           ${it.kanji ? `<dt>Kanji</dt><dd lang="ja" style="font-size:18px">${Array.from(it.kanji).map((c) => App.kanjiByChar(c) ? `<a href="#/kanji/${encodeURIComponent(c)}" style="text-decoration:none;border-bottom:2px solid var(--murasaki)">${esc(c)}</a>` : esc(c)).join('')}</dd>` : ''}
           ${it.pos ? `<dt>Wortart</dt><dd>${esc(App.POS[it.pos] || it.pos)}</dd>` : ''}
           <dt>Quelle</dt><dd>${App.srcBadge(it) || '–'} ${it.sourceRef ? refLink(it.sourceRef) : ''}</dd>

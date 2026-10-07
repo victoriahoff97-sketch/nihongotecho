@@ -110,6 +110,7 @@
       <div class="two"><div class="field"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}" placeholder="z. B. essen / die Schule"></div>
       <div class="field"><label>Wortart</label><select class="input" name="pos"><option value="">–</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${it.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
       ${enLevelFields(it)}
+      <div class="field"><label>Pitch Accent <small>0 = flach, 1 = Abfall nach der 1. More … · leer = automatisch</small></label><input class="input" name="accent" inputmode="numeric" style="max-width:120px" value="${esc(it.accent ?? '')}" placeholder="auto"></div>
       ${exBlock(it.examples)}
       ${commonFields(it)}
       <div class="field"><label>Eigene Notizen</label><textarea class="input" name="notes" rows="2">${esc(it.notes || '')}</textarea></div>
@@ -156,6 +157,10 @@
       it.kana = val(root, 'kana'); it.kanji = val(root, 'kanji'); it.de = val(root, 'de'); it.pos = val(root, 'pos');
       if (!it.kana && !it.kanji) throw new Error('Bitte die Lesung (Kana) oder Kanji eingeben.');
       if (!it.kana) it.kana = it.kanji;
+      if (App.readAccent && root.querySelector('[name=accent]')) {
+        const accent = App.readAccent(val(root, 'accent'), it.kana);
+        if (accent === undefined) delete it.accent; else it.accent = accent;
+      }
       readEnLevel(root, it);
       if (!it.de && !it.en) throw new Error('Bitte die deutsche (oder englische) Bedeutung eingeben.');
       it.examples = readEx(root);

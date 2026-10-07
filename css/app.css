@@ -841,3 +841,15 @@ details.adv[open] summary { margin-bottom: 12px; }
 .hw-pop .hw-ja .chip { font-family: var(--font-kanji); font-size: 20px; padding: 4px 12px; }
 .hw-pop .hw-de .chip { font-size: 14px; }
 .lookup-pop .lk-install { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+
+/* ---------- Pitch Accent (Tonhöhenkurve an Vokabeln) ---------- */
+.pitch { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; }
+.pitch-svg { display: block; overflow: visible; }
+.pitch-svg polyline { fill: none; stroke: var(--shu); stroke-width: 2; stroke-linejoin: round; }
+.pitch-svg circle { fill: var(--shu); stroke: var(--shu); stroke-width: 2; }
+.pitch-svg circle.part { fill: var(--card); }
+.pitch-svg text { font-family: var(--font-jp); font-size: 15px; text-anchor: middle; fill: var(--ink); }
+.pitch-svg text.part { fill: var(--muted); }
+.pitch-alt { font-size: 13px; color: var(--muted); font-family: var(--font-ui); }
+.flash .pitch, .check-ans .pitch { display: flex; margin-top: 6px; }
+.flash .pitch { justify-content: center; }

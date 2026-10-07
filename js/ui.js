@@ -100,6 +100,8 @@
     return `<span class="badge src" style="--c:${App.sourceColor(it.source)}">${esc(it.source)}${l}</span>`;
   };
   App.tagsHtml = (tags) => (tags || []).map((t) => `<a class="tag" href="#/suche?q=%23${encodeURIComponent(t)}">${esc(t)}</a>`).join(' ');
+  // Schutz bei altem index.html (ohne js/accent.js): keine Kurve statt Absturz
+  App.accentHtml = App.accentHtml || (() => '');
   App.speakBtn = (text, cls = 'sm') => JP.canSpeak() ? `<button class="icon-btn ${cls}" data-speak="${esc(text)}" title="Vorlesen">${icon('speak')}</button>` : '';
   App.exampleHtml = (ex) => {
     const hasN = JP.hasNotation(ex.jp);

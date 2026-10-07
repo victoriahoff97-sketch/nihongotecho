@@ -150,7 +150,7 @@
     const answer = (v) => {
       if (isK) return `<b>${App.meaningHtml(v)}</b>${App.levelBadge(v)}<div lang="ja" class="small muted">${(v.on || []).length ? 'On: ' + esc(v.on.join('、')) : ''}${(v.kun || []).length ? ' · Kun: ' + esc(v.kun.join('、')) : ''}</div>${(v.words || [])[0] ? `<div class="small muted" lang="ja">${JP.ruby(v.words[0].jp)} – ${App.meaningHtml(v.words[0])}</div>` : ''}`;
       const ex = v.examples && v.examples[0];
-      return `<div lang="ja" class="muted">${v.kanji ? esc(v.kana) : ''}</div><b>${App.meaningHtml(v)}</b>${App.levelBadge(v)}${ex ? `<div class="small muted" lang="ja">${JP.ruby(ex.jp)}</div>` : ''}`;
+      return `<div lang="ja" class="muted">${v.kanji ? esc(v.kana) : ''}</div><b>${App.meaningHtml(v)}</b>${App.levelBadge(v)}${App.accentHtml(v)}${ex ? `<div class="small muted" lang="ja">${JP.ruby(ex.jp)}</div>` : ''}`;
     };
     const row = (v, i) => {
       const d = decided.get(v.id);
