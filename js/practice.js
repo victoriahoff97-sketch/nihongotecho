@@ -417,8 +417,9 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <div class="muted" lang="ja">${esc((cur.kun || []).concat(cur.on || []).slice(0, 4).join('、'))}</div></div></div>
           <div class="kanji-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
           <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div>`;
-        App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false });
+        const pad = App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false, quiz: true });
         stage.querySelector('[data-show]').onclick = () => {
+          pad.then((p) => p.reveal());
           App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
           stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · wieder in ${ivlLabel(cur.id, 0, true)}</button><button class="btn" style="background:var(--${W.isFirst(S.srs, cur.id) ? 'ai' : 'matcha'}-soft)" data-r="2">✓ Richtig${W.isMarkedKnown(S.srs, cur.id) ? '' : ` · wieder in ${ivlLabel(cur.id, 2, true)}`}</button>${W.isFirst(S.srs, cur.id) ? `<button class="btn" style="background:var(--matcha-soft)" data-r="known" title="Als gelernt einstufen – wird beim Schreiben nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
         };

@@ -72,6 +72,8 @@
       if ($('.modal-back') || $('.viewer') || $('.ink-embed')) { renderNav(); return; }
       const ae = document.activeElement;
       if (ae && ae.closest && ae.closest('.rte, [data-setup], .ex-card, .flash-stage')) { renderNav(); return; }
+      // laufende Übungs- oder Einstufungsrunde nicht von vorn beginnen (z. B. WaniKani-Abgleich im Hintergrund)
+      if ($('#view [data-stage]:not(:empty)')) { renderNav(); return; }
       App.render(true);
     }, 60);
   });

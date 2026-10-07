@@ -125,13 +125,14 @@
   };
 
   // ---------- Schreibfeld ----------
-  ST.pad = async (host, ch, { template = true } = {}) => {
+  // quiz: Vorlage, Vergleich und Soll-Strichzahl bleiben verborgen, bis reveal() aufgerufen wird
+  ST.pad = async (host, ch, { template = true, quiz = false } = {}) => {
     host.innerHTML = `<div class="pad-row"><div class="pad-wrap"><div class="pad-guide"></div><canvas></canvas></div>
       <div class="stack" style="min-width:180px">
         <button class="btn" data-p="clear">${icon('trash')} Löschen</button>
         <button class="btn" data-p="undo">${icon('undo')} Strich zurück</button>
-        <button class="btn" data-p="tpl">${icon('eye')} Vorlage</button>
-        <button class="btn" data-p="check">${icon('check')} Vergleichen</button>
+        <button class="btn" data-p="tpl" ${quiz ? 'hidden' : ''}>${icon(template ? 'eye' : 'eyeOff')} Vorlage</button>
+        <button class="btn" data-p="check" ${quiz ? 'hidden' : ''}>${icon('check')} Vergleichen</button>
         <div class="small muted" data-msg>Schreibe mit Stift, Finger oder Maus.</div>
       </div></div>`;
     const wrap = host.querySelector('.pad-wrap');
@@ -142,7 +143,7 @@
     const onLoaded = async (e) => { if (e.detail === ch && host.isConnected) { paths = await ST.get(ch); renderGuide(); } };
     document.addEventListener('kvg-loaded', onLoaded);
     App.onLeave(() => document.removeEventListener('kvg-loaded', onLoaded));
-    let showTpl = template, showCheck = false;
+    let showTpl = template, showCheck = false, secret = quiz;
     const renderGuide = () => {
       guide.innerHTML = `<svg viewBox="0 0 109 109"><g stroke="var(--line-2)" stroke-width=".4" stroke-dasharray="2 2"><path d="M54.5 0v109M0 54.5h109"/></g>
         ${paths && (showTpl || showCheck) ? `<g fill="none" stroke="${showCheck ? 'rgba(200,64,42,.55)' : 'var(--line)'}" stroke-width="${showCheck ? 2 : 5}" stroke-linecap="round" stroke-linejoin="round">${paths.map((d) => `<path d="${d}"/>`).join('')}</g>` : ''}
@@ -179,7 +180,8 @@
       evs.forEach((ev) => cur.push(pt(ev)));
       redraw();
     });
-    const end = () => { if (cur) { strokes.push(cur); cur = null; redraw(); if (paths) msg.textContent = `${strokes.length} von ${paths.length} Strichen`; } };
+    const end = () => { if (cur) { strokes.push(cur); cur = null; redraw(); if (secret) msg.textContent = strokes.length === 1 ? '1 Strich' : `${strokes.length} Striche`; else if (paths) msg.textContent = `${strokes.length} von ${paths.length} Strichen`; } };
+    const checkMsg = () => { if (paths) msg.innerHTML = strokes.length === paths.length ? `<b style="color:var(--matcha)">Strichzahl stimmt (${paths.length}) ✓</b>` : `<b style="color:var(--shu)">${strokes.length} statt ${paths.length} Striche</b>`; };
     cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
     host.querySelector('.stack').addEventListener('click', (e) => {
       const b = e.target.closest('[data-p]'); if (!b) return;
@@ -189,13 +191,21 @@
       if (a === 'tpl') { showTpl = !showTpl; b.innerHTML = icon(showTpl ? 'eye' : 'eyeOff') + ' Vorlage'; renderGuide(); }
       if (a === 'check') {
         showCheck = !showCheck; renderGuide();
-        if (showCheck && paths) msg.innerHTML = strokes.length === paths.length ? `<b style="color:var(--matcha)">Strichzahl stimmt (${paths.length}) ✓</b>` : `<b style="color:var(--shu)">${strokes.length} statt ${paths.length} Striche</b>`;
+        if (showCheck) checkMsg();
       }
       redraw();
     });
     const ro = new ResizeObserver(resize); ro.observe(wrap);
     App.onLeave(() => ro.disconnect());
     resize();
-    return { clear: () => { strokes = []; redraw(); }, setChar: null };
+    const reveal = () => {
+      if (!secret) return;
+      secret = false;
+      host.querySelectorAll('[data-p=tpl],[data-p=check]').forEach((b) => (b.hidden = false));
+      if (paths) showCheck = true; else showTpl = true; // ohne Strichdaten: Zeichen als Vorlage
+      host.querySelector('[data-p=tpl]').innerHTML = icon(showTpl ? 'eye' : 'eyeOff') + ' Vorlage';
+      renderGuide(); checkMsg();
+    };
+    return { clear: () => { strokes = []; redraw(); }, reveal, setChar: null };
   };
 })(window.App);
