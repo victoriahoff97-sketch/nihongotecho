@@ -8,14 +8,14 @@
 
   // ---------- Status ----------
   // unchecked = noch nie geprüft · learn = im Lernstapel / wird gelernt · known = kann ich schon
+  // „Kann ich“ ist, was so eingestuft wurde – oder was mit den Karten bis 3 Wochen Abstand gelernt ist (springt von allein um).
   // Grammatik, die mit einer Unterrichtsstunde verknüpft ist, gilt ohne Einstufung als „Lernstapel“.
   const autoLearn = (id) => { const it = S.items.get(id); return !!it && it.type === 'grammar' && App.sessionsFor(id).length > 0; };
   App.vocabStatus = (id) => {
     const s = S.srs.get(id);
     if (!s) return autoLearn(id) ? 'learn' : 'unchecked';
     if (s.check === 'unchecked') return 'unchecked';
-    if (s.check === 'known') return 'known';
-    return 'learn';
+    return App.furiLogic.readKnown(S.srs, id) ? 'known' : 'learn';
   };
   App.STATUS = {
     unchecked: { label: 'Ungeprüft', color: 'var(--muted)', dot: '○' },
@@ -150,7 +150,7 @@
     const row = (v, i) => {
       const d = decided.get(v.id);
       return `<div class="check-row ${d ? 'done ' + d : ''}" data-i="${i}">
-        <div class="check-word" data-reveal lang="ja" ${isK ? 'style="font-family:var(--font-kanji);font-size:48px"' : ''}>${esc(isK ? v.char : v.kanji || v.kana)}</div>
+        <div class="check-word" data-reveal lang="ja" ${isK ? 'style="font-family:var(--font-kanji);font-size:48px"' : ''}>${isK ? esc(v.char) : App.askHtml(v)}</div>
         <div class="check-ans" data-reveal>${d || v._shown ? answer(v) : '<span class="muted small">antippen zum Aufdecken</span>'}</div>
         <div class="check-btns">${d ? `<span class="verdict ${d === 'known' ? 'ok' : ''}" style="${d === 'learn' ? 'background:var(--ai-soft);color:var(--ai)' : ''}">${d === 'known' ? '✓ Kann ich' : '＋ Lernstapel'}</span><button class="btn btn-sm btn-ghost" data-undo>ändern</button>`
           : `<button class="btn btn-sm check-known" data-set="known">${icon('check')} Kann ich</button><button class="btn btn-sm check-learn" data-set="learn">${icon('plus')} Lernen</button>`}</div></div>`;

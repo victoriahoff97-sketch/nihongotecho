@@ -9,13 +9,13 @@
   JP.hasKanji = (s) => reKanji.test(s || '');
 
   // ---------- Furigana-Notation ----------
-  // 食[た]べる → <ruby>食<rt>た</rt></ruby>べる
-  JP.ruby = (s) => {
+  // 食[た]べる → <ruby>食<rt>た</rt></ruby>べる · skip(Basis) = true lässt die Lesung über dieser Gruppe weg
+  JP.ruby = (s, skip) => {
     s = String(s ?? '');
     let out = '', last = 0;
     s.replace(reFuri, (m, g1, r1, k2, r2, idx) => {
       out += esc(s.slice(last, idx));
-      out += `<ruby>${esc(g1 || k2)}<rt>${esc(r1 || r2)}</rt></ruby>`;
+      out += skip && skip(g1 || k2) ? esc(g1 || k2) : `<ruby>${esc(g1 || k2)}<rt>${esc(r1 || r2)}</rt></ruby>`;
       last = idx + m.length;
       return m;
     });

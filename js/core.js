@@ -225,6 +225,7 @@ window.App = window.App || {};
     name: '', theme: 'auto', furigana: 'on', course: 'VHS Japanisch A1', level: 12,
     sources: App.DEFAULT_SOURCES, penOnly: true, ttsRate: 0.9, newPerDay: 15, checkBatch: 15, sidebarCollapsed: false,
     kanjiFocus: 'both', // Kanji-Schwerpunkt: both | read | write
+    furiKnown: 'hide', // Furigana in der Abfrage über Kanji, die man lesen kann: hide | show
   };
 
   App.onChange = (fn) => S.listeners.add(fn);
@@ -345,6 +346,7 @@ window.App = window.App || {};
     const DAY = 864e5;
     const s = S.srs.get(id) || { id, ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: now };
     if (s.check === 'unchecked') delete s.check; // wer eine Karte übt, prüft sie damit
+    if (g === 0 && s.check === 'known') s.check = 'learn'; // als gelernt eingestuft, aber nicht gewusst: zurück in den Lernstapel
     if (g === 0) { s.lapses++; s.reps = 0; s.ivl = 0; s.ease = Math.max(1.3, s.ease - 0.2); s.due = now + 10 * 60e3; }
     else {
       if (s.reps === 0) s.ivl = g === 1 ? 0.5 : g === 2 ? 1 : 4;
