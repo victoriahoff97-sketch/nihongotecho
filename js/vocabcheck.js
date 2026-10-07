@@ -158,9 +158,12 @@
     const draw = () => {
       const left = list.filter((v) => !decided.has(v.id)).length;
       const k = Array.from(decided.values()).filter((x) => x === 'known').length;
+      // „Rest“-Knöpfe über und unter der Liste, damit man am Ende nicht zurückscrollen muss
+      const rest = left ? `<button class="btn btn-sm" data-all="known">Rest: kann ich</button><button class="btn btn-sm" data-all="learn">Rest: lernen</button>` : '';
       stage.innerHTML = `<div class="row between" style="margin-bottom:10px"><b>Runde: ${list.length - left} / ${list.length} eingestuft</b>
-        <div class="row">${left ? `<button class="btn btn-sm" data-all="known">Rest: kann ich</button><button class="btn btn-sm" data-all="learn">Rest: lernen</button>` : ''}</div></div>
+        <div class="row">${rest}</div></div>
         <div class="check-list">${list.map(row).join('')}</div>
+        ${left ? `<div class="row" style="justify-content:flex-end;margin-top:10px">${rest}</div>` : ''}
         ${!left ? `<div class="card row between" style="margin-top:16px"><div><b>Runde geschafft!</b> ${k} kannst du schon, ${list.length - k} kommen in den Lernstapel.</div>
           <div class="row"><a class="btn" href="#/ueben/karten${isK ? '?type=kanji' : ''}">${icon('practice')} Lernstapel üben</a><button class="btn btn-primary" data-next>${icon('next')} Nächste Runde</button></div></div>` : ''}`;
     };
