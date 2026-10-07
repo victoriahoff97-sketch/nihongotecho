@@ -51,13 +51,42 @@
   W.dueCount = (srs, items, focus, now) => {
     let n = 0;
     srs.forEach((s) => {
-      if (W.isId(s.id)) { if (focus !== 'read' && s.check !== 'known' && s.due <= now && items.has(W.itemId(s.id))) n++; return; }
+      if (W.isId(s.id)) {
+        const wi = items.get(W.itemId(s.id));
+        if (!wi || s.due > now) return;
+        if (wi.type === 'vocab' ? s.reps > 0 : (focus !== 'read' && s.check !== 'known')) n++; // Vokabeln aktiv · Kanji schreiben
+        return;
+      }
       const it = items.get(s.id);
       if (!it || !(s.reps > 0) || s.due > now) return;
       if (focus === 'write' && it.type === 'kanji') return;
       n++;
     });
     return n;
+  };
+
+  // ---------- Vokabeln aktiv (Deutsch → Japanisch) ----------
+  // Zweiter Lernstand je Vokabel, ebenfalls unter „w:<Id>“. Anders als beim Kanji-Schreiben läuft er wie der Lese-Stand:
+  // erst einstufen („Kann ich“ kommt nach einigen Wochen einmal zur Kontrolle, „Lernen“ geht in den Aktiv-Lernstapel), dann Karten.
+  // locked = kann ich noch nicht lesen · unchecked = aktiv noch nicht eingestuft · learn = Aktiv-Lernstapel · known = kann ich aktiv
+  // needsCheck(it): wird der Eintrag überhaupt eingestuft? Eigene Wörter gehen wie beim Lesen direkt in den Lernstapel.
+  W.activeStatus = (srs, it, needsCheck) => {
+    const s = srs.get(W.id(it.id));
+    if (s) return s.check === 'known' || (s.reps > 0 && s.ivl >= W.KNOWN_IVL) ? 'known' : 'learn';
+    if (!W.unlocked(srs, it.id)) return 'locked';
+    return needsCheck(it) ? 'unchecked' : 'learn';
+  };
+  // Aktiv-Runde: fällige (älteste zuerst) + neue = im Aktiv-Lernstapel, aber noch nie gewusst (Reihenfolge der Liste)
+  W.activeQueue = (items, srs, now, needsCheck) => {
+    const rec = (i) => srs.get(W.id(i.id));
+    const due = items.filter((i) => { const s = rec(i); return s && s.reps > 0 && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
+    const fresh = items.filter((i) => { const s = rec(i); return (!s || !s.reps) && W.activeStatus(srs, i, needsCheck) === 'learn'; });
+    return { due, fresh };
+  };
+  W.activeCounts = (items, srs, needsCheck) => {
+    const c = { locked: 0, unchecked: 0, learn: 0, known: 0, total: items.length };
+    items.forEach((i) => c[W.activeStatus(srs, i, needsCheck)]++);
+    return c;
   };
 
   // Bewertung eines Schreibversuchs (g: 0 falsch … 3 leicht) – braucht den Speicher der App

@@ -123,8 +123,11 @@
       const { due, fresh } = App.cardQueue({ type, dir: 'jp' });
       return { label: due.length === 1 ? one : label, due: due.length, fresh: fresh.length, href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}${type === 'kanji' ? 'dir=jp&' : ''}auto=1` };
     });
+    // Vokabeln aktiv (Deutsch → Japanisch): eigener Lernstand, direkt hinter den Vokabeln
+    const aq = App.activeQueue();
+    queues.splice(1, 0, { label: 'Vokabeln aktiv', due: aq.due.length, fresh: aq.fresh.length, href: '#/ueben/karten?dir=de&auto=1' });
     const wq = App.writeQueue();
-    if (focus !== 'read') queues.splice(focus === 'write' ? 0 : 2, 0, { label: 'Kanji schreiben', due: wq.due.length, fresh: wq.fresh.length, href: '#/ueben/kanji?auto=1' });
+    if (focus !== 'read') queues.splice(focus === 'write' ? 0 : 3, 0, { label: 'Kanji schreiben', due: wq.due.length, fresh: wq.fresh.length, href: '#/ueben/kanji?auto=1' });
     const dueQ = queues.filter((x) => x.due), due = dueQ.reduce((n, x) => n + x.due, 0);
     const next = dueQ[0] || queues.find((x) => x.fresh);
     const action = (cls, attrs, ico, title, sub) => `<${attrs.startsWith('href') ? 'a' : 'button'} class="home-act ${cls}" ${attrs}><span class="i">${icon(ico)}</span><span><b>${title}</b><small>${sub}</small></span></${attrs.startsWith('href') ? 'a' : 'button'}>`;
@@ -166,7 +169,12 @@
         <a href="#/vokabeln?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
         <a href="#/vokabeln?st=known" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a></div>
         <div class="row">${c.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?auto=1">${icon('check')} Nächste ${Math.min(c.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button></div></div>
-        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div></div>`; })()}
+        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
+        ${(() => { const a = App.writeLogic.activeCounts(vocab, S.srs, App.needsCheck); if (!(a.unchecked + a.learn + a.known)) return ''; const todo = aq.due.length + aq.fresh.length; return `<div class="row between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div class="row" style="gap:22px"><b title="Deutsch → Japanisch: eigener Lernstand für Wörter, die du schon lesen kannst">Aktiv <span class="small muted" style="font-weight:400">Deutsch → Japanisch</span></b>
+          <span><b style="font-size:20px;color:var(--muted)">${a.unchecked}</b> ungeprüft</span>
+          <span><b style="font-size:20px;color:var(--ai)">${a.learn}</b> im Lernstapel</span>
+          <span><b style="font-size:20px;color:var(--matcha)">${a.known}</b> kann ich</span></div>
+          <div class="row">${a.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?dir=de&auto=1">${icon('check')} Nächste ${Math.min(a.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}${todo ? `<a class="btn ${a.unchecked ? '' : 'btn-sec'}" href="#/ueben/karten?dir=de&auto=1">${icon('practice')} ${aq.due.length ? `${aq.due.length} fällig` : 'Neue Karten'}</a>` : ''}</div></div>`; })()}</div>`; })()}
       ${(() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `<div class="section-title">Kanji-Lernstand</div>
       <div class="card sec-kanji"><div class="row between"><div class="row" style="gap:22px">
         <a href="#/kanji?st=unchecked" style="text-decoration:none"><b style="font-size:26px;color:var(--muted)">${c.unchecked}</b> ungeprüft</a>
@@ -301,7 +309,9 @@
           <dt>Quelle</dt><dd>${App.srcBadge(it) || '–'} ${it.sourceRef ? refLink(it.sourceRef) : ''}</dd>
           ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
           <dt>Lernstand</dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <div class="small muted" style="margin-top:4px">${srs && srs.reps ? `${srs.check === 'known' ? 'als gelernt markiert' : srs.reps + '× gewusst'} · nächste Wiederholung ${App.fmtDate(srs.due)}` : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : 'noch nicht eingestuft'}</div></dd></dl></div>
+            <div class="small muted" style="margin-top:4px">${srs && srs.reps ? `${srs.check === 'known' ? 'als gelernt markiert' : srs.reps + '× gewusst'} · nächste Wiederholung ${App.fmtDate(srs.due)}` : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : 'noch nicht eingestuft'}</div></dd>
+          <dt>Aktiv <small class="muted" style="font-weight:400">Deutsch → Japanisch</small></dt><dd>${(() => { const ast = App.activeStatus(it), as = App.srsOf(App.writeLogic.id(it.id)); return `<div class="seg" data-ast>${App.statusChoices(it).map(([k, s]) => `<button class="${ast === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
+            <div class="small muted" style="margin-top:4px">${ast === 'locked' ? 'kommt dran, sobald du das Wort lesen kannst' : as && as.reps ? `${as.check === 'known' ? 'als gelernt markiert' : as.reps + '× gewusst'} · nächste Wiederholung ${App.fmtDate(as.due)}` : ast === 'learn' ? 'wartet im Aktiv-Lernstapel auf die Karteikarten' : 'aktiv noch nicht eingestuft'}</div>`; })()}</dd></dl></div>
         ${(it.contexts || []).length ? `<div class="section-title">Kontext – wo du das Wort gefunden hast</div>${it.contexts.map((c) => { const s = c.sessionId && App.item(c.sessionId); const o = !s && c.itemId && App.item(c.itemId); return `<div class="ctx"><div class="small"><b>${s ? `<a href="${App.link(s)}">授業 ${esc(s.number ? 'Stunde ' + s.number : s.title || 'Unterricht')}</a>` : o ? `<a href="${App.link(o)}">${esc(c.label || 'Anwenden')}</a>` : esc(c.label || 'Notiz')}</b> · ${App.fmtDate(c.date)}</div>${c.text ? `<div class="jp-s" lang="ja">${App.highlightWord(c.text, it)}</div>` : ''}</div>`; }).join('')}` : ''}
         ${it.examples && it.examples.length ? `<div class="section-title">Beispielsätze</div>${it.examples.map(App.exampleHtml).join('')}` : ''}
         ${conjTable(it)}
@@ -310,6 +320,7 @@
       </div><aside>${App.relatedHtml(it) || '<div class="card muted small">Noch keine verwandten Einträge. Mit „Verknüpfen“ kannst du selbst Verbindungen herstellen.</div>'}</aside></div></div>`;
     App.hydrateThumbs(view);
     view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.STATUS[b.dataset.v].label); App.render(true); } };
+    view.querySelector('[data-ast]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(App.writeLogic.id(it.id), b.dataset.v); App.toast('Aktiv-Lernstand: ' + App.STATUS[b.dataset.v].label); App.render(true); } };
   });
 
   // =========================================================

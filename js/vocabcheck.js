@@ -106,28 +106,35 @@
     if (q.l) items = items.filter((i) => String(i.lesson) === q.l);
     if (q.mark) items = items.filter((i) => App.hasMark(i, q.mark));
     if (q.lvl) items = items.filter((i) => App.levelMatch(i, q.lvl));
-    const c = App.vocabCounts(items);
-    const cAll = App.vocabCounts(all);
+    // Vokabeln haben zwei Einstufungen: lesen (Japanisch → Deutsch) und aktiv (Deutsch → Japanisch, eigener Lernstand unter „w:<Id>“).
+    // Aktiv eingestuft wird, was man schon lesen kann.
+    const active = !isK && q.dir === 'de';
+    const W = App.writeLogic;
+    const statusOf = active ? App.activeStatus : (v) => App.vocabStatus(v.id);
+    const counts = active ? (list) => W.activeCounts(list, S.srs, App.needsCheck) : App.vocabCounts;
+    const c = counts(items);
+    const cAll = counts(all);
     const batch = +S.settings.checkBatch || 15;
     const pct = (n) => (c.total ? (n / c.total) * 100 : 0);
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="crumbs"><a href="#/ueben">Üben</a> › Einstufen</div>
       <div class="page-head"><div class="titles"><h1>Einstufen <span class="jp-title">確認</span></h1>
-        <p>Was kannst du schon? Geh deine ${isK ? 'Kanji' : 'Vokabeln'} in Runden durch – danach landet im Lernstapel nur, was du wirklich noch lernen musst.</p></div>
+        <p>${active ? 'Welche Wörter weißt du auch aus dem Deutschen heraus? Geh alle, die du schon lesen kannst, in Runden durch – danach landet im Aktiv-Lernstapel nur, was du noch üben musst.' : `Was kannst du schon? Geh deine ${isK ? 'Kanji' : 'Vokabeln'} in Runden durch – danach landet im Lernstapel nur, was du wirklich noch lernen musst.`}</p></div>
         <div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div></div>
       <div class="card" data-setup><div class="stack">
+        ${isK ? '' : `<div class="row"><div class="seg">${[['', 'Japanisch → Deutsch (lesen)'], ['de', 'Deutsch → Japanisch (aktiv)']].map(([k, l]) => `<button class="${(active ? 'de' : '') === k ? 'on' : ''}" data-q-dir="${k}">${l}</button>`).join('')}</div></div>`}
         <div class="row between"><div class="row" style="gap:18px">
           <span><b style="font-size:24px;color:var(--muted)">${c.unchecked}</b> ungeprüft</span>
-          <span><b style="font-size:24px;color:var(--ai)">${c.learn}</b> im Lernstapel</span>
-          <span><b style="font-size:24px;color:var(--matcha)">${c.known}</b> kann ich</span></div>
+          <span><b style="font-size:24px;color:var(--ai)">${c.learn}</b> im ${active ? 'Aktiv-' : ''}Lernstapel</span>
+          <span><b style="font-size:24px;color:var(--matcha)">${c.known}</b> kann ich${active ? ' aktiv' : ''}</span></div>
           <span class="small muted">${q.src || q.l ? `Auswahl · insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
         <div class="progress" style="display:flex;height:10px"><i style="width:${pct(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pct(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
         <div class="row">${App.lessonSelect(all.filter((i) => !q.src || i.source === q.src), q.l)}
           <label class="row small" style="gap:8px"><b>${isK ? 'Kanji' : 'Wörter'} pro Runde</b><input class="input" type="number" min="3" max="100" value="${batch}" data-batch style="width:90px"></label>
           <button class="btn btn-primary" data-go ${c.unchecked ? '' : 'disabled'}>${icon('play')} Runde starten (${Math.min(batch, c.unchecked)})</button>
-          ${!c.unchecked && c.total ? '<span class="verdict ok">✓ Alles in dieser Auswahl ist eingestuft</span>' : ''}</div>
+          ${!c.unchecked && c.total ? `<span class="verdict ok">✓ ${active && !(c.learn + c.known) ? 'Noch nichts einzustufen' : 'Alles in dieser Auswahl ist eingestuft'}</span>` : ''}</div>
         ${App.sourceChips(all, q.src)}
         ${App.levelChips(q.lvl)}
-        <div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (kommt nach einigen Wochen einmal zur Kontrolle). „Lernen“ = kommt in deine Karteikarten.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>
+        ${active ? `<div class="small muted">Tipp: Tippe auf die Bedeutung, um das japanische Wort zu sehen. „Kann ich“ = weiß ich aus dem Deutschen heraus (kommt nach einigen Wochen einmal zur Kontrolle). „Lernen“ = kommt in die Karteikarten Deutsch → Japanisch. Der Lese-Lernstand bleibt davon unberührt.${c.locked ? ` ${c.locked} ${c.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} dazu, sobald du ${c.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : `<div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (kommt nach einigen Wochen einmal zur Kontrolle). „Lernen“ = kommt in deine Karteikarten.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>`}
       </div></div>
       <div data-stage style="margin-top:18px"></div></div>`;
     const bi = view.querySelector('[data-batch]');
@@ -135,19 +142,22 @@
     const stage = view.querySelector('[data-stage]');
     const go = () => {
       const n = App.clamp(+bi.value || 15, 3, 100);
-      const list = items.filter((v) => App.vocabStatus(v.id) === 'unchecked').sort(order).slice(0, n);
+      const list = items.filter((v) => statusOf(v) === 'unchecked').sort(order).slice(0, n);
       if (!list.length) return;
       view.querySelector('[data-setup]').hidden = true;
-      runBatch(stage, list, () => App.render(), type);
+      runBatch(stage, list, () => App.render(), type, active);
     };
     view.querySelector('[data-go]').onclick = go;
     if (q.auto) go();
   });
 
-  function runBatch(stage, list, onDone, type = 'vocab') {
+  // active: Vokabeln Deutsch → Japanisch – gefragt wird die Bedeutung, eingestuft der Aktiv-Stand
+  function runBatch(stage, list, onDone, type = 'vocab', active = false) {
     const decided = new Map();
     const isK = type === 'kanji';
+    const setCheck = (v, st) => App.setCheck(active ? App.writeLogic.id(v.id) : v.id, st);
     const answer = (v) => {
+      if (active) { const ex = v.examples && v.examples[0]; return `<b lang="ja" style="font-family:var(--font-jp);font-size:26px;font-weight:500">${JP.wordRuby(v)}</b>${App.levelBadge(v)}${App.accentHtml(v)}${ex ? `<div class="small muted" lang="ja">${JP.ruby(ex.jp)}</div>` : ''}`; }
       if (isK) return `<b>${App.meaningHtml(v)}</b>${App.levelBadge(v)}<div lang="ja" class="small muted">${(v.on || []).length ? 'On: ' + esc(v.on.join('、')) : ''}${(v.kun || []).length ? ' · Kun: ' + esc(v.kun.join('、')) : ''}</div>${(v.words || [])[0] ? `<div class="small muted" lang="ja">${JP.ruby(v.words[0].jp)} – ${App.meaningHtml(v.words[0])}</div>` : ''}`;
       const ex = v.examples && v.examples[0];
       return `<div lang="ja" class="muted">${v.kanji ? esc(v.kana) : ''}</div><b>${App.meaningHtml(v)}</b>${App.levelBadge(v)}${App.accentHtml(v)}${ex ? `<div class="small muted" lang="ja">${JP.ruby(ex.jp)}</div>` : ''}`;
@@ -155,7 +165,8 @@
     const row = (v, i) => {
       const d = decided.get(v.id);
       return `<div class="check-row ${d ? 'done ' + d : ''}" data-i="${i}">
-        <div class="check-word" data-reveal lang="ja" ${isK ? 'style="font-family:var(--font-kanji);font-size:48px"' : ''}>${isK ? esc(v.char) : App.askHtml(v)}</div>
+        ${active ? `<div class="check-word" data-reveal style="font-family:var(--font-ui);font-size:20px;font-weight:800">${App.meaningHtml(v)}</div>`
+        : `<div class="check-word" data-reveal lang="ja" ${isK ? 'style="font-family:var(--font-kanji);font-size:48px"' : ''}>${isK ? esc(v.char) : App.askHtml(v)}</div>`}
         <div class="check-ans" data-reveal>${d || v._shown ? answer(v) : '<span class="muted small">antippen zum Aufdecken</span>'}</div>
         <div class="check-btns">${d ? `<span class="verdict ${d === 'known' ? 'ok' : ''}" style="${d === 'learn' ? 'background:var(--ai-soft);color:var(--ai)' : ''}">${d === 'known' ? '✓ Kann ich' : '＋ Lernstapel'}</span><button class="btn btn-sm btn-ghost" data-undo>ändern</button>`
           : `<button class="btn btn-sm check-known" data-set="known">${icon('check')} Kann ich</button><button class="btn btn-sm check-learn" data-set="learn">${icon('plus')} Lernen</button>`}</div></div>`;
@@ -169,19 +180,19 @@
         <div class="row">${rest}</div></div>
         <div class="check-list">${list.map(row).join('')}</div>
         ${left ? `<div class="row" style="justify-content:flex-end;margin-top:10px">${rest}</div>` : ''}
-        ${!left ? `<div class="card row between" style="margin-top:16px"><div><b>Runde geschafft!</b> ${k} kannst du schon, ${list.length - k} kommen in den Lernstapel.</div>
-          <div class="row"><a class="btn" href="#/ueben/karten${isK ? '?type=kanji' : ''}">${icon('practice')} Lernstapel üben</a><button class="btn btn-primary" data-next>${icon('next')} Nächste Runde</button></div></div>` : ''}`;
+        ${!left ? `<div class="card row between" style="margin-top:16px"><div><b>Runde geschafft!</b> ${k} kannst du schon, ${list.length - k} kommen in den ${active ? 'Aktiv-' : ''}Lernstapel.</div>
+          <div class="row"><a class="btn" href="#/ueben/karten${isK ? '?type=kanji' : active ? '?dir=de' : ''}">${icon('practice')} Lernstapel üben</a><button class="btn btn-primary" data-next>${icon('next')} Nächste Runde</button></div></div>` : ''}`;
     };
     stage.onclick = async (e) => {
       const r = e.target.closest('.check-row');
       const all = e.target.closest('[data-all]');
-      if (all) { for (const v of list) if (!decided.has(v.id)) { decided.set(v.id, all.dataset.all); await App.setCheck(v.id, all.dataset.all); } draw(); return; }
+      if (all) { for (const v of list) if (!decided.has(v.id)) { decided.set(v.id, all.dataset.all); await setCheck(v, all.dataset.all); } draw(); return; }
       if (e.target.closest('[data-next]')) { onDone(); return; }
       if (!r) return;
       const v = list[+r.dataset.i];
       const set = e.target.closest('[data-set]');
-      if (set) { decided.set(v.id, set.dataset.set); await App.setCheck(v.id, set.dataset.set); draw(); return; }
-      if (e.target.closest('[data-undo]')) { decided.delete(v.id); await App.setCheck(v.id, 'unchecked'); draw(); return; }
+      if (set) { decided.set(v.id, set.dataset.set); await setCheck(v, set.dataset.set); draw(); return; }
+      if (e.target.closest('[data-undo]')) { decided.delete(v.id); await setCheck(v, 'unchecked'); draw(); return; }
       if (e.target.closest('[data-reveal]')) { Object.defineProperty(v, '_shown', { value: !v._shown, configurable: true, writable: true }); draw(); }
     };
     list.forEach((v) => { if (v._shown) v._shown = false; });

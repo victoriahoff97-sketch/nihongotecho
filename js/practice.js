@@ -72,11 +72,18 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const items = cardFilter(Object.assign({}, q, { type: 'kanji' })).sort(learnOrder);
     return Object.assign({ items }, W.queue(items, S.srs, Date.now()));
   };
+  // Vokabeln aktiv (Deutsch → Japanisch) haben ebenfalls einen eigenen Lernstand: neu ist, was im Aktiv-Lernstapel liegt
+  App.activeQueue = (q = {}) => {
+    const items = cardFilter(Object.assign({}, q, { type: 'vocab' })).sort(learnOrder);
+    return Object.assign({ items }, W.activeQueue(items, S.srs, Date.now(), App.needsCheck));
+  };
+  App.activeStatus = (it) => W.activeStatus(S.srs, it, App.needsCheck);
   // Kartenrichtung: bei Kanji mit Schwerpunkt Schreiben ist „Bedeutung → schreiben“ der Standard
   const cardDir = (q) => q.dir || ((q.type === 'kanji' && kanjiFocus() === 'write') ? 'de' : 'jp');
   App.cardQueue = (q = {}) => {
     const type = q.type || 'vocab';
     if (type === 'kanji' && cardDir(q) === 'de') return App.writeQueue(q);
+    if (type === 'vocab' && cardDir(q) === 'de') return App.activeQueue(q);
     const items = cardFilter(q);
     const now = Date.now();
     const due = items.filter((i) => { const s = S.srs.get(i.id); return s && s.reps > 0 && s.due <= now; }).sort((a, b) => S.srs.get(a.id).due - S.srs.get(b.id).due);
@@ -89,9 +96,10 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const sec = App.SECTIONS.practice;
     const type = q.type || 'vocab';
     const { items, due, fresh } = App.cardQueue(q);
-    const unchecked = type !== 'phrase' ? items.filter((i) => i.char !== '々' && App.vocabStatus(i.id) === 'unchecked').length : 0;
     const dir = cardDir(q), defDir = cardDir(Object.assign({}, q, { dir: '' }));
     const write = type === 'kanji' && dir === 'de';
+    const active = type === 'vocab' && dir === 'de';
+    const unchecked = type === 'phrase' ? 0 : active ? items.filter((i) => App.activeStatus(i) === 'unchecked').length : items.filter((i) => i.char !== '々' && App.vocabStatus(i.id) === 'unchecked').length;
     const allOfType = App.itemsOf(type);
     const groups = type === 'phrase' ? Array.from(new Set(allOfType.map((x) => x.group))) : [];
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/ueben">Üben</a> › Karteikarten</div>
@@ -107,11 +115,12 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         <div class="row"><button class="btn btn-primary" data-start ${due.length + fresh.length ? '' : 'disabled'}>${icon('play')} Lernen (${due.length} fällig + ${Math.min(fresh.length, S.settings.newPerDay)} neu)</button>
           <button class="btn" data-cram ${items.length ? '' : 'disabled'}>${icon('shuffle')} Zufällig üben (aus allen ${items.length})</button></div>
         ${write ? `<div class="small muted">Schreiben hat einen eigenen Lernstand: Neu sind Kanji, die du lesen kannst, aber noch nie geschrieben hast. Hier schreibst du auf Papier und drehst die Karte um – <a href="#/ueben/kanji">mit dem Stift in der App schreiben</a>.</div>` : ''}
-        ${unchecked ? `<div class="card row between" style="background:var(--yamabuki-soft);border-color:transparent;box-shadow:none"><div><b>${unchecked} ${type === 'kanji' ? 'Kanji' : type === 'grammar' ? 'Grammatikpunkte' : 'Vokabeln'} sind noch ungeprüft.</b><div class="small muted">${type === 'grammar' ? 'Neue Karten kommen nur aus deinem Lernstapel. Setze Grammatik auf „Lernstapel“ – im Unterricht behandelte landen dort automatisch.' : 'Neue Karten kommen nur aus deinem Lernstapel. Prüfe erst, was du schon kannst.'}</div></div>
-          ${type === 'grammar' ? `<a class="btn btn-sm" href="#/grammatik?${new URLSearchParams(Object.fromEntries(Object.entries({ st: 'unchecked', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v)))}">${icon('check')} Einstufen</a>` : `<a class="btn btn-sm" href="#/ueben/einstufen?${new URLSearchParams(Object.fromEntries(Object.entries({ type: type === 'kanji' ? 'kanji' : '', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v)))}">${icon('check')} Einstufen</a>`}</div>` : ''}</div></div>
+        ${active ? `<div class="small muted">Deutsch → Japanisch hat einen eigenen Lernstand, getrennt vom Lesen. Dazu kommen Wörter, sobald du sie lesen kannst – nach der Aktiv-Einstufung landet im Stapel nur, was du aus dem Deutschen heraus noch nicht weißt.</div>` : ''}
+        ${unchecked ? `<div class="card row between" style="background:var(--yamabuki-soft);border-color:transparent;box-shadow:none"><div><b>${unchecked} ${type === 'kanji' ? 'Kanji' : type === 'grammar' ? 'Grammatikpunkte' : 'Vokabeln'} sind ${active ? 'aktiv noch nicht eingestuft' : 'noch ungeprüft'}.</b><div class="small muted">${type === 'grammar' ? 'Neue Karten kommen nur aus deinem Lernstapel. Setze Grammatik auf „Lernstapel“ – im Unterricht behandelte landen dort automatisch.' : active ? 'Du kannst sie lesen – prüfe, welche du auch aus dem Deutschen heraus weißt. Neue Karten kommen nur aus dem Aktiv-Lernstapel.' : 'Neue Karten kommen nur aus deinem Lernstapel. Prüfe erst, was du schon kannst.'}</div></div>
+          ${type === 'grammar' ? `<a class="btn btn-sm" href="#/grammatik?${new URLSearchParams(Object.fromEntries(Object.entries({ st: 'unchecked', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v)))}">${icon('check')} Einstufen</a>` : `<a class="btn btn-sm" href="#/ueben/einstufen?${new URLSearchParams(Object.fromEntries(Object.entries({ type: type === 'kanji' ? 'kanji' : '', dir: active ? 'de' : '', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v)))}">${icon('check')} Einstufen</a>`}</div>` : ''}</div></div>
       <div data-stage></div></div>`;
     const stage = view.querySelector('[data-stage]');
-    const start = (queue, cram) => { view.querySelector('[data-setup]').hidden = true; runCards(stage, queue, { type, dir, cram, write }); };
+    const start = (queue, cram) => { view.querySelector('[data-setup]').hidden = true; runCards(stage, queue, { type, dir, cram, write, active }); };
     view.querySelector('[data-start]').onclick = () => start(due.concat(fresh.slice(0, S.settings.newPerDay)), false);
     view.querySelector('[data-cram]').onclick = () => start(App.shuffle(items).slice(0, 60), true);
     if (q.auto) view.querySelector('[data-start]').click();
@@ -148,7 +157,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     else d = s.ivl * (g === 1 ? 1.2 : g === 2 ? s.ease : s.ease * 1.3);
     return d < 1 ? '12 Std' : d < 30 ? Math.round(d) + ' T' : Math.round(d / 30) + ' Mon';
   };
-  function runCards(stage, queue, { dir, cram, write }) {
+  // write/active: eigener Lernstand unter „w:<Id>“ (Kanji schreiben · Vokabeln Deutsch → Japanisch)
+  function runCards(stage, queue, { dir, cram, write, active }) {
     queue = queue.slice();
     const total = queue.length;
     let done = 0, right = 0, flipped = false, cur = null;
@@ -165,7 +175,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       stage.innerHTML = `<div class="flash-stage ${App.furiClass()}"><div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${cram ? ' · freies Üben' : ''}</span><span>${App.srcBadge(cur)}</span></div>
         <div class="progress" style="margin-bottom:14px"><i style="width:${(done / Math.max(1, total)) * 100}%"></i></div>
         <div class="flash" data-flip>${f.front}<div class="back" hidden>${f.back}</div><span class="tap-hint">Tippen oder Leertaste zum Umdrehen</span></div>
-        <div class="grade-row" hidden>${[['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, write)}</small></button>`).join('')}</div>
+        <div class="grade-row" hidden>${[['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, write || active)}</small></button>`).join('')}</div>
         <div class="row" style="justify-content:center;margin-top:10px"><a class="btn btn-sm btn-ghost" href="${App.link(cur)}" target="_blank">${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}</div></div>`;
     };
     const flip = () => {
@@ -177,7 +187,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     };
     const grade = async (g) => {
       if (!flipped) return;
-      await (write ? App.gradeWrite(cur.id, g) : App.grade(cur.id, g));
+      await (write ? App.gradeWrite(cur.id, g) : App.grade(active ? W.id(cur.id) : cur.id, g));
       done++; if (g > 0) right++;
       if (g === 0) queue.splice(Math.min(3, queue.length), 0, cur);
       next();
