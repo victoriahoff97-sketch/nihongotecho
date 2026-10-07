@@ -853,3 +853,29 @@ details.adv[open] summary { margin-bottom: 12px; }
 .pitch-alt { font-size: 13px; color: var(--muted); font-family: var(--font-ui); }
 .flash .pitch, .check-ans .pitch { display: flex; margin-top: 6px; }
 .flash .pitch { justify-content: center; }
+
+/* ---------- Lernlandkarte: Formen als Streckenplan ---------- */
+.fm-card { padding: 10px 12px; }
+.fm-scroll { overflow-x: auto; }
+.fm-svg { display: block; width: 100%; min-width: 620px; max-width: 900px; margin: 0 auto; height: auto; }
+.fm-track { fill: none; stroke-width: 5; stroke-linecap: round; }
+.fm-track.ahead { stroke-dasharray: .1 11; opacity: .7; }
+.fm-station { cursor: pointer; outline: none; }
+.fm-hit { fill: transparent; }
+.fm-station:hover .fm-hit, .fm-station:focus-visible .fm-hit { fill: var(--paper-2); }
+.fm-dot { fill: var(--card); stroke: var(--line-2); stroke-width: 2.5; }
+.fm-station.done .fm-dot { fill: var(--c); stroke: var(--c); }
+.fm-station.next .fm-dot { fill: var(--yamabuki-soft); stroke: var(--yamabuki); stroke-width: 3; }
+.fm-check { fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.fm-name { font-family: var(--font-ui); font-size: 14px; font-weight: 800; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+.fm-ex { font-family: var(--font-jp); font-size: 13px; fill: var(--muted); text-anchor: middle; dominant-baseline: central; }
+.fm-station.later .fm-name { fill: var(--muted); font-weight: 700; }
+.fm-legend { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 14px; }
+.fm-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.fm-badge { vertical-align: middle; margin-left: 6px; font-family: var(--font-ui); }
+.fm-badge.done { background: var(--matcha-soft); color: var(--matcha); }
+.fm-badge.next { background: var(--yamabuki-soft); color: var(--yamabuki); }
+.fm-rows { display: grid; gap: 8px; }
+.fm-row { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--card-2); border: 1px solid var(--line); }
+.fm-row .jp { font-family: var(--font-jp); font-size: 19px; }
+.fm-arrow { color: var(--muted); }

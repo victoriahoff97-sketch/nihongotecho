@@ -138,9 +138,12 @@
       case 'teimasu': return b.te + 'います';
       case 'teimashita': return b.te + 'いました';
       case 'tai': return b.stem + 'たいです';
+      case 'taiplain': return b.stem + 'たい';
       case 'nai': return b.nai;
       case 'ta': return b.ta;
+      case 'tari': return b.ta + 'り';
       case 'nakatta': return naiStem + 'かった';
+      case 'naide': return b.nai + 'で';
       default: return dict;
     }
   }
@@ -163,12 +166,12 @@
     const conjStr = (s) => {
       if (!isI) {
         const b = s.replace(/な$/, '');
-        return { attr: b + 'な', desu: b + 'です', neg: b + 'じゃないです', past: b + 'でした', pastneg: b + 'じゃなかったです', te: b + 'で', plain: b }[form] ?? b;
+        return { attr: b + 'な', desu: b + 'です', neg: b + 'じゃないです', past: b + 'でした', pastneg: b + 'じゃなかったです', te: b + 'で', plain: b, negp: b + 'じゃない', pastp: b + 'だった', pastnegp: b + 'じゃなかった' }[form] ?? b;
       }
       let st = s.slice(0, -1);
       if (/いい$/.test(s)) st = s.slice(0, -2) + 'よ';
       if (/良い$/.test(s)) st = s.slice(0, -1);
-      return { attr: s, desu: s + 'です', neg: st + 'くないです', past: st + 'かったです', pastneg: st + 'くなかったです', te: st + 'くて', plain: s }[form] ?? s;
+      return { attr: s, desu: s + 'です', neg: st + 'くないです', past: st + 'かったです', pastneg: st + 'くなかったです', te: st + 'くて', plain: s, negp: st + 'くない', pastp: st + 'かった', pastnegp: st + 'くなかった' }[form] ?? s;
     };
     const kana = conjStr(it.kana);
     if (!it.kanji) return kana;

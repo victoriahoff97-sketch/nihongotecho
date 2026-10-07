@@ -226,6 +226,7 @@ window.App = window.App || {};
     sources: App.DEFAULT_SOURCES, penOnly: true, ttsRate: 0.9, newPerDay: 15, checkBatch: 15, sidebarCollapsed: false,
     kanjiFocus: 'both', // Kanji-Schwerpunkt: both | read | write
     furiKnown: 'hide', // Furigana in der Abfrage über Kanji, die man lesen kann: hide | show
+    formsKnown: [], // Lernlandkarte: abgehakte Formen (Kennungen aus js/formmap-logic.js)
   };
 
   App.onChange = (fn) => S.listeners.add(fn);

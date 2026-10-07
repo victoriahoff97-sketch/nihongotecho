@@ -1,4 +1,4 @@
-/* Nihongo Techō – Unterricht (VHS-Kurs): Stunden, Mitschrift, Material, Hausaufgaben, Zusammenfassung, Lernlandkarte */
+/* Nihongo Techō – Unterricht (VHS-Kurs): Stunden, Mitschrift, Material, Hausaufgaben, Zusammenfassung */
 'use strict';
 (function (App) {
   const { $, $$, esc, icon } = App;
@@ -215,23 +215,4 @@ Vokabeln: ${v.map((x) => `${x.kanji || x.kana} (${x.kana}) = ${App.meaning(x).te
 Meine Mitschrift:
 ${d.innerText.trim() || '–'}`;
   };
-
-  // ---------- Lernlandkarte ----------
-  App.route('/karte', (view, p, q) => {
-    const all = App.itemsOf('grammar').sort((a, b) => (a.source || '').localeCompare(b.source || '') || (+a.lesson || 0) - (+b.lesson || 0));
-    let gs = all;
-    if (q.src) gs = gs.filter((x) => x.source === q.src);
-    if (q.only) gs = gs.filter((x) => App.sessionsFor(x.id).length);
-    const ss = sessions().slice().reverse();
-    view.innerHTML = `<div class="sec-grammar"><div class="page-head"><div class="titles"><h1>Lernlandkarte <span class="jp-title">地図</span></h1><p>Welches Grammatikthema hast du wo gelernt? Buchlektion, Unterrichtsstunde und Lernstand auf einen Blick.</p></div></div>
-      ${ss.length ? `<div class="section-title">Stunden im Überblick</div><div class="grid cols-3">${ss.map((s) => `<a class="card sec-session" href="${App.link(s)}?tab=summary" style="text-decoration:none"><div class="row between"><b>${esc(sessionTitle(s))}</b><span class="small muted">${App.fmtDate(s.date)}</span></div>
-        <div class="row" style="gap:6px;margin-top:8px">${(s.grammarIds || []).map(App.item).filter(Boolean).map((x) => `<span class="badge" style="background:var(--ai-soft);color:var(--ai)">${esc(x.title)}</span>`).join('') || '<span class="small muted">keine Grammatik verknüpft</span>'}</div></a>`).join('')}</div>` : ''}
-      <div class="section-title">Grammatik → Stunden</div>
-      <div class="toolbar"><button class="chip ${q.only ? 'on' : ''}" data-q-only="${q.only ? '' : '1'}">Nur im Unterricht behandelte</button></div>
-      ${App.sourceChips(all, q.src)}
-      <table class="map-table" style="margin-top:14px"><thead><tr><th>Lektion</th><th>Grammatik</th><th>Im Unterricht</th><th>Beispiele</th></tr></thead><tbody>
-      ${gs.map((x) => { const se = App.sessionsFor(x.id); return `<tr><td>${App.srcBadge(x)}</td><td><a href="${App.link(x)}"><b>${esc(x.title)}</b><div class="jp" lang="ja">${JP.ruby(x.jp || '')}</div></a></td>
-        <td>${se.map((s) => `<a class="badge" style="background:var(--shu-soft);color:var(--shu)" href="${App.link(s)}">${esc(s.number ? 'Std. ' + s.number : s.title)} · ${App.fmtDate(s.date)}</a>`).join(' ') || '<span class="muted small">–</span>'}</td>
-        <td class="small muted">${(x.examples || []).length}</td></tr>`; }).join('')}</tbody></table></div>`;
-  });
 })(window.App);

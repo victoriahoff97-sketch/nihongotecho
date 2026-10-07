@@ -28,8 +28,7 @@
       const [ic, label, href, cls, jp] = n;
       const base = href.slice(1);
       const active = base === '/' ? path === '/' : path === base || path.startsWith(base + '/');
-      const extra = ic === 'practice' && due ? `<span class="badge count">${due}</span>`
-        : ic === 'library' && App.store.files.size ? `<span class="badge">${App.store.files.size}</span>` : `<span class="jp-mini">${jp}</span>`;
+      const extra = ic === 'practice' && due ? `<span class="badge count">${due}</span>` : `<span class="jp-mini">${jp}</span>`;
       return `<a class="nav-link ${cls} ${active ? 'active' : ''}" href="${href}" title="${label}"><span class="dot">${icon(ic)}</span><span class="lbl">${label}</span>${extra}</a>`;
     }).join('');
   };
