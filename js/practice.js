@@ -362,7 +362,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <span><b style="font-size:22px;color:var(--matcha)">${wc.known}</b> kann ich schreiben</span>
           <span><b style="font-size:22px;color:var(--ai)">${wc.learn}</b> übe ich</span>
           <span><b style="font-size:22px;color:var(--muted)">${wc.new}</b> noch nie geschrieben</span></div>
-        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: auf Anhieb richtig → erst in 3 Wochen wieder. Was du sicher schreiben kannst, nimmst du dort mit „Kann ich schon“ direkt aus der Runde.${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>.` : ''}</div>` : ''}</div>
+        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: Nach dem Auflösen wählst du „Falsch“, „Richtig, weiter üben“ (bleibt im Übungsstapel) oder „Richtig, kann ich“ (erst in 3 Wochen wieder). Was du sicher schreiben kannst, nimmst du mit „Kann ich schon“ ohne Schreiben aus der Runde.${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>.` : ''}</div>` : ''}</div>
       <div data-stage style="margin-top:16px"></div></div>`;
     const run = (queue) => { view.querySelector('[data-setup]').hidden = true; runKanjiQuiz(view.querySelector('[data-stage]'), pool, mode, queue); };
     view.querySelector('[data-go]').onclick = () => run();
@@ -392,7 +392,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false });
         stage.querySelector('[data-show]').onclick = () => {
           App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
-          stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · wieder in ${ivlLabel(cur.id, 0, true)}</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig · wieder in ${ivlLabel(cur.id, 2, true)}</button><a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
+          stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · wieder in ${ivlLabel(cur.id, 0, true)}</button>${W.isFirst(S.srs, cur.id) ? `<button class="btn" style="background:var(--ai-soft)" data-r="2" data-keep>✓ Richtig, weiter üben · wieder in 1 T</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig, kann ich · wieder in 3 Wo</button>` : `<button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig · wieder in ${ivlLabel(cur.id, 2, true)}</button>`}<a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
         };
       } else {
         const correct = mode === 'reading' ? JP.kana(cur.w.jp) : App.meaning(cur).text;
@@ -418,7 +418,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         stage.removeEventListener('click', h);
         const known = b.dataset.r === 'known'; // erster Versuch übersprungen: „Kann ich schon“
         const g = known ? 2 : +b.dataset.r; if (g) score++;
-        await (known ? App.markWriteKnown(cur.id) : App.gradeWrite(cur.id, g));
+        await (known ? App.markWriteKnown(cur.id) : App.gradeWrite(cur.id, g, { keep: 'keep' in b.dataset }));
         if (queue && !g) qs.splice(Math.min(i + 4, qs.length), 0, cur);
         i++; next();
       });

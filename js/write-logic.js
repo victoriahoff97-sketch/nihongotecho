@@ -62,9 +62,10 @@
   };
 
   // Bewertung eines Schreibversuchs (g: 0 falsch … 3 leicht) – braucht den Speicher der App
-  App.gradeWrite = async (id, g) => {
+  // keep: beim ersten Versuch richtig, soll aber trotzdem in den Übungsstapel (normaler Plan statt 3 Wochen)
+  App.gradeWrite = async (id, g, { keep = false } = {}) => {
     const S = App.store;
-    if (W.isFirst(S.srs, id) && g >= 2) {
+    if (W.isFirst(S.srs, id) && g >= 2 && !keep) {
       const s = W.firstKnown(id, Date.now());
       S.srs.set(s.id, s);
       await App.db.put('srs', s);
