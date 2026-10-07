@@ -225,6 +225,8 @@ window.App = window.App || {};
     name: '', theme: 'auto', furigana: 'on', course: 'VHS Japanisch A1', level: 12,
     sources: App.DEFAULT_SOURCES, penOnly: true, ttsRate: 0.9, newPerDay: 15, checkBatch: 15, sidebarCollapsed: false,
     kanjiFocus: 'both', // Kanji-Schwerpunkt: both | read | write
+    writeSource: 'all', // woher neue Schreib-Kanji kommen: all | genki | n5 | wk
+    wkLevels: [],       // freigeschaltete WaniKani-Level
     furiKnown: 'hide', // Furigana in der Abfrage über Kanji, die man lesen kann: hide | show
     formsKnown: [], // Lernlandkarte: abgehakte Formen (Kennungen aus js/formmap-logic.js)
   };
@@ -251,7 +253,7 @@ window.App = window.App || {};
     if (!it.id) it.id = uid(it.type[0]);
     if (!it.created) it.created = now;
     it.updated = now;
-    if (it._seed || it._pack) it._edited = true; // Nutzeränderung: Seed-/Paket-Updates überschreiben den Eintrag nicht mehr
+    if (it._seed || it._pack || it._wk) it._edited = true; // Nutzeränderung: Seed-/Paket-Updates überschreiben den Eintrag nicht mehr (_wk: wird nicht mehr automatisch entfernt)
     if ((it.type === 'vocab' || it.type === 'kanji') && !it.levelManual && App.levelFor) it.level = App.levelFor(it);
     S.items.set(it.id, it);
     await App.db.put('items', it);
@@ -487,6 +489,8 @@ window.App = window.App || {};
     App.DEFAULT_SOURCES.forEach((d) => { if (!S.settings.sources.some((s) => s.name === d.name)) S.settings.sources.push(d); });
     // Genki-Daten (nur Web-Version): schon freigeschaltet? Ein Fehler hier darf den Start nie verhindern
     if (App.genki) { try { await App.genki.loadIfOpen(); } catch (e) { console.error('Genki: Laden fehlgeschlagen', e); } }
+    // WaniKani-Verbindung (nur lokal): ein Fehler hier darf den Start nie verhindern
+    if (App.wk) { try { await App.wk.load(); } catch (e) { console.error('WaniKani: Laden fehlgeschlagen', e); } }
     await seed();
     await applyJlptIndexOnce();
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* egal */ }

@@ -183,7 +183,7 @@
         <a href="#/kanji?mark=${encodeURIComponent(App.MARK_CLASS)}" style="text-decoration:none"><b style="font-size:26px;color:var(--shu)">${inClass}</b> im Unterricht</a></div>
         ${c.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?type=kanji&auto=1">${icon('check')} Nächste ${Math.min(c.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}</div>
         <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
-        ${(() => { if (focus === 'read') return ''; const w = App.writeLogic.counts(wq.items, S.srs); const todo = wq.due.length + wq.fresh.length; return `<div class="row between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div class="row" style="gap:22px"><b>Schreiben</b>
+        ${(() => { if (focus === 'read') return ''; const w = App.writeLogic.counts(wq.items, S.srs, wq.unlocked); const todo = wq.due.length + wq.fresh.length; return `<div class="row between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div class="row" style="gap:22px"><b>Schreiben</b>
           <span><b style="font-size:20px;color:var(--matcha)">${w.known}</b> kann ich</span>
           <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>

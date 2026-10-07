@@ -146,8 +146,9 @@
     // Schreib-Stand: eigener Lernstand, entsteht beim Schreiben im Kanji-Quiz
     const wst = () => {
       const W = App.writeLogic, ws = App.srsOf(W.id(it.id));
-      const st = W.STATUS[!ws && !W.unlocked(S.srs, it.id) ? 'locked' : W.status(S.srs, it.id)];
-      view.querySelector('[data-wst]').innerHTML = `<span class="badge vst" style="color:${st.color}">${st.dot} ${st.label}</span> <span class="small muted">${W.isMarkedKnown(S.srs, it.id) ? 'als gelernt eingestuft – wird nicht mehr abgefragt' : W.isKnown(ws) ? 'gelernt – wird nicht mehr abgefragt' : ws ? `nächste Wiederholung ${App.fmtDate(ws.due)}` : st === W.STATUS.locked ? 'kommt dran, sobald du es lesen kannst' : 'kommt beim nächsten „Schreiben lernen“ dran'}</span>${ws ? ' <button class="btn btn-sm btn-ghost" data-wreset title="Schreib-Stand löschen – das Kanji kommt wieder neu in die Schreib-Runde">zurücksetzen</button>' : ''}`;
+      const why = ws ? '' : App.writeWhy(it), wi = App.wk.info(it.char);
+      const st = W.STATUS[why ? 'locked' : W.status(S.srs, it.id)];
+      view.querySelector('[data-wst]').innerHTML = `<span class="badge vst" style="color:${st.color}">${st.dot} ${st.label}</span> <span class="small muted">${W.isMarkedKnown(S.srs, it.id) ? 'als gelernt eingestuft – wird nicht mehr abgefragt' : W.isKnown(ws) ? 'gelernt – wird nicht mehr abgefragt' : ws ? `nächste Wiederholung ${App.fmtDate(ws.due)}` : why || 'kommt beim nächsten „Schreiben lernen“ dran'}</span>${wi ? ` <span class="small muted">· WaniKani Level ${wi.level}, ${esc(wi.name)}</span>` : ''}${ws ? ' <button class="btn btn-sm btn-ghost" data-wreset title="Schreib-Stand löschen – das Kanji kommt wieder neu in die Schreib-Runde">zurücksetzen</button>' : ''}`;
       const rs = view.querySelector('[data-wreset]');
       if (rs) rs.onclick = async () => { await App.resetWrite(it.id); wst(); App.toast('Schreib-Stand zurückgesetzt'); };
     };
@@ -215,7 +216,8 @@
     let items = Array.from(S.items.values()).filter((i) => !i._seed || i._edited || (!share && (S.srs.has(i.id) || S.srs.has('w:' + i.id) || i.star)));
     if (share) {
       // unberührte Paket-Einträge nicht teilen – Freunde schalten das Paket selbst frei
-      items = Array.from(S.items.values()).filter((i) => (!i._seed || i._edited) && !(i._pack && !i._edited));
+      // ebenso unbearbeitete, aus WaniKani angelegte Kanji (Inhalte stammen von dort)
+      items = Array.from(S.items.values()).filter((i) => (!i._seed || i._edited) && !(i._pack && !i._edited) && !(i._wk && !i._edited));
       if (sections) {
         // „Anwenden“ steht als ein Chip für die drei zugrunde liegenden Typen
         if (sections.includes('apply')) sections = sections.concat(App.APPLY_TYPES);
@@ -281,6 +283,31 @@
     return { n, nf };
   };
 
+  // Karte „Kanji schreiben“: Quelle der Schreib-Runde, WaniKani-Verbindung, Level einzeln freischalten
+  const wkCard = () => {
+    const wk = App.wk, K = App.wkLogic, src = App.writeSource(), con = wk.connected(), on = wk.levels();
+    const ids = new Map(App.itemsOf('kanji').map((k) => [k.char, k.id]));
+    const hint = src !== 'wk' ? '' : !con ? 'Erst WaniKani verbinden – bis dahin kommen keine neuen Kanji dazu.' : !on.length ? 'Schalte unten mindestens ein Level frei.' : '';
+    const rows = !con ? '' : Array.from({ length: (wk.state.user || {}).level || 0 }, (_, i) => i + 1).map((l) => {
+      const c = K.levelStats(wk.state, l, (ch) => ids.has(ch), (ch) => S.srs.has('w:' + ids.get(ch)));
+      const isOn = on.includes(l);
+      return `<label class="row wk-level"><input type="checkbox" data-wk-level="${l}" ${isOn ? 'checked' : ''}><b>Level ${l}</b><span class="small muted grow">${c.total} Kanji · ${c.ready} ab Master</span><span class="small muted">${isOn ? c.written + ' geschrieben' : c.fresh ? c.fresh + ' neu in der App' : ''}</span></label>`;
+    }).join('');
+    return `<div class="card" data-wk-card><h3>Kanji schreiben</h3>
+      <div class="field"><label>Welche Kanji kommen neu zum Schreiben dran</label>
+        <div class="seg" style="flex-wrap:wrap">${[['genki', 'Genki'], ['n5', 'JLPT N5'], ['wk', 'WaniKani'], ['all', 'Alles zusammen']].map(([k, l]) => `<button class="${src === k ? 'on' : ''}" data-wsrc="${k}">${l}</button>`).join('')}</div>
+        <p class="muted small" style="margin:6px 0 0">Gilt nur für einzelne Kanji, nicht für Vokabeln. Jedes Kanji kommt nur einmal dran, auch wenn es in mehreren Quellen steht. Was du schon schreibst, bleibt in der Wiederholung.</p>
+        ${hint ? `<p class="small" style="margin:6px 0 0;color:var(--shu)">${hint}</p>` : ''}</div>
+      <div class="field" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><label>WaniKani ${con ? `<span class="badge" style="color:var(--matcha)">● Verbunden · Level ${wk.state.user.level}</span>` : ''}</label>
+      ${con ? `<p class="muted small" style="margin:0 0 8px">${esc(wk.state.user.username || '')} · zuletzt abgeglichen: ${new Date(wk.state.syncedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })}. Zum Schreiben kommen Kanji ab Stufe Master aus den Leveln, die du hier einschaltest.</p>
+        <div class="row"><button class="btn btn-sm" data-wk-sync>Abgleichen</button><button class="btn btn-sm btn-ghost" data-wk-off>Verbindung trennen</button></div>
+        <p class="small" data-wk-msg style="margin:6px 0 0;color:var(--shu)"></p>
+        <div class="wk-levels">${rows}</div>`
+    : `<p class="muted small" style="margin:0 0 8px">Lernst du Kanji bei WaniKani lesen? Dann kannst du sie hier Level für Level schreiben üben. Erstelle bei WaniKani unter <a href="https://www.wanikani.com/settings/personal_access_tokens" target="_blank" rel="noopener">Settings → API Tokens</a> einen Schlüssel (Lesezugriff genügt) und trage ihn hier ein. Er bleibt auf diesem Gerät und kommt in kein Backup.</p>
+        <div class="row"><input class="input grow" type="password" autocomplete="off" placeholder="WaniKani-Schlüssel" data-wk-token><button class="btn btn-sm btn-primary" data-wk-connect>Verbinden</button></div>
+        <p class="small" data-wk-msg style="margin:6px 0 0;color:var(--shu)"></p>`}</div></div>`;
+  };
+
   App.route('/einstellungen', (view) => {
     const st = S.settings;
     view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Einstellungen <span class="jp-title">設定</span></h1><p>Persönliches, Quellen, Sicherung und Teilen mit Freunden.</p></div></div>
@@ -297,6 +324,7 @@
         <div class="two">
         <div class="field"><label>Sprechtempo <small>${st.ttsRate}</small></label><div class="row"><input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}" class="grow">${App.speakBtn('こんにちは、日本語を勉強しています。')}</div></div></div>
       </div></div>
+      ${wkCard()}
       <div class="card"><h3>Quellen</h3><p class="muted small">Damit du deine Inhalte nach Buch, App oder Kurs filtern kannst (z. B. nur Genki-Vokabeln).</p>
         <div class="stack" data-srcs style="gap:6px">${st.sources.map((s, i) => `<div class="row"><input type="color" value="${s.color}" data-sc="${i}" style="width:44px;height:40px;border:0;background:none"><input class="input grow" value="${esc(s.name)}" data-sn="${i}"><button class="icon-btn sm" data-sd="${i}">${icon('trash')}</button></div>`).join('')}</div>
         <button class="btn btn-sm" style="margin-top:10px" data-sadd>${icon('plus')} Quelle hinzufügen</button></div>
@@ -324,6 +352,8 @@
       const sc = e.target.closest('[data-sc]');
       if (sc) { st.sources[+sc.dataset.sc].color = sc.value; await App.saveSettings({}); }
       const ch = e.target.closest('.chip input'); if (ch) ch.parentElement.classList.toggle('on', ch.checked);
+      const lv = e.target.closest('[data-wk-level]');
+      if (lv) { await App.wk.setLevel(+lv.dataset.wkLevel, lv.checked); App.toast(`WaniKani Level ${lv.dataset.wkLevel} ${lv.checked ? 'freigeschaltet' : 'ausgeschaltet'}`); App.render(true); }
       const imp = e.target.closest('[data-imp]');
       if (imp && imp.files[0]) { try { const r = await App.importData(imp.files[0]); App.toast(`Importiert: ${r.n} Einträge, ${r.nf} Dateien`); App.render(); } catch (er) { App.toast('Import fehlgeschlagen: ' + er.message); } }
     });
@@ -333,6 +363,15 @@
       if (b.matches('[data-sd]')) { const s = st.sources[+b.dataset.sd]; if (await App.confirm(`Quelle „${s.name}“ aus der Liste entfernen? Einträge behalten ihre Quelle.`, { ok: 'Entfernen' })) { st.sources.splice(+b.dataset.sd, 1); await App.saveSettings({}); App.render(true); } }
       if (b.matches('[data-exp]')) App.exportData({ withFiles: true });
       if (b.matches('[data-exp-light]')) App.exportData({ withFiles: false });
+      if (b.matches('[data-wsrc]')) { await App.saveSettings({ writeSource: b.dataset.wsrc }); App.render(true); }
+      if (b.matches('[data-wk-connect], [data-wk-sync]')) {
+        const msg = view.querySelector('[data-wk-msg]'), inp = view.querySelector('[data-wk-token]');
+        if (inp && !inp.value.trim()) { msg.textContent = 'Trag zuerst deinen Schlüssel ein.'; return; }
+        b.disabled = true; msg.textContent = 'Abgleich läuft …';
+        try { await (inp ? App.wk.connect(inp.value) : App.wk.sync()); App.toast('WaniKani abgeglichen'); App.render(true); }
+        catch (er) { b.disabled = false; msg.textContent = er.code ? er.message : App.wk.MSG.other; if (!er.code) console.error(er); }
+      }
+      if (b.matches('[data-wk-off]') && await App.confirm('WaniKani-Verbindung trennen? Der Schlüssel und die abgerufenen Daten werden von diesem Gerät gelöscht. Kanji, die du schon schreibst, bleiben erhalten.', { ok: 'Trennen', title: 'Verbindung trennen' })) { await App.wk.disconnect(); App.toast('WaniKani getrennt'); App.render(true); }
       if (b.matches('[data-share]')) {
         const sections = $$('[data-share-sec] input:checked', view).map((x) => x.value);
         const sources = $$('[data-share-src] input:checked', view).map((x) => x.value);

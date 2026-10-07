@@ -67,10 +67,30 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   };
   // Lernrunde einer Auswahl: fällige Karten (älteste zuerst) + neue Karten in Lernreihenfolge. Auch für die Kacheln der Startseite.
   const learnOrder = (a, b) => (lessonNum(a) ?? 99) - (lessonNum(b) ?? 99) || App.ord(a) - App.ord(b);
-  // Kanji schreiben hat einen eigenen Lernstand: fällig nach dem Schreib-Plan, neu = lesen kann ich, geschrieben noch nie
+  // Kanji schreiben hat einen eigenen Lernstand: fällig nach dem Schreib-Plan, neu = freigeschaltet, geschrieben noch nie.
+  // Woher die neuen kommen, steht in den Einstellungen (Genki · JLPT N5 · WaniKani · alles zusammen); ein ausdrücklicher
+  // Filter der Ansicht (Quelle, Lektion, Niveau …) geht vor. Gilt nur für einzelne Kanji – Vokabeln sind nie betroffen.
+  const WK = App.wkLogic;
+  const wkCtx = () => ({ state: App.wk.state, wkLevels: S.settings.wkLevels || [], isN5: (it) => App.levelMatch(it, 'N5') });
+  const readUnlocked = (it) => W.unlocked(S.srs, it.id);
+  App.writeSource = () => (WK.SOURCES.includes(S.settings.writeSource) ? S.settings.writeSource : 'all');
+  App.writeUnlocked = (it, source = 'all') => WK.unlocked(source, it, wkCtx(), readUnlocked);
+  // Warum ein Kanji noch nicht zum Schreiben drankommt ('' = es kommt dran) – für die Kanji-Seite
+  App.writeWhy = (it) => {
+    const src = App.writeSource(), ctx = wkCtx(), wi = App.wk.info(it.char);
+    if (!WK.inSource(src, it, ctx)) return src === 'wk' ? 'gehört zu keinem freigeschalteten WaniKani-Level' : 'gehört nicht zur Quelle, die in den Einstellungen fürs Schreiben gewählt ist';
+    if (WK.unlocked(src, it, ctx, readUnlocked)) return '';
+    const master = wi && wi.on ? `sobald es bei WaniKani Master ist (jetzt: ${wi.name})` : '';
+    return 'kommt dran, ' + (src === 'wk' ? master : master ? 'sobald du es lesen kannst oder ' + master : 'sobald du es lesen kannst');
+  };
   App.writeQueue = (q = {}) => {
-    const items = cardFilter(Object.assign({}, q, { type: 'kanji' })).sort(learnOrder);
-    return Object.assign({ items }, W.queue(items, S.srs, Date.now()));
+    const filtered = ['src', 'l', 'g', 'star', 'mark', 'lvl'].some((k) => q[k]);
+    const source = filtered ? 'all' : App.writeSource();
+    const ctx = wkCtx();
+    const all = cardFilter(Object.assign({}, q, { type: 'kanji' }));
+    const items = all.filter((i) => WK.inSource(source, i, ctx)).sort(WK.compare(source, ctx, learnOrder));
+    const unlocked = (i) => WK.unlocked(source, i, ctx, readUnlocked);
+    return Object.assign({ items, unlocked }, W.queue(items, S.srs, Date.now(), unlocked, all));
   };
   // Vokabeln aktiv (Deutsch → Japanisch) haben ebenfalls einen eigenen Lernstand: neu ist, was im Aktiv-Lernstapel liegt
   App.activeQueue = (q = {}) => {
@@ -356,7 +376,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const mode = q.mode || defMode;
     // Schreiben mit Lernstand: unabhängig vom Niveau-Filter, denn neu sind nur Kanji, die du schon lesen kannst
     const wq = App.writeQueue({ l: q.l });
-    const wc = W.counts(wq.items, S.srs);
+    const wc = W.counts(wq.items, S.srs, wq.unlocked);
     const wNew = Math.min(wq.fresh.length, S.settings.newPerDay);
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/ueben">Üben</a> › Kanji-Quiz</div>
       <div class="page-head"><div class="titles"><h1>Kanji-Quiz <span class="jp-title">書</span></h1><p>${pool.length} Kanji in der Auswahl</p></div></div>

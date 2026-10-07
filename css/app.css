@@ -879,3 +879,9 @@ details.adv[open] summary { margin-bottom: 12px; }
 .fm-row { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--card-2); border: 1px solid var(--line); }
 .fm-row .jp { font-family: var(--font-jp); font-size: 19px; }
 .fm-arrow { color: var(--muted); }
+
+/* Einstellungen: WaniKani-Level einzeln freischalten */
+.wk-levels { margin-top: 10px; max-height: 320px; overflow-y: auto; border-top: 1px solid var(--line); }
+.wk-level { gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.wk-level b { min-width: 68px; }
+.wk-level input { width: 20px; height: 20px; flex: none; }

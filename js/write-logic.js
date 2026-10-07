@@ -40,15 +40,20 @@
   W.markedKnown = (id, now) => ({ id: W.id(id), check: 'known', ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: now, last: now, checked: now });
 
   // Schreib-Runde: fällige (älteste zuerst) + neue = freigeschaltet, aber noch nie geschrieben (Reihenfolge der Liste)
-  W.queue = (items, srs, now) => {
+  // unlockedFn(item): eigene Freischalt-Regel (z. B. WaniKani ab Master); ohne sie gilt „kann ich lesen“.
+  // dueItems: woraus die fälligen kommen, wenn die Liste der neuen enger ist (Quelle in den Einstellungen) –
+  // Begonnenes bleibt fällig, auch wenn es nicht zur gewählten Quelle gehört
+  W.queue = (items, srs, now, unlockedFn, dueItems) => {
     const rec = (i) => srs.get(W.id(i.id));
-    const due = items.filter((i) => { const s = rec(i); return s && !W.isKnown(s) && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
-    const fresh = items.filter((i) => !rec(i) && W.unlocked(srs, i.id));
+    const ok = unlockedFn || ((i) => W.unlocked(srs, i.id));
+    const due = (dueItems || items).filter((i) => { const s = rec(i); return s && !W.isKnown(s) && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
+    const fresh = items.filter((i) => !rec(i) && ok(i));
     return { due, fresh };
   };
-  W.counts = (items, srs) => {
+  W.counts = (items, srs, unlockedFn) => {
+    const ok = unlockedFn || ((i) => W.unlocked(srs, i.id));
     const c = { locked: 0, new: 0, learn: 0, known: 0, total: items.length };
-    items.forEach((i) => { const st = W.status(srs, i.id); c[st === 'new' && !W.unlocked(srs, i.id) ? 'locked' : st]++; });
+    items.forEach((i) => { const st = W.status(srs, i.id); c[st === 'new' && !ok(i) ? 'locked' : st]++; });
     return c;
   };
 
