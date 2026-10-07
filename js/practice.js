@@ -144,7 +144,6 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const s = S.srs.get(write ? W.id(id) : id) || { ivl: 0, ease: 2.5, reps: 0 };
     let d;
     if (g === 0) return '10 Min';
-    if (write && g >= 2 && W.isFirst(S.srs, id)) return '3 Wo'; // erster Schreibversuch = Einstufung
     if (s.reps === 0) d = g === 1 ? 0.5 : g === 2 ? 1 : 4;
     else if (s.reps === 1) d = g === 1 ? 2 : g === 2 ? 3 : 6;
     else d = s.ivl * (g === 1 ? 1.2 : g === 2 ? s.ease : s.ease * 1.3);
@@ -362,7 +361,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <span><b style="font-size:22px;color:var(--matcha)">${wc.known}</b> kann ich schreiben</span>
           <span><b style="font-size:22px;color:var(--ai)">${wc.learn}</b> übe ich</span>
           <span><b style="font-size:22px;color:var(--muted)">${wc.new}</b> noch nie geschrieben</span></div>
-        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: Nach dem Auflösen wählst du „Falsch“, „Richtig, weiter üben“ (bleibt im Übungsstapel) oder „Richtig, kann ich“ (erst in 3 Wochen wieder). Was du sicher schreiben kannst, nimmst du mit „Kann ich schon“ ohne Schreiben aus der Runde.${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>.` : ''}</div>` : ''}</div>
+        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: Erst schreiben und auflösen, dann „Falsch“, „Richtig“ (kommt in den Übungsstapel) oder „Kann ich schon“ (gilt als gelernt und wird beim Schreiben nicht mehr abgefragt).${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>.` : ''}</div>` : ''}</div>
       <div data-stage style="margin-top:16px"></div></div>`;
     const run = (queue) => { view.querySelector('[data-setup]').hidden = true; runKanjiQuiz(view.querySelector('[data-stage]'), pool, mode, queue); };
     view.querySelector('[data-go]').onclick = () => run();
@@ -388,11 +387,11 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         stage.innerHTML = `<div class="card pad-lg"><div class="row between"><div><div class="small muted">Kanji ${i + 1} / ${qs.length} – schreibe:${W.isFirst(S.srs, cur.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
           <div class="muted" lang="ja">${esc((cur.kun || []).concat(cur.on || []).slice(0, 4).join('、'))}</div></div></div>
           <div class="kanji-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
-          <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button>${W.isFirst(S.srs, cur.id) ? `<button class="btn" style="background:var(--matcha-soft)" data-r="known" title="Ohne Schreiben als gekonnt einstufen – kommt nach einigen Wochen einmal zur Kontrolle">${icon('check')} Kann ich schon</button>` : ''}</div></div>`;
+          <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div>`;
         App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false });
         stage.querySelector('[data-show]').onclick = () => {
           App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
-          stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · wieder in ${ivlLabel(cur.id, 0, true)}</button>${W.isFirst(S.srs, cur.id) ? `<button class="btn" style="background:var(--ai-soft)" data-r="2" data-keep>✓ Richtig, weiter üben · wieder in 1 T</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig, kann ich · wieder in 3 Wo</button>` : `<button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig · wieder in ${ivlLabel(cur.id, 2, true)}</button>`}<a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
+          stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · wieder in ${ivlLabel(cur.id, 0, true)}</button><button class="btn" style="background:var(--${W.isFirst(S.srs, cur.id) ? 'ai' : 'matcha'}-soft)" data-r="2">✓ Richtig${W.isMarkedKnown(S.srs, cur.id) ? '' : ` · wieder in ${ivlLabel(cur.id, 2, true)}`}</button>${W.isFirst(S.srs, cur.id) ? `<button class="btn" style="background:var(--matcha-soft)" data-r="known" title="Als gelernt einstufen – wird beim Schreiben nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
         };
       } else {
         const correct = mode === 'reading' ? JP.kana(cur.w.jp) : App.meaning(cur).text;
@@ -416,9 +415,9 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       stage.addEventListener('click', async function h(e) {
         const b = e.target.closest('[data-r]'); if (!b) return;
         stage.removeEventListener('click', h);
-        const known = b.dataset.r === 'known'; // erster Versuch übersprungen: „Kann ich schon“
+        const known = b.dataset.r === 'known'; // Einstufung beim ersten Versuch: gilt als gelernt
         const g = known ? 2 : +b.dataset.r; if (g) score++;
-        await (known ? App.markWriteKnown(cur.id) : App.gradeWrite(cur.id, g, { keep: 'keep' in b.dataset }));
+        await (known ? App.markWriteKnown(cur.id) : App.gradeWrite(cur.id, g));
         if (queue && !g) qs.splice(Math.min(i + 4, qs.length), 0, cur);
         i++; next();
       });
