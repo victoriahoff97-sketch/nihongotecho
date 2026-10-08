@@ -489,7 +489,7 @@
       const selectedItems = Array.from(sel).map(App.item).filter(Boolean).filter((x) => !res.includes(x));
       if (!q) res = selectedItems.concat(res);
       list.innerHTML = res.map((it) => `<label class="picker-row ${App.SECTIONS[it.type].cls}"><input type="${single ? 'radio' : 'checkbox'}" name="pk" value="${it.id}" ${sel.has(it.id) ? 'checked' : ''}>
-        <span class="badge sec">${App.SECTIONS[it.type].label}</span><span class="jp">${it.type === 'grammar' ? esc(it.title) : App.itemMain(it)}</span><span class="muted small grow">${esc(App.itemSub(it) || '')}</span>${App.srcBadge(it)}</label>`).join('') || '<div class="muted" style="padding:14px">Nichts gefunden.</div>';
+        <span class="badge sec ${App.SECTIONS[it.type].cls}">${App.SECTIONS[it.type].label}</span><span class="jp">${it.type === 'grammar' ? esc(it.title) : App.itemMain(it)}</span><span class="muted small grow">${esc(App.itemSub(it) || '')}</span>${App.srcBadge(it)}</label>`).join('') || '<div class="muted" style="padding:14px">Nichts gefunden.</div>';
     };
     list.addEventListener('change', (e) => { const c = e.target; if (single) { sel.clear(); } if (c.checked) sel.add(c.value); else sel.delete(c.value); });
     inp.addEventListener('input', App.debounce(draw, 150));

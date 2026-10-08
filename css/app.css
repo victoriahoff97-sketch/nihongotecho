@@ -16,19 +16,25 @@
 
   --shu: #c8402a;       /* 朱 Zinnober – Akzent */
   --shu-soft: #f6dfd7;
-  --ai: #2f4f86;        /* 藍 Indigo – Grammatik */
+  /* Farbcode der Einträge – überall gleich, wo etwas verknüpft oder gelistet ist:
+     Vokabeln = Lila (藤), Kanji = Rosa (桃), Grammatik = Orange (橙), Ausdrücke = Grün (抹茶) */
+  --ai: #2f4f86;        /* 藍 Indigo – Üben, Lernstapel */
   --ai-soft: #dde5f3;
-  --matcha: #5d8a3c;    /* 抹茶 – Vokabeln */
+  --matcha: #5d8a3c;    /* 抹茶 – Ausdrücke, „kann ich“ */
   --matcha-soft: #e2edd6;
-  --murasaki: #7a4b93;  /* 紫 – Kanji */
+  --murasaki: #7a4b93;  /* 紫 – Merkhilfen */
+  --fuji: #6f4bb0;      /* 藤 Glyzinie – Vokabeln */
+  --fuji-soft: #ece4f8;
+  --momo: #c23c8f;      /* 桃 Pfirsichblüte – Kanji */
+  --momo-soft: #fbe0ef;
   --murasaki-soft: #ece0f2;
-  --yamabuki: #c98a14;  /* 山吹 – Ausdrücke */
+  --yamabuki: #c98a14;  /* 山吹 – Anwenden */
   --yamabuki-soft: #f8ebcc;
   --sora: #2b8a8f;      /* 空 – Bibliothek */
   --sora-soft: #d7eeee;
-  --sakura: #d0567a;    /* 桜 – Üben */
+  --sakura: #d0567a;    /* 桜 – WaniKani */
   --sakura-soft: #f8dfe7;
-  --daidai: #c8641e;    /* 橙 – Anwenden */
+  --daidai: #c8641e;    /* 橙 – Grammatik */
   --daidai-soft: #f9e4d2;
   --hl: #fff1a8;
   /* JLPT-Niveaus: N5 (leicht, grün) … N1 (schwer, rot) */
@@ -59,6 +65,8 @@
   --ai: #86a6e0; --ai-soft: #232f47;
   --matcha: #93c26c; --matcha-soft: #26341d;
   --murasaki: #c197d8; --murasaki-soft: #35273f;
+  --fuji: #b9a2ee; --fuji-soft: #2e2745;
+  --momo: #f08fca; --momo-soft: #43233a;
   --yamabuki: #e7b24a; --yamabuki-soft: #3b3019;
   --sora: #62c3c7; --sora-soft: #1b3637;
   --sakura: #ef8aa8; --sakura-soft: #422430;
@@ -372,14 +380,19 @@ details.adv[open] summary { margin-bottom: 12px; }
 .rel-item .x small { color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Sektionsfarben */
-.sec-grammar { --sec: var(--ai); --sec-soft: var(--ai-soft); }
-.sec-vocab { --sec: var(--matcha); --sec-soft: var(--matcha-soft); }
-.sec-kanji { --sec: var(--murasaki); --sec-soft: var(--murasaki-soft); }
-.sec-phrase { --sec: var(--yamabuki); --sec-soft: var(--yamabuki-soft); }
+.sec-grammar { --sec: var(--daidai); --sec-soft: var(--daidai-soft); }
+.sec-vocab { --sec: var(--fuji); --sec-soft: var(--fuji-soft); }
+.sec-kanji { --sec: var(--momo); --sec-soft: var(--momo-soft); }
+.sec-phrase { --sec: var(--matcha); --sec-soft: var(--matcha-soft); }
 .sec-session { --sec: var(--shu); --sec-soft: var(--shu-soft); }
 .sec-library { --sec: var(--sora); --sec-soft: var(--sora-soft); }
-.sec-practice { --sec: var(--sakura); --sec-soft: var(--sakura-soft); }
-.sec-apply { --sec: var(--daidai); --sec-soft: var(--daidai-soft); }
+.sec-practice { --sec: var(--ai); --sec-soft: var(--ai-soft); }
+.sec-apply { --sec: var(--yamabuki); --sec-soft: var(--yamabuki-soft); }
+/* Verweise im Text tragen die Farbe ihres Eintrags, nicht die des Bereichs, in dem sie stehen */
+a.ref[href^="#/grammatik/"] { --sec: var(--daidai); --sec-soft: var(--daidai-soft); }
+a.ref[href^="#/vokabeln/"] { --sec: var(--fuji); --sec-soft: var(--fuji-soft); }
+a.ref[href^="#/kanji/"] { --sec: var(--momo); --sec-soft: var(--momo-soft); }
+a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-soft); }
 .sec-home { --sec: var(--shu); --sec-soft: var(--shu-soft); }
 .sec-settings { --sec: var(--ink-2); --sec-soft: var(--paper-2); }
 
@@ -700,15 +713,15 @@ details.adv[open] summary { margin-bottom: 12px; }
 /* Anwenden */
 .tab .tab-kanji { font-family: var(--font-kanji); font-weight: 600; }
 .random-card-in {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--daidai-soft) 45%, var(--card)), var(--daidai-soft));
-  border-color: color-mix(in srgb, var(--daidai) 28%, var(--daidai-soft)); padding: 20px 22px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--yamabuki-soft) 45%, var(--card)), var(--yamabuki-soft));
+  border-color: color-mix(in srgb, var(--yamabuki) 28%, var(--yamabuki-soft)); padding: 20px 22px;
 }
-.random-label { font-size: 12px; font-weight: 800; color: var(--daidai); letter-spacing: .06em; }
+.random-label { font-size: 12px; font-weight: 800; color: var(--yamabuki); letter-spacing: .06em; }
 .random-jp { display: block; font-family: var(--font-jp); font-size: 24px; line-height: 1.5; margin: 10px 0 2px; color: var(--ink); text-decoration: none; }
 .random-card-in .btn-sm { margin-top: 12px; }
 .prompt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .prompt-card { display: block; text-decoration: none; color: var(--ink); padding: 14px 16px; transition: border-color .15s; }
-.prompt-card:hover { border-color: var(--daidai); }
+.prompt-card:hover { border-color: var(--yamabuki); }
 .prompt-card.own { border-style: dashed; border-color: var(--line-2); }
 .prompt-card .prompt-jp { font-family: var(--font-jp); font-size: 17px; margin: 8px 0 2px; line-height: 1.5; }
 .prompt-card .prompt-count { color: var(--matcha); font-weight: 800; }
@@ -717,27 +730,27 @@ details.adv[open] summary { margin-bottom: 12px; }
 .prompt-more { margin-top: 6px; font-size: 14px; }
 .prompt-more summary { cursor: pointer; color: var(--muted); font-weight: 700; display: inline-block; }
 .prompt-more[open] summary { margin-bottom: 4px; }
-.prompt-more > div { padding: 6px 12px; border-left: 3px solid var(--daidai-soft); }
+.prompt-more > div { padding: 6px 12px; border-left: 3px solid var(--yamabuki-soft); }
 .apply-menu { position: relative; flex: none; }
 .apply-menu > summary { list-style: none; }
 .apply-menu > summary::-webkit-details-marker { display: none; }
 .apply-menu-pop { position: absolute; right: 0; top: 48px; z-index: 20; padding: 6px; display: flex; flex-direction: column; align-items: stretch; min-width: 180px; box-shadow: var(--shadow-lg); }
 .apply-menu-pop .btn { justify-content: flex-start; }
 /* Zeitstrahl der Antworten: gestrichelte Linie, Punkt je Karte */
-.answer-tl { position: relative; margin-left: 12px; padding-left: 26px; border-left: 2px dashed color-mix(in srgb, var(--daidai) 40%, transparent); display: flex; flex-direction: column; gap: 14px; }
+.answer-tl { position: relative; margin-left: 12px; padding-left: 26px; border-left: 2px dashed color-mix(in srgb, var(--yamabuki) 40%, transparent); display: flex; flex-direction: column; gap: 14px; }
 .ans-card { position: relative; display: block; text-decoration: none; color: var(--ink); }
-.ans-card:hover { border-color: var(--daidai); }
-.ans-card .tl-dot { position: absolute; left: -35px; top: 20px; width: 14px; height: 14px; border-radius: 50%; background: var(--card); border: 3px solid var(--daidai); }
-.ans-card + .ans-card .tl-dot { border-color: color-mix(in srgb, var(--daidai) 55%, var(--card)); }
+.ans-card:hover { border-color: var(--yamabuki); }
+.ans-card .tl-dot { position: absolute; left: -35px; top: 20px; width: 14px; height: 14px; border-radius: 50%; background: var(--card); border: 3px solid var(--yamabuki); }
+.ans-card + .ans-card .tl-dot { border-color: color-mix(in srgb, var(--yamabuki) 55%, var(--card)); }
 .ans-card .ans-head { margin-bottom: 6px; }
-.ans-card .badge.ans-new { background: var(--daidai-soft); color: var(--daidai); }
+.ans-card .badge.ans-new { background: var(--yamabuki-soft); color: var(--yamabuki); }
 .ans-card .badge .ico { width: 14px; height: 14px; }
 .ans-text { font-family: var(--font-jp); font-size: 16px; line-height: 1.9; }
 .ans-text p { margin: 0 0 4px; }
 .ans-preview { display: block; width: 100%; margin-top: 8px; border-radius: 10px; border: 1px solid var(--line); }
 .ans-card.checkable { cursor: pointer; }
-.ans-card.checkable.on { border-color: var(--daidai); box-shadow: 0 0 0 3px var(--daidai-soft); }
-.ans-card input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--daidai); }
+.ans-card.checkable.on { border-color: var(--yamabuki); box-shadow: 0 0 0 3px var(--yamabuki-soft); }
+.ans-card input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--yamabuki); }
 /* Schreibbereich Antwort/Eintrag: Fläche + Seitenleiste „In dieser Antwort“ (schmal: darunter) */
 .write-head { margin-bottom: 8px; }
 .write-head h1 { font-family: var(--font-jp); font-weight: 500; font-size: 24px; line-height: 1.7; margin: 4px 0 0; }
@@ -746,12 +759,12 @@ details.adv[open] summary { margin-bottom: 12px; }
 .write-meta .input.grow { min-width: 180px; }
 .write-date-l { gap: 6px; }
 .write-date { width: auto; padding: 4px 8px; font-size: 13px; }
-.write-earlier { display: inline-block; margin-top: 8px; color: var(--daidai); font-weight: 700; text-decoration: none; }
+.write-earlier { display: inline-block; margin-top: 8px; color: var(--yamabuki); font-weight: 700; text-decoration: none; }
 .write-split { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 16px; align-items: start; }
 .write-side { position: sticky; top: calc(var(--topbar-h) + 20px); padding: 12px 14px; margin-top: 8px; }
 .write-side h3 { font-size: 14px; margin: 0 0 4px; }
 .w-sec { font-size: 11px; font-weight: 800; letter-spacing: .06em; color: var(--muted); margin: 10px 0 4px; }
-.w-sec.new { color: var(--daidai); }
+.w-sec.new { color: var(--yamabuki); }
 .w-chips { display: grid; gap: 4px; }
 .w-chip { display: flex; min-width: 0; padding: 2px 2px 2px 10px; gap: 6px; }
 .w-chip a { color: inherit; text-decoration: none; font-family: var(--font-jp); min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: none; max-width: 100%; }
@@ -766,7 +779,7 @@ details.adv[open] summary { margin-bottom: 12px; }
 /* Tagebuch: Kalenderblatt + Monatsliste */
 .cal-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 14px; align-items: start; }
 .cal-sheet { padding: 0; overflow: hidden; }
-.cal-head { background: var(--daidai); color: #fff; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
+.cal-head { background: var(--yamabuki); color: #fff; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
 .cal-arrow { border: 0; background: none; color: #fff; font-size: 18px; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
 .cal-arrow:hover { background: rgba(255, 255, 255, .18); }
 .cal-title { text-align: center; line-height: 1.2; }
@@ -776,26 +789,26 @@ details.adv[open] summary { margin-bottom: 12px; }
 .cal-body { padding: 10px 12px 12px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
 .cal-h { font-size: 11px; font-weight: 800; color: var(--muted); }
-.cal-h-sun { color: var(--daidai); }
+.cal-h-sun { color: var(--yamabuki); }
 .cal-weekdays { margin-bottom: 2px; }
 .cal-day { position: relative; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 13px; border-radius: 8px; color: var(--ink-2); border: 0; background: none; cursor: pointer; font-family: inherit; }
-.cal-day:hover { background: var(--daidai-soft); }
+.cal-day:hover { background: var(--yamabuki-soft); }
 .cal-day.out { color: var(--line-2); }
-.cal-day.journal { background: var(--daidai); color: #fff; font-weight: 800; }
+.cal-day.journal { background: var(--yamabuki); color: #fff; font-weight: 800; }
 .cal-day.answer::after { content: ""; position: absolute; bottom: 3px; width: 5px; height: 5px; border-radius: 50%; background: var(--ai); }
 .cal-day.journal.answer::after { background: #fff; }
-.cal-day.today { outline: 2px solid var(--daidai); outline-offset: -2px; color: var(--daidai); font-weight: 800; }
+.cal-day.today { outline: 2px solid var(--yamabuki); outline-offset: -2px; color: var(--yamabuki); font-weight: 800; }
 .cal-day.journal.today { color: #fff; outline-color: #fff; }
 .cal-legend { font-size: 11px; color: var(--muted); margin-top: 10px; }
 .cal-foot { border-top: 1px dashed var(--line); margin-top: 10px; padding-top: 8px; font-size: 12px; }
-.cal-foot b { color: var(--daidai); }
+.cal-foot b { color: var(--yamabuki); }
 .cal-entries { display: grid; gap: 8px; }
 .cal-entry { display: flex; gap: 12px; text-decoration: none; color: var(--ink); align-items: flex-start; }
-.cal-entry:hover { border-color: var(--daidai); }
+.cal-entry:hover { border-color: var(--yamabuki); }
 .cal-entry.cal-hl { animation: cal-hl 1.8s ease-out; }
-@keyframes cal-hl { 0%, 40% { border-color: var(--daidai); box-shadow: 0 0 0 3px var(--daidai-soft); } }
+@keyframes cal-hl { 0%, 40% { border-color: var(--yamabuki); box-shadow: 0 0 0 3px var(--yamabuki-soft); } }
 .cal-entry-date { text-align: center; line-height: 1.1; min-width: 34px; flex: none; }
-.cal-entry-day { font-family: var(--font-kanji); font-size: 24px; color: var(--daidai); }
+.cal-entry-day { font-family: var(--font-kanji); font-size: 24px; color: var(--yamabuki); }
 .cal-entry-body { min-width: 0; flex: 1; }
 .cal-entry-title { font-family: var(--font-jp); font-weight: 600; margin-bottom: 2px; }
 .cal-entry-text { font-family: var(--font-jp); font-size: 14px; line-height: 1.6; }
@@ -805,12 +818,12 @@ details.adv[open] summary { margin-bottom: 12px; }
 .cmp-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: start; }
 .cmp-col { min-width: 0; }
 .cmp-date { font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .04em; margin-bottom: 6px; }
-.cmp-newer { border-color: color-mix(in srgb, var(--daidai) 32%, var(--line)); }
-.cmp-newer .cmp-date { color: var(--daidai); }
-.cmp-text mark { background: var(--daidai-soft); color: var(--daidai); border-radius: 3px; padding: 0 2px; }
-.cmp-arrow { display: flex; align-items: center; justify-content: center; color: var(--daidai); font-size: 22px; padding-top: 34px; }
+.cmp-newer { border-color: color-mix(in srgb, var(--yamabuki) 32%, var(--line)); }
+.cmp-newer .cmp-date { color: var(--yamabuki); }
+.cmp-text mark { background: var(--yamabuki-soft); color: var(--yamabuki); border-radius: 3px; padding: 0 2px; }
+.cmp-arrow { display: flex; align-items: center; justify-content: center; color: var(--yamabuki); font-size: 22px; padding-top: 34px; }
 .cmp-stats { margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; }
-.cmp-stat .cmp-num { font-size: 22px; font-weight: 800; color: var(--daidai); }
+.cmp-stat .cmp-num { font-size: 22px; font-weight: 800; color: var(--yamabuki); }
 .cmp-stat b { display: block; margin-bottom: 4px; }
 @media (max-width: 700px) {
   .prompt-grid { grid-template-columns: 1fr; }
@@ -893,9 +906,9 @@ details.adv[open] summary { margin-bottom: 12px; }
 .wk-level input { width: 20px; height: 20px; flex: none; }
 .fm-uses { display: grid; gap: 6px; margin-top: 4px; }
 .fm-use { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
-.fm-use:hover { border-color: var(--ai); background: var(--ai-soft); }
+.fm-use:hover { border-color: var(--daidai); background: var(--daidai-soft); }
 .fm-use > span:first-child { display: grid; gap: 1px; }
-.fm-use .jp { color: var(--ai); font-family: var(--font-jp); }
+.fm-use .jp { color: var(--daidai); font-family: var(--font-jp); }
 
 /* Verknüpfte Wörter: Markierung auf der Stiftfläche + Schildchen mit Lesung und Bedeutung */
 .vpage .ink-link { position: absolute; z-index: 1; box-sizing: border-box; pointer-events: none; border-bottom: 2px dotted var(--sec, var(--shu)); border-radius: 3px; background: color-mix(in srgb, var(--sec, var(--shu)) 7%, transparent); }

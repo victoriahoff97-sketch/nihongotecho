@@ -332,7 +332,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       const e = exs[i];
       const dir = dirMode === 'mix' ? (Math.random() < 0.5 ? 'de' : 'jp') : dirMode;
       const kanaSol = e.kana || JP.kana(e.jp);
-      stage.innerHTML = `<div class="ex-card ${App.furiClass()}"><div class="row between small muted" style="margin-bottom:8px"><span>Satz ${i + 1} / ${exs.length}</span><a class="badge sec" href="${App.link(e.g)}" target="_blank" style="text-decoration:none">文 ${esc(e.g.title)}</a></div>
+      stage.innerHTML = `<div class="ex-card ${App.furiClass()}"><div class="row between small muted" style="margin-bottom:8px"><span>Satz ${i + 1} / ${exs.length}</span><a class="badge sec sec-grammar" href="${App.link(e.g)}" target="_blank" style="text-decoration:none">文 ${esc(e.g.title)}</a></div>
         <div class="progress" style="margin-bottom:14px"><i style="width:${(i / exs.length) * 100}%"></i></div>
         <div class="card pad-lg">
           <div class="small muted">${dir === 'de' ? 'Übersetze ins Japanische:' : 'Übersetze ins Deutsche:'}</div>
@@ -364,7 +364,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           ${auto === true ? '<div class="verdict ok">✓ Richtig!</div>' : auto === false ? '<div class="verdict no">Nicht ganz – vergleiche:</div>' : ''}
           <div class="small muted" style="margin-top:8px">Lösung</div>
           ${dir === 'de' ? `<div class="sol-jp" lang="ja">${JP.ruby(e.jp)} ${App.speakBtn(e.jp)}</div><div class="small muted" lang="ja">${esc(kanaSol)}</div>` : `<div style="font-size:21px;font-weight:800">${esc(e.de)}</div><div class="small muted" lang="ja">${esc(kanaSol)}</div>`}
-          ${words.length ? `<div class="row" style="margin-top:10px;gap:6px">${words.map((w) => `<a class="badge" style="background:var(--matcha-soft);color:var(--matcha);text-decoration:none" href="${App.link(w)}" target="_blank" lang="ja">${esc(w.kanji || w.kana)} = ${esc(w.de)}</a>`).join('')}</div>` : ''}
+          ${words.length ? `<div class="row" style="margin-top:10px;gap:6px">${words.map((w) => `<a class="badge" style="background:var(--fuji-soft);color:var(--fuji);text-decoration:none" href="${App.link(w)}" target="_blank" lang="ja">${esc(w.kanji || w.kana)} = ${esc(w.de)}</a>`).join('')}</div>` : ''}
           <div class="row" style="margin-top:14px">${auto === true ? `<button class="btn btn-primary" data-res="1">Weiter ${icon('next')}</button>` : `<button class="btn" style="background:var(--shu-soft)" data-res="0">✗ Hatte ich falsch</button><button class="btn" style="background:var(--matcha-soft)" data-res="1">✓ Hatte ich richtig</button>`}</div></div>`;
         stage.querySelector('[data-check]').hidden = true;
       };

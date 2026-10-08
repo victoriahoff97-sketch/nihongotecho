@@ -285,7 +285,7 @@
       p.links.forEach((l) => {
         if (!App.item(l.itemId)) return;
         const el = document.createElement('div');
-        el.className = 'ink-link';
+        el.className = 'ink-link ' + App.SECTIONS[App.item(l.itemId).type].cls;
         Object.assign(el.style, { left: l.x * 100 + '%', top: (l.y / r) * 100 + '%', width: l.w * 100 + '%', height: (l.h / r) * 100 + '%' });
         p.el.appendChild(el);
       });

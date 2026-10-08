@@ -62,7 +62,7 @@
     const open = hw.filter((f) => !f.done).length;
     return `<a class="card session-card no-num" href="${App.link(s)}">
       <div><h3 lang="ja">${esc(sessionTitle(s))}</h3>${s.topic ? `<div class="muted" style="margin:-2px 0 4px">${esc(s.topic)}</div>` : ''}<div class="row small muted" style="gap:8px">${s.number ? `Nr. ${esc(s.number)} · ` : ''}${icon('calendar')} ${App.fmtDate(s.date)} ${bookRef(s) ? `· <span class="badge src" style="--c:${App.sourceColor(s.bookSource)}">${esc(bookRef(s))}</span>` : ''}</div>
-      <div class="row" style="margin-top:8px;gap:6px">${g.slice(0, 4).map((x) => `<span class="badge sec" style="--sec:var(--ai);--sec-soft:var(--ai-soft)" lang="ja">${esc(x.title)}</span>`).join('')}${g.length > 4 ? `<span class="badge">+${g.length - 4}</span>` : ''}</div></div>
+      <div class="row" style="margin-top:8px;gap:6px">${g.slice(0, 4).map((x) => `<span class="badge sec sec-grammar" lang="ja">${esc(x.title)}</span>`).join('')}${g.length > 4 ? `<span class="badge">+${g.length - 4}</span>` : ''}</div></div>
       <div class="stack small muted" style="gap:2px;text-align:right"><span>${n('vocabIds')} Vokabeln</span><span>${n('grammarIds')} Grammatik</span>${hw.length ? `<span style="color:${open ? 'var(--shu)' : 'var(--matcha)'}"><b>${open ? open + ' HA offen' : 'HA erledigt ✓'}</b></span>` : ''}</div></a>`;
   };
   App.route('/unterricht', (view) => {
@@ -194,7 +194,7 @@
     const files = App.filesFor({ sessionId: s.id });
     const ex = notesExtract(s.notesHtml);
     return `<h2>${esc(sessionTitle(s))}</h2><div class="muted">${App.fmtDate(s.date)} · ${esc(s.course || '')}${bookRef(s) ? ' · Lehrbuch: ' + esc(bookRef(s)) : ''}</div>
-      ${g.length ? `<h3>Grammatik</h3><ul>${g.map((x) => `<li><a href="${App.link(x)}"><b>${esc(x.title)}</b></a> <span lang="ja" style="color:var(--ai)">${JP.ruby(x.jp || '')}</span>${x.summary ? ' – ' + esc(x.summary) : ''}</li>`).join('')}</ul>` : ''}
+      ${g.length ? `<h3>Grammatik</h3><ul>${g.map((x) => `<li><a href="${App.link(x)}"><b>${esc(x.title)}</b></a> <span lang="ja" style="color:var(--daidai)">${JP.ruby(x.jp || '')}</span>${x.summary ? ' – ' + esc(x.summary) : ''}</li>`).join('')}</ul>` : ''}
       ${ex.length ? `<h3>Wichtiges aus der Mitschrift</h3><ul>${ex.map((x) => `<li>${x.k === 'MARK' ? `<mark>${esc(x.t)}</mark>` : x.k.startsWith('H') ? `<b>${esc(x.t)}</b>` : esc(x.t)}</li>`).join('')}</ul>` : ''}
       ${v.length ? `<h3>Vokabeln (${v.length})</h3><div style="columns:2 220px;column-gap:24px">${v.map((x) => `<div style="break-inside:avoid;margin-bottom:4px"><a href="${App.link(x)}" lang="ja" style="text-decoration:none">${JP.wordRuby(x)}</a> – ${App.meaningHtml(x)}</div>`).join('')}</div>` : ''}
       ${k.length ? `<h3>Kanji</h3><div class="row">${k.map((x) => `<a href="${App.link(x)}" style="text-decoration:none;text-align:center"><div style="font-family:var(--font-kanji);font-size:34px">${esc(x.char)}</div><div class="small muted">${esc(App.meaning(x).text.split(',')[0])}</div></a>`).join('')}</div>` : ''}
