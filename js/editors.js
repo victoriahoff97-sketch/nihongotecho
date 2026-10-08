@@ -654,7 +654,7 @@
     const guess = pre.type || (/grammatik/.test(path) ? 'grammar' : /kanji/.test(path) ? 'kanji' : /ausdruecke/.test(path) ? 'phrase' : /unterricht/.test(path) ? 'session' : /bibliothek/.test(path) ? 'file' : 'vocab');
     const types = [['vocab', '単', 'Vokabel', 'sec-vocab'], ['grammar', '文', 'Grammatik', 'sec-grammar'], ['kanji', '漢', 'Kanji', 'sec-kanji'], ['phrase', '表', 'Ausdruck', 'sec-phrase'], ['session', '授', 'Unterrichtsstunde', 'sec-session'], ['file', '資', 'Datei / Notizblatt', 'sec-library'], ['sentences', '例', 'Sätze aus Text', 'sec-vocab'], ['import', '入', 'Vokabel-Liste importieren', 'sec-vocab']];
     const body = `<div class="type-picker">${types.map(([k, j, l, c]) => `<button class="${c} ${k === guess ? 'on' : ''}" data-type="${k}"><span class="k">${j}</span>${l}</button>`).join('')}</div>
-      <p class="muted small" style="margin:0">Tipp: Neues Wort bei NHK Easy gefunden? → „Vokabel“, Quelle „NHK Easy“ wählen und den Satz als Beispiel einfügen.</p>`;
+      <p class="muted small" style="margin:0">Tipp: Neues Wort bei NHK Easy gefunden? Mit der Browser-Erweiterung markieren und direkt übernehmen (Einrichtung: LIES-MICH). Ohne Erweiterung: „Vokabel“, Quelle „NHK Easy“ wählen und den Satz als Beispiel einfügen.</p>`;
     const md = App.modal({ title: 'Was möchtest du speichern?', body, foot: false });
     md.el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-type]');

@@ -109,13 +109,20 @@
 
   // Seitenzustand überlebt das Neuzeichnen der Ansicht (z. B. nach dem Speichern einer Vokabel)
   let state = null;
+  // Von außen belegen (Eingang): readings = Map Satz → Lesung; die Erkennung startet beim nächsten Zeichnen der Seite
+  App.sentencesPreset = ({ text, src, ref, readings }) => {
+    state = { text: text || '', src: src || '', ref: ref || '', rows: [], readings: readings || new Map(), run: true, srcFixed: true };
+  };
+  // Läuft gerade eine Zuordnung (erkannte Sätze, noch nicht gespeichert oder geleert)?
+  App.sentencesBusy = () => !!(state && state.rows.length);
 
   // =========================================================
   // Seite: Sätze zuordnen
   // =========================================================
   App.route('/saetze', (view) => {
     const sec = App.SECTIONS.vocab;
-    const lastSrc = (state && state.src) || App.lsGet('sentSource') || 'NHK Easy';
+    // von außen belegt: auch „keine Quelle“ gilt (fremde Seite ≠ zuletzt benutzte Quelle)
+    const lastSrc = state && state.srcFixed ? state.src : (state && state.src) || App.lsGet('sentSource') || 'NHK Easy';
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/vokabeln">Vokabeln</a> › Beispielsätze zuordnen</div>
       <div class="page-head"><div class="titles"><h1>Sätze zuordnen <span class="jp-title">例文</span></h1>
         <p>Füge einen Text ein – z. B. einen NHK-Easy-Artikel, Untertitel oder Sätze aus dem Buch. Die App findet die enthaltenen Vokabeln, du entscheidest, wo jeder Satz als Beispiel landet.</p></div></div>
@@ -143,7 +150,7 @@
       if (!sents.length) return App.toast('Keine japanischen Sätze gefunden');
       setRows(sents.map((s) => {
         const m = App.matchVocab(s.jp).map((x) => Object.assign(x, { on: !x.nested }));
-        return { jp: s.jp, de: s.de, kana: '', matches: m, extra: [], use: true, unknown: null };
+        return { jp: s.jp, de: s.de, kana: (state.readings && state.readings.get(s.jp)) || '', matches: m, extra: [], use: true, unknown: null };
       }));
       draw();
       scanAll();
@@ -311,5 +318,6 @@
 
     // Nach dem Neuzeichnen der Ansicht (z. B. nach dem Speichern einer Vokabel) weitermachen, wo man war
     if (rows.length) { refreshMatches(); draw(); scanAll(); }
+    if (state.run) { state.run = false; view.querySelector('[data-go]').click(); }
   });
 })(window.App);
