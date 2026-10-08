@@ -211,7 +211,7 @@
         <a href="#/vokabeln?st=learn" style="text-decoration:none" title="${tip('learn')}"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
         <a href="#/vokabeln?st=known" style="text-decoration:none" title="${tip('known')}"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
         ${App.checkOn() ? `<a class="small muted" href="#/vokabeln?st=unchecked" style="text-decoration:none" title="${tip('unchecked')}"><b style="font-size:16px">${c.unchecked}</b> ungeprüft</a>` : ''}</div>
-        <div class="row">${learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} Lernen <span class="badge">${learnN}</span></a>` : ''}${c.unchecked ? `<a class="btn${learnN ? '' : ' btn-sec'}" href="#/ueben/einstufen?${r.unchecked ? '' : 'dir=de&'}auto=1">${icon('check')} Nächste ${Math.min(r.unchecked || a.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button></div></div>
+        <div class="row">${learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} Lernen <span class="badge">${learnN}</span></a>` : ''}${c.unchecked ? `<a class="btn${learnN ? '' : ' btn-sec'}" href="#/ueben/einstufen?${r.unchecked ? '' : 'dir=de&'}auto=1">${icon('check')} Nächste ${Math.min(r.unchecked || a.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}</div></div>
         <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div></div>`; })()}
       ${jlptCard()}
       ${genkiLevelCard()}
