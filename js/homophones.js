@@ -9,6 +9,8 @@
   const posGroup = (it) => (it.pos === 'i-adj' || it.pos === 'na-adj' ? 'adj' : it.pos || '');
   const word = (it) => it.kanji || it.kana;
   const learned = (it) => App.vocabStatus(it.id) !== 'unchecked';
+  // von doppelt angelegten Wörtern zählt das, das du lernst
+  const rank = (it) => ({ known: 2, learn: 1 }[App.vocabStatus(it.id)] || 0);
   // Wann das Wort in den Lernstapel kam: Einstufung, bei eigenen Wörtern das Anlegen
   const changedAt = (it) => {
     if (!learned(it)) return 0;
@@ -49,7 +51,7 @@
 
   App.route('/gleichklang', (view, p, query) => {
     const sec = { cls: 'sec-homophone' };
-    const all = H.groups(App.itemsOf('vocab'));
+    const all = H.groups(App.itemsOf('vocab'), rank);
     const groups = H.sort(H.visible(all, App.vocabStatus), changedAt, Date.now());
     const q = query.q || '';
     const words = groups.reduce((n, g) => n + g.items.length, 0);
@@ -100,7 +102,7 @@
 
   // Zeile „Klingt gleich“ auf der Vokabel-Detailseite: die Partner als Chips, Sprung in die Übersicht
   App.homophoneHint = (it) => {
-    const others = H.partners(it, App.itemsOf('vocab'));
+    const others = H.partners(it, App.itemsOf('vocab'), rank);
     if (!others.length) return '';
     const href = link({ kana: H.key(it) });
     return `<dt>Klingt gleich</dt><dd><div class="gk-hint">${others.map((o) => `<a class="gk-chip sec-vocab ${learned(o) ? '' : 'off'}" href="${href}" title="Im Gleichklang ansehen"><b lang="ja">${esc(word(o))}</b>${esc(App.itemSub(o) || '')}</a>`).join('')}</div></dd>`;

@@ -13,10 +13,19 @@
   H.reading = (it) => JP.toHira(strip(it.kana));
   H.key = (it) => (isPart(it) ? '～' : '') + H.reading(it);
   // Nur Schreibungen mit Kanji zählen: ein Kana-Eintrag kann dasselbe Wort sein wie der mit Kanji (かける / 掛ける)
-  const spelling = (it) => { const k = strip(it.kanji); return JP.hasKanji(k) ? k : ''; };
+  // Ausnahmen, von Hand geprüft: Bei diesen Lesungen ist der Kana-Eintrag ein eigenes Wort neben dem mit Kanji
+  // (なる werden / 鳴る klingeln). Neue Fälle hier eintragen – am Bedeutungstext lässt sich das nicht ablesen:
+  // かける „anrufen“ und 掛ける „aufhängen“ sind dasselbe Wort.
+  H.KANA_WORDS = ['なる', 'いる', 'つける', 'くれる', 'おる'];
+  const spelling = (it) => {
+    const k = strip(it.kanji);
+    if (JP.hasKanji(k)) return k;
+    return !isPart(it) && H.KANA_WORDS.includes(H.reading(it)) ? H.reading(it) : '';
+  };
 
   // Alle Gruppen: gleiche Lesung, mindestens zwei verschiedene Kanji-Schreibungen. Reihenfolge wie in der Liste.
-  H.groups = (vocab) => {
+  // Je Schreibung bleibt ein Eintrag (doppelt angelegte Wörter): der mit dem höchsten rank, sonst der erste.
+  H.groups = (vocab, rank = () => 0) => {
     const map = new Map();
     for (const it of vocab) {
       if (!it || it.type !== 'vocab' || !H.reading(it) || !spelling(it)) continue;
@@ -26,7 +35,9 @@
     }
     const out = [];
     map.forEach((items, key) => {
-      if (new Set(items.map(spelling)).size > 1) out.push({ key, kana: key, items });
+      const best = new Map();
+      items.forEach((it) => { const s = spelling(it); if (!best.has(s) || rank(it) > rank(best.get(s))) best.set(s, it); });
+      if (best.size > 1) out.push({ key, kana: key, items: items.filter((it) => best.get(spelling(it)) === it) });
     });
     return out;
   };
@@ -35,9 +46,10 @@
   H.visible = (groups, statusOf) => groups.filter((g) => g.items.some((it) => statusOf(it.id) !== 'unchecked'));
 
   // Die anderen Wörter derselben Gruppe (für den Hinweis am Wort)
-  H.partners = (it, vocab) => {
-    const g = H.groups(vocab).find((x) => x.items.some((o) => o.id === it.id));
-    return g ? g.items.filter((o) => o.id !== it.id) : [];
+  H.partners = (it, vocab, rank) => {
+    const g = H.groups(vocab, rank).find((x) => x.key === H.key(it));
+    const s = spelling(it);
+    return g && s ? g.items.filter((o) => spelling(o) !== s) : [];
   };
 
   // 'same' | 'diff', wenn der Akzent aller Wörter bekannt ist – sonst null
