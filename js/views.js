@@ -67,6 +67,22 @@
       ${readTile('news', 'https://news.web.nhk/news/easy/', NEWS_SVG, '今日のニュース', 'NHK Easy lesen', 'Eine kurze Nachricht in einfachem Japanisch – mit Furigana.', 'Zur heutigen Nachricht')}
       ${readTile('wani', 'https://www.wanikani.com/', KANJI_SVG, '今日の漢字', 'WaniKani', 'Deine Kanji- und Vokabel-Reviews von heute erledigen.', 'Zu den Reviews')}</div>`;
 
+  // ---------- Startseite: Lernstand-Karten einklappen ----------
+  // Ein Klick auf die Überschrift klappt die Karte darunter ein; eingeklappt steht die Kurzfassung neben dem Titel.
+  // Gemerkt in den Einstellungen (homeFolded: Liste der eingeklappten Karten).
+  const isFolded = (key) => (S.settings.homeFolded || []).includes(key);
+  const foldHead = (key, title, sum) => `<div class="section-title"><button type="button" class="fold-btn" data-fold="${key}" aria-expanded="${!isFolded(key)}" title="Ein- oder ausklappen"><span class="chev"></span>${title}<span class="fold-sum">· ${sum}</span></button></div>`;
+  const foldCls = (key) => (isFolded(key) ? ' is-folded' : '');
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-fold]');
+    if (!b) return;
+    const key = b.dataset.fold, on = !isFolded(key);
+    b.setAttribute('aria-expanded', String(!on));
+    const card = b.parentElement.nextElementSibling;
+    if (card) card.classList.toggle('is-folded', on);
+    App.saveSettings({ homeFolded: (S.settings.homeFolded || []).filter((k) => k !== key).concat(on ? [key] : []) });
+  });
+
   // ---------- Startseite: JLPT-Lernstand ----------
   // Nur das aktuelle Niveau: das niedrigste freigeschaltete Level-Paket, das noch nicht komplett „kann ich“ ist.
   // Ist keins freigeschaltet, erscheint das erste verfügbare als „freischalten“.
@@ -85,8 +101,8 @@
       const p = levels.find((x) => App.packs.status(x) === 'locked');
       if (!p) return '';
       const already = App.itemsOf('vocab').filter((v) => v.level === p.level).length;
-      return `<div class="section-title">JLPT ${p.level} – Lernstand</div>
-      <div class="card row between"><div><b>${esc(p.title)} ist noch nicht freigeschaltet.</b><div class="small muted">${already ? `${already} Wörter kennt die App schon aus anderen Quellen. ` : ''}Mit dem Paket kommen alle Vokabeln, Kanji und Grammatikpunkte des Niveaus dazu.</div></div>
+      return `${foldHead('jlpt', `JLPT ${p.level} – Lernstand`, 'noch nicht freigeschaltet')}
+      <div class="card row between${foldCls('jlpt')}"><div><b>${esc(p.title)} ist noch nicht freigeschaltet.</b><div class="small muted">${already ? `${already} Wörter kennt die App schon aus anderen Quellen. ` : ''}Mit dem Paket kommen alle Vokabeln, Kanji und Grammatikpunkte des Niveaus dazu.</div></div>
         <a class="btn btn-primary" href="#/pakete">${icon('plus')} ${p.level} freischalten</a></div>`;
     }
     const lvl = cur.level;
@@ -106,8 +122,8 @@
     const learn = learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} ${lvl} lernen <span class="badge">${learnN}</span></a>`
       : check ? '' : `<a class="btn btn-sec" href="#/ueben/karten?lvl=${lvl}">${icon('practice')} ${lvl} üben</a>`;
     const cta = `<div class="row">${learn}${check}</div>`;
-    return `<div class="section-title">JLPT ${lvl} – Lernstand</div>
-      <div class="card"><div class="row between"><div class="row" style="gap:22px">
+    return `${foldHead('jlpt', `JLPT ${lvl} – Lernstand`, `${tot.known} / ${tot.total} kann ich`)}
+      <div class="card${foldCls('jlpt')}"><div class="row between"><div class="row" style="gap:22px">
         ${num(c.vocab, 'Vokabeln', `#/vokabeln?lvl=${lvl}`)}${num(c.kanji, 'Kanji', `#/kanji?lvl=${lvl}`)}${num(c.grammar, 'Grammatik', `#/grammatik?lvl=${lvl}`)}</div>
         ${cta}</div>
         <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(tot.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(tot.learn)}%;background:var(--ai);border-radius:0"></i></div>
@@ -137,8 +153,8 @@
       const tip = x.total ? [part(x.vocab, 'Wörter'), part(x.kanji, 'Kanji'), part(x.grammar, 'Grammatik')].filter(Boolean).join(' · ') : 'Noch keine Einträge';
       return `<a href="#/vokabeln?src=${src}&l=${x.l}"${x.done ? ' class="done"' : ''} title="Lektion ${x.l}${x.done ? ' abgeschlossen' : ''} – kann ich: ${tip}">L${x.l}${x.done ? ` ${icon('check')}` : `<i style="width:${x.pct}%"></i>`}</a>`;
     };
-    return `<div class="section-title">${GENKI} – Lernstand</div>
-      <div class="card"><div class="row between"><div class="row" style="gap:22px">
+    return `${foldHead('genki', `${GENKI} – Lernstand`, `${p.known} / ${p.total} kann ich · ${p.doneLessons} von ${p.lessons.length} Lektionen`)}
+      <div class="card${foldCls('genki')}"><div class="row between"><div class="row" style="gap:22px">
         ${num(p.vocab, 'Vokabeln', `#/vokabeln?src=${src}`)}${num(p.kanji, 'Kanji', `#/kanji?src=${src}`)}${num(p.grammar, 'Grammatik', `#/grammatik?src=${src}`)}</div>
         <div class="row">${learn}${check}</div></div>
         <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(p.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(p.learn)}%;background:var(--ai);border-radius:0"></i></div>
@@ -206,8 +222,8 @@
         const todo = [[App.cardQueue({ dir: 'jp' }), '#/ueben/karten?auto=1'], [aq, '#/ueben/karten?dir=de&auto=1']].map(([x, href]) => ({ n: App.roundSize(x), href })).filter((x) => x.n);
         const learnN = todo.reduce((n, x) => n + x.n, 0);
         const tip = (k) => `Japanisch → Deutsch: ${r[k]} · Deutsch → Japanisch: ${a[k]}`;
-        return `<div class="section-title">Vokabel-Lernstand</div>
-      <div class="card sec-vocab"><div class="row between"><div class="row" style="gap:22px">
+        return `${foldHead('vocab', 'Vokabel-Lernstand', `${c.known} / ${total} kann ich`)}
+      <div class="card sec-vocab${foldCls('vocab')}"><div class="row between"><div class="row" style="gap:22px">
         <a href="#/vokabeln?st=learn" style="text-decoration:none" title="${tip('learn')}"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
         <a href="#/vokabeln?st=known" style="text-decoration:none" title="${tip('known')}"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
         ${App.checkOn() ? `<a class="small muted" href="#/vokabeln?st=unchecked" style="text-decoration:none" title="${tip('unchecked')}"><b style="font-size:16px">${c.unchecked}</b> ungeprüft</a>` : ''}</div>
@@ -215,8 +231,8 @@
         <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div></div>`; })()}
       ${jlptCard()}
       ${genkiLevelCard()}
-      ${(() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `<div class="section-title">Kanji-Lernstand</div>
-      <div class="card sec-kanji"><div class="row between"><div class="row" style="gap:22px">
+      ${(() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `${foldHead('kanji', 'Kanji-Lernstand', `${c.known} / ${c.total} kann ich`)}
+      <div class="card sec-kanji${foldCls('kanji')}"><div class="row between"><div class="row" style="gap:22px">
         <a href="#/kanji?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
         <a href="#/kanji?st=known" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
         <a href="#/kanji?mark=${encodeURIComponent(App.MARK_CLASS)}" style="text-decoration:none"><b style="font-size:26px;color:var(--shu)">${inClass}</b> im Unterricht</a>

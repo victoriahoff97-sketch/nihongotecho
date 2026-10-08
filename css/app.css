@@ -181,6 +181,16 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 .grow { flex: 1; }
 .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 800; margin: 26px 0 10px; display: flex; align-items: center; gap: 10px; }
 .section-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+/* Startseite: Lernstand-Karten über die Überschrift ein- und ausklappen */
+.fold-btn { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; min-height: 28px; border-radius: 8px; }
+.fold-btn:hover { color: var(--ink); }
+.fold-btn:focus-visible { outline: 2px solid var(--sec, var(--shu)); outline-offset: 3px; }
+.fold-btn .chev { width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin: 0 3px 3px 2px; transition: transform .15s; }
+.fold-btn[aria-expanded="false"] .chev { transform: rotate(-45deg); margin-bottom: 0; }
+.fold-btn .fold-sum { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.fold-btn[aria-expanded="true"] .fold-sum { display: none; }
+.card.is-folded { display: none; }
+@media (pointer: coarse) { .fold-btn { min-height: 42px; } }
 
 .card {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
