@@ -100,8 +100,7 @@
     const check = c.vocab.unchecked ? `<a class="btn" href="#/ueben/einstufen?lvl=${lvl}&auto=1">${icon('check')} ${lvl} einstufen</a>`
       : c.kanji.unchecked ? `<a class="btn" href="#/ueben/einstufen?type=kanji&lvl=${lvl}&auto=1">${icon('check')} ${lvl}-Kanji einstufen</a>` : '';
     const todo = ['vocab', 'kanji', 'grammar'].filter((type) => type !== 'kanji' || App.writeLogic.focus(S.settings) !== 'write').map((type) => {
-      const { due, fresh } = App.cardQueue({ type, lvl, dir: 'jp' });
-      return { n: due.length + Math.min(fresh.length, S.settings.newPerDay), href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}${type === 'kanji' ? 'dir=jp&' : ''}lvl=${lvl}&auto=1` };
+      return { n: App.roundSize(App.cardQueue({ type, lvl, dir: 'jp' })), href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}${type === 'kanji' ? 'dir=jp&' : ''}lvl=${lvl}&auto=1` };
     }).filter((x) => x.n);
     const learnN = todo.reduce((n, x) => n + x.n, 0);
     const learn = learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} ${lvl} lernen <span class="badge">${learnN}</span></a>`
@@ -173,7 +172,7 @@
         const r = App.vocabCounts(), a = App.writeLogic.activeCounts(vocab, S.srs, App.needsCheck);
         const c = { unchecked: r.unchecked + a.unchecked, learn: r.learn + a.learn, known: r.known + a.known };
         const total = c.unchecked + c.learn + c.known, pc = (n) => (total ? (n / total) * 100 : 0);
-        const todo = [[App.cardQueue({ dir: 'jp' }), '#/ueben/karten?auto=1'], [aq, '#/ueben/karten?dir=de&auto=1']].map(([x, href]) => ({ n: x.due.length + Math.min(x.fresh.length, S.settings.newPerDay), href })).filter((x) => x.n);
+        const todo = [[App.cardQueue({ dir: 'jp' }), '#/ueben/karten?auto=1'], [aq, '#/ueben/karten?dir=de&auto=1']].map(([x, href]) => ({ n: App.roundSize(x), href })).filter((x) => x.n);
         const learnN = todo.reduce((n, x) => n + x.n, 0);
         const tip = (k) => `Japanisch → Deutsch: ${r[k]} · Deutsch → Japanisch: ${a[k]}`;
         return `<div class="section-title">Vokabel-Lernstand</div>

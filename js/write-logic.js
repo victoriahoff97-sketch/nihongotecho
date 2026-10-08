@@ -50,6 +50,9 @@
     const fresh = items.filter((i) => !rec(i) && ok(i));
     return { due, fresh };
   };
+  // Eine Lernrunde ist entweder Wiederholen oder Neues – nie gemischt. kind: 'due' | 'new';
+  // ohne Vorgabe (Direktstart) die fälligen, Neues nur, wenn nichts fällig ist
+  W.round = (q, newMax, kind) => ((kind ? kind === 'new' : !q.due.length) ? q.fresh.slice(0, newMax) : q.due);
   W.counts = (items, srs, unlockedFn) => {
     const ok = unlockedFn || ((i) => W.unlocked(srs, i.id));
     const c = { locked: 0, new: 0, learn: 0, known: 0, total: items.length };
