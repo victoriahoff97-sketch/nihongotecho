@@ -340,7 +340,7 @@
       bk.prev.hidden = st.spread === 0;
       const last = st.spread === BK.spreadCount(n) - 1;
       bk.next.textContent = last ? '+' : '›';
-      bk.next.title = last ? 'Leere Seite anhängen' : 'Weiterblättern';
+      bk.next.title = last ? (r == null ? 'Rechte Seite hinzufügen' : 'Leere Doppelseite anhängen') : 'Weiterblättern';
       if (ready) { closeHw(); hideTip(); if (st.sel && st.sel.p.el.hidden) clearSel(); if (st.ssel && st.ssel.p.el.hidden) clearSSel(); }
     };
     const turn = (d) => {
@@ -1021,13 +1021,20 @@
 
     const addPage = async () => {
       const last = st.pages[st.pages.length - 1];
-      const paper = await INK.pickPaper({ title: 'Leere Seite anhängen', current: (last && last.def.paper) || f.paper || 'lines' });
+      // Im Buch: eine Doppelseite hat immer ein Papier – ganze Doppelseite anhängen oder die rechte Seite passend auffüllen
+      const plan = st.book ? BK.addPlan(st.pages.length) : { count: 1, like: null };
+      const paper = plan.like != null ? st.pages[plan.like].def.paper
+        : await INK.pickPaper({ title: st.book ? 'Leere Doppelseite anhängen' : 'Leere Seite anhängen', current: (last && last.def.paper) || f.paper || 'lines' });
       if (!paper || destroyed) return;
-      UL.appendPaper(f, paper, kind === 'notebook');
+      const added = [];
+      for (let k = 0; k < plan.count; k++) {
+        UL.appendPaper(f, paper, kind === 'notebook');
+        added.push(buildPage({ kind: 'paper', ratio: A4, paper, extra: kind !== 'notebook' }, st.pages.length));
+      }
       await App.updateFile(f);
-      const pg = buildPage({ kind: 'paper', ratio: A4, paper, extra: kind !== 'notebook' }, st.pages.length);
+      const pg = added[0];
       if (st.book) { const d = BK.spreadOf(pg.i) - st.spread; st.spread += d; showSpread(d); }
-      layout(); io.observe(pg.el);
+      layout(); added.forEach((p) => io.observe(p.el));
       if (!st.book) pg.el.scrollIntoView({ behavior: 'smooth' });
     };
 

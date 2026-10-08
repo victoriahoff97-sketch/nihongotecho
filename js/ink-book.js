@@ -9,11 +9,14 @@
   // Seiten einer Doppelseite (0-basiert); r = null, wenn die rechte Seite noch fehlt
   const pagesOf = (s, n) => ({ l: 2 * s, r: 2 * s + 1 < n ? 2 * s + 1 : null });
   const clampSpread = (s, n) => Math.min(Math.max(0, s | 0), spreadCount(n) - 1);
+  // Seiten anhängen: Doppelseiten haben links und rechts dasselbe Papier. Fehlt die rechte Seite, bekommt sie
+  // das Papier der linken (like = deren Index); sonst kommt eine ganze Doppelseite dazu (like = null → Papier wählen)
+  const addPlan = (n) => (n % 2 ? { count: 1, like: n - 1 } : { count: 2, like: null });
   // Breite einer Seite, damit die ganze Doppelseite (2 Seiten, Höhe = Breite × ratio) in die Fläche passt
   const fitWidth = (cw, ch, ratio) => Math.max(MIN_W, Math.min((cw - 2 * PAD_X) / 2, (ch - 2 * PAD_Y) / ratio));
   // Fingerwisch: 1 = weiter, -1 = zurück, 0 = kein Blättern
   const swipeDir = (dx, dy, ms) => (ms < 600 && Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy) ? (dx < 0 ? 1 : -1) : 0);
 
-  const P = { PAD_X, PAD_Y, MIN_W, spreadCount, spreadOf, pagesOf, clampSpread, fitWidth, swipeDir };
+  const P = { PAD_X, PAD_Y, MIN_W, spreadCount, spreadOf, pagesOf, clampSpread, addPlan, fitWidth, swipeDir };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.inkBook = P;
 })(this);
