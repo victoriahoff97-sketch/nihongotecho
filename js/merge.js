@@ -123,6 +123,7 @@
           ...packItem,
           _pack: packId,
           _packHash: hash(packItem),
+          _packTags: packItem.tags || [],
           packs: [packId],
           level,
           created: 0,
@@ -153,13 +154,19 @@
           if (match.star !== undefined) merged.star = match.star;
           if (match.marks !== undefined) merged.marks = match.marks;
           if (match.levelManual !== undefined) merged.levelManual = match.levelManual;
-          if (match.de !== undefined) merged.de = match.de;
+          if (match.de !== undefined && packItem.de === undefined) merged.de = match.de; // liefert das Paket Deutsch, gilt dessen aktuelle Fassung
           if (Array.isArray(match.examples) && (!Array.isArray(packItem.examples) || match.examples.length > packItem.examples.length)) {
             merged.examples = match.examples;
           }
           if (match.tags || packItem.tags) {
-            merged.tags = [...new Set([...(match.tags || []), ...(packItem.tags || [])])];
+            // eigene Tags des Nutzers bleiben, die des Pakets werden ersetzt (_packTags = Paket-Tags beim letzten
+            // Schreiben). Ältere Einträge kennen _packTags noch nicht: bei Grammatik stammten alle Tags aus dem Paket
+            // (früher englisch, jetzt deutsch), bei Vokabeln/Kanji hatte das Paket keine.
+            const old = Array.isArray(match._packTags) ? match._packTags : (type === 'grammar' ? match.tags || [] : []);
+            const own = (match.tags || []).filter((t) => !old.includes(t));
+            merged.tags = [...new Set([...own, ...(packItem.tags || [])])];
           }
+          merged._packTags = packItem.tags || [];
           merged.level = match.levelManual ? match.level : level;
 
           updates.push(merged);
