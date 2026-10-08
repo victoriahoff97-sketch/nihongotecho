@@ -21,7 +21,7 @@
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Wiederholen, übersetzen, schreiben – alles passend zu deinem Niveau und aus deinen eigenen Inhalten.')}
       <div class="practice-home">
         <a class="mode-card sec-practice" href="#/ueben/karten"><span class="k">札</span><h3>Karteikarten</h3><span class="muted">Vokabeln, Kanji, Grammatik & Ausdrücke mit Wiederholungsplan (wie Anki).</span>${due ? `<span class="badge count">${due} fällig</span>` : ''}</a>
-        <a class="mode-card sec-vocab" href="#/ueben/einstufen"><span class="k">確</span><h3>Einstufen</h3><span class="muted">Vokabeln &amp; Kanji: Kenne ich das? In Runden prüfen, was in den Lernstapel kommt.</span>${(() => { const n = App.vocabCounts().unchecked + W.activeCounts(App.itemsOf('vocab'), S.srs, App.needsCheck).unchecked; return n ? `<span class="badge">${n} ungeprüft</span>` : ''; })()}</a>
+        ${!App.checkOn() ? '' : `<a class="mode-card sec-vocab" href="#/ueben/einstufen"><span class="k">確</span><h3>Einstufen</h3><span class="muted">Vokabeln &amp; Kanji: Kenne ich das? In Runden prüfen, was in den Lernstapel kommt.</span>${(() => { const n = App.vocabCounts().unchecked + W.activeCounts(App.itemsOf('vocab'), S.srs, App.needsCheck).unchecked; return n ? `<span class="badge">${n} ungeprüft</span>` : ''; })()}</a>`}
         <a class="mode-card sec-apply" href="#/anwenden"><span class="k">使</span><h3>Anwenden</h3><span class="muted">Tagebuch schreiben und Smalltalk-Fragen beantworten – mit Stift oder Tastatur.</span></a>
         <a class="mode-card sec-grammar" href="#/ueben/saetze"><span class="k">訳</span><h3>Übersetzungsübungen</h3><span class="muted">Sätze aus deinen Grammatik- und Vokabelbausteinen – nur mit dem, was du schon kennst.</span></a>
         <a class="mode-card sec-kanji" href="#/ueben/kanji"><span class="k">書</span><h3>Kanji-Quiz</h3><span class="muted">Bedeutung sehen → mit dem Stift schreiben, oder Lesungen erkennen.</span>${wDue ? `<span class="badge count">${wDue} zu schreiben</span>` : ''}</a>
@@ -75,8 +75,9 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   const roundEnd = (q) => `${q.due.length ? `<button class="btn btn-primary" data-round="due">${icon('play')} Weiter wiederholen (${q.due.length})</button>` : ''}${newMax(q) ? `<button class="btn ${q.due.length ? '' : 'btn-primary'}" data-round="new">${icon('plus')} Jetzt ${newMax(q)} neue lernen</button>` : ''}`;
   const bindRoundEnd = (stage) => stage.querySelectorAll('[data-round]').forEach((b) => (b.onclick = () => { nextRound = b.dataset.round; App.render(); }));
   // Knöpfe der Auswahl verdrahten; Direktstart (Startseite) oder Wunsch vom Abschlussbildschirm löst gleich aus
+  // auto: 'due' | 'new' = genau diese Runde (ist dafür nichts da, startet nichts) · sonst wahr = Fälliges, ohne Fälliges Neues
   const bindRoundStart = (view, q, auto, run) => {
-    const kind = nextRound || (auto ? (q.due.length ? 'due' : 'new') : '');
+    const kind = nextRound || (['due', 'new'].includes(auto) ? auto : auto ? (q.due.length ? 'due' : 'new') : '');
     nextRound = null;
     view.querySelectorAll('[data-setup] [data-round]').forEach((b) => (b.onclick = () => run(W.round(q, S.settings.newPerDay, b.dataset.round))));
     const b = kind && view.querySelector(`[data-setup] [data-round="${kind}"]`);
@@ -158,7 +159,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const stage = view.querySelector('[data-stage]');
     const start = (queue, cram) => { view.querySelector('[data-setup]').hidden = true; runCards(stage, queue, { type, dir, cram, write, active, more: () => App.cardQueue(q) }); };
     view.querySelector('[data-cram]').onclick = () => start(App.shuffle(items).slice(0, 60), true);
-    bindRoundStart(view, cq, q.auto, (queue) => start(queue, false));
+    bindRoundStart(view, cq, q.round || q.auto, (queue) => start(queue, false));
   });
 
   function cardFaces(it, dir) {
@@ -408,11 +409,11 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <span><b style="font-size:22px;color:var(--matcha)">${wc.known}</b> kann ich schreiben</span>
           <span><b style="font-size:22px;color:var(--ai)">${wc.learn}</b> übe ich</span>
           <span><b style="font-size:22px;color:var(--muted)">${wc.new}</b> noch nie geschrieben</span></div>
-        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: Erst schreiben und auflösen, dann „Falsch“, „Richtig“ (kommt in den Übungsstapel) oder „Kann ich schon“ (gilt als gelernt und wird beim Schreiben nicht mehr abgefragt).${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>.` : ''}</div>` : ''}</div>
+        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: Erst schreiben und auflösen, dann „Falsch“, „Richtig“ (kommt in den Übungsstapel) oder „Kann ich schon“ (gilt als gelernt und wird beim Schreiben nicht mehr abgefragt).${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet${App.checkOn() ? ' – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>' : ''}.` : ''}</div>` : ''}</div>
       <div data-stage style="margin-top:16px"></div></div>`;
     const run = (queue) => { view.querySelector('[data-setup]').hidden = true; runKanjiQuiz(view.querySelector('[data-stage]'), pool, mode, queue, () => App.writeQueue({ l: q.l })); };
     view.querySelector('[data-go]').onclick = () => run();
-    if (mode === 'write') bindRoundStart(view, wq, q.auto, run); else nextRound = null;
+    if (mode === 'write') bindRoundStart(view, wq, q.round || q.auto, run); else nextRound = null;
   });
 
   // queue (nur „schreiben“): Lernrunde nach Schreib-Plan – falsch Geschriebenes kommt in derselben Runde noch einmal

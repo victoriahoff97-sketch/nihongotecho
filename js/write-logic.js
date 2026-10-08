@@ -72,7 +72,8 @@
       if (W.isId(s.id)) {
         const wi = items.get(W.itemId(s.id));
         if (!wi || s.due > now || W.isKnown(s)) return;
-        if (wi.type === 'vocab' ? s.reps > 0 : focus !== 'read') n++; // Vokabeln aktiv · Kanji schreiben
+        // Vokabeln aktiv · Kanji schreiben – andere Einträge (Ausdrücke …) haben keinen zweiten Lernstand
+        if (wi.type === 'vocab' ? s.reps > 0 : wi.type === 'kanji' && focus !== 'read') n++;
         return;
       }
       const it = items.get(s.id);

@@ -136,6 +136,8 @@
     if (focus !== 'read') queues.splice(focus === 'write' ? 0 : 3, 0, { label: 'Kanji schreiben', due: wq.due.length, fresh: wq.fresh.length, href: '#/ueben/kanji?auto=1' });
     const dueQ = queues.filter((x) => x.due), due = dueQ.reduce((n, x) => n + x.due, 0);
     const next = dueQ[0] || queues.find((x) => x.fresh);
+    // „Wiederholen“ startet nur Fälliges – ohne Fälliges ist der Knopf aus, Neues kommt nie von selbst dazu
+    const repeatBtn = (ico, n, href) => (n ? `<a class="btn btn-sec" href="${href}">${icon(ico)} Wiederholen <span class="badge">${n}</span></a>` : `<button class="btn" disabled title="Gerade ist nichts fällig">${icon(ico)} Wiederholen</button>`);
     const action = (cls, attrs, ico, title, sub) => `<${attrs.startsWith('href') ? 'a' : 'button'} class="home-act ${cls}" ${attrs}><span class="i">${icon(ico)}</span><span><b>${title}</b><small>${sub}</small></span></${attrs.startsWith('href') ? 'a' : 'button'}>`;
     const vocab = App.itemsOf('vocab');
     const sessions = App.itemsOf('session').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -180,7 +182,7 @@
       <div class="card sec-vocab"><div class="row between"><div class="row" style="gap:22px">
         <a href="#/vokabeln?st=learn" style="text-decoration:none" title="${tip('learn')}"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
         <a href="#/vokabeln?st=known" style="text-decoration:none" title="${tip('known')}"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
-        <a class="small muted" href="#/vokabeln?st=unchecked" style="text-decoration:none" title="${tip('unchecked')}"><b style="font-size:16px">${c.unchecked}</b> ungeprüft</a></div>
+        ${App.checkOn() ? `<a class="small muted" href="#/vokabeln?st=unchecked" style="text-decoration:none" title="${tip('unchecked')}"><b style="font-size:16px">${c.unchecked}</b> ungeprüft</a>` : ''}</div>
         <div class="row">${learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} Lernen <span class="badge">${learnN}</span></a>` : ''}${c.unchecked ? `<a class="btn${learnN ? '' : ' btn-sec'}" href="#/ueben/einstufen?${r.unchecked ? '' : 'dir=de&'}auto=1">${icon('check')} Nächste ${Math.min(r.unchecked || a.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button></div></div>
         <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div></div>`; })()}
       ${jlptCard()}
@@ -189,14 +191,14 @@
         <a href="#/kanji?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
         <a href="#/kanji?st=known" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
         <a href="#/kanji?mark=${encodeURIComponent(App.MARK_CLASS)}" style="text-decoration:none"><b style="font-size:26px;color:var(--shu)">${inClass}</b> im Unterricht</a>
-        <a class="small muted" href="#/kanji?st=unchecked" style="text-decoration:none"><b style="font-size:16px">${c.unchecked}</b> ungeprüft</a></div>
-        ${c.unchecked ? `<a class="btn btn-sec" href="#/ueben/einstufen?type=kanji&auto=1">${icon('check')} Nächste ${Math.min(c.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}</div>
+        ${App.checkOn() ? `<a class="small muted" href="#/kanji?st=unchecked" style="text-decoration:none"><b style="font-size:16px">${c.unchecked}</b> ungeprüft</a>` : ''}</div>
+        <div class="row">${focus === 'write' ? '' : repeatBtn('play', App.cardQueue({ type: 'kanji', dir: 'jp' }).due.length, '#/ueben/karten?type=kanji&dir=jp&round=due')}${c.unchecked ? `<a class="btn" href="#/ueben/einstufen?type=kanji&auto=1">${icon('check')} Nächste ${Math.min(c.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}</div></div>
         <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
-        ${(() => { if (focus === 'read') return ''; const w = App.writeLogic.counts(wq.items, S.srs, wq.unlocked); const todo = wq.due.length + wq.fresh.length; return `<div class="row between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div class="row" style="gap:22px"><b>Schreiben</b>
+        ${(() => { if (focus === 'read') return ''; const w = App.writeLogic.counts(wq.items, S.srs, wq.unlocked); const newN = Math.min(wq.fresh.length, S.settings.newPerDay); return `<div class="row between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div class="row" style="gap:22px"><b>Schreiben</b>
           <span><b style="font-size:20px;color:var(--matcha)">${w.known}</b> kann ich</span>
           <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
-          <a class="btn ${todo ? 'btn-sec' : ''}" href="#/ueben/kanji${todo ? '?auto=1' : ''}">${icon('pen')} ${wq.due.length ? `${wq.due.length} schreiben` : 'Schreiben üben'}</a></div>`; })()}</div>`; })()}
+          <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}</div></div>`; })()}</div>`; })()}
       ${vocab.some((v) => v.source === 'Genki I') ? `<div class="section-title">Genki I – Vokabel-Fortschritt je Lektion</div>
       <div class="card"><div class="lesson-strip">${lessons.map((x) => `<a href="#/vokabeln?src=Genki%20I&l=${x.l}" title="${x.pct}% von ${x.n} Wörtern gelernt">L${x.l}<i style="width:${x.pct}%"></i></a>`).join('')}</div>
         <div class="small muted" style="margin-top:8px">Der grüne Balken zeigt, wie viele Wörter der Lektion du schon mit Karteikarten gelernt hast.</div></div>` : ''}
@@ -224,12 +226,12 @@
     const cardsQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'vocab', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v))).toString();
     const unchecked = App.vocabCounts(filterItems(all, { src: q.src, l: q.l, lvl: q.lvl })).unchecked;
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Alle Wörter mit Lesung, Kanji, Übersetzung und Beispielsätzen – nach Quelle und Lektion sortiert.',
-      `<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a><a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a><a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>`)}
+      `<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a>${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>`)}
       ${tabsHtml(q, items.length, files.length)}
       <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}${App.lessonSelect(all.filter((i) => !q.src || i.source === q.src), q.l)}
         <select class="input" data-q-select="pos"><option value="">Alle Wortarten</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
         <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Gemerkt</button>
-        <select class="input" data-q-select="st"><option value="">Jeder Lernstand</option>${Object.entries(App.STATUS).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>
+        <select class="input" data-q-select="st"><option value="">Jeder Lernstand</option>${App.statusFilter(q.st)}</select>
         <span class="grow"></span>
         <div class="seg"><button class="${mode === 'cards' ? 'on' : ''}" data-mode="cards">${icon('cards')}</button><button class="${mode === 'list' ? 'on' : ''}" data-mode="list">${icon('list')}</button></div></div>
       ${App.sourceChips(all, q.src)}

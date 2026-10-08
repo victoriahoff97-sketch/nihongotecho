@@ -52,7 +52,7 @@
     const kc = App.vocabCounts(all.filter((k) => k.char !== '々'));
     const einQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'kanji', src: q.src, l: q.l, mark: q.mark, lvl: q.lvl }).filter(([, v]) => v))).toString();
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Bedeutung, Lesungen, Strichfolge als Animation und ein Schreibfeld für deinen Stift.',
-      `<a class="btn" href="#/ueben/einstufen?${einQs}">${icon('check')} Einstufen${kc.unchecked ? ` <span class="badge">${kc.unchecked}</span>` : ''}</a><a class="btn" href="#/ueben/karten?type=kanji">${icon('practice')} Karteikarten</a><a class="btn" href="#/ueben/kanji">${icon('practice')} Kanji-Quiz</a><button class="btn btn-sec" data-new="kanji">${icon('plus')} Kanji</button>`)}
+      `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${einQs}">${icon('check')} Einstufen${kc.unchecked ? ` <span class="badge">${kc.unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?type=kanji">${icon('practice')} Karteikarten</a><a class="btn" href="#/ueben/kanji">${icon('practice')} Kanji-Quiz</a><button class="btn btn-sec" data-new="kanji">${icon('plus')} Kanji</button>`)}
       <div class="tabs">${[['kanji', `Kanji <span class="badge">${items.length}</span>`], ['hira', 'Hiragana'], ['kata', 'Katakana'], ['files', `${icon('file')} Dateien <span class="badge">${files.length}</span>`]].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-q-tab="${k === 'kanji' ? '' : k}">${l}</button>`).join('')}</div>
       <div data-body></div></div>`;
     const body = view.querySelector('[data-body]');
@@ -65,8 +65,8 @@
     } else {
       body.innerHTML = `<div class="toolbar"><div class="search-wrap" style="max-width:340px">${icon('search')}<input class="input" style="padding-left:44px;width:100%" data-kf placeholder="Kanji, Bedeutung oder Lesung …" value="${esc(q.f || '')}"></div>
         ${App.lessonSelect(all, q.l)}
-        <select class="input" data-q-select="st"><option value="">Jeder Lernstand</option>${Object.entries(App.STATUS).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>
-        <span class="small muted">○ ungeprüft · <span style="color:var(--ai)">●</span> Lernstapel · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span><span class="grow"></span><button class="btn btn-sm btn-sec" data-kvg-all hidden></button></div>
+        <select class="input" data-q-select="st"><option value="">Jeder Lernstand</option>${App.statusFilter(q.st)}</select>
+        <span class="small muted">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernstapel · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span><span class="grow"></span><button class="btn btn-sm btn-sec" data-kvg-all hidden></button></div>
         <div class="chips scroll" style="margin-bottom:8px"><button class="chip ${!q.mark ? 'on' : ''}" data-q-mark="">Alle Markierungen</button>${App.kanjiMarks().map((m) => { const n = all.filter((k) => App.hasMark(k, m)).length; return `<button class="chip ${q.mark === m ? 'on' : ''}" data-q-mark="${esc(m)}">${esc(m)} <span class="small" style="opacity:.7">${n}</span></button>`; }).join('')}<button class="chip" data-new-mark>${icon('plus')} Markierung</button></div>
         ${App.sourceChips(all, q.src)}${App.levelChips(q.lvl)}<div data-grid style="margin-top:14px"></div>`;
       body.querySelector('[data-new-mark]').onclick = async () => { const m = await App.addKanjiMark(); if (m) App.setQuery({ mark: m }); };
@@ -324,7 +324,8 @@
         <div class="two"><div class="field"><label>Design</label><select class="input" data-s="theme">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<option value="${k}" ${st.theme === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Furigana</label><select class="input" data-s="furigana"><option value="on" ${st.furigana === 'on' ? 'selected' : ''}>Immer anzeigen</option><option value="hover" ${st.furigana === 'hover' ? 'selected' : ''}>Nur beim Antippen</option></select></div></div>
         <div class="two"><div class="field"><label>Neue Karten pro Sitzung</label><input class="input" type="number" min="1" max="100" data-s="newPerDay" value="${st.newPerDay}"></div>
-        <div class="field"><label>Wörter pro Einstufungs-Runde</label><input class="input" type="number" min="3" max="100" data-s="checkBatch" value="${st.checkBatch || 15}"></div></div>
+        ${App.checkOn() ? `<div class="field"><label>Wörter pro Einstufungs-Runde</label><input class="input" type="number" min="3" max="100" data-s="checkBatch" value="${st.checkBatch || 15}"></div>` : ''}</div>
+        <div class="field"><label>Einstufen <small>erst prüfen, was du schon kannst, bevor Vokabeln und Kanji aus Paketen in den Lernstapel kommen</small></label><select class="input" data-s="check">${[['on', 'An – Neues erst einstufen'], ['off', 'Aus – alles Ungeprüfte liegt direkt im Lernstapel']].map(([k, l]) => `<option value="${k}" ${(App.checkOn() ? 'on' : 'off') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Kanji-Schwerpunkt <small>was Startseite und „fällig“ in den Vordergrund stellen</small></label><select class="input" data-s="kanjiFocus">${[['both', 'Lesen und Schreiben'], ['write', 'Schreiben – Lesen lerne ich woanders (z. B. WaniKani)'], ['read', 'Lesen – Schreiben brauche ich nicht']].map(([k, l]) => `<option value="${k}" ${App.writeLogic.focus(st) === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Furigana beim Abfragen <small>über Kanji, die du schon lesen kannst („Kann ich“ oder mit Karten gelernt)</small></label><select class="input" data-s="furiKnown">${[['hide', 'Ausblenden – nur über Kanji, die ich noch lerne'], ['show', 'Über allen Kanji anzeigen']].map(([k, l]) => `<option value="${k}" ${(st.furiKnown === 'show' ? 'show' : 'hide') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="two">
@@ -354,7 +355,7 @@
     const root = view.firstElementChild;
     root.addEventListener('change', async (e) => {
       const s = e.target.closest('[data-s]');
-      if (s) { let v = s.value; if (s.type === 'number' || s.type === 'range') v = +v; await App.saveSettings({ [s.dataset.s]: v }); if (s.dataset.s === 'theme') App.applyTheme(); if (s.dataset.s === 'ttsRate') App.render(true); }
+      if (s) { let v = s.value; if (s.type === 'number' || s.type === 'range') v = +v; await App.saveSettings({ [s.dataset.s]: v }); if (s.dataset.s === 'theme') App.applyTheme(); if (s.dataset.s === 'ttsRate' || s.dataset.s === 'check') App.render(true); }
       const sn = e.target.closest('[data-sn]');
       if (sn) { const i = +sn.dataset.sn; const old = st.sources[i].name; const nn = sn.value.trim(); if (nn && nn !== old) { st.sources[i].name = nn; for (const it of S.items.values()) if (it.source === old) { it.source = nn; await App.db.put('items', it); } for (const f of S.files.values()) if (f.source === old) { f.source = nn; await App.db.put('files', f); } await App.saveSettings({}); App.toast('Quelle umbenannt'); } }
       const sc = e.target.closest('[data-sc]');

@@ -288,6 +288,10 @@
       const o = byId.get(old);
       if (o && o._seed && !o._edited && byId.has(kept)) gone.set(old, kept);
     }
+    // Den zweiten Lernstand („w:“) gibt es nur für Vokabeln (aktiv) und Kanji (schreiben). Geht eine Vokabel in einem
+    // Ausdruck auf, entfällt er – auch einer, der bei einer früheren Bereinigung noch mitgewandert ist.
+    const second = (id) => ['vocab', 'kanji'].includes((byId.get(id) || {}).type);
+    for (const kept of new Set(Object.values(map || {}))) if (byId.has(kept) && !second(kept) && srs.has('w:' + kept)) out.delSrs.push('w:' + kept);
     if (!gone.size) return out;
     const ahead = (a, b) => (a.reps || 0) - (b.reps || 0) || (a.ivl || 0) - (b.ivl || 0);
     for (const [old, kept] of gone) {
@@ -296,7 +300,7 @@
         const so = srs.get(pre + old);
         if (!so) continue;
         const sk = srs.get(pre + kept);
-        if (!sk || ahead(so, sk) > 0) out.putSrs.push({ ...so, id: pre + kept });
+        if ((!pre || second(kept)) && (!sk || ahead(so, sk) > 0)) out.putSrs.push({ ...so, id: pre + kept });
         out.delSrs.push(pre + old);
       }
     }

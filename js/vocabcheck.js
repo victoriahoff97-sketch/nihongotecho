@@ -13,7 +13,12 @@
   const autoLearn = (id) => { const it = S.items.get(id); return !!it && it.type === 'grammar' && App.sessionsFor(id).length > 0; };
   // Eingestuft werden nur Vokabeln/Kanji aus Paketen (Genki, JLPT, Kanji) und aus importierten Listen.
   // Eigene Einträge (selbst angelegt, aus Satzerkennung/Suche übernommen) sind nie „ungeprüft“ – sie sind direkt im Lernstapel.
-  App.needsCheck = (it) => !!it && !((it.type === 'vocab' || it.type === 'kanji') && !it._seed && !it._pack && !it.imported);
+  // Einstufen lässt sich in den Einstellungen abschalten (check: 'off'): dann liegt auch das direkt im Lernstapel.
+  // Am Speicher ändert das nichts – wieder eingeschaltet, ist Unberührtes wieder „ungeprüft“. Grammatik bleibt davon unberührt.
+  App.checkOn = () => S.settings.check !== 'off';
+  App.needsCheck = (it) => !!it && !((it.type === 'vocab' || it.type === 'kanji') && (!App.checkOn() || (!it._seed && !it._pack && !it.imported)));
+  // Lernstand-Filter der Vokabel- und Kanji-Liste: ohne Einstufen gibt es „Ungeprüft“ nicht
+  App.statusFilter = (cur) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.checkOn()).map(([k, s]) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('');
   const ownWord = (id) => { const it = S.items.get(id); return !!it && !App.needsCheck(it); };
   App.statusChoices = (it) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.needsCheck(it));
   App.vocabStatus = (id) => {
@@ -99,6 +104,7 @@
   // Einstufung in Runden
   // =========================================================
   App.route('/ueben/einstufen', (view, p, q) => {
+    if (!App.checkOn()) return App.go('#/ueben'); // abgeschaltet: alte Links und Lesezeichen führen zur Übersicht
     const type = q.type === 'kanji' ? 'kanji' : 'vocab';
     const isK = type === 'kanji';
     const sec = App.SECTIONS[type];
@@ -445,7 +451,7 @@
         <div class="form"><div class="three"><div class="field"><label>Quelle</label><select class="input" data-src>${App.sourceOptions(defSrc, false)}</select></div>
           <div class="field"><label>Lektion <small>falls keine Spalte</small></label><input class="input" data-lesson value="${esc(body.dataset.lesson || '')}"></div>
           <div class="field"><label>Schlagwörter</label><input class="input" data-tags placeholder="z. B. import"></div></div>
-          <div class="field"><label>Lernstand der neuen Wörter</label><div class="seg" data-st><button class="on" data-v="unchecked">Ungeprüft – erst einstufen (empfohlen)</button><button data-v="learn">Direkt in den Lernstapel</button><button data-v="known">Kann ich schon</button></div></div></div></div>`;
+          <div class="field"><label>Lernstand der neuen Wörter</label><div class="seg" data-st>${App.checkOn() ? '<button class="on" data-v="unchecked">Ungeprüft – erst einstufen (empfohlen)</button>' : ''}<button ${App.checkOn() ? '' : 'class="on" '}data-v="learn">Direkt in den Lernstapel</button><button data-v="known">Kann ich schon</button></div></div></div></div>`;
       const prev = () => {
         const map = $$('[data-col]', s2).map((x) => x.value);
         const r = buildItems(st, map, { source: '', lesson: '', tags: [] });

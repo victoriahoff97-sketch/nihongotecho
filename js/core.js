@@ -477,7 +477,7 @@ window.App = window.App || {};
   async function cleanupMergedSeeds() {
     if (!window.SEED_MERGED || !App.planSeedCleanup) return false;
     const r = App.planSeedCleanup(window.SEED_MERGED, Array.from(S.items.values()), S.srs);
-    if (!r.delItems.length) return false;
+    if (!r.delItems.length && !r.delSrs.length) return false;
     r.putSrs.forEach((s) => S.srs.set(s.id, s));
     r.delSrs.forEach((id) => S.srs.delete(id));
     r.putItems.forEach((it) => S.items.set(it.id, it));
