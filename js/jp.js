@@ -178,6 +178,11 @@
     return JP.notate(conjStr(it.kanji), kana);
   };
 
+  // ---------- Partikel-Muster eines Verbs ----------
+  // use: [{ jp:"人[ひと]|に|会[あ]う", de:"jemanden treffen" }] – die Partikeln stehen zwischen |…| und werden hervorgehoben
+  JP.useRuby = (s) => String(s ?? '').split('|').map((p, i) => (i % 2 ? `<span class="prt">${App.esc(p)}</span>` : JP.ruby(p))).join('');
+  JP.useText = (s) => String(s ?? '').replace(/\|/g, ''); // Notation ohne Markierung (für Sprachausgabe, Suche)
+
   // ---------- Deutsch: Nomenformen ----------
   const ART = {
     def: { nom: { m: 'der', f: 'die', n: 'das', pl: 'die' }, akk: { m: 'den', f: 'die', n: 'das', pl: 'die' }, dat: { m: 'dem', f: 'der', n: 'dem', pl: 'den' } },

@@ -3,8 +3,8 @@
  * Lizenzen der Quellen: siehe packs/LIZENZEN.txt und window.PACK_CREDITS unten.
  */
 window.PACKS = [
-  {id:"n5",kind:"level",level:"N5",title:"JLPT N5",version:4,files:["n5/vocab.js","n5/kanji.js","n5/grammar.js"],counts:{vocab:722,kanji:80,grammar:91},sizeKB:275,available:true,hash:"2d37dd6d0d0e1aac1115503b2b98a7ca471905d208456fefea9b9e674a4395b4"},
-  {id:"n4",kind:"level",level:"N4",title:"JLPT N4",version:5,files:["n4/vocab.js","n4/kanji.js","n4/grammar.js"],counts:{vocab:662,kanji:166,grammar:119},sizeKB:423,available:true,hash:"b57cc4ba4b73bfc01d8adc1d4402f2e85228d86a27157104e698305aea7ea223",strokes:"n4/strokes.js"},
+  {id:"n5",kind:"level",level:"N5",title:"JLPT N5",version:5,files:["n5/vocab.js","n5/kanji.js","n5/grammar.js"],counts:{vocab:722,kanji:80,grammar:91},sizeKB:285,available:true,hash:"cb2f61cdf0a125f58cd0695cd5feeb774d7a0cb9834e97ab275436c01363bdf3"},
+  {id:"n4",kind:"level",level:"N4",title:"JLPT N4",version:6,files:["n4/vocab.js","n4/kanji.js","n4/grammar.js"],counts:{vocab:662,kanji:166,grammar:119},sizeKB:439,available:true,hash:"239c4f0abccd1c0e4d970de3d95d98f825503a4fffd9a59b6986f480b0e92788",strokes:"n4/strokes.js"},
   {id:"n3",kind:"level",level:"N3",title:"JLPT N3",version:1,files:["n3/vocab.js","n3/kanji.js","n3/grammar.js"],counts:{vocab:2131,kanji:367,grammar:0},sizeKB:0,available:false,hash:null},
   {id:"n2",kind:"level",level:"N2",title:"JLPT N2",version:1,files:["n2/vocab.js","n2/kanji.js","n2/grammar.js"],counts:{vocab:1777,kanji:367,grammar:0},sizeKB:0,available:false,hash:null},
   {id:"n1",kind:"level",level:"N1",title:"JLPT N1",version:1,files:["n1/vocab.js","n1/kanji.js","n1/grammar.js"],counts:{vocab:2696,kanji:1232,grammar:0},sizeKB:0,available:false,hash:null},

@@ -103,6 +103,13 @@
   // Schutz bei altem index.html (ohne js/accent.js): keine Kurve statt Absturz
   App.accentHtml = App.accentHtml || (() => '');
   App.speakBtn = (text, cls = 'sm') => JP.canSpeak() ? `<button class="icon-btn ${cls}" data-speak="${esc(text)}" title="Vorlesen">${icon('speak')}</button>` : '';
+  // Mit welchen Partikeln ein Verb steht (it.use, siehe JP.useRuby); compact = ohne Überschrift, für die Karteikarte
+  App.useHtml = (it, compact) => {
+    const list = Array.isArray(it.use) ? it.use.filter((u) => u && u.jp) : [];
+    if (!list.length) return '';
+    const rows = list.map((u) => `<div class="use-row"><span class="use-jp" lang="ja">${JP.useRuby(u.jp)}</span><span class="use-de">${esc(u.de || u.en || '')}</span></div>`).join('');
+    return `${compact ? '' : '<div class="section-title">Partikeln</div>'}<div class="use-list${compact ? ' compact' : ''}">${rows}</div>`;
+  };
   App.exampleHtml = (ex) => {
     const hasN = JP.hasNotation(ex.jp);
     const kana = ex.kana || (hasN ? JP.kana(ex.jp) : '');
@@ -210,6 +217,7 @@
     (it.on || []).forEach(push); (it.kun || []).forEach(push); (it.tags || []).forEach((t) => push('#' + t));
     (it.examples || []).forEach((e) => { push(JP.plain(e.jp)); push(e.de); push(e.en); });
     (it.words || []).forEach((w) => { push(JP.plain(w.jp)); push(JP.kana(w.jp)); push(w.de); push(w.en); });
+    (it.use || []).forEach((u) => { push(JP.plain(JP.useText(u.jp))); push(u.de); });
     if (it.type === 'session') { push(it.number && 'stunde ' + it.number); push(it.textbook); push(it.topic); push(it.course); push((it.notesHtml || '').replace(/<[^>]+>/g, ' ')); }
     if (it.type === 'answer' || it.type === 'journal') push((it.html || '').replace(/<[^>]+>/g, ' '));
     const s = parts.join(' \u0001 ');

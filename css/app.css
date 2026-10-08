@@ -1005,3 +1005,13 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .book .vpage.bk-r.flip-next, .book .vpage.bk-r.flip-prev { transform-origin: left center; animation: bkFlipR .26s ease-out; }
 .book .vpage.bk-l.flip-next, .book .vpage.bk-l.flip-prev { transform-origin: right center; animation: bkFlipL .26s ease-out; }
 @media (prefers-reduced-motion: reduce) { .book .vpage { animation: none !important; } }
+
+/* Partikel-Muster am Verb (人に会う – jemanden treffen) */
+.use-list { display: grid; gap: 8px; }
+.use-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 10px 14px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); }
+.use-jp { font-family: var(--font-jp); font-size: 19px; line-height: 1.9; }
+.use-de { color: var(--ink-2); font-size: 14px; }
+.prt { background: var(--fuji-soft); color: var(--fuji); border-radius: 6px; padding: 0 5px; margin: 0 2px; font-weight: 700; }
+.use-list.compact { margin-top: 10px; gap: 4px; }
+.use-list.compact .use-row { padding: 4px 10px; justify-content: center; border: 0; background: transparent; }
+.use-list.compact .use-jp { font-size: 17px; }
