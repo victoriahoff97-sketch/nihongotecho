@@ -69,7 +69,11 @@
     if (!pts.length) return;
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    if (s.t === 'fp') {
+    // Tipper (Punkt, kurzes Strichlein): voller Punkt statt eines Strichs, der fast nur aus Auslauf besteht
+    if (s.t !== 'marker' && App.inkPen.isDot(pts, s.w)) {
+      const d = App.inkPen.dot(pts, s.w);
+      ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(d.x * W, d.y * W, d.r * W, 0, 7); ctx.fill();
+    } else if (s.t === 'fp') {
       ctx.fillStyle = s.c;
       const o = App.inkPen.fountainOutline(pts, W, s);
       if (o.length) { ctx.beginPath(); ctx.moveTo(o[0][0], o[0][1]); for (let i = 1; i < o.length; i++) ctx.lineTo(o[i][0], o[i][1]); ctx.closePath(); ctx.fill(); }
@@ -78,10 +82,10 @@
       ctx.strokeStyle = s.c; ctx.lineWidth = s.w * W; ctx.lineCap = 'square';
       ctx.beginPath(); ctx.moveTo(pts[0][0] * W, pts[0][1] * W);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * W, pts[i][1] * W);
+      if (pts.length === 1) ctx.lineTo(pts[0][0] * W, pts[0][1] * W);
       ctx.stroke();
     } else {
       ctx.strokeStyle = s.c; ctx.fillStyle = s.c;
-      if (pts.length === 1) { ctx.beginPath(); ctx.arc(pts[0][0] * W, pts[0][1] * W, s.w * W * 0.6, 0, 7); ctx.fill(); }
       for (let i = 1; i < pts.length; i++) {
         const a = pts[i - 1], b = pts[i];
         const p = (a[2] + b[2]) / 2;
@@ -163,10 +167,12 @@
     const IE = App.inkErase;
     const BK = App.inkBook;
     const SEL = App.inkSelect;
+    const PEN = App.inkPen;
+    const STK = App.inkStickers;
     // Buchlayout: nur im Vollbild und nur für Notizblätter (PDF-/Bildseiten haben beliebige Formate)
     const bookable = !embedded && kind === 'notebook';
     const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser', 'cut'];
-    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, book: bookable && !!S.inkBook, spread: 0 };
+    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, ruler: false, stamp: null, book: bookable && !!S.inkBook, spread: 0 };
     // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
     // Blättern gibt es nur ohne „Nur Stift“ – sonst scrollt ohnehin der Finger
     if (st.tool === 'hand' && st.penOnly) st.tool = 'pen';
@@ -181,7 +187,9 @@
         ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen, dann verschieben oder an den Ecken skalieren; Bilder ebenso'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
           ['pen', 'ballpen', 'Stift', 'Stift'], ['fountain', 'fountain', 'Füller', 'Füller (druckempfindlich)'], ['marker', 'highlighter', 'Marker', 'Textmarker'],
           ['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}"${t === 'hand' && st.penOnly ? ' hidden' : ''}>${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
+        <button class="icon-btn tool-btn" data-v="ruler" title="Lineal: Stift, Füller und Marker ziehen gerade Linien">${icon('ruler')}<span class="tool-swatch"></span><span class="tool-lbl">Lineal</span></button>
         <button class="icon-btn tool-btn" data-v="image" title="Bild einfügen (Strg+V)">${icon('imagePlus')}<span class="tool-swatch"></span><span class="tool-lbl">Bild</span></button>
+        <button class="icon-btn tool-btn" data-v="sticker" title="Sticker: Symbol wählen, dann auf die Stelle im Blatt tippen">${icon('sticker')}<span class="tool-swatch"></span><span class="tool-lbl">Sticker</span></button>
         <button class="icon-btn tool-btn" data-v="lookup" title="Nachschlagen (Wörterbuch)">${icon('search')}<span class="tool-swatch"></span><span class="tool-lbl">Nachschlagen</span></button>
       </div>
       <div class="grp" data-colors></div>
@@ -484,6 +492,7 @@
       if (!p) return;
       e.preventDefault();
       scroller.setPointerCapture(e.pointerId);
+      if (st.stamp) { placeSticker(p, norm(p, e)); return; }
       if (st.tool === 'select') {
         const pt = norm(p, e), cur = selImg();
         // markierte Schrift greifen: Ecke = skalieren, im Rahmen ziehen = verschieben (kleine Auswahl: kleinere Ecken, damit die Mitte greifbar bleibt)
@@ -503,13 +512,14 @@
       const erasing = st.tool === 'eraser' || st.tool === 'cut' || (e.pointerType === 'pen' && (e.buttons & 32));
       if (erasing && (st.tool === 'cut' || (st.tool !== 'eraser' && st.eraser === 'cut'))) { drawing = { p, cut: true, last: null, before: p.strokes }; cutAt(p, norm(p, e)); return; }
       if (erasing) { drawing = { p, erase: true, act: { type: 'erase', pi: p.i, removed: [] } }; eraseAt(p, norm(p, e), drawing.act); return; }
-      if (st.tool === 'fountain') {
-        drawing = { p, s: { t: 'fp', c: st.color, w: App.inkPen.FOUNTAIN_WIDTHS[st.wIdx], th: App.inkPen.clampThinning(S.inkThinning), sim: e.pointerType !== 'pen', pts: [norm(p, e)] }, pid: e.pointerId };
-        return;
-      }
-      const marker = st.tool === 'marker';
-      const s = { t: marker ? 'marker' : 'pen', c: marker ? st.mcolor : st.color, w: WIDTHS[marker ? 'marker' : 'pen'][st.wIdx], pts: [norm(p, e)] };
-      drawing = { p, s, pid: e.pointerId };
+      const marker = st.tool === 'marker', pt = norm(p, e);
+      // Lineal: gleichmäßiger Druck, auch beim Füller
+      const s = st.tool === 'fountain'
+        ? { t: 'fp', c: st.color, w: PEN.FOUNTAIN_WIDTHS[st.wIdx], th: PEN.clampThinning(S.inkThinning), sim: !st.ruler && e.pointerType !== 'pen', pts: [pt] }
+        : { t: marker ? 'marker' : 'pen', c: marker ? st.mcolor : st.color, w: WIDTHS[marker ? 'marker' : 'pen'][st.wIdx], pts: [pt] };
+      // dot: solange der Strich ein Tipper ist, steht er als Punkt auf der Live-Ebene – sofort beim Aufsetzen sichtbar
+      drawing = { p, s, pid: e.pointerId, line: st.ruler ? pt : null, dot: !marker };
+      if (drawing.dot) drawStroke(p.live.getContext('2d'), s, p.live.width);
     });
     scroller.addEventListener('pointermove', (e) => {
       if (touches.has(e.pointerId)) {
@@ -524,7 +534,7 @@
         }
         return;
       }
-      if (!drawing) { if (e.pointerType !== 'touch' && !e.buttons) hoverLinks(e); return; }
+      if (!drawing) { if (st.stamp) ghost(e); else if (e.pointerType !== 'touch' && !e.buttons) hoverLinks(e); return; }
       const p = drawing.p;
       if (drawing.img) {
         const pt = norm(p, e), b = drawing.before;
@@ -546,12 +556,25 @@
       if (drawing.lasso) { drawing.lasso.push(norm(p, e)); drawLasso(p, drawing.lasso); return; }
       if (drawing.cut) { cutAt(p, norm(p, e)); return; }
       if (drawing.erase) { eraseAt(p, norm(p, e), drawing.act); return; }
+      const lc = p.live.getContext('2d');
+      if (drawing.line) {
+        drawing.s.pts = PEN.linePts(drawing.line, PEN.straight(drawing.line, norm(p, e)));
+        clearLive(p); drawStroke(lc, drawing.s, p.live.width);
+        return;
+      }
       const ce = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
       const evs = ce.length ? ce : [e];
       const c = p.ink.getContext('2d');
       evs.forEach((ev) => drawing.s.pts.push(norm(p, ev)));
+      if (drawing.dot) {
+        clearLive(p);
+        if (PEN.isDot(drawing.s.pts, drawing.s.w)) { drawStroke(lc, drawing.s, p.live.width); return; }
+        drawing.dot = false;
+        // aus dem Tipper wird ein Strich: das bisherige Stück nachholen
+        if (drawing.s.t === 'pen') { drawStroke(c, drawing.s, p.ink.width); return; }
+      }
       // live zeichnen (nur letzte Abschnitte)
-      if (drawing.s.t === 'fp') { const lc = p.live.getContext('2d'); lc.clearRect(0, 0, p.live.width, p.live.height); drawStroke(lc, drawing.s, p.live.width); }
+      if (drawing.s.t === 'fp') { clearLive(p); drawStroke(lc, drawing.s, p.live.width); }
       else if (drawing.s.t === 'marker') { drawInk(p); drawStroke(c, drawing.s, p.ink.width); }
       else { const n = drawing.s.pts.length; drawStroke(c, { ...drawing.s, pts: drawing.s.pts.slice(Math.max(0, n - evs.length - 2)) }, p.ink.width); }
     });
@@ -603,13 +626,13 @@
       else {
         const s = drawing.s;
         s.pts = s.pts.map((q) => [+q[0].toFixed(4), +q[1].toFixed(4), +q[2].toFixed(2)]);
-        if (s.t === 'fp') p.live.getContext('2d').clearRect(0, 0, p.live.width, p.live.height);
+        clearLive(p);
         p.strokes.push(s); st.undo.push({ type: 'add', pi: p.i, s }); st.redo = [];
         drawInk(p); dirty.add(p.i); saveInk(p.i);
       }
       drawing = null;
     };
-    scroller.addEventListener('pointerleave', () => { clearTimeout(tipWait); tipNext = null; leaveTip(); });
+    scroller.addEventListener('pointerleave', () => { clearTimeout(tipWait); tipNext = null; leaveTip(); ghost(null); });
     scroller.addEventListener('pointerup', up);
     scroller.addEventListener('pointercancel', up);
     scroller.addEventListener('wheel', (e) => { if (e.ctrlKey) { e.preventDefault(); const r = scroller.getBoundingClientRect(); setZoom(st.zoom * (e.deltaY < 0 ? 1.1 : 0.9), e.clientX - r.left, e.clientY - r.top); } }, { passive: false });
@@ -873,6 +896,46 @@
       $$('[data-tool]', root).forEach((b) => b.classList.toggle('active', b.dataset.tool === t));
       drawColors();
       const fp = root.querySelector('.fp-pop'); if (fp) fp.remove();
+      setStamp(null);
+    };
+    // ---------- Sticker: wählen, dann aufs Blatt tippen; landen als Striche in Stift- und Markerfarbe ----------
+    let ghostP = null;
+    const stickerAt = (p, pt) => STK.strokes(st.stamp, { x: pt[0], y: pt[1], pageH: p.def.ratio, color: st.color, mcolor: st.mcolor });
+    // Vorschau unter Stift/Maus, solange ein Sticker gewählt ist
+    const ghost = (e) => {
+      const p = e && st.stamp && e.pointerType !== 'touch' ? pageAt(e.clientX, e.clientY) : null;
+      if (ghostP && ghostP !== p) clearLive(ghostP);
+      ghostP = p;
+      if (!p) return;
+      const c = p.live.getContext('2d');
+      clearLive(p);
+      c.save(); c.globalAlpha = 0.45;
+      stickerAt(p, norm(p, e)).forEach((s) => drawStroke(c, s, p.live.width));
+      c.restore();
+    };
+    const setStamp = (id) => {
+      st.stamp = id || null;
+      root.querySelector('[data-v=sticker]').classList.toggle('active', !!st.stamp);
+      const pop = root.querySelector('.stk-pop'); if (pop) pop.remove();
+      if (!st.stamp) ghost(null);
+    };
+    const placeSticker = (p, pt) => {
+      const strokes = stickerAt(p, pt);
+      setStamp(null);
+      p.strokes = p.strokes.concat(strokes);
+      st.undo.push({ type: 'add-many', pi: p.i, strokes }); st.redo = [];
+      drawInk(p); markDirty(p);
+    };
+    const toggleStickers = (btn) => {
+      if (root.querySelector('.stk-pop') || st.stamp) { setStamp(null); return; }
+      const pop = document.createElement('div');
+      pop.className = 'stk-pop card';
+      pop.innerHTML = STK.LIST.map((s) => `<button class="stk" data-stk="${s.id}" title="${esc(s.label)}">${STK.svg(s.id, st.mcolor)}<span>${esc(s.label)}</span></button>`).join('');
+      root.appendChild(pop);
+      const r = btn.getBoundingClientRect(), rr = root.getBoundingClientRect();
+      pop.style.left = Math.max(8, Math.min(r.left - rr.left - 80, rr.width - pop.offsetWidth - 8)) + 'px';
+      pop.style.top = r.bottom - rr.top + 6 + 'px';
+      pop.addEventListener('click', (e) => { const b = e.target.closest('[data-stk]'); if (b) { setStamp(b.dataset.stk); note('Jetzt auf die Stelle im Blatt tippen'); } });
     };
     // Zielseite = größte sichtbare Fläche; Bild mittig im sichtbaren Ausschnitt
     const insertImage = async (blob) => {
@@ -921,6 +984,7 @@
       const back = from === st.undo;
       clearSSel();
       if (a.type === 'add') { if (back) p.strokes = p.strokes.filter((x) => x !== a.s); else p.strokes.push(a.s); }
+      else if (a.type === 'add-many') { if (back) p.strokes = p.strokes.filter((x) => !a.strokes.includes(x)); else p.strokes = p.strokes.concat(a.strokes); }
       else if (a.type === 'erase') { if (back) p.strokes = p.strokes.concat(a.removed); else p.strokes = p.strokes.filter((x) => !a.removed.includes(x)); }
       else if (a.type === 'cut') p.strokes = (back ? a.before : a.after).slice();
       else if (a.type === 'img-add') { if (back) p.images = p.images.filter((x) => x !== a.im); else p.images.push(a.im); }
@@ -966,6 +1030,7 @@
       // Escape schließt zuerst das Nachschlagen-Fenster (auch wenn der Fokus auf einem seiner Knöpfe oder auf der Seite liegt)
       if (e.key === 'Escape' && root._lookup && !$('.modal-back') && !(embedded && $('.viewer'))) { root._lookup.close(); return; }
       if (inactive(e)) return;
+      if (e.key === 'Escape' && (st.stamp || root.querySelector('.stk-pop'))) { setStamp(null); return; }
       if ((st.sel || st.ssel) && e.key === 'Escape') { clearSel(); return; }
       if (e.key === 'Escape' && root.querySelector('.hw-pop')) { closeHw(); return; }
       if ((st.sel || st.ssel) && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSel(); return; }
@@ -1015,6 +1080,12 @@
       }
       if (a === 'print') printAll();
       if (a === 'image') pickImage();
+      if (a === 'sticker') toggleStickers(v);
+      if (a === 'ruler') {
+        st.ruler = !st.ruler; v.classList.toggle('active', st.ruler);
+        if (st.ruler && !['pen', 'fountain', 'marker'].includes(st.tool)) setTool('pen');
+        if (st.ruler) note('Lineal an: Stift, Füller und Marker ziehen gerade Linien');
+      }
       if (a === 'lookup') App.lookup.open(root, '', lookupOpts());
       if (a === 'vocab') App.importVocab({ fileId: f.id });
     });

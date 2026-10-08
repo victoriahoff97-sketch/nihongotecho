@@ -183,6 +183,33 @@
   JP.useRuby = (s) => String(s ?? '').split('|').map((p, i) => (i % 2 ? `<span class="prt">${App.esc(p)}</span>` : JP.ruby(p))).join('');
   JP.useText = (s) => String(s ?? '').replace(/\|/g, ''); // Notation ohne Markierung (für Sprachausgabe, Suche)
 
+  // Einfache Eingabe im Editor: aus „人に会う“ wird „人[ひと]|に|会[あ]う“.
+  // verb: der Vokabel-Eintrag ({ kanji, kana }); lookup(Wort) liefert die Lesung eines bekannten Wortes oder ''.
+  // Wer schon |…| gesetzt hat, bekommt seine Eingabe unverändert zurück. Erkannt wird die Partikel direkt vor dem
+  // Verb und davor jede, die auf ein Kanji, ein Katakana-Wort oder eine Lesung folgt („人に本を貸す“). Steht ein
+  // Nomen in Hiragana vor einer weiteren Partikel, bleibt diese unmarkiert – dann hilft ein | von Hand.
+  const USE_TAIL = /(から|まで|より|[をにがとへで])$/;
+  const USE_INNER = new RegExp('([' + KANJI + '々ァ-ヶー\\]])([をにがとへで])(?=[^をにがとへで|])', 'g');
+  JP.useParse = (text, verb, lookup) => {
+    const s = String(text ?? '').replace(/\s+/g, '');
+    if (!s || s.includes('|')) return s;
+    const v = verb || {};
+    const forms = [v.kanji && JP.notate(v.kanji, v.kana), v.kanji, v.kana].filter(Boolean);
+    const end = forms.find((f) => s.endsWith(f));
+    if (!end) return s; // endet nicht auf dem Verb in Wörterbuchform: so lassen
+    let head = s.slice(0, s.length - end.length);
+    const tail = head.match(USE_TAIL);
+    if (!tail) return s;
+    head = head.slice(0, head.length - tail[1].length).replace(USE_INNER, '$1|$2|');
+    // Lesungen für Nomen ohne eigene Angabe
+    const withFuri = head.split('|').map((part, i) => {
+      if (i % 2 || !part || part.includes('[') || !JP.hasKanji(part)) return part;
+      const kana = lookup ? lookup(part) : '';
+      return kana ? JP.notate(part, kana) : part;
+    }).join('|');
+    return `${withFuri}|${tail[1]}|${v.kanji ? JP.notate(v.kanji, v.kana) : v.kana}`;
+  };
+
   // ---------- Deutsch: Nomenformen ----------
   const ART = {
     def: { nom: { m: 'der', f: 'die', n: 'das', pl: 'die' }, akk: { m: 'den', f: 'die', n: 'das', pl: 'die' }, dat: { m: 'dem', f: 'der', n: 'dem', pl: 'den' } },

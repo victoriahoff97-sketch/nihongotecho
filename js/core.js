@@ -56,6 +56,8 @@ window.App = window.App || {};
     imagePlus: '<path d="M21 12V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h7"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/><path d="M19 16v6M16 19h6"/>',
     marker: '<path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 01-2.8 0l-5.2-5.2a2 2 0 010-2.8L14 4"/>',
     eraser: '<path d="M20 20H7L3 16a2 2 0 010-2.8L13.2 3a2 2 0 012.8 0l5 5a2 2 0 010 2.8L12 20"/><path d="M6 11l7 7"/>',
+    ruler: '<path d="M3 17L17 3l4 4L7 21z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/>',
+    sticker: '<path d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2h7z"/><path d="M20 13h-5a2 2 0 00-2 2v5"/><path d="M9 10h.01M15 10h.01"/>',
     eraserDot: '<path d="M12 20H7L3 16a2 2 0 010-2.8L13.2 3a2 2 0 012.8 0l5 5a2 2 0 010 2.8L12 20"/><path d="M6 11l7 7"/><circle cx="19" cy="19.6" r="1.5" fill="currentColor"/>',
     undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/>',
     redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 000 10h3"/>',

@@ -383,7 +383,7 @@
           <div class="field"><label>Hilfsverb</label><select class="input" name="vaux"><option ${v.aux !== 'bin' ? 'selected' : ''}>habe</option><option ${v.aux === 'bin' ? 'selected' : ''}>bin</option></select></div>
           <div class="field"><label>Abtrennbares Präfix</label><input class="input" name="vsep" value="${esc(v.sep || '')}" placeholder="z. B. auf"></div></div>
           <div class="field"><label>Typische を-Objekte</label>${catChips(NOUN_CATS, v.obj || [], 'vobj')}</div>
-          <div class="field"><label>Partikeln <small>eine Zeile je Muster, Partikel zwischen |…|: 人[ひと]|に|会[あ]う = jemanden treffen</small></label><textarea class="input jp-in" name="vuse" rows="2">${esc((it.use || []).map((u) => `${u.jp} = ${u.de || u.en || ''}`).join('\n'))}</textarea></div></div>
+          <div class="field"><label>Partikeln <small>eine Zeile je Muster: 人に会う = jemanden treffen · Partikel und Lesungen ergänzt die App beim Speichern</small></label><textarea class="input jp-in" name="vuse" rows="2">${esc((it.use || []).map((u) => `${u.jp} = ${u.de || u.en || ''}`).join('\n'))}</textarea></div></div>
         <div data-p="adj" class="stack"><div class="field"><label>Deutsches Adjektiv</label><input class="input" name="ade" value="${esc(a.de || '')}" placeholder="groß"></div>
           <div class="field"><label>Beschreibt typischerweise …</label>${catChips(NOUN_CATS, a.subj || [], 'asubj')}</div></div>
         <div data-p="time" class="stack"><div class="field"><label>Im deutschen Satz</label><input class="input" name="tadv" value="${esc((it.t || {}).adv || '')}" placeholder="z. B. morgen, am Montag"></div></div>
@@ -434,7 +434,10 @@
         const ich = val(root, 'vich') || inf.replace(/(e?n)$/, 'e');
         it.v = { cls: val(root, 'vcls') || guessClass(it.kana), inf, ich, pp: val(root, 'vpp') || ('ge' + inf.replace(/(e?n)$/, 't')), aux: val(root, 'vaux') || 'habe', sep: val(root, 'vsep'), obj: checked(root, 'vobj') };
         if (it.v.obj.length && !it.cat.includes('objekt')) it.cat.push('objekt');
-        const use = val(root, 'vuse').split('\n').map((l) => { const i = l.indexOf('='); return i < 0 ? { jp: l.trim(), de: '' } : { jp: l.slice(0, i).trim(), de: l.slice(i + 1).trim() }; }).filter((u) => u.jp);
+        // Lesung eines Nomens im Muster: aus den eigenen Vokabeln, sonst die üblichen Platzhalter
+        const useLookup = (w) => { const hit = App.itemsOf('vocab').find((x) => x.kanji === w && x.kana); return hit ? hit.kana.replace(/[〜～]/g, '') : ({ 人: 'ひと', 物: 'もの', 所: 'ところ', 何: 'なに' })[w] || ''; };
+        const use = val(root, 'vuse').split('\n').map((l) => { const i = l.indexOf('='); return i < 0 ? { jp: l.trim(), de: '' } : { jp: l.slice(0, i).trim(), de: l.slice(i + 1).trim() }; }).filter((u) => u.jp)
+          .map((u) => ({ jp: JP.useParse(u.jp, it, useLookup), de: u.de }));
         if (use.length) it.use = use; else delete it.use;
       } else if (/adj/.test(it.pos)) {
         it.cat = ['beschreibung'];
