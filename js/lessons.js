@@ -109,7 +109,7 @@
         sheetMeta: (paper, n) => ({ sessionId: s.id, role: 'notes', section: 'session', source: 'VHS-Kurs', lesson: s.number, paper, name: 'Mitschrift ' + sessionTitle(s) + (n > 1 ? ` (${n})` : '') }),
         multiSheet: true,
         onSelect: (id) => App.setQuery({ nb: id }),
-        newDefaults, onLinked,
+        newDefaults, onLinked, newPhrase: true,
       });
     }
     if (tab === 'typed') {
@@ -143,7 +143,7 @@
           const sc = App.SECTIONS[t];
           const items = (s[KEYS[t]] || []).map(App.item).filter(Boolean);
           return `<div class="card ${sc.cls}"><div class="row between"><h3 style="margin:0">${sc.label} <span class="badge">${items.length}</span></h3>
-            <div class="row"><button class="btn btn-sm" data-pick="${t}">${icon('link')} Auswählen</button>${t !== 'phrase' ? `<button class="btn btn-sm btn-sec" data-quick="${t}">${icon('plus')} Neu</button>` : ''}</div></div>
+            <div class="row"><button class="btn btn-sm" data-pick="${t}">${icon('link')} Auswählen</button><button class="btn btn-sm btn-sec" data-quick="${t}">${icon('plus')} Neu</button></div></div>
             <div class="rel-list" style="margin-top:10px;max-height:360px;overflow:auto">${items.map(App.relItem).join('') || '<span class="small muted">Noch nichts verknüpft.</span>'}</div></div>`;
         }).join('')}</div>`;
       body.addEventListener('click', async (e) => {

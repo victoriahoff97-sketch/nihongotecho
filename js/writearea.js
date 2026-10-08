@@ -11,10 +11,11 @@
   });
 
   // ---------- Handschrift ----------
-  // opts: { sheets, activeId, sheetMeta(paper, n), multiSheet, onSelect(fileId), newDefaults (Objekt oder (type) => Objekt), onLinked, onUnlinked }
+  // opts: { sheets, activeId, sheetMeta(paper, n), multiSheet, onSelect(fileId), newDefaults (Objekt oder (type) => Objekt), onLinked, onUnlinked, newPhrase }
+  // newPhrase: zusätzlich „＋ Ausdruck“ in der Stiftleiste (nur wo onLinked Ausdrücke verknüpft, z. B. Unterricht)
   // onUnlinked(itemId): die letzte Markierung eines Wortes wurde auf dem Blatt gelöst
   // Liefert { dropLinks(itemId) }: Markierungen eines Wortes vom Blatt nehmen (Verknüpfung wurde woanders entfernt)
-  App.inkArea = (host, { sheets = [], activeId, sheetMeta, multiSheet = true, onSelect, newDefaults = {}, onLinked, onUnlinked } = {}) => {
+  App.inkArea = (host, { sheets = [], activeId, sheetMeta, multiSheet = true, onSelect, newDefaults = {}, onLinked, onUnlinked, newPhrase = false } = {}) => {
     const defaultsFor = (type) => (typeof newDefaults === 'function' ? newDefaults(type) : newDefaults);
     // Treffer aus dem Nachschlagen-Fenster (nach „Erkennen“) verknüpfen: eigener Eintrag (Wort oder Grammatik) direkt,
     // Wörterbuch-Treffer über den vorbelegten Vokabel-Dialog, r.create = die Eingabe als neue Vokabel/Grammatik anlegen.
@@ -96,7 +97,7 @@
       extraTools: [
         { id: 'vocab', label: 'Vokabel', icon: 'plus', onClick: () => App.newLinked('vocab', defaultsFor('vocab'), onLinked) },
         { id: 'grammar', label: 'Grammatik', icon: 'plus', onClick: () => App.newLinked('grammar', defaultsFor('grammar'), onLinked) },
-      ],
+      ].concat(newPhrase ? [{ id: 'phrase', label: 'Ausdruck', icon: 'plus', onClick: () => App.newLinked('phrase', defaultsFor('phrase'), onLinked) }] : []),
       onLinkWord: linkWord, onUnlinkWord: onUnlinked,
       // Vollbild: eingebettete Fläche abbauen, damit sie nach dem Schließen frisch geladen wird
       onFullscreen: () => { const tools = ctrl ? ctrl.state() : {}; if (ctrl) ctrl.destroy(); App.ink.open(active.id, { ...tools, onLinkWord: linkWord, onUnlinkWord: onUnlinked }); },
