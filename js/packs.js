@@ -26,6 +26,33 @@
       App.unloadScript('packs/' + file);
     });
   }
+  // Strichfolge der Paket-Kanji (packs/<id>/strokes.js): kommt erst mit dem Freischalten des Pakets und liegt dann
+  // wie eine einzeln heruntergeladene Strichfolge im Speicher (meta "kvg:<Zeichen>", siehe js/stroke.js)
+  async function installStrokes(pack) {
+    if (!pack.strokes) return;
+    const key = App.packDataKey(pack.strokes);
+    const src = 'packs/' + pack.strokes;
+    if (!(window.PACK_DATA && window.PACK_DATA[key])) {
+      App.unloadScript(src);
+      await App.loadScript(src);
+    }
+    const data = (window.PACK_DATA || {})[key];
+    if (!data) throw new Error('Paketdatei ohne Inhalt: ' + pack.strokes);
+    const rows = Object.entries(data).filter(([ch]) => !(window.KVG && window.KVG[ch]))
+      .map(([ch, paths]) => ({ key: 'kvg:' + ch, value: paths, pack: pack.id }));
+    if (rows.length) {
+      try { await App.db.putMany('meta', rows); } catch (e) { throw App.storageError(e); }
+    }
+    delete window.PACK_DATA[key];
+    App.unloadScript(src);
+  }
+  // beim Entfernen des Pakets: Strichfolgen wieder löschen, außer das Kanji ist geblieben (gelernt, markiert …)
+  async function removeStrokes(id) {
+    const chars = new Set(App.itemsOf('kanji').map((k) => k.char));
+    const del = (await App.db.all('meta')).filter((m) => m.pack === id && String(m.key).startsWith('kvg:') && !chars.has(String(m.key).slice(4)))
+      .map((m) => m.key);
+    if (del.length) await App.db.delMany('meta', del);
+  }
   const deletedSet = async () => new Set(((await App.db.get('meta', 'deletedPackItems')) || {}).value || []);
   const plan = async (pack) => {
     const all = Array.from(S.items.values());
@@ -79,6 +106,8 @@
         await App.db.delMany('items', res.removes);
         res.removes.forEach((x) => S.items.delete(x));
       }
+      onProgress(0.8, 'Strichfolgen werden gespeichert …');
+      await installStrokes(pack);
       await App.packMeta.set(id, { version: pack.version, installed: Date.now() });
       freeLevel(pack);
       onProgress(1, 'Fertig');
@@ -108,6 +137,7 @@
       if (upd.length) await App.db.putMany('items', upd);
       del.forEach((x) => S.items.delete(x));
       upd.forEach((it) => S.items.set(it.id, it));
+      await removeStrokes(id);
       await App.packMeta.set(id, null);
       App.emit('items');
       return { removed: del.length, kept };
