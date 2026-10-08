@@ -49,6 +49,9 @@
     return out;
   };
 
+  // Vorschlag, der ohne Antippen gesucht wird: Japanisch vor Deutsch
+  const bestGuess = (ja, de) => (ja && ja[0]) || (de && de[0]) || '';
+
   // ---------- Wort-Verknüpfungen auf dem Blatt: { id, itemId, x, y, w, h } (Anteile der Seitenbreite, wie die Striche) ----------
   const r4 = (v) => +v.toFixed(4);
   // Rahmen um die Striche eines Wortes, mit etwas Rand; null ohne Punkte.
@@ -77,6 +80,6 @@
     return (links || []).filter((l) => !same(l)).concat(link);
   };
 
-  const P = { MAX_STROKES, HW_URL, pointInPoly, strokesInLasso, inkPayload, parseCandidates, wordBox, linkAt, addLink };
+  const P = { MAX_STROKES, HW_URL, pointInPoly, strokesInLasso, inkPayload, parseCandidates, bestGuess, wordBox, linkAt, addLink };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.hwLogic = P;
 })(this);

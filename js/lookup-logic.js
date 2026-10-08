@@ -113,6 +113,65 @@
     return out.map((e, i) => ({ e, i })).sort((a, b) => rank(b.e) - rank(a.e) || a.i - b.i).map((x) => x.e);
   };
 
-  const P = { isJp, glossScore, rankDict, dictResult, dedupe, uniq, ownMatch, dictForms, mergeDict, ownTags, ownIndex, combineLookups, surfaceEntries };
+  // ---------- Grammatik: eigene Grammatikpunkte zu einer eingekreisten Stelle oder getippten Eingabe ----------
+  // Japanische Teile aus Kurzform (jp) und Titel, ohne Platzhalter (X, V, 〜) und Lesungen in [ ]: „XはYです“ → は, です
+  const grammarTerms = (it) => {
+    const out = [];
+    for (const src of [it && it.jp, it && it.title]) {
+      for (const m of String(src || '').replace(/\[[^\]]*\]/g, ' ').match(/[ぁ-ゖァ-ヺー一-鿿々]+/g) || []) {
+        const t = hira(m);
+        if (!out.includes(t)) out.push(t);
+      }
+    }
+    return out;
+  };
+  // 100 genau die Stelle · 60+ Stelle steckt in der Eingabe (たべてください) · 40 Eingabe ist ein Teil der Stelle · 20 Partikel am Wortende
+  const termScore = (t, q) => {
+    if (t === q) return 100;
+    if (t.length >= 2 && q.includes(t)) return 60 + Math.min(t.length, 20) + (q.endsWith(t) ? 5 : 0);
+    if (q.length >= 2 && t.includes(q)) return 40;
+    if (t.length === 1 && q.length >= 2 && q.endsWith(t)) return 20;
+    return 0;
+  };
+  // forms: Grundformen der Eingabe (App.deinflect), kanaQ: Romaji-Eingabe als Kana
+  const rankGrammar = (items, q, { kanaQ = '', forms = [], limit = 6 } = {}) => {
+    q = String(q || '').trim();
+    if (!q) return [];
+    const jpQ = isJp(q) ? hira(q) : hira(kanaQ);
+    const lc = isJp(q) ? '' : q.toLowerCase();
+    const others = jpQ ? forms.map(hira).filter((f) => f && f !== jpQ) : [];
+    const hits = [];
+    for (const it of items) {
+      if (!it || it.type !== 'grammar') continue;
+      let s = 0;
+      if (jpQ) {
+        for (const t of grammarTerms(it)) {
+          s = Math.max(s, termScore(t, jpQ));
+          if (t.length >= 2) for (const f of others) s = Math.max(s, termScore(t, f) - 10); // Partikel-Regel nur für die Eingabe selbst
+        }
+        if (lc) s -= 5; // Romaji: Bedeutungs-Treffer gehen vor
+      }
+      if (lc.length >= 2) {
+        s = Math.max(s, glossScore(it.title, lc), glossScore(it.de, lc));
+        if ((it.tags || []).some((t) => String(t).toLowerCase() === lc)) s = Math.max(s, 40);
+      }
+      if (s > 0) hits.push({ it, s });
+    }
+    hits.forEach((h, i) => { h.i = i; });
+    hits.sort((a, b) => b.s - a.s || a.i - b.i);
+    // gibt es einen klaren Treffer, fallen die bloßen Partikel-am-Ende-Treffer weg (てください endet auch auf い)
+    const clear = hits.length && hits[0].s >= 50;
+    return hits.filter((h) => !clear || h.s >= 30).slice(0, limit).map((h) => h.it);
+  };
+
+  // Vorbelegung für „neu anlegen“ aus dem Suchfeld: Deutsch → Bedeutung, Japanisch → Schreibung
+  const newDefaults = (type, q) => {
+    q = String(q || '').trim();
+    if (type === 'grammar') return isJp(q) ? { title: '〜' + q.replace(/^[〜~]/, ''), jp: '〜' + q.replace(/^[〜~]/, '') } : { title: q };
+    if (!isJp(q)) return { de: q };
+    return /[㐀-鿿豈-﫿々]/.test(q) ? { kanji: q } : { kana: q };
+  };
+
+  const P = { isJp, glossScore, rankDict, dictResult, dedupe, uniq, ownMatch, dictForms, mergeDict, ownTags, ownIndex, combineLookups, surfaceEntries, grammarTerms, rankGrammar, newDefaults };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.lookupLogic = P;
 })(this);

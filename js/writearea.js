@@ -16,9 +16,19 @@
   // Liefert { dropLinks(itemId) }: Markierungen eines Wortes vom Blatt nehmen (Verknüpfung wurde woanders entfernt)
   App.inkArea = (host, { sheets = [], activeId, sheetMeta, multiSheet = true, onSelect, newDefaults = {}, onLinked, onUnlinked } = {}) => {
     const defaultsFor = (type) => (typeof newDefaults === 'function' ? newDefaults(type) : newDefaults);
-    // Treffer aus dem Nachschlagen-Fenster (nach „Erkennen“) verknüpfen: eigener Eintrag direkt, Wörterbuch-Treffer über den
-    // vorbelegten Vokabel-Dialog. Liefert den Eintrag; bleibt offen, wenn der Dialog abgebrochen wird.
+    // Treffer aus dem Nachschlagen-Fenster (nach „Erkennen“) verknüpfen: eigener Eintrag (Wort oder Grammatik) direkt,
+    // Wörterbuch-Treffer über den vorbelegten Vokabel-Dialog, r.create = die Eingabe als neue Vokabel/Grammatik anlegen.
+    // Liefert den Eintrag; bleibt offen, wenn der Dialog abgebrochen wird.
     const linkWord = (r) => new Promise((res) => {
+      if (r.create) {
+        const type = r.create === 'grammar' ? 'grammar' : 'vocab';
+        App.editItem({
+          type, single: true, title: type === 'grammar' ? 'Neue Grammatik verknüpfen' : 'Neue Vokabel verknüpfen',
+          defaults: Object.assign({}, defaultsFor(type), App.lookupLogic.newDefaults(type, r.q)),
+          onSaved: async (it) => { if (onLinked) await onLinked(it, true); res(it); },
+        });
+        return;
+      }
       const own = r.id && App.item(r.id);
       if (own) {
         (async () => {

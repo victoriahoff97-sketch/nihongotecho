@@ -836,19 +836,11 @@
       c.closePath(); c.stroke();
       c.restore();
     };
-    const hwFetch = async (sel, lang, max) => {
-      const r = await fetch(HW.HW_URL(lang), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(HW.inkPayload(sel, lang)), signal: AbortSignal.timeout(8000) });
-      return HW.parseCandidates(await r.json(), max);
-    };
     const recognize = async (p, poly) => {
       const sel = HW.strokesInLasso(p.strokes, poly);
       if (!sel.length) { note('Nichts eingekreist'); return; }
       if (sel.length > HW.MAX_STROKES) { note('Zu viel eingekreist – bitte ein Wort'); return; }
-      if (!App.store.settings.hwConsent) {
-        const ok = await App.confirm('Zum Erkennen werden die eingekreisten Striche an Google gesendet (nur die Linien dieses Wortes, nicht die Seite). Einverstanden?', { ok: 'Einverstanden', danger: false, title: 'Handschrift erkennen' });
-        if (!ok) return;
-        await App.saveSettings({ hwConsent: true });
-      }
+      if (!(await App.hw.consent('Zum Erkennen werden die eingekreisten Striche an Google gesendet (nur die Linien dieses Wortes, nicht die Seite). Einverstanden?'))) return;
       closeHw();
       const run = hwRun;
       hwSel = { p, box: HW.wordBox(sel) };
@@ -865,11 +857,12 @@
         else if (e.target.closest('[data-hwclose]')) closeHw();
       });
       p.el.appendChild(pop);
-      const [ja, de] = (await Promise.allSettled([hwFetch(sel, 'ja', 5), hwFetch(sel, 'de', 3)])).map((r) => (r.status === 'fulfilled' ? r.value : []));
+      const { ja, de } = await App.hw.recognize(sel);
       if (run !== hwRun || !pop.isConnected) return; // inzwischen geschlossen oder neues Lasso
-      if (!ja.length && !de.length) { closeHw(); note('Erkennung gerade nicht erreichbar'); return; }
       const chips = (list, cls) => (list.length ? `<div class="hw-row ${cls}">${list.map((t) => `<button class="chip" data-hw="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : '');
-      pop.innerHTML = `<div class="hw-list">${chips(ja, 'hw-ja')}${chips(de, 'hw-de')}</div><button class="icon-btn sm" data-hwclose title="Schließen">${icon('close')}</button>`;
+      // nichts erkannt oder kein Netz: trotzdem markieren können – Wort/Grammatik im Nachschlagen-Fenster selbst eintippen
+      const none = !ja.length && !de.length ? '<div class="small muted">Nicht erkannt</div>' : '';
+      pop.innerHTML = `<div class="hw-list">${none}${chips(ja, 'hw-ja')}${chips(de, 'hw-de')}<div class="hw-row hw-self"><button class="chip" data-hw="">${icon('edit')} Selbst eingeben</button></div></div><button class="icon-btn sm" data-hwclose title="Schließen">${icon('close')}</button>`;
     };
     const setTool = (t) => {
       closeHw();

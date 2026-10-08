@@ -860,6 +860,14 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .hw-pop .hw-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .hw-pop .hw-ja .chip { font-family: var(--font-kanji); font-size: 20px; padding: 4px 12px; }
 .hw-pop .hw-de .chip { font-size: 14px; }
+.lookup-pop .lk-pad { position: relative; flex: none; height: 120px; margin-top: 8px; border: 1px dashed var(--line-2); border-radius: 10px; background: var(--paper-2); }
+.lookup-pop .lk-pad canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.lookup-pop .lk-pad-hint { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: none; }
+.lookup-pop .lk-pad.empty .lk-pad-hint { display: flex; }
+.lookup-pop .lk-pad-tools { position: absolute; top: 2px; right: 2px; display: flex; }
+.lookup-pop .lk-cands { flex: none; display: flex; gap: 6px; align-items: center; margin-top: 8px; overflow-x: auto; scrollbar-width: thin; }
+.lookup-pop .lk-cands .chip { flex: none; padding: 4px 12px; }
+.lookup-pop .lk-cands .lk-ja { font-family: var(--font-kanji); font-size: 20px; }
 .lookup-pop .lk-install { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 
 /* ---------- Ordner-Sicherung ---------- */
@@ -936,6 +944,14 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .ink-tip .ink-tip-acts { flex-basis: 100%; display: flex; gap: 4px; margin: 4px -6px -2px; }
 .ref-tip { position: fixed; z-index: 150; pointer-events: none; }
 .lookup-pop .lk-link { display: flex; margin: 10px auto 0; }
+.lookup-pop .lk-gram .lk-jp { font-size: 18px; color: var(--sec); max-width: 40%; }
+.lookup-pop .lk-gram-detail { margin-top: 8px; padding: 12px; border-radius: 12px; background: var(--sec-soft); text-align: center; }
+.lookup-pop .lk-gram-jp { font-family: var(--font-kanji); font-size: 30px; line-height: 1.25; color: var(--sec); word-break: break-all; }
+.lookup-pop .lk-gram-title { font-weight: 700; margin: 4px 0; }
+.lookup-pop .lk-new { display: flex; flex-direction: column; gap: 6px; align-items: stretch; margin-top: 4px; }
+.lookup-pop .lk-new .btn { justify-content: flex-start; text-align: left; background: var(--sec-soft); border-color: transparent; color: var(--ink); white-space: normal; }
+.hw-pop .hw-self .chip { font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
+.hw-pop .hw-self .chip svg { width: 14px; height: 14px; }
 
 /* ---------- Buchlayout (Vollbild, Notizblätter): Doppelseite wie ein aufgeschlagenes Notizbuch; 1em = 1/30 Seitenbreite ---------- */
 .vpage[hidden], .bk-turn[hidden] { display: none; }
