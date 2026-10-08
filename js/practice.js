@@ -278,8 +278,11 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       const gids = chosen();
       if (!gids.length) return App.toast('Bitte mindestens einen Grammatikpunkt wählen');
       const n = +setup.querySelector('[data-n]').value;
-      const pool = App.itemsOf('vocab').filter((v) => {
-        if (!v.de) return false; // Satzgenerator braucht deutsche Daten – Paket-Wörter nur mit Englisch fallen heraus
+      // Zeitwörter und Farben stehen nur bei den Ausdrücken; ihre Angaben für den Satzgenerator liegen in gen
+      const words = App.itemsOf('vocab').concat(App.itemsOf('phrase').filter((p) => p.gen).map((p) => Object.assign({}, p, p.gen)));
+      const pool = words.filter((v) => {
+        // Satzgenerator braucht die deutschen Satzbau-Angaben (n, v, a, t) – unbearbeitete Paket-Wörter haben sie nicht
+        if (!v.de || (v._pack && !v._edited)) return false;
         if (session && (session.vocabIds || []).includes(v.id)) return true;
         const l = lessonNum(v);
         if (v.source === 'Genki I') return l !== null && l <= maxL;

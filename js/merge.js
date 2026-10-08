@@ -11,6 +11,13 @@
   // Vokabel-Treffer in Prioritäts-Reihenfolge: (1) gleicher vocabKey, (2) gleiches Kanji (nur bei gleicher
   // Lesung oder wenn eine Seite keine Kana hat), (3) gleiche Lesung mit mind. einer Seite ohne Kanji - Regel 3
   // greift nur, wenn die Lesung innerhalb des Pakets eindeutig ist (sonst: ambiguousReading=true, kein Treffer)
+  // und nichts auf zwei verschiedene Wörter hindeutet (sameWord): 鳴る ist nicht なる, ～やすい nicht 安い
+  const hasTilde = (it) => /[〜～~]/.test(String(it.kana || '') + String(it.kanji || ''));
+  const sameWord = (packItem, ex) => {
+    if (hasTilde(packItem) !== hasTilde(ex)) return false; // Wortteil (～だす) gegen eigenständiges Wort (出す)
+    const lvl = App.jlptOf ? App.jlptOf(ex) : '';
+    return !lvl || !packItem.level || lvl === packItem.level; // steht der Eintrag auf einer anderen JLPT-Liste, ist es ein anderes Wort
+  };
   const vocabMatches = (packItem, existingVocab, ambiguousReading) => {
     const pKanji = norm(packItem.kanji || '');
     const pKanaNorm = norm(packItem.kana || '');
@@ -35,9 +42,17 @@
     m = existingVocab.filter((ex) => {
       if (App.jp.toHira(norm(ex.kana || '')) !== pKanaHira) return false;
       const exKanji = norm(ex.kanji || '');
-      return !pKanji || !exKanji;
+      return (!pKanji || !exKanji) && sameWord(packItem, ex);
     });
     return m;
+  };
+
+  // Ausdrücke (type 'phrase'), die genau dieses Wort sind (gleiche Schreibung und Lesung): Zahlen, Wochentage,
+  // Zeitwörter, Farben … stehen nur bei den Ausdrücken und sollen nicht noch einmal als Vokabel dazukommen
+  const phraseKey = (it) => norm(App.jp.plain(it.jp || '')) + '|' + App.jp.toHira(norm(App.jp.kana(it.jp || '')));
+  const phraseMatches = (packItem, existingAll) => {
+    const pKey = App.vocabKey(packItem);
+    return existingAll.filter((ex) => ex.type === 'phrase' && phraseKey(ex) === pKey);
   };
 
   const kanjiMatches = (packItem, existingKanji) => existingKanji.filter((ex) => ex.char === packItem.char);
@@ -57,7 +72,7 @@
     const idMatch = sameType.filter((ex) => ex.id === packItem.id);
 
     let ruleMatches = [];
-    if (type === 'vocab') ruleMatches = vocabMatches(packItem, sameType, ambiguousReading);
+    if (type === 'vocab') ruleMatches = vocabMatches(packItem, sameType, ambiguousReading).concat(phraseMatches(packItem, existing));
     else if (type === 'kanji') ruleMatches = kanjiMatches(packItem, sameType);
     else if (type === 'grammar') ruleMatches = grammarMatches(packItem, existing);
 
@@ -69,11 +84,21 @@
   };
   App.findMatches = findMatches;
 
-  // Ermittelt adds/updates fuer ein Level-Paket, ohne existing zu mutieren
+  // Niveau nur setzen, wenn der Eintrag noch keins hat oder das Paket leichter ist (N5 bleibt N5, auch wenn
+  // ein N4-Paket denselben Eintrag führt)
+  const easier = (level, cur) => {
+    const L = App.JLPT_LEVELS || [];
+    return !L.includes(cur) || (L.includes(level) && L.indexOf(level) < L.indexOf(cur));
+  };
+
+  // Ermittelt adds/updates/removes fuer ein Level-Paket, ohne existing zu mutieren.
+  // removes: eigene, unberührte Paket-Einträge (App.isRemovable, nur mit opts.ctx = { srs, sessionRefs }), deren
+  // Wort inzwischen ein anderer Eintrag führt - etwa weil das Paket die Schreibung angeglichen hat (御飯 → ご飯)
   App.planMerge = (packItems, existing, opts) => {
-    const { packId, level, deleted } = opts;
+    const { packId, level, deleted, ctx } = opts;
     const adds = [];
     const updates = [];
+    const removes = [];
     const counts = { added: { vocab: 0, kanji: 0, grammar: 0 }, tagged: { vocab: 0, kanji: 0, grammar: 0 } };
 
     // Fuer Vokabel-Regel 3: Lesungen, die mehrfach im Paket vorkommen, sind mehrdeutig und
@@ -105,9 +130,11 @@
         return;
       }
 
+      const foreign = matches.some((m) => m._pack !== packId);
       matches.forEach((match) => {
         if (match._pack === packId) {
           // Eigener Paket-Eintrag (per findMatches garantiert: match.id === packItem.id)
+          if (foreign && ctx && App.isRemovable(match, ctx)) { removes.push(match.id); return; }
           if (match._edited) return; // vom Nutzer bearbeitet: nichts tun
           const newHash = hash(packItem);
           if (match._packHash === newHash) return; // Paketinhalt unveraendert
@@ -141,7 +168,7 @@
         // Fremder Eintrag (kein Paket-Eintrag dieses Pakets): nur level/packs ergaenzen, sonst unveraendert
         let changed = false;
         const copy = { ...match };
-        if (!match.levelManual && match.level !== level) { copy.level = level; changed = true; }
+        if (!match.levelManual && match.level !== level && easier(level, match.level)) { copy.level = level; changed = true; }
         const packs = Array.isArray(match.packs) ? match.packs : [];
         if (!packs.includes(packId)) { copy.packs = [...packs, packId]; changed = true; }
         if (changed) {
@@ -151,7 +178,7 @@
       });
     });
 
-    return { adds, updates, counts };
+    return { adds, updates, removes, counts };
   };
 
   // Ob ein Eintrag gefahrlos entfernt werden kann, wenn sein Paket deaktiviert wird
@@ -217,9 +244,10 @@
     freshSeeds.forEach((s) => {
       let ps = hits.get(s.id);
       if (!ps || out.tag.has(s.id) || skip.has(s.id)) return;
-      if (s.type === 'grammar') {
+      if (s.type === 'grammar' || s.type === 'phrase') {
         // Ausnahme Grammatik: berührte Paket-Einträge bleiben stehen, unterdrücken den Genki-Eintrag aber nie
-        // (er trägt die ausführliche deutsche Erklärung); nur unberührte werden aufgenommen
+        // (er trägt die ausführliche deutsche Erklärung); nur unberührte werden aufgenommen.
+        // Ebenso Ausdrücke: sonst fehlte in einer Gruppe (Wochentage …) ein Eintrag
         ps = ps.filter((p) => App.isRemovable(p, ctx));
         if (!ps.length) return;
       } else if (ps.some((p) => !App.isRemovable(p, ctx))) { skip.add(s.id); return; }
@@ -240,6 +268,8 @@
   // geht auf den verbleibenden Eintrag über; haben beide einen, gewinnt der weiter fortgeschrittene.
   // Vom Nutzer bearbeitete Einträge bleiben stehen.
   const REF_KEYS = ['grammarIds', 'vocabIds', 'kanjiIds', 'phraseIds', 'newIds', 'links'];
+  const TYPE_KEY = { vocab: 'vocabIds', grammar: 'grammarIds', kanji: 'kanjiIds', phrase: 'phraseIds' };
+  const TYPED = new Set(Object.values(TYPE_KEY));
 
   // IDs aller Einträge, auf die irgendein Eintrag verweist (Stunden, Tagebuch, Antworten, Verknüpfungen) oder
   // an denen eine Datei hängt (itemId) – weiter gefasst als App.sessionRefs, für das Löschen ohne Zutun des Nutzers
@@ -275,7 +305,17 @@
       for (const k of REF_KEYS) {
         if (!Array.isArray(it[k]) || !it[k].some((id) => gone.has(id))) continue;
         copy = copy || { ...it };
-        copy[k] = [...new Set(it[k].map((id) => gone.get(id) || id))].filter((id) => id !== it.id);
+        const stay = [];
+        it[k].forEach((id) => {
+          const to = gone.get(id) || id;
+          if (to === it.id) return;
+          // geht eine Vokabel in einem Ausdruck auf (Zeitwörter, Farben), wandert der Verweis nach phraseIds
+          const home = gone.has(id) && TYPED.has(k) ? TYPE_KEY[(byId.get(to) || {}).type] || k : k;
+          if (home === k) { if (!stay.includes(to)) stay.push(to); return; }
+          if (!Array.isArray(copy[home]) || copy[home] === it[home]) copy[home] = [...(Array.isArray(it[home]) ? it[home] : [])];
+          if (!copy[home].includes(to)) copy[home].push(to);
+        });
+        copy[k] = stay;
       }
       if (copy) out.putItems.push(copy);
     }

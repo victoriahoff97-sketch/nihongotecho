@@ -27,9 +27,13 @@
     });
   }
   const deletedSet = async () => new Set(((await App.db.get('meta', 'deletedPackItems')) || {}).value || []);
-  const plan = async (pack) => App.planMerge(await loadLevelItems(pack), Array.from(S.items.values()), {
-    packId: pack.id, level: pack.level, deleted: await deletedSet(),
-  });
+  const plan = async (pack) => {
+    const all = Array.from(S.items.values());
+    return App.planMerge(await loadLevelItems(pack), all, {
+      packId: pack.id, level: pack.level, deleted: await deletedSet(),
+      ctx: { srs: S.srs, sessionRefs: App.allRefs(all, S.files.values()) },
+    });
+  };
 
   App.packs = {
     state: () => App.packMeta.read(),
@@ -70,6 +74,11 @@
         try { await App.db.putMany('items', puts); } catch (e) { throw App.storageError(e); }
       }
       puts.forEach((it) => S.items.set(it.id, it));
+      // eigene, unberührte Einträge, deren Wort jetzt ein anderer Eintrag führt (kein Eintrag in meta.deletedPackItems)
+      if (res.removes.length) {
+        await App.db.delMany('items', res.removes);
+        res.removes.forEach((x) => S.items.delete(x));
+      }
       await App.packMeta.set(id, { version: pack.version, installed: Date.now() });
       freeLevel(pack);
       onProgress(1, 'Fertig');
