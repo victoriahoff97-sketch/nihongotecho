@@ -479,10 +479,13 @@ window.App = window.App || {};
     return created;
   };
 
-  // Früher doppelt geführte Seed-Einträge (SEED_MERGED) aus dem Bestand entfernen, Lernstand und Verweise umhängen
+  // Früher doppelt geführte Seed-Einträge (SEED_MERGED) aus dem Bestand entfernen, Lernstand und Verweise umhängen –
+  // ebenso Paket-Vokabeln, die es als Ausdruck gibt (App.packPhraseMap)
   async function cleanupMergedSeeds() {
-    if (!window.SEED_MERGED || !App.planSeedCleanup) return false;
-    const r = App.planSeedCleanup(window.SEED_MERGED, Array.from(S.items.values()), S.srs);
+    if (!App.planSeedCleanup) return false;
+    const all = Array.from(S.items.values());
+    const map = Object.assign({}, window.SEED_MERGED, App.packPhraseMap ? App.packPhraseMap(all) : null);
+    const r = App.planSeedCleanup(map, all, S.srs);
     if (!r.delItems.length && !r.delSrs.length) return false;
     r.putSrs.forEach((s) => S.srs.set(s.id, s));
     r.delSrs.forEach((id) => S.srs.delete(id));

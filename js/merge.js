@@ -50,10 +50,17 @@
   // Ausdrücke (type 'phrase'), die genau dieses Wort sind (gleiche Schreibung und Lesung): Zahlen, Wochentage,
   // Zeitwörter, Farben … stehen nur bei den Ausdrücken und sollen nicht noch einmal als Vokabel dazukommen
   const phraseKey = (it) => norm(App.jp.plain(it.jp || '')) + '|' + App.jp.toHira(norm(App.jp.kana(it.jp || '')));
+  // gen trägt die Kanji-Schreibung, wo der Ausdruck selbst in Kana steht (だれ / 誰); also nennt Wörter, die der
+  // Ausdruck mit abdeckt, ohne genau so geschrieben zu sein (七[なな]／七[しち] → 七 しち, 一万 → 万)
+  const phraseKeys = (ex) => {
+    const keys = [phraseKey(ex)];
+    if (ex.gen && ex.gen.kana) keys.push(App.vocabKey(ex.gen));
+    (Array.isArray(ex.also) ? ex.also : []).forEach((w) => keys.push(App.vocabKey(w)));
+    return keys;
+  };
   const phraseMatches = (packItem, existingAll) => {
     const pKey = App.vocabKey(packItem);
-    // gen trägt die Kanji-Schreibung, wo der Ausdruck selbst in Kana steht (だれ / 誰)
-    return existingAll.filter((ex) => ex.type === 'phrase' && (phraseKey(ex) === pKey || (ex.gen && ex.gen.kana && App.vocabKey(ex.gen) === pKey)));
+    return existingAll.filter((ex) => ex.type === 'phrase' && phraseKeys(ex).includes(pKey));
   };
 
   const kanjiMatches = (packItem, existingKanji) => existingKanji.filter((ex) => ex.char === packItem.char);
@@ -291,13 +298,32 @@
     for (const f of files || []) if (f && f.itemId) refs.add(f.itemId);
     return refs;
   };
+  // Paket-Vokabeln, die es im Bestand auch als Ausdruck gibt (Wochentage, Zeitwörter, Farben …): alte ID → ID des
+  // Ausdrucks, für App.planSeedCleanup. Betrifft Pakete, die eingespielt wurden, bevor diese Wörter nur noch bei den
+  // Ausdrücken standen – planMerge räumt sie erst beim Aktualisieren des Pakets weg, und nur ohne Lernstand.
+  App.packPhraseMap = (items) => {
+    const phrases = new Map();
+    for (const ex of items) {
+      if (!ex || ex.type !== 'phrase') continue;
+      phraseKeys(ex).forEach((k) => { if (!phrases.has(k)) phrases.set(k, ex.id); });
+    }
+    const map = {};
+    if (!phrases.size) return map;
+    for (const it of items) {
+      if (!it || it.type !== 'vocab' || !it._pack || it._edited) continue;
+      const to = phrases.get(App.vocabKey(it));
+      if (to) map[it.id] = to;
+    }
+    return map;
+  };
+
   App.planSeedCleanup = (map, items, srs) => {
     const out = { delItems: [], putItems: [], putSrs: [], delSrs: [] };
     const byId = new Map(items.map((it) => [it.id, it]));
     const gone = new Map();
     for (const [old, kept] of Object.entries(map || {})) {
       const o = byId.get(old);
-      if (o && o._seed && !o._edited && byId.has(kept)) gone.set(old, kept);
+      if (o && (o._seed || o._pack) && !o._edited && byId.has(kept)) gone.set(old, kept);
     }
     // Den zweiten Lernstand („w:“) gibt es nur für Vokabeln (aktiv) und Kanji (schreiben). Geht eine Vokabel in einem
     // Ausdruck auf, entfällt er – auch einer, der bei einer früheren Bereinigung noch mitgewandert ist.
