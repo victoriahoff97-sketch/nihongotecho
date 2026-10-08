@@ -143,12 +143,12 @@
           const sc = App.SECTIONS[t];
           const items = (s[KEYS[t]] || []).map(App.item).filter(Boolean);
           return `<div class="card ${sc.cls}"><div class="row between"><h3 style="margin:0">${sc.label} <span class="badge">${items.length}</span></h3>
-            <div class="row"><button class="btn btn-sm" data-pick="${t}">${icon('link')} Auswählen</button>${t !== 'kanji' && t !== 'phrase' ? `<button class="btn btn-sm btn-sec" data-quick="${t}">${icon('plus')} Neu</button>` : ''}</div></div>
+            <div class="row"><button class="btn btn-sm" data-pick="${t}">${icon('link')} Auswählen</button>${t !== 'phrase' ? `<button class="btn btn-sm btn-sec" data-quick="${t}">${icon('plus')} Neu</button>` : ''}</div></div>
             <div class="rel-list" style="margin-top:10px;max-height:360px;overflow:auto">${items.map(App.relItem).join('') || '<span class="small muted">Noch nichts verknüpft.</span>'}</div></div>`;
         }).join('')}</div>`;
       body.addEventListener('click', async (e) => {
         const pk = e.target.closest('[data-pick]');
-        if (pk) { const t = pk.dataset.pick; const ids = await App.pickItems({ title: `${App.SECTIONS[t].label} dieser Stunde`, types: [t], selected: s[KEYS[t]] || [] }); if (ids) { await save({ [KEYS[t]]: ids }); App.emit('items'); App.render(true); } }
+        if (pk) { const t = pk.dataset.pick; const ids = await App.pickItems({ title: `${App.SECTIONS[t].label} dieser Stunde`, types: [t], selected: s[KEYS[t]] || [], kanjiDefaults: newDefaults }); if (ids) { await save({ [KEYS[t]]: ids }); App.emit('items'); App.render(true); } }
         const qk = e.target.closest('[data-quick]');
         if (qk) newLinked(qk.dataset.quick, {}, () => App.render(true));
         if (e.target.closest('[data-take-book]')) {

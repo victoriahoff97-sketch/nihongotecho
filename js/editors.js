@@ -228,6 +228,97 @@
     });
   };
 
+  // ---------- Automatisch ausfüllen (Kanji-Formular, aus packs/kanji-index.js – erst bei Bedarf geladen) ----------
+  const KAF_WORDS = 4;
+  let kanjiIndex = null;
+  App.kanjiIndex = async () => {
+    if (!kanjiIndex) {
+      try { await App.loadScript('packs/kanji-index.js'); kanjiIndex = window.KANJI_INDEX || null; }
+      catch (e) { console.error(e); }
+    }
+    return kanjiIndex;
+  };
+  // Beispielwörter: zuerst eigene Vokabeln mit dem Zeichen, dann die leichtesten JLPT-Wörter
+  // (Bedeutung aus dem Offline-Wörterbuch; ohne Wörterbuch bleiben nur die eigenen)
+  const kanjiWords = async (ch) => {
+    const KL = App.kanjiLogic, out = [], seen = new Set();
+    const add = (kanji, kana, de, en) => {
+      if (out.length >= KAF_WORDS || seen.has(kanji)) return;
+      const jp = autoNotate(kanji, kana);
+      if (!JP.hasNotation(jp) || !(de || en)) return;
+      seen.add(kanji);
+      const w = { jp, de: de || '' };
+      if (en) w.en = en;
+      out.push(w);
+    };
+    App.itemsOf('vocab').filter((v) => (v.kanji || '').includes(ch) && v.kana)
+      .sort((a, b) => Array.from(a.kanji).length - Array.from(b.kanji).length)
+      .forEach((v) => add(v.kanji, v.kana, App.firstGloss(v.de), v.en));
+    if (out.length >= KAF_WORDS || !App.dict.installed()) return out;
+    const cands = KL.exampleWords(ch, (window.JLPT_INDEX || {}).v, KAF_WORDS * 3).filter((w) => !seen.has(w.kanji));
+    let hits = new Map();
+    try { hits = await App.dict.lookup(cands.map((w) => w.kanji)); } catch (e) { console.error(e); }
+    cands.forEach((w) => {
+      const e = (hits.get(w.kanji) || []).find((x) => (x.r || []).some((r) => JP.toHira(r) === JP.toHira(w.kana)));
+      if (e) add(w.kanji, w.kana, App.firstGloss(e.de), App.firstGloss(e.en));
+    });
+    return out;
+  };
+  // Alles, was die App über ein Zeichen weiß: { char, de, en, on, kun, strokes, words } – null, wenn der Index es nicht kennt
+  App.kanjiAuto = async (ch) => {
+    const e = App.kanjiLogic.entry(await App.kanjiIndex(), ch);
+    return e ? Object.assign(e, { words: await kanjiWords(ch) }) : null;
+  };
+  // Legt ein Kanji fertig ausgefüllt im Lernstapel an (Auswahl-Dialog „neu anlegen“); null, wenn der Index es nicht kennt
+  App.createKanji = async (ch, defaults = {}) => {
+    const have = App.kanjiByChar(ch);
+    if (have) return have;
+    const a = await App.kanjiAuto(ch);
+    if (!a) return null;
+    const it = Object.assign({ type: 'kanji', tags: [] }, defaults, { id: 'k-' + ch.codePointAt(0).toString(16), char: ch, de: a.de, on: a.on, kun: a.kun, strokes: a.strokes, words: a.words, mnemonic: '', marks: [] });
+    if (a.en) it.en = a.en;
+    const saved = await App.saveItem(it);
+    await App.setCheck(saved.id, 'learn');
+    // Strichfolge im Hintergrund holen (braucht Internet; ohne bleibt der Knopf auf der Kanji-Seite)
+    if (navigator.onLine !== false) App.stroke.has(ch).then((ok) => ok || App.stroke.download(ch)).catch((e) => console.error(e));
+    return saved;
+  };
+  // Formular: neues Kanji füllt sich aus, sobald das Zeichen dasteht; beim Bearbeiten nur über den Knopf.
+  // Gefüllt werden leere Felder und solche, die noch den zuletzt automatisch eingetragenen Wert tragen.
+  const bindKanjiAutofill = (root, isNew, onFilled) => {
+    const box = root.querySelector('[data-kaf]');
+    const ch = root.querySelector('[name=char]');
+    const filled = {};
+    let run = 0, last = '';
+    const note = (html) => { box.hidden = !html; box.innerHTML = html || ''; };
+    const start = async (manual) => {
+      const c = App.kanjiLogic.firstKanji(ch.value);
+      if (!manual && c === last) return;
+      last = c;
+      if (!c) { note(''); if (manual) App.toast('Erst das Kanji eintragen'); return; }
+      const my = ++run;
+      const a = await App.kanjiAuto(c);
+      if (my !== run || !root.isConnected) return;
+      if (!a) return note(`<span class="small muted">Zu <span lang="ja">${esc(c)}</span> hat die App keine Angaben – bitte von Hand ausfüllen.</span> <a class="btn btn-sm btn-ghost" href="${esc(App.jishoUrl(c))}" target="_blank" rel="noopener">Auf Jisho suchen ↗</a>`);
+      const found = { de: a.de, en: a.en, on: a.on.join(', '), kun: a.kun.join(', '), strokes: String(a.strokes || ''), words: App.kanjiLogic.wordLines(a.words) };
+      Object.entries(found).forEach(([n, v]) => {
+        const el = root.querySelector(`[name="${n}"]`);
+        const typed = el.value.trim();
+        if (typed && typed !== filled[n] && typed !== v.trim()) return; // selbst Eingetragenes bleibt
+        if (v || typed) { el.value = v; filled[n] = v.trim(); }
+      });
+      root._autoWords = a.words; // read(): englische Bedeutung der vorgeschlagenen Wörter bleibt englisch
+      const auto = root.querySelector('[name=jlpt] option[value=auto]');
+      const lv = App.levelFor({ type: 'kanji', char: c });
+      if (auto) auto.textContent = 'automatisch' + (lv ? ' (' + lv + ')' : '');
+      note(val(root, 'de') ? '' : '<span class="small muted">Für dieses Kanji gibt es bisher nur die englische Bedeutung – Deutsch kannst du selbst eintragen.</span>');
+      if (manual) App.toast('Aus dem Kanji-Index ausgefüllt');
+      onFilled && onFilled(c);
+    };
+    root.addEventListener('click', (e) => { if (e.target.closest('[data-kanji-autofill]')) start(true); });
+    if (isNew) { ch.addEventListener('input', App.debounce(() => start(false), 250)); start(false); }
+  };
+
   // Englisch-Feld und JLPT-Niveau (auto = aus dem JLPT-Index, sonst manuell mit levelManual)
   const enLevelFields = (it) => {
     const cur = it.levelManual ? (it.level || 'ohne') : 'auto';
@@ -386,6 +477,9 @@
     html: (it) => `<div class="form">
       <div class="three"><div class="field"><label>Kanji *</label><input class="input" name="char" maxlength="2" value="${esc(it.char || '')}" style="font-family:var(--font-kanji);font-size:30px;height:60px;text-align:center" autofocus></div>
       <div class="field" style="grid-column:span 2"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}" placeholder="z. B. Tag, Sonne"></div></div>
+      <div class="row"><button type="button" class="btn btn-sm btn-sec" data-kanji-autofill>${icon('sparkle')} Automatisch ausfüllen</button>
+        <span class="small muted">${it._existing ? 'Füllt die leeren Felder aus.' : 'Kanji eintragen – der Rest füllt sich von selbst aus.'}</span></div>
+      <div class="sugg" data-kaf hidden></div>
       ${enLevelFields(it)}
       <div class="three"><div class="field"><label>On-Lesungen <small>Katakana, mit Komma</small></label><input class="input jp-in" name="on" value="${esc((it.on || []).join(', '))}" placeholder="ニチ, ジツ"></div>
       <div class="field"><label>Kun-Lesungen <small>Hiragana</small></label><input class="input jp-in" name="kun" value="${esc((it.kun || []).join(', '))}" placeholder="ひ, か"></div>
@@ -399,22 +493,35 @@
         <div><b>Strichfolge</b> <span class="small muted">(Quelle: KanjiVG)</span><div class="small" data-kvg-msg>Kanji oben eingeben …</div></div>
         <button type="button" class="btn btn-sm btn-sec" data-kvg-dl hidden>${icon('download')} Strichfolge herunterladen</button></div>
       <div class="hint">Eigene GIFs/Videos zur Strichfolge kannst du zusätzlich auf der Kanji-Seite hinzufügen.</div></div>`,
-    bind: (root) => {
+    bind: (root, it) => {
       const ch = root.querySelector('[name=char]');
       const msg = root.querySelector('[data-kvg-msg]');
       const btn = root.querySelector('[data-kvg-dl]');
       const strokes = root.querySelector('[name=strokes]');
+      const cur = () => Array.from(ch.value.trim())[0] || '';
       const check = async () => {
-        const c = Array.from(ch.value.trim())[0] || '';
+        const c = cur();
         btn.hidden = true;
         if (!c) { msg.textContent = 'Kanji oben eingeben …'; return; }
         const p = await App.stroke.get(c);
+        if (c !== cur()) return;
         if (p) { msg.innerHTML = `✓ vorhanden – ${p.length} Striche`; if (!strokes.value) strokes.value = p.length; }
         else { msg.textContent = 'Noch nicht gespeichert – zum Laden auf den Button tippen (Internet nötig).'; btn.hidden = false; }
       };
       ch.addEventListener('input', App.debounce(check, 250));
-      btn.onclick = async () => { const c = Array.from(ch.value.trim())[0]; const r = await App.stroke.downloadInto(btn, c, msg); if (r.ok) check(); };
+      btn.onclick = async () => { const c = cur(); const r = await App.stroke.downloadInto(btn, c, msg); if (r.ok) check(); };
       check();
+      // nach dem Ausfüllen: fehlende Strichfolge gleich mitladen (je Zeichen ein Versuch, braucht Internet)
+      const tried = new Set();
+      bindKanjiAutofill(root, !it._existing, async (c) => {
+        if (tried.has(c) || navigator.onLine === false || (await App.stroke.has(c))) return;
+        tried.add(c);
+        if (c !== cur() || !root.isConnected) return;
+        btn.hidden = true; msg.textContent = 'Lade die Strichfolge …';
+        const r = await App.stroke.download(c);
+        if (!root.isConnected || c !== cur()) return;
+        if (r.ok) check(); else { msg.textContent = r.error; btn.hidden = false; }
+      });
     },
     read: (root, it) => {
       it.char = val(root, 'char').slice(0, 1);
@@ -428,7 +535,7 @@
       it.kun = val(root, 'kun').split(/[,、\s]+/).filter(Boolean);
       it.strokes = +val(root, 'strokes') || (window.KVG && window.KVG[it.char] ? window.KVG[it.char].length : '');
       // Eingabe landet in de; englische Bedeutung bleibt erhalten (unverändertes Englisch wird nicht zu Deutsch)
-      const oldW = new Map((it.words || []).map((w) => [w.jp, w]));
+      const oldW = new Map((root._autoWords || []).concat(it.words || []).map((w) => [w.jp, w]));
       it.words = val(root, 'words').split('\n').map((l) => {
         const [a, ...b] = l.split('=');
         if (!a || !a.trim()) return null;

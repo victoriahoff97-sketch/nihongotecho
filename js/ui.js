@@ -634,8 +634,12 @@
   };
 
   // ---------- Eintrags-Auswahl (für Verknüpfungen) ----------
-  App.pickItems = ({ title = 'Einträge auswählen', types = ['vocab', 'grammar', 'kanji', 'phrase'], selected = [], single = false } = {}) => new Promise((resolve) => {
+  // Gesuchte Kanji, die noch nicht in der Sammlung stehen, lassen sich „neu anlegen“ (Wert „new:駅“): sie werden
+  // beim Übernehmen fertig ausgefüllt gespeichert (App.createKanji, kanjiDefaults = Quelle/Lektion/Schlagwörter)
+  const NEW = 'new:';
+  App.pickItems = ({ title = 'Einträge auswählen', types = ['vocab', 'grammar', 'kanji', 'phrase'], selected = [], single = false, kanjiDefaults = {} } = {}) => new Promise((resolve) => {
     const sel = new Set(selected);
+    let kIndex = null;
     const body = document.createElement('div');
     body.innerHTML = `<div class="row"><input class="input grow" placeholder="Suchen (Deutsch, かな, 漢字, Romaji) …" autofocus>
       <select class="input" data-t><option value="">Alle Bereiche</option>${types.map((t) => `<option value="${t}">${App.SECTIONS[t].label}</option>`).join('')}</select></div>
@@ -647,17 +651,34 @@
       let res = q ? App.search(q, { types: ts, limit: 80 }) : Array.from(App.store.items.values()).filter((x) => ts.includes(x.type)).sort((a, b) => (b.updated || 0) - (a.updated || 0)).slice(0, 40);
       const selectedItems = Array.from(sel).map(App.item).filter(Boolean).filter((x) => !res.includes(x));
       if (!q) res = selectedItems.concat(res);
-      list.innerHTML = res.map((it) => `<label class="picker-row ${App.SECTIONS[it.type].cls}"><input type="${single ? 'radio' : 'checkbox'}" name="pk" value="${it.id}" ${sel.has(it.id) ? 'checked' : ''}>
+      const KL = App.kanjiLogic;
+      // mehrere Kanji auf einmal gesucht (駅働): die vorhandenen einzeln zeigen
+      if (ts.includes('kanji')) res = Array.from(new Set(Array.from(q).map(App.kanjiByChar).filter(Boolean).concat(res)));
+      const fresh = ts.includes('kanji') && kIndex ? [...new Set(Array.from(sel).filter((v) => v.startsWith(NEW)).map((v) => v.slice(NEW.length)).concat(KL.newChars(q, kIndex, App.kanjiByChar)))] : [];
+      const sk = App.SECTIONS.kanji;
+      list.innerHTML = fresh.map((c) => { const e = KL.entry(kIndex, c); return `<label class="picker-row ${sk.cls}"><input type="${single ? 'radio' : 'checkbox'}" name="pk" value="${NEW}${esc(c)}" ${sel.has(NEW + c) ? 'checked' : ''}>
+        <span class="badge sec ${sk.cls}">${sk.label}</span><span class="jp" lang="ja">${esc(c)}</span><span class="muted small grow">${App.meaningHtml(e)}</span><span class="badge">＋ neu anlegen</span></label>`; }).join('') + res.map((it) => `<label class="picker-row ${App.SECTIONS[it.type].cls}"><input type="${single ? 'radio' : 'checkbox'}" name="pk" value="${it.id}" ${sel.has(it.id) ? 'checked' : ''}>
         <span class="badge sec ${App.SECTIONS[it.type].cls}">${App.SECTIONS[it.type].label}</span><span class="jp">${it.type === 'grammar' ? esc(it.title) : App.itemMain(it)}</span><span class="muted small grow">${esc(App.itemSub(it) || '')}</span>${App.srcBadge(it)}</label>`).join('') || '<div class="muted" style="padding:14px">Nichts gefunden.</div>';
     };
     list.addEventListener('change', (e) => { const c = e.target; if (single) { sel.clear(); } if (c.checked) sel.add(c.value); else sel.delete(c.value); });
     inp.addEventListener('input', App.debounce(draw, 150));
     tsel.onchange = draw;
     draw();
+    if (types.includes('kanji')) App.kanjiIndex().then((ix) => { kIndex = ix; if (list.isConnected && inp.value.trim()) draw(); });
     let done = false;
     const md = App.modal({ title, body, wide: true, foot: '<button class="btn" data-no>Abbrechen</button><button class="btn btn-primary" data-ok>Übernehmen</button>', onClose: () => { if (!done) resolve(null); } });
     md.el.querySelector('[data-no]').onclick = md.close;
-    md.el.querySelector('[data-ok]').onclick = () => { done = true; resolve(Array.from(sel)); md.close(); };
+    md.el.querySelector('[data-ok]').onclick = async (e) => {
+      if (done) return;
+      done = true; e.currentTarget.disabled = true;
+      const ids = [];
+      for (const v of sel) {
+        if (!v.startsWith(NEW)) { ids.push(v); continue; }
+        const it = await App.createKanji(v.slice(NEW.length), kanjiDefaults);
+        if (it) ids.push(it.id);
+      }
+      resolve(ids); md.close();
+    };
   });
 
   // ---------- globale Klick-Aktionen ----------
