@@ -68,6 +68,8 @@ window.App = window.App || {};
     step: '<path d="M5 4l10 8-10 8z"/><path d="M19 5v14"/>',
     link: '<path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/>',
     check: '<path d="M20 6L9 17l-5-5"/>',
+    backup: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 13l2 2 4-4"/>',
+    alert: '<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4M12 17h.01"/>',
     print: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><path d="M6 14h12v8H6z"/>',
     copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>',
     sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
@@ -159,14 +161,36 @@ window.App = window.App || {};
       t.onabort = () => rej(t.error);
     });
   }
+  // Jeder gelungene Schreibzugriff wird an App.dbWritten(store, schlüssel) gemeldet (Ordner-Sicherung);
+  // schlüssel = null heißt „der ganze Store kann betroffen sein“
+  const keyOf = (store, v) => (store === 'ink' || store === 'meta' ? v.key : v.id);
+  const wrote = (store, keys) => (r) => {
+    if (App.dbWritten) { try { App.dbWritten(store, keys); } catch (e) { console.error(e); } }
+    return r;
+  };
   App.db = {
     get: (store, key) => tx(store, 'readonly', (s) => s.get(key)),
     all: (store) => tx(store, 'readonly', (s) => s.getAll()),
-    put: (store, val) => tx(store, 'readwrite', (s) => s.put(val)),
-    del: (store, key) => tx(store, 'readwrite', (s) => s.delete(key)),
-    putMany: (store, vals) => tx(store, 'readwrite', (s) => { vals.forEach((v) => s.put(v)); }),
-    clear: (store) => tx(store, 'readwrite', (s) => s.clear()),
-    delMany: (store, keys) => tx(store, 'readwrite', (s) => { keys.forEach((k) => s.delete(k)); }),
+    put: (store, val) => tx(store, 'readwrite', (s) => s.put(val)).then(wrote(store, [keyOf(store, val)])),
+    del: (store, key) => tx(store, 'readwrite', (s) => s.delete(key)).then(wrote(store, [key])),
+    putMany: (store, vals) => tx(store, 'readwrite', (s) => { vals.forEach((v) => s.put(v)); }).then(wrote(store, vals.map((v) => keyOf(store, v)))),
+    clear: (store) => tx(store, 'readwrite', (s) => s.clear()).then(wrote(store, null)),
+    delMany: (store, keys) => tx(store, 'readwrite', (s) => { keys.forEach((k) => s.delete(k)); }).then(wrote(store, keys)),
+    // Mehrere Stores in EINER Transaktion leeren und/oder füllen – entweder alles oder nichts (Wiederherstellen aus der Sicherung).
+    // ops = [{ store, clear?, put?: [] }]
+    replace: async (ops) => {
+      const db = await openDB();
+      await new Promise((res, rej) => {
+        const t = db.transaction(ops.map((o) => o.store), 'readwrite');
+        t.oncomplete = () => res();
+        t.onerror = () => rej(t.error);
+        t.onabort = () => rej(t.error || new Error('Transaktion abgebrochen'));
+        try {
+          ops.forEach((o) => { const s = t.objectStore(o.store); if (o.clear) s.clear(); (o.put || []).forEach((v) => s.put(v)); });
+        } catch (e) { try { t.abort(); } catch (e2) { /* schon abgebrochen */ } rej(e); }
+      });
+      ops.forEach((o) => wrote(o.store, null)());
+    },
     // mehrere Schlüssel in einer Transaktion lesen (Ergebnis in derselben Reihenfolge, fehlende = undefined)
     getMany: (store, keys) => {
       const out = new Array(keys.length);
@@ -182,7 +206,7 @@ window.App = window.App || {};
         if (v === null) c.delete(); else if (v) c.update(v);
         c.continue();
       };
-    }),
+    }).then(wrote(store, null)),
     // je Schlüssel alle Datensätze über mehrere Indizes (vereinigt, ohne Doppelte) in einer readonly-Transaktion
     byIndex: (store, indexNames, keys) => {
       const out = new Map(keys.map((k) => [k, new Map()]));

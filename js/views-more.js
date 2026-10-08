@@ -212,6 +212,14 @@
   // =========================================================
   const blobToB64 = (blob) => new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
   const b64ToBlob = async (d) => (await fetch(d)).blob();
+  // Lernstand, Einstellungen, Paket-Status und Löschlisten – gemeinsam für das Backup von Hand und die Ordner-Sicherung
+  App.stateParts = async () => {
+    // Paket-Status gehört zu den mitgesicherten Paket-Einträgen (nur Level-Pakete; Wörterbuch liegt nicht im Backup)
+    const packs = {};
+    Object.entries(await App.packs.state()).forEach(([id, m]) => { if (m && (App.packById(id) || {}).kind === 'level') packs[id] = m; });
+    const list = async (key) => ((await App.db.get('meta', key)) || {}).value || [];
+    return { srs: Array.from(S.srs.values()), settings: S.settings, packs, deletedPackItems: await list('deletedPackItems'), deletedSeeds: await list('deletedSeeds') };
+  };
   App.exportData = async ({ withFiles = true, share = false, sections = null, sources = null } = {}) => {
     let items = Array.from(S.items.values()).filter((i) => !i._seed || i._edited || (!share && (S.srs.has(i.id) || S.srs.has('w:' + i.id) || i.star)));
     if (share) {
@@ -227,12 +235,10 @@
     }
     const data = { app: 'nihongo-techo', version: 1, exported: new Date().toISOString(), share, items: items.map((i) => { const c = Object.assign({}, i); delete c._st; return c; }) };
     if (!share) {
-      data.srs = Array.from(S.srs.values()); data.settings = S.settings; data.ink = await App.db.all('ink');
-      // Paket-Status gehört zu den mitgesicherten Paket-Einträgen (nur Level-Pakete; Wörterbuch liegt nicht im Backup)
-      const packs = {};
-      Object.entries(await App.packs.state()).forEach(([id, m]) => { if (m && (App.packById(id) || {}).kind === 'level') packs[id] = m; });
-      data.packs = packs;
-      data.deletedPackItems = ((await App.db.get('meta', 'deletedPackItems')) || {}).value || [];
+      const p = await App.stateParts();
+      data.srs = p.srs; data.settings = p.settings; data.ink = await App.db.all('ink');
+      data.packs = p.packs;
+      data.deletedPackItems = p.deletedPackItems;
     }
     if (withFiles) {
       data.files = [];
@@ -328,8 +334,10 @@
       <div class="card"><h3>Quellen</h3><p class="muted small">Damit du deine Inhalte nach Buch, App oder Kurs filtern kannst (z. B. nur Genki-Vokabeln).</p>
         <div class="stack" data-srcs style="gap:6px">${st.sources.map((s, i) => `<div class="row"><input type="color" value="${s.color}" data-sc="${i}" style="width:44px;height:40px;border:0;background:none"><input class="input grow" value="${esc(s.name)}" data-sn="${i}"><button class="icon-btn sm" data-sd="${i}">${icon('trash')}</button></div>`).join('')}</div>
         <button class="btn btn-sm" style="margin-top:10px" data-sadd>${icon('plus')} Quelle hinzufügen</button></div>
-      <div class="card"><h3>Sicherung</h3><p class="muted small">Alles wird lokal in diesem Browser gespeichert. Mach regelmäßig ein Backup – damit kannst du auch auf ein anderes Gerät umziehen.</p>
-        <div class="stack"><button class="btn btn-primary" data-exp>${icon('download')} Komplett-Backup (mit Dateien & Stiftnotizen)</button>
+      <div class="card"><h3>Sicherung</h3>
+        <h4 class="sub-h">Automatische Sicherung</h4><div data-backup-auto>${App.backup.card()}</div>
+        <h4 class="sub-h">Von Hand</h4><p class="muted small" data-backup-manual ${App.backup.manualHint() ? '' : 'hidden'}>Alles wird lokal in diesem Browser gespeichert. Mach regelmäßig ein Backup – damit kannst du auch auf ein anderes Gerät umziehen.</p>
+        <div class="stack"><button class="btn" data-exp>${icon('download')} Komplett-Backup (mit Dateien & Stiftnotizen)</button>
         <button class="btn" data-exp-light>${icon('download')} Backup ohne Dateien (klein)</button>
         <label class="btn">${icon('upload')} Backup oder Paket importieren<input type="file" accept=".json,application/json" hidden data-imp></label></div></div>
       <div class="card"><h3>Pakete &amp; Wörterbuch</h3><p class="muted small">JLPT-Niveaus N5–N1 freischalten, das Wörterbuch für den Satz-Scan installieren und den belegten Speicher ansehen.</p>
@@ -379,6 +387,7 @@
       }
       if (b.matches('[data-reset]')) {
         if (await App.confirm('Wirklich ALLE Daten (Einträge, Dateien, Notizen, Lernstand) löschen? Das kann nicht rückgängig gemacht werden. Mach vorher ein Backup!', { ok: 'Alles löschen' })) {
+          await App.backup.detach(); // die Sicherung im Ordner bleibt, wie sie ist
           for (const s of ['items', 'files', 'blobs', 'ink', 'srs', 'meta', 'dict']) await App.db.clear(s);
           location.reload();
         }

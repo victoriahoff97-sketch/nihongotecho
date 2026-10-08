@@ -861,6 +861,21 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .hw-pop .hw-de .chip { font-size: 14px; }
 .lookup-pop .lk-install { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 
+/* ---------- Ordner-Sicherung ---------- */
+.backup-status { width: 100%; text-align: left; font-size: 13px; }
+.backup-status .dot { background: var(--paper-2); color: var(--muted); }
+.backup-status.warn { color: color-mix(in srgb, var(--yamabuki) 65%, var(--ink)); }
+.backup-status.warn .dot { background: var(--yamabuki-soft); color: color-mix(in srgb, var(--yamabuki) 65%, var(--ink)); }
+.backup-status.bad { color: var(--shu); }
+.backup-status.bad .dot { background: var(--shu-soft); color: var(--shu); }
+.backup-status[hidden] { display: none; }
+.backup-state { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0 12px; font-size: 14px; }
+.backup-state.warn { color: color-mix(in srgb, var(--yamabuki) 65%, var(--ink)); }
+.backup-state.bad { color: var(--shu); }
+.backup-line { display: flex; gap: 12px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 18px; }
+.sub-h { margin: 14px 0 6px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.sub-h:first-of-type { margin-top: 4px; }
+
 /* ---------- Pitch Accent (Tonhöhenkurve an Vokabeln) ---------- */
 .pitch { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; }
 .pitch-svg { display: block; overflow: visible; }
@@ -920,3 +935,35 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .ink-tip .ink-tip-acts { flex-basis: 100%; display: flex; gap: 4px; margin: 4px -6px -2px; }
 .ref-tip { position: fixed; z-index: 150; pointer-events: none; }
 .lookup-pop .lk-link { display: flex; margin: 10px auto 0; }
+
+/* ---------- Buchlayout (Vollbild, Notizblätter): Doppelseite wie ein aufgeschlagenes Notizbuch; 1em = 1/30 Seitenbreite ---------- */
+.vpage[hidden], .bk-turn[hidden] { display: none; }
+.viewer-pages:not(.book) > .bk-ghost, .viewer-pages:not(.book) > .bk-turn { display: none; }
+.viewer-book .viewer-scroll { display: flex; padding: 36px 44px; background-color: #d9d1c2; background-image: repeating-linear-gradient(0deg, rgba(0,0,0,.03) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.03) 0 1px, transparent 1px 3px); }
+:root[data-theme="dark"] .viewer-book .viewer-scroll { background-color: #2b2823; }
+.viewer-pages.book { flex: none; flex-direction: row; align-items: stretch; gap: 0; padding: 0; margin: auto; position: relative; }
+.viewer-pages.book::before { content: ""; position: absolute; inset: -.9em -1em; border-radius: 1em; background: #2f4a3c; outline: .06em dashed rgba(255,255,255,.3); outline-offset: -.3em; box-shadow: 0 1.6em 3em -1.2em rgba(0,0,0,.5), 0 .3em .8em rgba(0,0,0,.25); }
+.book .vpage { background: #fbf8f0; }
+.book .vpage.bk-l, .book .vpage.bk-l canvas { border-radius: .5em 0 0 .5em; }
+.book .vpage.bk-r, .book .vpage.bk-r canvas, .book .bk-ghost { border-radius: 0 .5em .5em 0; }
+.book .vpage.bk-l { box-shadow: -.14em .1em 0 #e4dfd3, -.28em .2em 0 #d3cdbf; }
+.book .vpage.bk-r, .book .bk-ghost { box-shadow: .14em .1em 0 #e4dfd3, .28em .2em 0 #d3cdbf, .42em .3em 0 #e4dfd3; }
+/* Falz: Schatten zur Buchmitte */
+.book .vpage::after { content: ""; position: absolute; top: 0; bottom: 0; width: 3.2em; pointer-events: none; z-index: 1; }
+.book .vpage.bk-l::after { right: 0; background: linear-gradient(to left, rgba(0,0,0,.22), rgba(0,0,0,.06) 45%, transparent); }
+.book .vpage.bk-r::after, .book .bk-ghost::after { left: 0; background: linear-gradient(to right, rgba(0,0,0,.22), rgba(0,0,0,.06) 45%, transparent); }
+.book .vpage .pno { bottom: .9em; color: #8d897f; pointer-events: none; z-index: 1; }
+.book .vpage.bk-l .pno { left: 4.2em; right: auto; }
+.book .vpage.bk-r .pno { right: 4.2em; }
+.book .bk-ghost { order: 2; border: 0; padding: 0; font: inherit; font-size: 13px; font-weight: 700; color: #8d897f; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.book .bk-ghost[hidden] { display: none; }
+.book .bk-ghost svg { width: 30px; height: 30px; }
+.book .bk-ghost:hover { color: #2f4a3c; }
+.bk-turn { position: absolute; bottom: 0; width: 3.2em; height: 3.2em; z-index: 4; border: 0; padding: .25em .45em; font: inherit; font-size: 1em; font-weight: 800; line-height: 1; color: #5b574e; cursor: pointer; display: grid; }
+.bk-turn.next { right: 0; place-items: end; border-radius: 0 0 .5em 0; background: linear-gradient(to top left, #efe9dc 0 46%, rgba(0,0,0,.22) 46% 50%, transparent 50%); }
+.bk-turn.prev { left: 0; place-items: end start; border-radius: 0 0 0 .5em; background: linear-gradient(to top right, #efe9dc 0 46%, rgba(0,0,0,.22) 46% 50%, transparent 50%); }
+@keyframes bkFlipR { from { transform: perspective(60em) rotateY(-14deg); opacity: .35; } }
+@keyframes bkFlipL { from { transform: perspective(60em) rotateY(14deg); opacity: .35; } }
+.book .vpage.bk-r.flip-next, .book .vpage.bk-r.flip-prev { transform-origin: left center; animation: bkFlipR .26s ease-out; }
+.book .vpage.bk-l.flip-next, .book .vpage.bk-l.flip-prev { transform-origin: right center; animation: bkFlipL .26s ease-out; }
+@media (prefers-reduced-motion: reduce) { .book .vpage { animation: none !important; } }

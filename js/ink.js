@@ -24,10 +24,11 @@
   const MARK_COLORS = ['#ffe066', '#8ce99a', '#fcc2d7', '#a5d8ff'];
   const WIDTHS = { pen: [0.0022, 0.0038, 0.006], marker: [0.012, 0.02, 0.03] };
   const A4 = 842 / 595;
+  const BOOK_PAPER = '#fbf8f0'; // cremefarbenes Papier im Buchlayout
 
   // ---------- Papier-Hintergründe ----------
-  const drawPaper = INK.drawPaper = function (ctx, W, H, paper) {
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const drawPaper = INK.drawPaper = function (ctx, W, H, paper, bg) {
+    ctx.fillStyle = bg || '#fff'; ctx.fillRect(0, 0, W, H);
     ctx.save();
     if (paper === 'lines') {
       ctx.strokeStyle = '#c9d6ea'; ctx.lineWidth = Math.max(1, W * 0.0015);
@@ -160,8 +161,11 @@
     const S = App.store.settings;
     const II = App.inkImages;
     const IE = App.inkErase;
+    const BK = App.inkBook;
+    // Buchlayout: nur im Vollbild und nur für Notizblätter (PDF-/Bildseiten haben beliebige Formate)
+    const bookable = !embedded && kind === 'notebook';
     const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser', 'cut'];
-    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null };
+    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, book: bookable && !!S.inkBook, spread: 0 };
     // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
     st.eraser = st.tool === 'cut' || (st.tool !== 'eraser' && opts.eraser === 'cut') ? 'cut' : 'eraser';
     root.classList.add(embedded ? 'ink-embed' : 'viewer');
@@ -181,6 +185,7 @@
       <div class="grp"><button class="icon-btn" data-v="zout" title="Verkleinern">${icon('zoomOut')}</button><button class="btn btn-sm btn-ghost" data-v="fit" title="Einpassen">100%</button><button class="icon-btn" data-v="zin" title="Vergrößern">${icon('zoomIn')}</button></div>
       <div class="grp">
         <button class="btn btn-sm ${st.penOnly ? 'btn-sec' : ''}" data-v="penonly" title="Wenn aktiv: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">✍ Nur Stift</button>
+        ${bookable ? `<button class="btn btn-sm ${st.book ? 'btn-sec' : ''}" data-v="book" title="Buchlayout: zwei Seiten nebeneinander wie in einem Notizbuch">📖 Buch</button>` : ''}
         <button class="icon-btn" data-v="addpage" title="Leere Seite anhängen">${icon('filePlus')}</button>
         <button class="icon-btn" data-v="print" title="Drucken / als PDF speichern">${icon('print')}</button>
         ${kind === 'pdf' ? `<button class="btn btn-sm" data-v="vocab" title="Vokabeln aus dieser PDF importieren">${icon('vocab')} Vokabeln auslesen</button>` : ''}
@@ -291,7 +296,7 @@
       });
     };
 
-    const baseWidth = () => Math.min(scroller.clientWidth - 44, 1100);
+    const baseWidth = () => (st.book ? BK.fitWidth(scroller.clientWidth, scroller.clientHeight, A4) : Math.min(scroller.clientWidth - 44, 1100));
     const buildPage = (def, i) => {
       const el = document.createElement('div');
       el.className = 'vpage';
@@ -303,11 +308,68 @@
       return pg;
     };
     pageDefs.forEach(buildPage);
+    // ---------- Buchlayout: immer eine Doppelseite, blättern statt scrollen ----------
+    let ready = false; // erst nach dem Aufbau gibt es Schildchen/Auswahl zum Aufräumen
+    const bk = {};
+    if (bookable) {
+      bk.ghost = document.createElement('button');
+      bk.ghost.className = 'vpage bk-ghost'; bk.ghost.hidden = true;
+      bk.ghost.innerHTML = `${icon('filePlus')}<span>Seite hinzufügen</span>`;
+      bk.prev = document.createElement('button'); bk.prev.className = 'bk-turn prev'; bk.prev.title = 'Zurückblättern'; bk.prev.textContent = '‹';
+      bk.next = document.createElement('button'); bk.next.className = 'bk-turn next';
+      pagesEl.append(bk.ghost, bk.prev, bk.next);
+      bk.ghost.addEventListener('click', () => addPage());
+      bk.prev.addEventListener('click', () => turn(-1));
+      bk.next.addEventListener('click', () => turn(1));
+    }
+    const showSpread = (dir) => {
+      const n = st.pages.length;
+      st.spread = BK.clampSpread(st.spread, n);
+      const { l, r } = BK.pagesOf(st.spread, n);
+      st.pages.forEach((p) => {
+        p.el.hidden = p.i !== l && p.i !== r;
+        p.el.classList.toggle('bk-l', p.i === l); p.el.classList.toggle('bk-r', p.i === r);
+        p.el.classList.remove('flip-next', 'flip-prev');
+        if (dir && !p.el.hidden) { void p.el.offsetWidth; p.el.classList.add(dir > 0 ? 'flip-next' : 'flip-prev'); }
+      });
+      bk.ghost.hidden = r != null;
+      bk.prev.hidden = st.spread === 0;
+      const last = st.spread === BK.spreadCount(n) - 1;
+      bk.next.textContent = last ? '+' : '›';
+      bk.next.title = last ? 'Leere Seite anhängen' : 'Weiterblättern';
+      if (ready) { closeHw(); hideTip(); if (st.sel && st.sel.p.el.hidden) clearSel(); }
+    };
+    const turn = (d) => {
+      if (!st.book) return;
+      const s = st.spread + d;
+      if (s < 0) return;
+      if (s > BK.spreadCount(st.pages.length) - 1) { addPage(); return; }
+      st.spread = s; showSpread(d);
+    };
+    // Seite, die in der Blatt-Ansicht gerade oben zu sehen ist
+    const topPage = () => { const t = scroller.getBoundingClientRect().top + 40; return st.pages.find((p) => p.el.getBoundingClientRect().bottom > t) || st.pages[0]; };
+    const applyMode = (page) => {
+      root.classList.toggle('viewer-book', st.book);
+      pagesEl.classList.toggle('book', st.book);
+      st.zoom = 1;
+      st.pages.forEach((p) => { p.renderedW = 0; });
+      if (st.book) { st.spread = BK.spreadOf(page ? page.i : 0); showSpread(); }
+      else if (bookable) {
+        st.pages.forEach((p) => { p.el.hidden = false; p.el.classList.remove('bk-l', 'bk-r', 'flip-next', 'flip-prev'); });
+        bk.ghost.hidden = true;
+      }
+    };
     const layout = () => {
       const W = baseWidth() * st.zoom;
-      if (W > 0) st.pages.forEach((p) => { p.el.style.width = W + 'px'; p.el.style.height = W * p.def.ratio + 'px'; });
+      if (W > 0) {
+        st.pages.forEach((p) => { p.el.style.width = W + 'px'; p.el.style.height = W * p.def.ratio + 'px'; });
+        // Einband, Falz und Ecken sind in em bemessen: 1em = 1/30 Seitenbreite
+        if (st.book) { pagesEl.style.fontSize = W / 30 + 'px'; bk.ghost.style.width = W + 'px'; bk.ghost.style.height = W * A4 + 'px'; }
+        else pagesEl.style.fontSize = '';
+      }
       root.querySelector('[data-v=fit]').textContent = Math.round(st.zoom * 100) + '%';
     };
+    if (st.book) applyMode(st.pages[(opts.page || 1) - 1]);
     layout();
 
     const renderPage = async (p) => {
@@ -325,7 +387,7 @@
           ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, tw, th);
           await p.def.page.render({ canvasContext: ctx, viewport: vp }).promise;
         } else if (p.def.kind === 'image') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, tw, th); ctx.drawImage(img, 0, 0, tw, th); }
-        else drawPaper(ctx, tw, th, p.def.paper);
+        else drawPaper(ctx, tw, th, p.def.paper, st.book ? BOOK_PAPER : null);
         p.bg.width = tw; p.bg.height = th; p.bg.getContext('2d').drawImage(off, 0, 0);
         p.renderedW = tw;
         p.el.querySelector('.loading').hidden = true;
@@ -351,11 +413,11 @@
     }), { root: scroller, rootMargin: '600px 0px' });
     st.pages.forEach((p) => io.observe(p.el));
     // Sprung zu einer Seite (z. B. Treffer aus der Suche)
-    if (opts.page > 1 && st.pages[opts.page - 1]) scroller.scrollTop += st.pages[opts.page - 1].el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 12;
+    if (!st.book && opts.page > 1 && st.pages[opts.page - 1]) scroller.scrollTop += st.pages[opts.page - 1].el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 12;
     const rerender = App.debounce(() => st.pages.forEach((p) => { if (p.visible) renderPage(p); }), 250);
     // Breite ändert sich (Tablet gedreht, Sidebar, Pane war versteckt) → Seiten neu einpassen
-    let lastW = scroller.clientWidth;
-    const ro = new ResizeObserver(() => { const w = scroller.clientWidth; if (w && w !== lastW) { lastW = w; layout(); st.pages.forEach((p) => { if (p.visible) drawInk(p); }); rerender(); } });
+    let lastW = scroller.clientWidth, lastH = scroller.clientHeight;
+    const ro = new ResizeObserver(() => { const w = scroller.clientWidth, h = scroller.clientHeight; if (w && (w !== lastW || (st.book && h !== lastH))) { lastW = w; lastH = h; layout(); st.pages.forEach((p) => { if (p.visible) drawInk(p); }); rerender(); } });
     ro.observe(scroller);
     const setZoom = (z, cx, cy) => {
       z = App.clamp(z, 0.4, 4);
@@ -396,6 +458,9 @@
     };
     scroller.addEventListener('pointerdown', (e) => {
       if (e.target.closest && e.target.closest('[data-del]')) { e.preventDefault(); deleteSel(); return; }
+      if (e.target.closest && e.target.closest('.bk-turn, .bk-ghost')) return;
+      // laufende Blätter-Animation beenden: sie verzerrt die Seite und damit die Stiftposition
+      if (st.book) $$('.flip-next, .flip-prev', pagesEl).forEach((el) => el.classList.remove('flip-next', 'flip-prev'));
       hideTip();
       const useTouchNav = e.pointerType === 'touch' && (st.penOnly || st.tool === 'hand');
       tap = useTouchNav ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
@@ -405,6 +470,7 @@
         if (touches.size === 2) {
           const [a, b] = Array.from(touches.values());
           pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: st.zoom };
+          tap = null;
         }
         return;
       }
@@ -474,6 +540,11 @@
         if (tap && tap.id === e.pointerId && e.type === 'pointerup' && e.timeStamp - tap.t < 500 && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10) {
           const p = pageAt(e.clientX, e.clientY), l = p && liveLinkAt(p, e, 0.006);
           if (l) showTip(p, l);
+        }
+        // Buch: mit dem Finger wischen blättert (nur uneingezoomt, sonst verschiebt der Finger den Ausschnitt)
+        else if (tap && tap.id === e.pointerId && e.type === 'pointerup' && st.book && st.zoom <= 1.02) {
+          const d = BK.swipeDir(e.clientX - tap.x, e.clientY - tap.y, e.timeStamp - tap.t);
+          if (d) turn(d);
         }
         tap = null;
         return;
@@ -762,6 +833,8 @@
       if (e.key === 'Escape' && root.querySelector('.hw-pop')) { closeHw(); return; }
       if (st.sel && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSel(); return; }
       if (e.key === 'Escape' && !embedded) close();
+      if (st.book && (e.key === 'ArrowRight' || e.key === 'PageDown')) { e.preventDefault(); turn(1); }
+      if (st.book && (e.key === 'ArrowLeft' || e.key === 'PageUp')) { e.preventDefault(); turn(-1); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); doUndo(st.undo, st.redo); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); doUndo(st.redo, st.undo); }
     };
@@ -790,21 +863,33 @@
         st.penOnly = !st.penOnly; v.classList.toggle('btn-sec', st.penOnly); App.saveSettings({ penOnly: st.penOnly });
         note(st.penOnly ? 'Nur der Stift schreibt – mit dem Finger scrollen & zoomen' : 'Finger schreibt jetzt auch');
       }
-      if (a === 'addpage') {
-        const last = st.pages[st.pages.length - 1];
-        const paper = await INK.pickPaper({ title: 'Leere Seite anhängen', current: (last && last.def.paper) || f.paper || 'lines' });
-        if (!paper) return;
-        UL.appendPaper(f, paper, kind === 'notebook');
-        await App.updateFile(f);
-        const pg = buildPage({ kind: 'paper', ratio: A4, paper, extra: kind !== 'notebook' }, st.pages.length);
-        layout(); io.observe(pg.el);
-        pg.el.scrollIntoView({ behavior: 'smooth' });
+      if (a === 'addpage') addPage();
+      if (a === 'book') {
+        const page = st.book ? st.pages[BK.pagesOf(st.spread, st.pages.length).l] : topPage();
+        st.book = !st.book; v.classList.toggle('btn-sec', st.book); App.saveSettings({ inkBook: st.book });
+        clearSel(); closeHw(); hideTip();
+        applyMode(page); layout();
+        if (!st.book && page) scroller.scrollTop += page.el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 12;
+        st.pages.forEach((p) => { if (p.visible) renderPage(p); });
+        if (st.book) note('Blättern: Ecken unten, Pfeiltasten oder mit dem Finger wischen', 3200);
       }
       if (a === 'print') printAll();
       if (a === 'image') pickImage();
       if (a === 'lookup') App.lookup.open(root, '', lookupOpts());
       if (a === 'vocab') App.importVocab({ fileId: f.id });
     });
+
+    const addPage = async () => {
+      const last = st.pages[st.pages.length - 1];
+      const paper = await INK.pickPaper({ title: 'Leere Seite anhängen', current: (last && last.def.paper) || f.paper || 'lines' });
+      if (!paper || destroyed) return;
+      UL.appendPaper(f, paper, kind === 'notebook');
+      await App.updateFile(f);
+      const pg = buildPage({ kind: 'paper', ratio: A4, paper, extra: kind !== 'notebook' }, st.pages.length);
+      if (st.book) { const d = BK.spreadOf(pg.i) - st.spread; st.spread += d; showSpread(d); }
+      layout(); io.observe(pg.el);
+      if (!st.book) pg.el.scrollIntoView({ behavior: 'smooth' });
+    };
 
     // Drucken / als PDF speichern
     const printAll = async () => {
@@ -831,6 +916,7 @@
     };
 
     if (!st.pages.length && !pagesEl.children.length) pagesEl.innerHTML = '<div class="card">Keine Seiten.</div>';
+    ready = true;
     if (st.penOnly && !embedded) note('✍ Stift schreibt · Finger scrollt & zoomt');
     return { flush: flushAll, destroy, dropLinks, state: () => ({ defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx }) };
   };

@@ -64,7 +64,7 @@
   // Bei Datenänderungen die aktuelle Ansicht neu zeichnen (außer während man tippt)
   let pending = false;
   App.onChange((w) => {
-    if (w === 'route') return;
+    if (w === 'route' || w === 'backup') return; // Sicherungs-Status frischt sich selbst auf (backup.js)
     if (pending) return;
     pending = true;
     setTimeout(() => {
@@ -93,6 +93,8 @@
     App.applyTheme();
     App.initSearch();
     App.render();
+    // Ordner-Sicherung anschließen – ein Fehler hier darf den Start nie verhindern
+    App.backup.init().catch((e) => console.error('Sicherung: Start fehlgeschlagen', e));
     // PDF-Texte für die Suche im Hintergrund einlesen (nach dem ersten Anzeigen)
     setTimeout(() => App.pdfText.backfill(), 1500);
     setTimeout(() => App.wk.autoSync(), 2500);
