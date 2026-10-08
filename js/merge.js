@@ -155,9 +155,13 @@
           if (match.marks !== undefined) merged.marks = match.marks;
           if (match.levelManual !== undefined) merged.levelManual = match.levelManual;
           if (match.de !== undefined && packItem.de === undefined) merged.de = match.de; // liefert das Paket Deutsch, gilt dessen aktuelle Fassung
-          if (Array.isArray(match.examples) && (!Array.isArray(packItem.examples) || match.examples.length > packItem.examples.length)) {
-            merged.examples = match.examples;
-          }
+          // Beispielsätze: die des Pakets gelten (auch „keiner“, wenn der frühere Satz das Wort falsch zeigte).
+          // Hat der Nutzer eigene ergänzt – mehr Sätze, als das Paket zuletzt lieferte (_packExN; ältere Einträge:
+          // höchstens 1 je Vokabel, 2 je Grammatikpunkt) –, bleibt seine Liste.
+          const packEx = Array.isArray(packItem.examples) ? packItem.examples.length : -1;
+          const oldEx = match._packExN ?? (type === 'grammar' ? 2 : 1);
+          if (Array.isArray(match.examples) && (packEx < 0 || match.examples.length > Math.max(packEx, oldEx))) merged.examples = match.examples;
+          if (packEx >= 0) merged._packExN = packEx;
           if (match.tags || packItem.tags) {
             // eigene Tags des Nutzers bleiben, die des Pakets werden ersetzt (_packTags = Paket-Tags beim letzten
             // Schreiben). Ältere Einträge kennen _packTags noch nicht: bei Grammatik stammten alle Tags aus dem Paket
