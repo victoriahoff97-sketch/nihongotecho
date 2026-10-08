@@ -444,6 +444,10 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .lesson-strip { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; }
 .lesson-strip a { text-decoration: none; text-align: center; padding: 10px 0; border-radius: 10px; background: var(--paper-2); font-weight: 800; font-size: 14px; position: relative; overflow: hidden; }
 .lesson-strip a i { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--matcha); }
+/* abgeschlossene Lektion: ganzes Kästchen grün */
+.lesson-strip a.done { background: var(--matcha); color: var(--paper); display: flex; align-items: center; justify-content: center; gap: 3px; }
+.lesson-strip a.done .ico { width: 14px; height: 14px; }
+.lesson-strip a.done svg { stroke-width: 3; }
 
 /* Unterricht / Timeline */
 .timeline { position: relative; display: flex; flex-direction: column; gap: 14px; }

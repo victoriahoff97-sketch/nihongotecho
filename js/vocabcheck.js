@@ -58,6 +58,26 @@
     items.forEach((v) => c[App.vocabStatus(v.id)]++);
     return c;
   };
+  // Genki-Lernstand der Startseite: „kann ich“ je Lektion und gesamt, jeweils Vokabeln + Kanji + Grammatik.
+  // Eine Lektion ist abgeschlossen (done), wenn alles aus ihr „kann ich“ ist.
+  App.genkiProgress = (source = 'Genki I', lessonCount = 12) => {
+    const TYPES = ['vocab', 'kanji', 'grammar'];
+    const all = {};
+    TYPES.forEach((t) => { all[t] = App.itemsOf(t).filter((i) => i.source === source && i.char !== '々'); });
+    const sum = (o) => { o.known = 0; o.learn = 0; o.total = 0; TYPES.forEach((t) => { o.known += o[t].known; o.learn += o[t].learn; o.total += o[t].total; }); return o; };
+    const lessons = Array.from({ length: lessonCount }, (_, i) => {
+      const x = { l: i + 1 };
+      TYPES.forEach((t) => { x[t] = App.vocabCounts(all[t].filter((it) => +it.lesson === x.l)); });
+      sum(x);
+      x.done = x.total > 0 && x.known >= x.total;
+      x.pct = x.total ? Math.floor((x.known / x.total) * 100) : 0;
+      return x;
+    });
+    // Gesamt = Summe der Lektionen, damit die Zahlen oben genau zur Leiste passen
+    const out = { lessons, doneLessons: lessons.filter((x) => x.done).length };
+    TYPES.forEach((t) => { out[t] = { known: 0, learn: 0, unchecked: 0, total: 0 }; lessons.forEach((x) => Object.keys(out[t]).forEach((k) => { out[t][k] += x[t][k]; })); });
+    return sum(out);
+  };
   // Zeile unter dem Lernstand: „Kann ich“ hat keinen nächsten Termin mehr
   App.srsNote = (s) => `${s.check === 'known' ? 'als gelernt markiert' : s.reps + '× gewusst'} · ${App.writeLogic.isKnown(s) ? 'wird nicht mehr abgefragt' : 'nächste Wiederholung ' + App.fmtDate(s.due)}`;
   App.statusBadge = (id) => { const st = App.STATUS[App.vocabStatus(id)]; return `<span class="badge vst" style="color:${st.color}" title="Lernstand">${st.dot} ${st.label}</span>`; };

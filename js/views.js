@@ -114,6 +114,39 @@
         <div class="small muted" style="margin-top:8px">${Math.round(pc(tot.known))} % kann ich · ${tot.learn} im Lernstapel${nextTxt}</div></div>`;
   };
 
+  // ---------- Startseite: Genki-Lernstand ----------
+  // Wie der JLPT-Lernstand, aber für alles aus Genki I. Die Lektionsleiste darunter zählt genauso („kann ich“),
+  // ihre Summe ergibt die Zahlen oben. Abgeschlossene Lektionen sind ganz grün.
+  const GENKI = 'Genki I';
+  const genkiLevelCard = () => {
+    const p = App.genkiProgress(GENKI);
+    if (!p.total) return '';
+    const src = encodeURIComponent(GENKI);
+    const pc = (n) => (n / p.total) * 100;
+    const num = (x, label, href) => `<a href="${href}" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${x.known}</b> <span class="muted">/ ${x.total} ${label}</span></a>`;
+    const check = p.vocab.unchecked ? `<a class="btn" href="#/ueben/einstufen?src=${src}&auto=1">${icon('check')} Genki einstufen</a>`
+      : p.kanji.unchecked ? `<a class="btn" href="#/ueben/einstufen?type=kanji&src=${src}&auto=1">${icon('check')} Genki-Kanji einstufen</a>` : '';
+    const todo = ['vocab', 'kanji', 'grammar'].filter((type) => type !== 'kanji' || App.writeLogic.focus(S.settings) !== 'write').map((type) => {
+      return { n: App.roundSize(App.cardQueue({ type, src: GENKI, dir: 'jp' })), href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}${type === 'kanji' ? 'dir=jp&' : ''}src=${src}&auto=1` };
+    }).filter((x) => x.n);
+    const learnN = todo.reduce((n, x) => n + x.n, 0);
+    const learn = learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} Genki lernen <span class="badge">${learnN}</span></a>`
+      : check ? '' : `<a class="btn btn-sec" href="#/ueben/karten?src=${src}">${icon('practice')} Genki üben</a>`;
+    const part = (x, label) => (x.total ? `${x.known}/${x.total} ${label}` : '');
+    const tile = (x) => {
+      const tip = x.total ? [part(x.vocab, 'Wörter'), part(x.kanji, 'Kanji'), part(x.grammar, 'Grammatik')].filter(Boolean).join(' · ') : 'Noch keine Einträge';
+      return `<a href="#/vokabeln?src=${src}&l=${x.l}"${x.done ? ' class="done"' : ''} title="Lektion ${x.l}${x.done ? ' abgeschlossen' : ''} – kann ich: ${tip}">L${x.l}${x.done ? ` ${icon('check')}` : `<i style="width:${x.pct}%"></i>`}</a>`;
+    };
+    return `<div class="section-title">${GENKI} – Lernstand</div>
+      <div class="card"><div class="row between"><div class="row" style="gap:22px">
+        ${num(p.vocab, 'Vokabeln', `#/vokabeln?src=${src}`)}${num(p.kanji, 'Kanji', `#/kanji?src=${src}`)}${num(p.grammar, 'Grammatik', `#/grammatik?src=${src}`)}</div>
+        <div class="row">${learn}${check}</div></div>
+        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(p.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(p.learn)}%;background:var(--ai);border-radius:0"></i></div>
+        <div class="small muted" style="margin-top:8px">${Math.floor(pc(p.known))} % kann ich · ${p.learn} im Lernstapel · ${p.doneLessons} von ${p.lessons.length} Lektionen abgeschlossen</div>
+        <div class="lesson-strip" style="margin-top:14px">${p.lessons.map(tile).join('')}</div>
+        <div class="small muted" style="margin-top:8px">Der grüne Balken zeigt, wie viel du aus der Lektion schon kannst (Vokabeln, Kanji, Grammatik). Kannst du alles, wird das Kästchen grün.</div></div>`;
+  };
+
   // =========================================================
   // Start
   // =========================================================
@@ -142,11 +175,6 @@
     const vocab = App.itemsOf('vocab');
     const sessions = App.itemsOf('session').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const recent = Array.from(S.items.values()).filter((i) => i.created && i.type !== 'session' && !App.APPLY_TYPES.includes(i.type)).sort((a, b) => b.created - a.created).slice(0, 8);
-    const lessons = Array.from({ length: 12 }, (_, i) => i + 1).map((l) => {
-      const vs = vocab.filter((v) => v.source === 'Genki I' && +v.lesson === l);
-      const learned = vs.filter((v) => App.srsStage(v.id) > 0).length;
-      return { l, pct: vs.length ? Math.round((learned / vs.length) * 100) : 0, n: vs.length };
-    });
     const stat = (t, n, sub) => { const s = App.SECTIONS[t]; return `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; };
     // Genki-Freischaltung: auf der Startseite nur, solange sie noch aussteht (nicht bei none/open)
     const genkiCard = App.genki && ['locked', 'stale'].includes(App.genki.state()) ? `<div style="margin-bottom:18px">${App.genki.card()}</div>` : '';
@@ -171,9 +199,9 @@
         ${stat('kanji', count('kanji'), 'Kanji')}
         ${stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')}
       </div>
-      ${(() => { // Lesen und aktiv (Deutsch → Japanisch) zusammen gezählt; aktiv zählt mit, sobald ein Wort lesbar ist
+      ${(() => { // Jedes Wort zählt einmal, mit seinem Lese-Stand (Japanisch → Deutsch) wie beim JLPT- und Genki-Lernstand; der Stand Deutsch → Japanisch steht im Tooltip
         const r = App.vocabCounts(), a = App.writeLogic.activeCounts(vocab, S.srs, App.needsCheck);
-        const c = { unchecked: r.unchecked + a.unchecked, learn: r.learn + a.learn, known: r.known + a.known };
+        const c = r;
         const total = c.unchecked + c.learn + c.known, pc = (n) => (total ? (n / total) * 100 : 0);
         const todo = [[App.cardQueue({ dir: 'jp' }), '#/ueben/karten?auto=1'], [aq, '#/ueben/karten?dir=de&auto=1']].map(([x, href]) => ({ n: App.roundSize(x), href })).filter((x) => x.n);
         const learnN = todo.reduce((n, x) => n + x.n, 0);
@@ -186,6 +214,7 @@
         <div class="row">${learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} Lernen <span class="badge">${learnN}</span></a>` : ''}${c.unchecked ? `<a class="btn${learnN ? '' : ' btn-sec'}" href="#/ueben/einstufen?${r.unchecked ? '' : 'dir=de&'}auto=1">${icon('check')} Nächste ${Math.min(r.unchecked || a.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button></div></div>
         <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div></div>`; })()}
       ${jlptCard()}
+      ${genkiLevelCard()}
       ${(() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `<div class="section-title">Kanji-Lernstand</div>
       <div class="card sec-kanji"><div class="row between"><div class="row" style="gap:22px">
         <a href="#/kanji?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
@@ -199,9 +228,6 @@
           <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
           <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}</div></div>`; })()}</div>`; })()}
-      ${vocab.some((v) => v.source === 'Genki I') ? `<div class="section-title">Genki I – Vokabel-Fortschritt je Lektion</div>
-      <div class="card"><div class="lesson-strip">${lessons.map((x) => `<a href="#/vokabeln?src=Genki%20I&l=${x.l}" title="${x.pct}% von ${x.n} Wörtern gelernt">L${x.l}<i style="width:${x.pct}%"></i></a>`).join('')}</div>
-        <div class="small muted" style="margin-top:8px">Der grüne Balken zeigt, wie viele Wörter der Lektion du schon mit Karteikarten gelernt hast.</div></div>` : ''}
       <div class="grid cols-2" style="margin-top:22px">
         <div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
           <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>
