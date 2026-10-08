@@ -275,6 +275,30 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 /* Toolbar / Filter */
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
 .toolbar .field-inline { position: relative; }
+/* Oben die Suche, darunter alle Filter in genau einer Zeile: wird es eng, werden die Felder schmaler statt umzubrechen */
+.toolbar > .search-wrap { flex: 1 1 220px; min-width: 180px; }
+.filter-row { display: flex; gap: 10px; align-items: center; flex: 1 1 100%; min-width: 0; }
+.filter-row > * { flex: 0 1 auto; min-width: 0; }
+.filter-row > select.input { text-overflow: ellipsis; padding: 0 8px 0 12px; min-width: 5em; }
+.filter-row > .msel { flex-shrink: 0; max-width: 14em; }
+.filter-row > .msel > summary { padding: 0 12px; }
+.filter-row > .chip, .filter-row > .seg, .filter-row > .btn { flex: none; }
+.filter-row > .grow { flex: 1 1 0; }
+@media (max-width: 720px) { .filter-row { flex-wrap: wrap; } } /* Handy: eine Zeile reicht nicht */
+/* Auswahlfeld mit Häkchen (Quelle, Niveau) */
+.msel { position: relative; min-width: 0; }
+.msel > summary { list-style: none; display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; user-select: none; }
+.msel > summary::-webkit-details-marker { display: none; }
+.msel > summary::after { content: ""; flex: none; width: 7px; height: 7px; margin: -4px 2px 0 auto; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); }
+.msel-label { overflow: hidden; text-overflow: ellipsis; }
+.msel.on > summary { border-color: var(--sec, var(--shu)); background: var(--sec-soft, var(--shu-soft)); font-weight: 700; }
+.msel-pop.card { position: absolute; top: calc(100% + 6px); left: 0; z-index: 25; min-width: 230px; max-height: 60vh; overflow: auto; padding: 6px; box-shadow: var(--shadow-lg); }
+.msel-pop label { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.msel-pop label:hover { background: var(--paper-2); }
+.msel-pop input { width: 18px; height: 18px; flex: none; accent-color: var(--sec, var(--shu)); }
+.msel-pop .sw { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.msel-clear { display: block; width: 100%; margin-top: 4px; padding: 10px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; font-weight: 700; color: var(--muted); cursor: pointer; }
+.msel-clear:hover { color: var(--ink); }
 .input, select.input, textarea.input {
   height: 44px; border-radius: 11px; border: 1px solid var(--line-2); background: var(--card); padding: 0 14px; outline: none; min-width: 0;
 }

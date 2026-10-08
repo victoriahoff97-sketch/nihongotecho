@@ -56,7 +56,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   const cardFilter = (q) => {
     const type = q.type || 'vocab';
     let items = App.itemsOf(type);
-    if (q.src) items = items.filter((i) => i.source === q.src);
+    if (q.src) items = items.filter((i) => App.srcMatch(i, q.src));
     if (q.l) items = items.filter((i) => String(i.lesson) === q.l);
     if (q.g) items = items.filter((i) => i.group === q.g);
     if (q.star) items = items.filter((i) => i.star);
@@ -144,11 +144,9 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       <div class="card" data-setup><div class="stack">
         <div class="row"><div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['grammar', 'Grammatik'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div>
           <div class="seg">${(type === 'kanji' ? [['jp', 'Kanji → Bedeutung (lesen)'], ['de', 'Bedeutung → Kanji (schreiben)']] : [['jp', 'Japanisch → Deutsch'], ['de', 'Deutsch → Japanisch']]).map(([k, l]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k === defDir ? '' : k}">${l}</button>`).join('')}</div>
-          ${App.lessonSelect(allOfType.filter((i) => !q.src || i.source === q.src), q.l)}
+          ${App.sourceSelect(allOfType, q.src)}${App.lessonSelect(allOfType.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}
           ${groups.length ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${groups.map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}
           <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Nur gemerkte</button></div>
-        ${App.sourceChips(allOfType, q.src)}
-        ${App.levelChips(q.lvl)}
         <div class="row">${roundStart(cq, 'Wiederholen')}
           <button class="btn" data-cram ${items.length ? '' : 'disabled'}>${icon('shuffle')} Zufällig üben (aus allen ${items.length})</button></div>
         ${write ? `<div class="small muted">Schreiben hat einen eigenen Lernstand: Neu sind Kanji, die du lesen kannst, aber noch nie geschrieben hast. Hier schreibst du auf Papier und drehst die Karte um – <a href="#/ueben/kanji">mit dem Stift in der App schreiben</a>.</div>` : ''}

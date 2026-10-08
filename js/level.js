@@ -94,8 +94,14 @@
     return { pos: 'noun' };
   };
 
-  // Prüft, ob ein Eintrag zum Niveau-Filter passt: lvl ist 'N5'…'N1', 'none' (= kein Niveau) oder leer (= kein Filter)
-  App.levelMatch = (it, lvl) => !lvl || (lvl === 'none' ? !it.level : it.level === lvl);
+  // Mehrfachauswahl eines Filters steht mit | getrennt in der Adresse (src=Genki I|Unterricht, lvl=N5|N4)
+  App.qList = (v) => (v ? String(v).split('|').filter(Boolean) : []);
+  // Prüft, ob ein Eintrag zum Niveau-Filter passt: lvl ist 'N5'…'N1', 'none' (= kein Niveau), mehrere davon oder leer (= kein Filter)
+  App.levelMatch = (it, lvl) => !lvl || App.qList(lvl).some((l) => (l === 'none' ? !it.level : it.level === l));
+  // Prüft, ob ein Eintrag (oder eine Datei) zum Quellen-Filter passt
+  App.srcMatch = (it, src) => !src || App.qList(src).includes(it.source);
+  // Die Quelle, wenn genau eine gewählt ist (Vorbelegung für neue Einträge und Uploads), sonst ''
+  App.oneSrc = (src) => { const l = App.qList(src); return l.length === 1 ? l[0] : ''; };
 
   // Setzt level fuer vocab/kanji ohne levelManual anhand des Index; liefert nur die geaenderten Eintraege
   App.applyJlptIndex = (items) => {

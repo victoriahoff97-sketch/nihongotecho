@@ -130,7 +130,7 @@
     const sec = App.SECTIONS[type];
     const all = App.itemsOf(type).filter((i) => i.char !== '々');
     let items = all;
-    if (q.src) items = items.filter((i) => i.source === q.src);
+    if (q.src) items = items.filter((i) => App.srcMatch(i, q.src));
     if (q.l) items = items.filter((i) => String(i.lesson) === q.l);
     if (q.mark) items = items.filter((i) => App.hasMark(i, q.mark));
     if (q.lvl) items = items.filter((i) => App.levelMatch(i, q.lvl));
@@ -154,14 +154,12 @@
           <span><b style="font-size:24px;color:var(--muted)">${c.unchecked}</b> ungeprüft</span>
           <span><b style="font-size:24px;color:var(--ai)">${c.learn}</b> im ${active ? 'Aktiv-' : ''}Lernstapel</span>
           <span><b style="font-size:24px;color:var(--matcha)">${c.known}</b> kann ich${active ? ' aktiv' : ''}</span></div>
-          <span class="small muted">${q.src || q.l ? `Auswahl · insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
+          <span class="small muted">${q.src || q.l || q.lvl ? `Auswahl · insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
         <div class="progress" style="display:flex;height:10px"><i style="width:${pct(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pct(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
-        <div class="row">${App.lessonSelect(all.filter((i) => !q.src || i.source === q.src), q.l)}
+        <div class="row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}
           <label class="row small" style="gap:8px"><b>${isK ? 'Kanji' : 'Wörter'} pro Runde</b><input class="input" type="number" min="3" max="100" value="${batch}" data-batch style="width:90px"></label>
           <button class="btn btn-primary" data-go ${c.unchecked ? '' : 'disabled'}>${icon('play')} Runde starten (${Math.min(batch, c.unchecked)})</button>
           ${!c.unchecked && c.total ? `<span class="verdict ok">✓ ${active && !(c.learn + c.known) ? 'Noch nichts einzustufen' : 'Alles in dieser Auswahl ist eingestuft'}</span>` : ''}</div>
-        ${App.sourceChips(all, q.src)}
-        ${App.levelChips(q.lvl)}
         ${active ? `<div class="small muted">Tipp: Tippe auf die Bedeutung, um das japanische Wort zu sehen. „Kann ich“ = weiß ich aus dem Deutschen heraus (wird nicht mehr abgefragt). „Lernen“ = kommt in die Karteikarten Deutsch → Japanisch. Der Lese-Lernstand bleibt davon unberührt.${c.locked ? ` ${c.locked} ${c.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} dazu, sobald du ${c.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : `<div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (wird nicht mehr abgefragt). „Lernen“ = kommt in deine Karteikarten.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>`}
       </div></div>
       <div data-stage style="margin-top:18px"></div></div>`;

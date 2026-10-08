@@ -40,7 +40,7 @@
     const sec = App.SECTIONS.kanji;
     const all = App.itemsOf('kanji');
     let items = all;
-    if (q.src) items = items.filter((i) => i.source === q.src);
+    if (q.src) items = items.filter((i) => App.srcMatch(i, q.src));
     if (q.l) items = items.filter((i) => String(i.lesson) === q.l);
     if (q.f) { const ids = new Set(App.search(q.f, { types: ['kanji'], limit: 5000 }).map((x) => x.id)); items = items.filter((i) => ids.has(i.id)); }
     if (q.st) items = items.filter((i) => App.vocabStatus(i.id) === q.st);
@@ -64,11 +64,11 @@
       App.hydrateThumbs(body);
     } else {
       body.innerHTML = `<div class="toolbar"><div class="search-wrap" style="max-width:340px">${icon('search')}<input class="input" style="padding-left:44px;width:100%" data-kf placeholder="Kanji, Bedeutung oder Lesung …" value="${esc(q.f || '')}"></div>
-        ${App.lessonSelect(all, q.l)}
-        <select class="input" data-q-select="st"><option value="">Jeder Lernstand</option>${App.statusFilter(q.st)}</select>
-        <span class="small muted">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernstapel · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span><span class="grow"></span><button class="btn btn-sm btn-sec" data-kvg-all hidden></button></div>
+        <span class="small muted">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernstapel · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span><span class="grow"></span><button class="btn btn-sm btn-sec" data-kvg-all hidden></button>
+        <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all, q.l)}${App.levelSelect(q.lvl)}
+        <select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st)}</select></div></div>
         <div class="chips scroll" style="margin-bottom:8px"><button class="chip ${!q.mark ? 'on' : ''}" data-q-mark="">Alle Markierungen</button>${App.kanjiMarks().map((m) => { const n = all.filter((k) => App.hasMark(k, m)).length; return `<button class="chip ${q.mark === m ? 'on' : ''}" data-q-mark="${esc(m)}">${esc(m)} <span class="small" style="opacity:.7">${n}</span></button>`; }).join('')}<button class="chip" data-new-mark>${icon('plus')} Markierung</button></div>
-        ${App.sourceChips(all, q.src)}${App.levelChips(q.lvl)}<div data-grid style="margin-top:14px"></div>`;
+        <div data-grid style="margin-top:14px"></div>`;
       body.querySelector('[data-new-mark]').onclick = async () => { const m = await App.addKanjiMark(); if (m) App.setQuery({ mark: m }); };
       // Eigene Kanji ohne Strichfolge finden → Sammel-Download anbieten
       (async () => {
@@ -182,7 +182,7 @@
     const sec = App.SECTIONS.library;
     const all = Array.from(S.files.values());
     let files = all;
-    if (q.src) files = files.filter((f) => f.source === q.src);
+    if (q.src) files = files.filter((f) => App.srcMatch(f, q.src));
     if (q.sec) files = files.filter((f) => f.section === q.sec);
     if (q.kind) files = files.filter((f) => App.fileKind(f) === q.kind);
     if (q.l) files = files.filter((f) => String(f.lesson) === q.l);
@@ -192,19 +192,18 @@
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Alle Materialien: Buchseiten, Präsentationen, Hausaufgaben, Notizblätter – filterbar nach Quelle, Bereich und Lektion.',
       `<button class="btn" data-nb>${icon('notebook')} Notizblatt</button><button class="btn btn-sec" data-upload="library">${icon('upload')} Hochladen</button>`)}
       <div class="dropzone" data-drop style="margin-bottom:18px">${icon('upload')} <b>Dateien hierher ziehen</b> – PDF, Fotos, PowerPoint, Videos …</div>
-      <div class="toolbar">
-        <select class="input" data-q-select="sec"><option value="">Alle Bereiche</option>${secs.map((s) => `<option value="${s}" ${q.sec === s ? 'selected' : ''}>${SEC_LABEL[s] || s}</option>`).join('')}</select>
+      <div class="toolbar"><div class="filter-row">
+        ${App.sourceSelect(all, q.src)}<select class="input" data-q-select="sec"><option value="">Alle Bereiche</option>${secs.map((s) => `<option value="${s}" ${q.sec === s ? 'selected' : ''}>${SEC_LABEL[s] || s}</option>`).join('')}</select>
         <select class="input" data-q-select="kind"><option value="">Alle Dateitypen</option>${kinds.map((k) => `<option value="${k}" ${q.kind === k ? 'selected' : ''}>${KIND_LABEL[k]}</option>`).join('')}</select>
-        ${App.lessonSelect(all, q.l)}</div>
-      ${App.sourceChips(all, q.src)}
+        ${App.lessonSelect(all, q.l)}</div></div>
       <div style="margin-top:16px">${files.length ? `<div class="file-grid">${files.map(App.fileCard).join('')}</div>` : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien</h3><p>Lade deine Genki-Seiten, Marugoto-PDFs, PowerPoints aus dem VHS-Kurs oder Hausaufgaben hoch.</p></div>`}</div></div>`;
     App.hydrateThumbs(view);
     view.querySelector('[data-nb]').onclick = () => App.newNotebook({ section: 'library' });
     const dz = view.querySelector('[data-drop]');
-    dz.onclick = () => App.uploadDialog({ source: q.src || '', section: q.sec || 'library' });
+    dz.onclick = () => App.uploadDialog({ source: App.oneSrc(q.src), section: q.sec || 'library' });
     dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });
     dz.addEventListener('dragleave', () => dz.classList.remove('over'));
-    dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('over'); App.uploadDialog({ files: Array.from(e.dataTransfer.files), source: q.src || '', section: q.sec || 'library' }); });
+    dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('over'); App.uploadDialog({ files: Array.from(e.dataTransfer.files), source: App.oneSrc(q.src), section: q.sec || 'library' }); });
   });
 
   // =========================================================

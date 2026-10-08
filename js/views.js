@@ -14,7 +14,7 @@
   App.pageHead = pageHead;
   const filterItems = (items, q) => {
     let out = items;
-    if (q.src) out = out.filter((i) => i.source === q.src);
+    if (q.src) out = out.filter((i) => App.srcMatch(i, q.src));
     if (q.l) out = out.filter((i) => String(i.lesson) === q.l);
     if (q.star) out = out.filter((i) => i.star);
     if (q.lvl) out = out.filter((i) => App.levelMatch(i, q.lvl));
@@ -31,13 +31,13 @@
     const files = App.filesFor({ section, source: q.src || undefined, lesson: q.l || undefined });
     return `<div class="row" style="margin-bottom:14px"><button class="btn btn-sec" data-upload="${section}">${icon('upload')} Dateien hinzufügen</button>
       <span class="muted small">Z. B. Fotos/PDFs der ${esc(App.SECTIONS[section].label)}-Seiten aus Genki, Marugoto & Co. – mit Quelle und Lektion markiert findest du sie immer wieder.</span></div>
-      ${files.length ? `<div class="file-grid">${files.map(App.fileCard).join('')}</div>` : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien${q.src ? ' für ' + esc(q.src) : ''}</h3><p>Lade z. B. die Vokabelseite aus deinem Buch als Bild oder PDF hoch.</p></div>`}`;
+      ${files.length ? `<div class="file-grid">${files.map(App.fileCard).join('')}</div>` : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien${q.src ? ' für ' + esc(App.qList(q.src).join(', ')) : ''}</h3><p>Lade z. B. die Vokabelseite aus deinem Buch als Bild oder PDF hoch.</p></div>`}`;
   };
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-upload]');
     if (!b) return;
     const q = App.parseHash().query;
-    App.uploadDialog({ section: b.dataset.upload, source: q.src || '', lesson: q.l || '' });
+    App.uploadDialog({ section: b.dataset.upload, source: App.oneSrc(q.src), lesson: q.l || '' });
   });
   const tabsHtml = (q, entries, filesN) => `<div class="tabs"><button class="tab ${q.tab !== 'files' ? 'on' : ''}" data-q-tab="">Einträge <span class="badge">${entries}</span></button><button class="tab ${q.tab === 'files' ? 'on' : ''}" data-q-tab="files">${icon('file')} Dateien <span class="badge">${filesN}</span></button></div>`;
 
@@ -270,14 +270,12 @@
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Alle Wörter mit Lesung, Kanji, Übersetzung und Beispielsätzen – nach Quelle und Lektion sortiert.',
       `<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a>${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>`)}
       ${tabsHtml(q, items.length, files.length)}
-      <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}${App.lessonSelect(all.filter((i) => !q.src || i.source === q.src), q.l)}
-        <select class="input" data-q-select="pos"><option value="">Alle Wortarten</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
-        <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Gemerkt</button>
-        <select class="input" data-q-select="st"><option value="">Jeder Lernstand</option>${App.statusFilter(q.st)}</select>
-        <span class="grow"></span>
-        <div class="seg"><button class="${mode === 'cards' ? 'on' : ''}" data-mode="cards">${icon('cards')}</button><button class="${mode === 'list' ? 'on' : ''}" data-mode="list">${icon('list')}</button></div></div>
-      ${App.sourceChips(all, q.src)}
-      ${App.levelChips(q.lvl)}
+      <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}<span class="grow"></span><div class="seg"><button class="${mode === 'cards' ? 'on' : ''}" data-mode="cards">${icon('cards')}</button><button class="${mode === 'list' ? 'on' : ''}" data-mode="list">${icon('list')}</button></div>
+        <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
+        <select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        ${App.levelSelect(q.lvl)}
+        <select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st)}</select>
+        <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Gemerkt</button></div></div>
       <div data-body style="margin-top:14px"></div></div>`;
     const body = view.querySelector('[data-body]');
     if (q.tab === 'files') body.innerHTML = filesTab('vocab', q);
@@ -329,7 +327,7 @@
     const ed = e.target.closest('[data-edit]');
     if (ed) { const it = App.item(ed.dataset.edit); App.editItem({ item: it, onSaved: () => App.render(true) }); return; }
     const nw = e.target.closest('[data-new]');
-    if (nw) { const q = App.parseHash().query; App.editItem({ type: nw.dataset.new, defaults: { source: q.src || undefined, lesson: q.l || undefined, group: q.g || undefined } }); return; }
+    if (nw) { const q = App.parseHash().query; App.editItem({ type: nw.dataset.new, defaults: { source: App.oneSrc(q.src) || undefined, lesson: q.l || undefined, group: q.g || undefined } }); return; }
     const ln = e.target.closest('[data-link-item]');
     if (ln) {
       const it = App.item(ln.dataset.linkItem);
@@ -392,10 +390,10 @@
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Jeder Grammatikpunkt mit Aufbau, Erklärung, Beispielen – und wo du ihn gelernt hast.',
       `<a class="btn" href="#/ueben/karten?${cardQs}">${icon('practice')} Karteikarten</a><a class="btn" href="#/karte">${icon('map')} Lernlandkarte</a><button class="btn btn-sec" data-new="grammar">${icon('plus')} Grammatik</button>`)}
       ${tabsHtml(q, items.length, files.length)}
-      <div class="toolbar">${filterInput(q, 'Grammatik suchen, z. B. て-Form, Vergleich …')}${App.lessonSelect(all.filter((i) => !q.src || i.source === q.src), q.l)}
-      <select class="input" data-q-select="st"><option value="">Jeder Lernstand</option>${Object.entries(App.STATUS).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>
-      <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Gemerkt</button></div>
-      ${App.sourceChips(all, q.src)}${App.levelChips(q.lvl)}<div data-body style="margin-top:14px"></div></div>`;
+      <div class="toolbar">${filterInput(q, 'Grammatik suchen, z. B. て-Form, Vergleich …')}<div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
+      ${App.levelSelect(q.lvl)}<select class="input" data-q-select="st"><option value="">Lernstand</option>${Object.entries(App.STATUS).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>
+      <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Gemerkt</button></div></div>
+      <div data-body style="margin-top:14px"></div></div>`;
     const body = view.querySelector('[data-body]');
     if (q.tab === 'files') body.innerHTML = filesTab('grammar', q);
     else if (!items.length) body.innerHTML = '<div class="empty-state"><div class="big">文</div><h3>Keine Grammatik gefunden</h3></div>';

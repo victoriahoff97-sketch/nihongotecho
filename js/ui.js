@@ -261,7 +261,7 @@
       if (itemId) { if (f.itemId === itemId) out.push(f); return; }
       if (sessionId) { if (f.sessionId === sessionId) out.push(f); return; }
       if (section && f.section !== section) return;
-      if (source && f.source !== source) return;
+      if (!App.srcMatch(f, source)) return;
       if (lesson !== undefined && lesson !== '' && String(f.lesson) !== String(lesson)) return;
       out.push(f);
     });
@@ -308,27 +308,48 @@
   };
 
   // ---------- Filter-Leiste (Quelle / Lektion) ----------
-  App.sourceChips = (items, active, param = 'src') => {
+  // Auswahlfeld mit Häkchen (Mehrfachauswahl). Ohne Häkchen = kein Filter; die Auswahl steht mit | getrennt im Query-Parameter.
+  // opts: [{ value, html, short }] – html ist die Zeile in der Liste, short der Text im zugeklappten Feld.
+  let mselOpen = '';
+  const multiSelect = (param, allLabel, manyLabel, opts, active) => {
+    const on = App.qList(active).filter((v) => opts.some((o) => o.value === v));
+    const label = !on.length ? allLabel : on.length === 1 ? opts.find((o) => o.value === on[0]).short : `${manyLabel}: ${on.length}`;
+    return `<details class="msel ${on.length ? 'on' : ''}" data-msel="${param}" ${mselOpen === param ? 'open' : ''}><summary class="input"><span class="msel-label">${esc(label)}</span></summary>
+      <div class="msel-pop card">${opts.map((o) => `<label><input type="checkbox" value="${esc(o.value)}" ${on.includes(o.value) ? 'checked' : ''}>${o.html}</label>`).join('')}
+      ${on.length ? `<button type="button" class="msel-clear" data-msel-clear>Auswahl aufheben</button>` : ''}</div></details>`;
+  };
+  App.sourceSelect = (items, active, param = 'src') => {
     const counts = {};
     items.forEach((it) => { if (it.source) counts[it.source] = (counts[it.source] || 0) + 1; });
     const names = App.sources().map((s) => s.name).filter((n) => counts[n]);
     Object.keys(counts).forEach((n) => { if (!names.includes(n)) names.push(n); });
     if (names.length < 1) return '';
-    return `<div class="chips scroll">
-      <button class="chip ${!active ? 'on' : ''}" data-q-${param}="">Alle Quellen</button>
-      ${names.map((n) => `<button class="chip ${active === n ? 'on' : ''}" data-q-${param}="${esc(n)}"><span class="sw" style="--c:${App.sourceColor(n)}"></span>${esc(n)} <span class="muted small">${counts[n]}</span></button>`).join('')}
-    </div>`;
+    return multiSelect(param, 'Quelle', 'Quellen', names.map((n) => ({ value: n, short: n, html: `<span class="sw" style="--c:${App.sourceColor(n)}"></span><span class="grow">${esc(n)}</span><span class="muted small">${counts[n]}</span>` })), active);
   };
-  // JLPT-Niveau-Chips: N5…N1 + „ohne“ (Einträge ohne Niveau). Setzt q.lvl ('N5'…'N1' oder 'none').
-  App.levelChips = (active, param = 'lvl') => `<div class="chips scroll">
-      <button class="chip ${!active ? 'on' : ''}" data-q-${param}="">Alle Niveaus</button>
-      ${App.JLPT_LEVELS.map((l) => `<button class="chip ${active === l ? 'on' : ''}" data-q-${param}="${l}"><span class="badge lvl lvl-${l.toLowerCase()}">${l}</span></button>`).join('')}
-      <button class="chip ${active === 'none' ? 'on' : ''}" data-q-${param}="none">ohne Niveau</button>
-    </div>`;
+  // JLPT-Niveau: N5…N1 + „ohne Niveau“ (Einträge ohne Niveau). Setzt q.lvl ('N5'…'N1', 'none' oder mehrere davon).
+  App.levelSelect = (active, param = 'lvl') => multiSelect(param, 'Niveau', 'Niveaus',
+    App.JLPT_LEVELS.map((l) => ({ value: l, short: l, html: `<span class="badge lvl lvl-${l.toLowerCase()}">${l}</span>` })).concat([{ value: 'none', short: 'ohne Niveau', html: 'ohne Niveau' }]), active);
+  document.addEventListener('change', (e) => {
+    const d = e.target.closest && e.target.closest('[data-msel]');
+    if (!d) return;
+    mselOpen = d.dataset.msel; // bleibt nach dem Neuzeichnen offen, damit man mehrere Häkchen setzen kann
+    App.setQuery({ [d.dataset.msel]: Array.from(d.querySelectorAll('input:checked')).map((c) => c.value).join('|') });
+  });
+  document.addEventListener('click', (e) => {
+    const d = e.target.closest && e.target.closest('[data-msel]');
+    if (d && e.target.closest('[data-msel-clear]')) { mselOpen = ''; App.setQuery({ [d.dataset.msel]: '' }); return; }
+    mselOpen = '';
+    document.querySelectorAll('details.msel[open]').forEach((x) => { if (x !== d) x.open = false; });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    mselOpen = '';
+    document.querySelectorAll('details.msel[open]').forEach((x) => { x.open = false; });
+  });
   App.lessonSelect = (items, active, param = 'l') => {
     const ls = Array.from(new Set(items.map((i) => i.lesson).filter((l) => l !== '' && l != null))).sort((a, b) => (+a) - (+b) || String(a).localeCompare(String(b)));
     if (!ls.length) return '';
-    return `<select class="input" data-q-select="${param}"><option value="">Alle Lektionen</option>${ls.map((l) => `<option value="${esc(l)}" ${String(active) === String(l) ? 'selected' : ''}>Lektion ${esc(l)}</option>`).join('')}</select>`;
+    return `<select class="input" data-q-select="${param}"><option value="">Lektion</option>${ls.map((l) => `<option value="${esc(l)}" ${String(active) === String(l) ? 'selected' : ''}>Lektion ${esc(l)}</option>`).join('')}</select>`;
   };
   // Filter-Buttons (data-q-xxx) setzen Query-Parameter
   document.addEventListener('click', (e) => {
