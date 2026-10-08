@@ -58,5 +58,8 @@
     return null;
   };
 
-  App.inboxLogic = { LIMIT, parse, sentences, vocabDefaults, findExisting };
+  // Woher bekommt man die Browser-Erweiterung? Die Web-Version liefert sie als ZIP mit, lokal liegt der Ordner neben der App.
+  const extSource = (protocol) => (protocol === 'https:' ? 'download' : 'folder');
+
+  App.inboxLogic = { LIMIT, parse, sentences, vocabDefaults, findExisting, extSource };
 })(window.App);

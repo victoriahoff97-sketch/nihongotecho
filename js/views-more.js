@@ -348,6 +348,7 @@
         <div class="field" style="margin-top:10px"><label>Quellen</label><div class="chips" data-share-src>${st.sources.map((s) => `<label class="chip on"><input type="checkbox" value="${esc(s.name)}" checked hidden><span class="sw" style="--c:${s.color}"></span>${esc(s.name)}</label>`).join('')}</div></div>
         <label class="row small" style="margin:10px 0"><input type="checkbox" data-share-files checked> Zugehörige Dateien mitschicken</label>
         <button class="btn btn-sec" style="--sec:var(--sakura)" data-share>${icon('download')} Teilen-Paket erstellen</button></div>
+      ${App.extensionCard()}
       ${App.pwa.card()}
       <div class="card"><h3>Über</h3><p class="small">Nihongo Techō 日本語手帳 · läuft komplett offline in deinem Browser.<br>Strichfolge-Daten: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, CC BY-SA 3.0. PDF-Anzeige: pdf.js (Mozilla).<br>Inhalte orientieren sich an Genki I (3. Aufl.) – bitte mit deinem Buch abgleichen.</p>
         <button class="btn btn-sm btn-ghost btn-danger" data-reset>${icon('trash')} Alle Daten löschen</button></div>

@@ -4,6 +4,24 @@
 (function (App) {
   const JP = App.jp;
   const L = App.inboxLogic;
+  const { icon } = App;
+
+  // Karte in den Einstellungen: Browser-Erweiterung holen und einrichten
+  App.extensionCard = () => {
+    const web = L.extSource(location.protocol) === 'download';
+    const get = web
+      ? `<a class="btn btn-sec" href="extension.zip" download="NihongoTecho-Erweiterung.zip">${icon('download')} Erweiterung herunterladen</a>`
+      : '<p class="small">Der Ordner <b>extension</b> liegt im App-Ordner (nach der Installation: <b>Dokumente\\NihongoTecho\\extension</b>).</p>';
+    return `<div class="card sec-vocab"><h3>Aus NHK Easy direkt in die App</h3>
+      <p class="muted small">Mit der Browser-Erweiterung (Chrome oder Edge am PC) markierst du Text auf NHK Easy und landest mit einem Klick bei „Sätze zuordnen“ oder im Vokabel-Formular – mit Lesung, Beispielsatz und Fundstelle.</p>
+      <div class="row">${get}</div>
+      <ol class="small" style="margin:10px 0 0;padding-left:20px">
+        ${web ? '<li>Die heruntergeladene ZIP-Datei entpacken – an einen Ort, an dem der Ordner bleiben kann (z. B. Dokumente).</li>' : ''}
+        <li>Im Browser <b>chrome://extensions</b> (Edge: <b>edge://extensions</b>) öffnen und den <b>Entwicklermodus</b> einschalten.</li>
+        <li><b>Entpackte Erweiterung laden</b> antippen und den Ordner <b>extension</b> wählen.</li>
+        <li>Diese App geöffnet lassen, NHK Easy neu laden und Text markieren – an der Markierung erscheinen zwei Knöpfe.</li>
+      </ol></div>`;
+  };
 
   // Adresse ersetzen (Neuladen/„Zurück“ holt nichts ein zweites Mal herein) und die Zielseite zeichnen
   const land = (hash, then) => {
