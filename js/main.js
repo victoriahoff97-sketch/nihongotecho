@@ -17,11 +17,9 @@
     ['edit', 'Anwenden', '#/anwenden', 'sec-apply', '使'],
     ['session', 'Unterricht', '#/unterricht', 'sec-session', '授業'],
     ['library', 'Bibliothek', '#/bibliothek', 'sec-library', '資料'],
-    ['map', 'Lernlandkarte', '#/karte', 'sec-grammar', '地図'],
-    ['package', 'Pakete', '#/pakete', 'sec-settings', '包'],
-    null,
-    ['settings', 'Einstellungen', '#/einstellungen', 'sec-settings', '設定'],
   ];
+  // Die Lernlandkarte hängt an der Grammatik (Knopf dort); Pakete und Einstellungen stehen als Symbole in der Fußzeile
+  const ALSO = { '/grammatik': ['/karte'] };
   const renderNav = () => {
     const path = App.parseHash().path;
     const due = App.dueCount();
@@ -29,10 +27,11 @@
       if (!n) return '<div class="nav-sep"></div>';
       const [ic, label, href, cls, jp] = n;
       const base = href.slice(1);
-      const active = base === '/' ? path === '/' : path === base || path.startsWith(base + '/');
+      const active = base === '/' ? path === '/' : path === base || path.startsWith(base + '/') || (ALSO[base] || []).includes(path);
       const extra = ic === 'practice' && due ? `<span class="badge count">${due}</span>` : `<span class="jp-mini">${jp}</span>`;
       return `<a class="nav-link ${cls} ${active ? 'active' : ''}" href="${href}" title="${label}"><span class="dot">${icon(ic)}</span><span class="lbl">${label}</span>${extra}</a>`;
     }).join('');
+    $$('.foot-btn[href]').forEach((a) => a.classList.toggle('active', path === a.getAttribute('href').slice(1)));
   };
   App.afterRender = () => { renderNav(); document.body.classList.remove('sidebar-open'); App.emit('route'); };
 

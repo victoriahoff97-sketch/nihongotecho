@@ -24,7 +24,12 @@
     <nav id="nav"></nav>
     <div class="sidebar-foot">
       <button class="nav-link backup-status" id="backup-status" hidden></button>
-      <button class="nav-link" data-action="toggle-sidebar" title="Seitenleiste ein-/ausklappen"><span class="ico" data-ico="sidebar"></span><span class="lbl">Einklappen</span></button>
+      <div class="foot-row">
+        <button class="foot-btn" data-action="toggle-sidebar" data-tip="Einklappen" aria-label="Seitenleiste ein-/ausklappen"><span class="ico" data-ico="sidebar"></span></button>
+        <span class="grow"></span>
+        <a class="foot-btn" href="#/pakete" data-tip="Pakete" aria-label="Pakete"><span class="ico" data-ico="package"></span></a>
+        <a class="foot-btn" href="#/einstellungen" data-tip="Einstellungen" aria-label="Einstellungen"><span class="ico" data-ico="settings"></span></a>
+      </div>
     </div>
   </aside>
   <div id="main">
