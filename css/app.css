@@ -1021,3 +1021,39 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .use-list.compact { margin-top: 10px; gap: 4px; }
 .use-list.compact .use-row { padding: 4px 10px; justify-content: center; border: 0; background: transparent; }
 .use-list.compact .use-jp { font-size: 17px; }
+
+/* Gleichklang (同音): gleich gelesene Wörter – Liste, die sich zu Kacheln aufklappt */
+.gk-list { display: grid; gap: 10px; }
+.gk-group { padding: 0; overflow: hidden; }
+.gk-group summary { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; list-style: none; min-height: 56px; }
+.gk-group summary::-webkit-details-marker { display: none; }
+.gk-kana { font-family: var(--font-jp); font-size: 22px; font-weight: 700; color: var(--sec); min-width: 96px; }
+.gk-chips, .gk-hint { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.gk-chip { display: inline-flex; align-items: baseline; gap: 7px; padding: 3px 11px; border-radius: 10px; background: var(--sec-soft); border: 1px solid transparent; color: var(--ink-2); font-size: 13px; text-decoration: none; }
+.gk-chip b { font-family: var(--font-kanji); font-size: 19px; font-weight: 600; color: var(--sec); }
+.gk-chip.off { background: transparent; border: 1px dashed var(--line-2); color: var(--muted); }
+.gk-chip.off b { color: var(--muted); }
+a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
+.gk-caret { color: var(--muted); transition: transform .15s; }
+.gk-group[open] .gk-caret { transform: rotate(180deg); }
+.gk-group[open] summary { border-bottom: 1px solid var(--line); }
+.gk-group[open] .gk-chips { visibility: hidden; }
+.gk-body { padding: 12px 16px 16px; background: var(--card-2); }
+.gk-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 10px; }
+.gk-tile { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--sec); }
+.gk-tile.off { background: transparent; border: 1px dashed var(--line-2); border-top: 4px dashed var(--line-2); }
+.gk-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.gk-word { font-family: var(--font-kanji); font-size: 40px; line-height: 1.15; font-weight: 600; color: var(--ink); text-decoration: none; }
+.gk-word:hover { color: var(--sec); }
+.gk-tile.off .gk-word, .gk-tile.off .gk-de { color: var(--muted); }
+.gk-tile .pitch-svg { transform: scale(.8); transform-origin: top right; }
+.gk-tile .pitch-alt { display: none; }
+.gk-de { font-weight: 700; }
+.gk-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gk-masu { font-family: var(--font-jp); font-size: 16px; }
+.gk-ex { display: grid; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-family: var(--font-jp); font-size: 16px; line-height: 1.9; }
+.gk-ex small { font-family: var(--font-ui); font-size: 13px; color: var(--muted); line-height: 1.4; }
+.gk-foot { margin-top: auto; padding-top: 6px; }
+.gk-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px; align-items: center; }
+.gk-legend > span { display: inline-flex; align-items: center; gap: 8px; }
+@media (max-width: 640px) { .gk-group summary { flex-wrap: wrap; } .gk-kana { min-width: 0; } }

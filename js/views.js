@@ -359,6 +359,7 @@
           <dl class="kv">${it.level ? `<dt>JLPT</dt><dd>${App.levelBadge(it)}</dd>` : ''}<dt>Lesung</dt><dd lang="ja" style="font-size:18px">${esc(it.kana)}</dd>${App.accentHtml(it) ? `<dt>Pitch Accent</dt><dd>${App.accentHtml(it)}</dd>` : ''}
           ${it.kanji ? `<dt>Kanji</dt><dd lang="ja" style="font-size:18px">${Array.from(it.kanji).map((c) => App.kanjiByChar(c) ? `<a href="#/kanji/${encodeURIComponent(c)}" style="text-decoration:none;border-bottom:2px solid var(--murasaki)">${esc(c)}</a>` : esc(c)).join('')}</dd>` : ''}
           ${it.pos ? `<dt>Wortart</dt><dd>${esc(App.POS[it.pos] || it.pos)}</dd>` : ''}
+          ${App.homophoneHint(it)}
           <dt>Quelle</dt><dd>${App.srcBadge(it) || '–'} ${it.sourceRef ? refLink(it.sourceRef) : ''}</dd>
           ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
           <dt>Lernstand</dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>

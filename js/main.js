@@ -16,6 +16,7 @@
     ['edit', 'Anwenden', '#/anwenden', 'sec-apply', '使'],
     ['library', 'Bibliothek', '#/bibliothek', 'sec-library', '資料'],
     ['map', 'Lernlandkarte', '#/karte', 'sec-grammar', '地図'],
+    ['copy', 'Gleichklang', '#/gleichklang', 'sec-vocab', '同音'],
     ['package', 'Pakete', '#/pakete', 'sec-settings', '包'],
     null,
     ['settings', 'Einstellungen', '#/einstellungen', 'sec-settings', '設定'],
