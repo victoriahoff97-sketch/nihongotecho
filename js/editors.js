@@ -4,7 +4,7 @@
   const { $, $$, esc, icon } = App;
   const JP = App.jp;
 
-  const NOUN_CATS = [['ort', 'Ort/Gebäude'], ['land', 'Land/Stadt'], ['essen', 'Essen'], ['getraenk', 'Getränk'], ['person', 'Person/Beruf'], ['familie', 'Familie'], ['ding', 'Gegenstand'], ['lesestoff', 'Lesestoff'], ['medien', 'Film/Musik'], ['sport', 'Sport'], ['fach', 'Studienfach'], ['sprache', 'Sprache'], ['tier', 'Tier'], ['natur', 'Natur'], ['kleidung', 'Kleidung'], ['verkehr', 'Verkehrsmittel'], ['veranstaltung', 'Veranstaltung'], ['wetter', 'Wetter'], ['koerper', 'Körper']];
+  const NOUN_CATS = [['ort', 'Ort/Gebäude'], ['land', 'Land/Stadt'], ['essen', 'Essen'], ['gericht', 'Gericht/Mahlzeit'], ['getraenk', 'Getränk'], ['person', 'Person/Beruf'], ['familie', 'Familie'], ['ding', 'Gegenstand'], ['lesestoff', 'Lesestoff'], ['medien', 'Film/Musik'], ['sport', 'Sport'], ['fach', 'Studienfach'], ['sprache', 'Sprache'], ['tier', 'Tier'], ['natur', 'Natur'], ['kleidung', 'Kleidung'], ['verkehr', 'Verkehrsmittel'], ['veranstaltung', 'Veranstaltung'], ['wetter', 'Wetter'], ['koerper', 'Körper']];
   const VERB_CATS = [['allein', 'ohne Objekt sinnvoll'], ['bewegung', 'Bewegung (gehen/kommen)'], ['objekt', 'mit を-Objekt']];
   const lastSrc = () => { try { return localStorage.getItem('nt-lastSource') || 'Genki I'; } catch (e) { return 'Genki I'; } };
   const setLastSrc = (s) => { try { localStorage.setItem('nt-lastSource', s); } catch (e) { /* egal */ } };
@@ -334,7 +334,8 @@
       if (it.pos === 'noun') {
         it.cat = checked(root, 'ncat');
         const auto = JP.nounDe({ de: it.de });
-        it.n = { w: val(root, 'nw') || auto.w, g: val(root, 'ng') || auto.g, mass: root.querySelector('[name=nmass]').checked };
+        // weak/in/zu (schwaches Maskulinum, eigene Orts-/Richtungsangabe) haben kein Eingabefeld und bleiben erhalten
+        it.n = { ...(it.n || {}), w: val(root, 'nw') || auto.w, g: val(root, 'ng') || auto.g, mass: root.querySelector('[name=nmass]').checked };
       } else if (it.pos === 'verb') {
         it.cat = checked(root, 'vcat');
         const inf = val(root, 'vinf') || it.de.split(/[,;(]/)[0].trim();

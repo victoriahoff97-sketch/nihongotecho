@@ -192,7 +192,8 @@
   JP.deNoun = (it, form) => {
     const n = JP.nounDe(it);
     const g = n.g || '0';
-    const w = n.w;
+    // schwache Maskulina (n.weak: Student, Präsident …) enden außer im Nominativ auf -en: „den Studenten“
+    const w = n.weak && g === 'm' && ['akk', 'akki', 'dat'].includes(form) ? n.w + 'en' : n.w;
     const home = (it.tags || []).includes('zuhause') || w === 'Hause';
     const land = (it.cat || []).includes('land');
     const bare = g === '0';
@@ -203,11 +204,15 @@
       case 'akk': return bare || n.mass ? w : `${ART.def.akk[g]} ${w}`;
       case 'akki': return bare || n.mass || g === 'pl' ? w : `${ART.indef.akk[g]} ${w}`;
       case 'dat': return bare ? w : `${ART.def.dat[g]} ${w}`;
+      case 'rel': return bare ? 'das' : ART.def.akk[g]; // Relativpronomen im Akkusativ: „der Tee, den ich …“
+      case 'dies': return bare ? w : `${{ m: 'dieser', f: 'diese', n: 'dieses', pl: 'diese' }[g]} ${w}`; // この〜
       case 'zu':
+        if (n.zu) return n.zu; // eigene Richtungsangabe: „in die Stadt“, „ans Meer“
         if (home) return 'nach Hause';
         if (land || bare) return `nach ${w}`;
         return g === 'f' ? `zur ${w}` : g === 'pl' ? `zu den ${w}` : `zum ${w}`;
       case 'in':
+        if (n.in) return n.in; // eigene Ortsangabe: „an der Bushaltestelle“, „beim Friseur“
         if (home) return 'zu Hause';
         if (land || bare) return `in ${w}`;
         return g === 'f' ? `in der ${w}` : g === 'pl' ? `in den ${w}` : `im ${w}`;
@@ -277,6 +282,8 @@
     if (seps.length) de = de.replace(/([.?!])?\s*$/, (m, p) => ' ' + seps.join(' ') + (p || ''));
     de = de.replace(/\s+/g, ' ').replace(/\s([.,?!])/g, '$1').trim();
     de = de.charAt(0).toUpperCase() + de.slice(1);
+    // auch ein zweiter Satz beginnt groß („… ist aus China. Die Kamera …“); „z. B.“ bleibt unberührt
+    de = de.replace(/([a-zäöüß]{2,}[.!?] )([a-zäöü])/g, (m, a, b) => a + b.toUpperCase());
     return { jp, de, words: Object.values(chosen) };
   };
 
