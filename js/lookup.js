@@ -29,7 +29,7 @@
 
   // id = eigener Eintrag (zum Verknüpfen); Wörterbuch-Treffer tragen stattdessen entry
   const ownResult = (it) => {
-    if (it.type === 'kanji') return { id: it.id, jp: it.char, kana: (it.kun || [])[0] || (it.on || [])[0] || '', meaning: App.meaning(it).text };
+    if (it.type === 'kanji') return { id: it.id, jp: it.char, kana: App.kanjiLogic.kunText((it.kun || [])[0]) || (it.on || [])[0] || '', meaning: App.meaning(it).text };
     if (it.type === 'phrase') return { id: it.id, jp: JP.plain(it.jp), kana: JP.kana(it.jp), meaning: App.meaning(it).text };
     return { id: it.id, jp: it.kanji || it.kana || '', kana: it.kana || '', meaning: App.meaning(it).text };
   };

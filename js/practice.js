@@ -173,8 +173,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       return { front: `<div class="front" lang="ja">${JP.ruby(it.jp || '')}</div><div class="muted">Was bedeutet das, wie benutzt man es?</div>`, back: `<div class="ans">${esc(it.title)}</div><div class="muted">${esc(it.summary || '')}</div>${App.levelBadge(it)}${struct}${exHtml}`, speak: '' };
     }
     if (it.type === 'kanji') {
-      if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it)}</div><div class="muted">Wie schreibt man das Kanji?</div>`, back: `<div class="ans" style="font-family:var(--font-kanji);font-size:80px;font-weight:400">${esc(it.char)}</div><div lang="ja">${esc((it.on || []).join('、'))} · ${esc((it.kun || []).join('、'))}</div>`, speak: '' };
-      return { front: `<div class="front kanji-front">${esc(it.char)}</div>`, back: `<div class="ans">${App.meaningHtml(it)}${App.levelBadge(it)}</div><div lang="ja" style="font-size:18px">On: ${esc((it.on || []).join('、') || '–')} · Kun: ${esc((it.kun || []).join('、') || '–')}</div>${(it.words || []).slice(0, 3).map((w) => `<div lang="ja">${JP.ruby(w.jp)} – ${App.meaningHtml(w)}</div>`).join('')}`, speak: '' };
+      if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it)}</div><div class="muted">Wie schreibt man das Kanji?</div>`, back: `<div class="ans" style="font-family:var(--font-kanji);font-size:80px;font-weight:400">${esc(it.char)}</div><div lang="ja">${esc((it.on || []).join('、'))} · ${esc((it.kun || []).map(App.kanjiLogic.kunText).join('、'))}</div>`, speak: '' };
+      return { front: `<div class="front kanji-front">${esc(it.char)}</div>`, back: `<div class="ans">${App.meaningHtml(it)}${App.levelBadge(it)}</div><div lang="ja" style="font-size:18px">On: ${esc((it.on || []).join('、') || '–')} · Kun: ${esc((it.kun || []).map(App.kanjiLogic.kunText).join('、') || '–')}</div>${(it.words || []).slice(0, 3).map((w) => `<div lang="ja">${JP.ruby(w.jp)} – ${App.meaningHtml(w)}</div>`).join('')}`, speak: '' };
     }
     const jpHtml = it.type === 'vocab' ? JP.wordRuby(it) : JP.ruby(it.jp);
     const reading = it.type === 'vocab' ? it.kana : JP.kana(it.jp);
@@ -433,7 +433,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       const cur = qs[i];
       if (mode === 'write') {
         stage.innerHTML = `<div class="card pad-lg"><div class="row between"><div><div class="small muted">Kanji ${i + 1} / ${qs.length} – schreibe:${W.isFirst(S.srs, cur.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
-          <div class="muted" lang="ja">${esc((cur.kun || []).concat(cur.on || []).slice(0, 4).join('、'))}</div></div></div>
+          <div class="muted" lang="ja">${esc((cur.kun || []).map(App.kanjiLogic.kunText).concat(cur.on || []).slice(0, 4).join('、'))}</div></div></div>
           <div class="kanji-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
           <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div>`;
         const pad = App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false, quiz: true });
@@ -456,7 +456,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           const k = mode === 'reading' ? cur.k : cur;
           await App.grade(k.id, ok ? 2 : 0);
           if (ok) score++;
-          stage.querySelector('[data-fb]').innerHTML = `${mode === 'reading' ? `<div lang="ja" style="font-size:20px">${JP.ruby(cur.w.jp)} – ${App.meaningHtml(cur.w)}</div>` : `<div lang="ja">${esc((cur.on || []).join('、'))} · ${esc((cur.kun || []).join('、'))}</div>`}<button class="btn btn-primary" style="margin-top:10px" data-n>Weiter ${icon('next')}</button>`;
+          stage.querySelector('[data-fb]').innerHTML = `${mode === 'reading' ? `<div lang="ja" style="font-size:20px">${JP.ruby(cur.w.jp)} – ${App.meaningHtml(cur.w)}</div>` : `<div lang="ja">${esc((cur.on || []).join('、'))} · ${esc((cur.kun || []).map(App.kanjiLogic.kunText).join('、'))}</div>`}<button class="btn btn-primary" style="margin-top:10px" data-n>Weiter ${icon('next')}</button>`;
           stage.querySelector('[data-n]').onclick = () => { i++; next(); };
         }));
         return;

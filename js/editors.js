@@ -300,7 +300,7 @@
       const a = await App.kanjiAuto(c);
       if (my !== run || !root.isConnected) return;
       if (!a) return note(`<span class="small muted">Zu <span lang="ja">${esc(c)}</span> hat die App keine Angaben – bitte von Hand ausfüllen.</span> <a class="btn btn-sm btn-ghost" href="${esc(App.jishoUrl(c))}" target="_blank" rel="noopener">Auf Jisho suchen ↗</a>`);
-      const found = { de: a.de, en: a.en, on: a.on.join(', '), kun: a.kun.join(', '), strokes: String(a.strokes || ''), words: App.kanjiLogic.wordLines(a.words) };
+      const found = { de: a.de, en: a.en, on: a.on.join(', '), kun: a.kun.map(App.kanjiLogic.kunText).join(', '), strokes: String(a.strokes || ''), words: App.kanjiLogic.wordLines(a.words) };
       Object.entries(found).forEach(([n, v]) => {
         const el = root.querySelector(`[name="${n}"]`);
         const typed = el.value.trim();
@@ -485,7 +485,7 @@
       <div class="sugg" data-kaf hidden></div>
       ${enLevelFields(it)}
       <div class="three"><div class="field"><label>On-Lesungen <small>Katakana, mit Komma</small></label><input class="input jp-in" name="on" value="${esc((it.on || []).join(', '))}" placeholder="ニチ, ジツ"></div>
-      <div class="field"><label>Kun-Lesungen <small>Hiragana</small></label><input class="input jp-in" name="kun" value="${esc((it.kun || []).join(', '))}" placeholder="ひ, か"></div>
+      <div class="field"><label>Kun-Lesungen <small>Hiragana, Angehängtes in Klammern</small></label><input class="input jp-in" name="kun" value="${esc((it.kun || []).map(App.kanjiLogic.kunText).join(', '))}" placeholder="ひ, おお(きい)"></div>
       <div class="field"><label>Striche</label><input class="input" name="strokes" type="number" min="1" max="40" value="${esc(it.strokes || '')}"></div></div>
       <div class="field"><label>Beispielwörter <small>eine Zeile: 日本[にほん] = Japan</small></label><textarea class="input jp-in" name="words" rows="3">${esc((it.words || []).map((w) => `${w.jp} = ${App.meaning(w).text}`).join('\n'))}</textarea></div>
       <div class="field"><label>Eselsbrücke</label><input class="input" name="mnemonic" value="${esc(it.mnemonic || '')}"></div>
@@ -535,7 +535,7 @@
       it.id = it.id || 'k-' + it.char.codePointAt(0).toString(16);
       if (!it._existing && App.item(it.id)) throw new Error('Dieses Kanji gibt es schon – öffne es und bearbeite es dort.');
       it.on = val(root, 'on').split(/[,、\s]+/).filter(Boolean).map(JP.toKata);
-      it.kun = val(root, 'kun').split(/[,、\s]+/).filter(Boolean);
+      it.kun = val(root, 'kun').split(/[,、\s]+/).map(App.kanjiLogic.kunRaw).filter(Boolean);
       it.strokes = +val(root, 'strokes') || (window.KVG && window.KVG[it.char] ? window.KVG[it.char].length : '');
       // Eingabe landet in de; englische Bedeutung bleibt erhalten (unverändertes Englisch wird nicht zu Deutsch)
       const oldW = new Map((root._autoWords || []).concat(it.words || []).map((w) => [w.jp, w]));

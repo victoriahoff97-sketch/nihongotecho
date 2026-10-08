@@ -11,6 +11,12 @@
     return r ? { char: ch, on: list(r[0]), kun: list(r[1]), strokes: r[2], en: r[3] || '', de: r[4] || '' } : null;
   };
 
+  // Kun-Lesung: Der Index trennt die angehängten Hiragana mit einem Punkt ab (ひさ.しい = 久しい).
+  // Angezeigt wird die Lehrbuch-Schreibweise ひさ(しい); kunRaw macht aus der Eingabe wieder die Punkt-Form.
+  const kunParts = (r) => { const s = String(r || ''), i = s.indexOf('.'); return i < 0 ? [s, ''] : [s.slice(0, i), s.slice(i + 1)]; };
+  const kunText = (r) => { const [stem, oku] = kunParts(r); return oku ? stem + '(' + oku + ')' : stem; };
+  const kunRaw = (s) => String(s || '').replace(/[)）]/g, '').replace(/[(（]/g, '.');
+
   const firstKanji = (s) => Array.from(String(s || '')).find((c) => KANJI_RE.test(c)) || '';
 
   // Wörter mit dem Zeichen aus dem JLPT-Index (v: „Schreibung|Lesung“ → Niveau): leichtes Niveau zuerst,
@@ -35,6 +41,6 @@
   const newChars = (q, index, has) => [...new Set(Array.from(String(q || '')).filter((c) => KANJI_RE.test(c)))]
     .filter((c) => index && index[c] && !has(c));
 
-  const P = { entry, firstKanji, exampleWords, wordLines, newChars };
+  const P = { entry, kunParts, kunText, kunRaw, firstKanji, exampleWords, wordLines, newChars };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.kanjiLogic = P;
 })(typeof window !== 'undefined' ? window : globalThis);

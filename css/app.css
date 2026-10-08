@@ -568,6 +568,7 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .readings .r-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .readings .r-line .lab { width: 52px; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; }
 .readings .r { font-family: var(--font-jp); font-size: 18px; background: var(--paper-2); padding: 3px 10px; border-radius: 8px; }
+.readings .r .oku { color: var(--muted); }
 .kanji-huge { font-family: var(--font-kanji); font-size: 120px; line-height: 1; color: var(--ink); }
 
 /* ---------- Dokument-Viewer mit Stift ---------- */

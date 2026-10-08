@@ -130,7 +130,7 @@
             ${App.marksChips(it)}</div>
           <div class="readings">
             ${(it.on || []).length ? `<div class="r-line"><span class="lab">On</span>${it.on.map((r) => `<span class="r" lang="ja">${esc(r)}</span>`).join('')}</div>` : ''}
-            ${(it.kun || []).length ? `<div class="r-line"><span class="lab">Kun</span>${it.kun.map((r) => `<span class="r" lang="ja">${esc(r)}</span>`).join('')}</div>` : ''}
+            ${(it.kun || []).length ? `<div class="r-line"><span class="lab">Kun</span>${it.kun.map((r) => { const [stem, oku] = App.kanjiLogic.kunParts(r); return `<span class="r" lang="ja">${esc(stem)}${oku ? `<span class="oku">(${esc(oku)})</span>` : ''}</span>`; }).join('')}</div>` : ''}
           </div>
           ${it.mnemonic ? `<div class="pitfall" style="background:var(--murasaki-soft);border-color:var(--murasaki)">💡 ${JP.ruby(it.mnemonic)}</div>` : ''}
           </div></div></div>

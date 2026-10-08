@@ -214,7 +214,7 @@
     const push = (x) => { if (x) parts.push(String(x)); };
     push(it.de); push(it.en); push(it.title); push(it.summary); push(it.kana); push(it.kanji); push(it.char); push(it.group);
     push(it.jp && JP.plain(it.jp)); push(it.jp && JP.kana(it.jp)); push(it.notes); push(it.mnemonic);
-    (it.on || []).forEach(push); (it.kun || []).forEach(push); (it.tags || []).forEach((t) => push('#' + t));
+    (it.on || []).forEach(push); (it.kun || []).forEach((r) => { push(r); if (r.includes('.')) push(r.replace('.', '')); }); (it.tags || []).forEach((t) => push('#' + t));
     (it.examples || []).forEach((e) => { push(JP.plain(e.jp)); push(e.de); push(e.en); });
     (it.words || []).forEach((w) => { push(JP.plain(w.jp)); push(JP.kana(w.jp)); push(w.de); push(w.en); });
     (it.use || []).forEach((u) => { push(JP.plain(JP.useText(u.jp))); push(u.de); });
