@@ -2,7 +2,7 @@ Nihongo Techō – Quellen und Lizenzen der Paketdateien (packs/)
 ================================================================
 
 Diese Pakete (packs/n5/…, packs/n4/…, packs/dict-common/…, packs/dict-full/…,
-packs/level-index.js, packs/accent-index.js, packs/manifest.js) wurden aus den folgenden Quellen
+packs/level-index.js, packs/accent-index.js, packs/uk-index.js, packs/manifest.js) wurden aus den folgenden Quellen
 erzeugt. Geprüft am 2026-09-28. Alle daraus erzeugten Paketdateien stehen
 selbst unter CC-BY-SA 4.0 (siehe Kopfkommentar jeder Datei).
 

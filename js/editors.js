@@ -122,6 +122,112 @@
     return o;
   }).filter(Boolean);
 
+  // ---------- Automatisch ausfüllen (Vokabel-Formular, aus dem Offline-Wörterbuch) ----------
+  // Wörter, die üblicherweise in Kana geschrieben werden (packs/uk-index.js, erst bei Bedarf geladen)
+  let ukIds = null;
+  const usuallyKana = async (id) => {
+    if (!ukIds) {
+      try { await App.loadScript('packs/uk-index.js'); ukIds = new Set(String(window.UK_INDEX || '').split(',')); }
+      catch (e) { console.error(e); return false; }
+    }
+    return ukIds.has(String(id));
+  };
+  const AF_MAX = 8, AF_DICT = 'dict-common';
+  const bindAutofill = (root) => {
+    const box = root.querySelector('[data-af]');
+    const AL = App.autofillLogic;
+    let hits = [], typed = {}, run = 0;
+    // gängige Wörter zuerst: leichtes JLPT-Niveau, dann Einträge mit deutscher Bedeutung
+    const LV = { N5: 6, N4: 5, N3: 4, N2: 3, N1: 2 };
+    const bonus = (e) => (LV[App.jlptOf({ type: 'vocab', kanji: (e.k || [])[0] || '', kana: (e.r || [])[0] || '' })] || 0) + (e.de ? 1 : 0);
+    const show = (html) => { box.hidden = false; box.innerHTML = html; App.hydrateIcons(box); };
+    const hide = () => { box.hidden = true; box.innerHTML = ''; };
+    const set = (name, v) => { const el = root.querySelector(`[name="${name}"]`); if (el) el.value = v; };
+    const noExample = () => !$$('.ex-row [data-ex="jp"]', root).some((i) => i.value.trim());
+
+    const apply = async (e) => {
+      const my = ++run;
+      const w = AL.wordForms(e, typed, await usuallyKana(e.id));
+      if (my !== run || !root.isConnected) return;
+      const mp = App.mapPos(e.p || [], w.kanji || w.kana);
+      const acc = App.accentOf({ type: 'vocab', kana: w.kana, kanji: w.kanji, pos: val(root, 'pos') || mp.pos });
+      const cur = {};
+      ['de', 'en', 'pos', 'vcls', 'accent'].forEach((n) => { cur[n] = val(root, n); });
+      const found = AL.fill(cur, { de: App.firstGloss(e.de), en: e.en || '', pos: mp.pos, vcls: mp.cls || '', accent: acc ? String(acc.main) : '' });
+      set('kana', w.kana); set('kanji', w.kanji);
+      Object.entries(found).forEach(([n, v]) => set(n, v));
+      root.querySelector('[name=pos]').dispatchEvent(new Event('change'));
+      const auto = root.querySelector('[name=jlpt] option[value=auto]');
+      const lv = App.levelFor({ type: 'vocab', kana: w.kana, kanji: w.kanji });
+      if (auto) auto.textContent = 'automatisch' + (lv ? ' (' + lv + ')' : '');
+      App.toast(val(root, 'de') ? 'Aus dem Wörterbuch ausgefüllt' : 'Ausgefüllt – das Wörterbuch kennt hier nur die englische Bedeutung');
+      // Beispielsatz: der kürzeste von Tatoeba, wenn noch keiner dasteht (braucht Internet; ohne bleibt das Feld leer)
+      if (!noExample() || navigator.onLine === false) return hide();
+      show('<span class="small muted">Suche einen Beispielsatz …</span>');
+      let ex = null;
+      try { ex = (await App.tatoeba.search(w.kanji || w.kana, (u, o) => fetch(u, o)).more(1)).list[0]; }
+      catch (er) { console.error(er); }
+      if (my !== run || !root.isConnected) return;
+      hide();
+      const empty = root.querySelector('[data-exs] .ex-row');
+      if (ex && empty && noExample()) { empty.outerHTML = exRow(ex); App.hydrateIcons(root.querySelector('[data-exs]')); }
+    };
+
+    const hitRow = (e, i, uk) => {
+      const w = AL.wordForms(e, typed, uk);
+      return `<button type="button" class="sugg-row" data-af-pick="${i}"><span class="jp-s" lang="ja">${esc(w.kanji || w.kana)}${w.kanji ? ` <span class="small muted">${esc(w.kana)}</span>` : ''}</span><span class="small muted">${App.meaningHtml({ de: short(e.de), en: short(e.en) })}</span></button>`;
+    };
+
+    const start = async () => {
+      typed = { kana: val(root, 'kana'), kanji: val(root, 'kanji') };
+      const forms = [typed.kanji, typed.kana].filter(Boolean);
+      if (!forms.length) return App.toast('Erst das Wort eintragen (Kana oder Kanji)');
+      if (!App.dict.installed()) {
+        const p = App.packById(AF_DICT);
+        return show(`<span class="small">Zum Ausfüllen braucht die App das Offline-Wörterbuch${p && p.available ? ` (${Math.round(p.entries / 1000)}.000 häufige Wörter, etwa ${Math.round(p.sizeKB / 1024)} MB)` : ''}.</span>
+          <div class="row">${p && p.available ? `<button type="button" class="btn btn-sm btn-sec" data-af-install>${icon('download')} Wörterbuch installieren</button>` : '<span class="small muted">Es lässt sich unter „Pakete“ installieren.</span>'}</div>`);
+      }
+      const my = ++run;
+      show('<span class="small muted">Suche im Wörterbuch …</span>');
+      const LL = App.lookupLogic;
+      let direct = [], infl = [];
+      try {
+        for (const f of forms) {
+          for (const list of (await App.dict.lookup(LL.dictForms(f))).values()) direct = direct.concat(list);
+          // gebeugt getippt (たべます): über die Grundform suchen
+          const cands = App.deinflect(f).filter((c) => c.type !== 'any');
+          infl = infl.concat(LL.surfaceEntries(cands, await App.dict.lookup([...new Set(cands.map((c) => c.base))]), App.posMatches));
+        }
+      } catch (e) { console.error(e); if (my === run) show(`<span class="small muted">Das Wörterbuch konnte nicht gelesen werden: ${esc(e.message || e)}</span>`); return; }
+      if (my !== run || !root.isConnected) return;
+      hits = AL.rank(direct.length ? direct : infl, typed, bonus).slice(0, AF_MAX);
+      if (!hits.length) return show(`<span class="small muted">Nichts im Wörterbuch gefunden – Schreibweise prüfen oder von Hand ausfüllen.</span>
+        <div class="row"><a class="btn btn-sm btn-ghost" href="${esc(App.jishoUrl(forms[0]))}" target="_blank" rel="noopener">Auf Jisho suchen ↗</a></div>`);
+      const one = AL.sure(hits, typed);
+      if (one) return apply(one);
+      const uk = await Promise.all(hits.map((e) => usuallyKana(e.id)));
+      if (my !== run || !root.isConnected) return;
+      show(`<div class="small"><b>Welches Wort meinst du?</b></div><div class="sugg-list">${hits.map((e, i) => hitRow(e, i, uk[i])).join('')}</div>`);
+    };
+
+    root.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-autofill]')) return start();
+      const pick = e.target.closest('[data-af-pick]');
+      if (pick) return apply(hits[+pick.dataset.afPick]);
+      const inst = e.target.closest('[data-af-install]');
+      if (inst) {
+        inst.disabled = true;
+        try {
+          await App.dict.install(AF_DICT, (frac, text) => { if (inst.isConnected) inst.textContent = `${Math.round(frac * 100)} % – ${text}`; });
+          if (root.isConnected) start();
+        } catch (er) {
+          console.error(er);
+          if (box.isConnected) show(`<span class="small muted">Wörterbuch konnte nicht installiert werden: ${esc(er.message || er)}</span>`);
+        }
+      }
+    });
+  };
+
   // Englisch-Feld und JLPT-Niveau (auto = aus dem JLPT-Index, sonst manuell mit levelManual)
   const enLevelFields = (it) => {
     const cur = it.levelManual ? (it.level || 'ohne') : 'auto';
@@ -160,6 +266,9 @@
       <div class="two"><div class="field"><label>Lesung (Kana) * <small><label><input type="checkbox" data-romaji checked> Romaji → かな</label></small></label>
         <input class="input jp-in" name="kana" value="${esc(it.kana || '')}" placeholder="z. B. taberu → たべる" autofocus></div>
       <div class="field"><label>Kanji-Schreibweise</label><input class="input jp-in" name="kanji" value="${esc(it.kanji || '')}" placeholder="z. B. 食べる"></div></div>
+      <div class="row"><button type="button" class="btn btn-sm btn-sec" data-autofill>${icon('sparkle')} Automatisch ausfüllen</button>
+        <span class="small muted">Wort eintippen – das Wörterbuch füllt die leeren Felder aus.</span></div>
+      <div class="sugg" data-af hidden></div>
       <div class="two"><div class="field"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}" placeholder="z. B. essen / die Schule"></div>
       <div class="field"><label>Wortart</label><select class="input" name="pos"><option value="">–</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${it.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
       ${enLevelFields(it)}
@@ -196,6 +305,7 @@
       const pos = root.querySelector('[name=pos]');
       const sync = () => $$('[data-p]', root).forEach((p) => { const v = pos.value; p.hidden = !(p.dataset.p === v || (p.dataset.p === 'adj' && /adj/.test(v))); });
       pos.onchange = sync; sync();
+      bindAutofill(root);
       // Wortart raten
       kana.addEventListener('blur', () => {
         if (pos.value) return;
