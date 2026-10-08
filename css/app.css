@@ -36,6 +36,8 @@
   --sakura-soft: #f8dfe7;
   --daidai: #c8641e;    /* 橙 – Grammatik */
   --daidai-soft: #f9e4d2;
+  --cha: #8b5e45;       /* 茶 Teebraun – Gleichklang */
+  --cha-soft: #efe3da;
   --hl: #fff1a8;
   /* JLPT-Niveaus: N5 (leicht, grün) … N1 (schwer, rot) */
   --lvl-n5: #2f7d32; --lvl-n4: #17788a; --lvl-n3: #3659b8; --lvl-n2: #8a45a8; --lvl-n1: #b8392a;
@@ -71,6 +73,7 @@
   --sora: #62c3c7; --sora-soft: #1b3637;
   --sakura: #ef8aa8; --sakura-soft: #422430;
   --daidai: #e8904f; --daidai-soft: #3d2a1c;
+  --cha: #d2a488; --cha-soft: #3a2c24;
   --hl: #5b4f16;
   --lvl-n5: #8fd18c; --lvl-n4: #6fcbd8; --lvl-n3: #9bb4f2; --lvl-n2: #d3a2ea; --lvl-n1: #f28f7c;
   color-scheme: dark;
@@ -418,6 +421,7 @@ details.adv[open] summary { margin-bottom: 12px; }
 .sec-vocab { --sec: var(--fuji); --sec-soft: var(--fuji-soft); }
 .sec-kanji { --sec: var(--momo); --sec-soft: var(--momo-soft); }
 .sec-phrase { --sec: var(--matcha); --sec-soft: var(--matcha-soft); }
+.sec-homophone { --sec: var(--cha); --sec-soft: var(--cha-soft); }
 .sec-session { --sec: var(--shu); --sec-soft: var(--shu-soft); }
 .sec-library { --sec: var(--sora); --sec-soft: var(--sora-soft); }
 .sec-practice { --sec: var(--ai); --sec-soft: var(--ai-soft); }
@@ -1063,11 +1067,11 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .gk-group[open] summary { border-bottom: 1px solid var(--line); }
 .gk-group[open] .gk-chips { visibility: hidden; }
 .gk-body { padding: 12px 16px 16px; background: var(--card-2); }
-.gk-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 10px; }
-.gk-tile { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--sec); }
+.gk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 210px)); gap: 12px; margin-top: 10px; }
+.gk-tile { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--sec); }
 .gk-tile.off { background: transparent; border: 1px dashed var(--line-2); border-top: 4px dashed var(--line-2); }
 .gk-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.gk-word { font-family: var(--font-kanji); font-size: 40px; line-height: 1.15; font-weight: 600; color: var(--ink); text-decoration: none; }
+.gk-word { font-family: var(--font-kanji); font-size: 34px; line-height: 1.15; font-weight: 600; color: var(--ink); text-decoration: none; }
 .gk-word:hover { color: var(--sec); }
 .gk-tile.off .gk-word, .gk-tile.off .gk-de { color: var(--muted); }
 .gk-tile .pitch-svg { transform: scale(.8); transform-origin: top right; }

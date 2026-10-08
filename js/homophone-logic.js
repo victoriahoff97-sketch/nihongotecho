@@ -12,13 +12,14 @@
   // Lesung der Grundform; Wortteile (～回) bekommen eine eigene Kennung und bleiben so unter sich
   H.reading = (it) => JP.toHira(strip(it.kana));
   H.key = (it) => (isPart(it) ? '～' : '') + H.reading(it);
-  const spelling = (it) => strip(it.kanji) || H.reading(it);
+  // Nur Schreibungen mit Kanji zählen: ein Kana-Eintrag kann dasselbe Wort sein wie der mit Kanji (かける / 掛ける)
+  const spelling = (it) => { const k = strip(it.kanji); return JP.hasKanji(k) ? k : ''; };
 
-  // Alle Gruppen: gleiche Lesung, mindestens zwei verschiedene Schreibungen. Reihenfolge wie in der Liste.
+  // Alle Gruppen: gleiche Lesung, mindestens zwei verschiedene Kanji-Schreibungen. Reihenfolge wie in der Liste.
   H.groups = (vocab) => {
     const map = new Map();
     for (const it of vocab) {
-      if (!it || it.type !== 'vocab' || !H.reading(it)) continue;
+      if (!it || it.type !== 'vocab' || !H.reading(it) || !spelling(it)) continue;
       const k = H.key(it);
       if (!map.has(k)) map.set(k, []);
       map.get(k).push(it);

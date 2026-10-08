@@ -24,7 +24,7 @@
     const on = learned(it);
     const ex = (it.examples || [])[0];
     const verb = it.pos === 'verb' && it.v && it.v.cls;
-    return `<div class="gk-tile ${on ? '' : 'off'}">
+    return `<div class="gk-tile sec-vocab ${on ? '' : 'off'}">
       <div class="gk-top"><a class="gk-word" href="${App.link(it)}" lang="ja" title="Vokabel öffnen">${esc(word(it))}</a>${App.accentHtml(it)}</div>
       <div class="gk-de">${App.meaningHtml(it)}</div>
       <div class="gk-meta">${it.pos ? `<span class="badge">${esc(App.POS[it.pos] || it.pos)}</span>` : ''}${verb ? `<span class="badge sec">${CLS[verb] || esc(verb)}</span><span class="gk-masu" lang="ja">${JP.ruby(JP.conj(it, 'masu'))}</span>` : ''}</div>
@@ -36,11 +36,11 @@
   const groupHtml = (g, q) => {
     const pitch = H.pitch(g, App.accentOf);
     const notes = [`${g.items.length} Wörter`, pitch === 'diff' ? 'unterschiedlich betont' : pitch === 'same' ? 'gleich betont' : '', H.conjDiffers(g) ? 'unterschiedlich gebeugt' : ''].filter(Boolean);
-    const open = toggled.has(g.key) ? toggled.get(g.key) : g.fresh || !!q;
+    const open = toggled.has(g.key) ? toggled.get(g.key) : !!q;
     const pos = [...new Set(g.items.map(posGroup))].join(' ');
     return `<details class="card gk-group" data-gk="${esc(g.key)}" data-pos="${esc(pos)}" ${open ? 'open' : ''}>
       <summary><span class="gk-kana" lang="ja">${esc(g.kana)}</span>
-        <span class="gk-chips">${g.items.map((it) => `<span class="gk-chip ${learned(it) ? '' : 'off'}"><b lang="ja">${esc(word(it))}</b>${esc(App.itemSub(it) || '')}</span>`).join('')}</span>
+        <span class="gk-chips">${g.items.map((it) => `<span class="gk-chip sec-vocab ${learned(it) ? '' : 'off'}"><b lang="ja">${esc(word(it))}</b>${esc(App.itemSub(it) || '')}</span>`).join('')}</span>
         ${g.fresh ? '<span class="badge sec">neu</span>' : ''}<span class="gk-caret" aria-hidden="true">▾</span></summary>
       <div class="gk-body"><div class="small muted">${notes.join(' · ')}</div>
         <div class="gk-tiles">${g.items.map(tile).join('')}</div></div>
@@ -48,7 +48,7 @@
   };
 
   App.route('/gleichklang', (view, p, query) => {
-    const sec = App.SECTIONS.vocab;
+    const sec = { cls: 'sec-homophone' };
     const all = H.groups(App.itemsOf('vocab'));
     const groups = H.sort(H.visible(all, App.vocabStatus), changedAt, Date.now());
     const q = query.q || '';
@@ -60,7 +60,7 @@
           <span class="grow"></span><span class="small muted" data-gk-count></span></div>
         <div class="gk-list">${groups.map((g) => groupHtml(g, q)).join('')}</div>
         <div class="empty-state" data-gk-none hidden><h3>Nichts gefunden</h3></div>
-        <div class="gk-legend small muted"><span><span class="gk-chip"><b lang="ja">橋</b></span> lernst du schon</span><span><span class="gk-chip off"><b lang="ja">箸</b></span> klingt gleich, ist aber noch nicht in deinem Lernstapel</span></div>`
+        <div class="gk-legend small muted"><span><span class="gk-chip sec-vocab"><b lang="ja">橋</b></span> lernst du schon</span><span><span class="gk-chip sec-vocab off"><b lang="ja">箸</b></span> klingt gleich, ist aber noch nicht in deinem Lernstapel</span></div>`
     : `<div class="empty-state"><div class="big" lang="ja">同音</div><h3>Noch kein Gleichklang</h3><p>Sobald ein Wort in deinem Lernstapel genauso gelesen wird wie ein anderes, erscheint die Gruppe hier – ganz von selbst.</p><a class="btn" href="#/vokabeln">${icon('vocab')} Zu den Vokabeln</a></div>`}</div>`;
     if (!groups.length) return;
 
@@ -103,6 +103,6 @@
     const others = H.partners(it, App.itemsOf('vocab'));
     if (!others.length) return '';
     const href = link({ kana: H.key(it) });
-    return `<dt>Klingt gleich</dt><dd><div class="gk-hint">${others.map((o) => `<a class="gk-chip ${learned(o) ? '' : 'off'}" href="${href}" title="Im Gleichklang ansehen"><b lang="ja">${esc(word(o))}</b>${esc(App.itemSub(o) || '')}</a>`).join('')}</div></dd>`;
+    return `<dt>Klingt gleich</dt><dd><div class="gk-hint">${others.map((o) => `<a class="gk-chip sec-vocab ${learned(o) ? '' : 'off'}" href="${href}" title="Im Gleichklang ansehen"><b lang="ja">${esc(word(o))}</b>${esc(App.itemSub(o) || '')}</a>`).join('')}</div></dd>`;
   };
 })(window.App);
