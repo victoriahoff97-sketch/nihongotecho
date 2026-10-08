@@ -168,21 +168,23 @@
     const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser', 'cut'];
     const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, book: bookable && !!S.inkBook, spread: 0 };
     // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
+    // Blättern gibt es nur ohne „Nur Stift“ – sonst scrollt ohnehin der Finger
+    if (st.tool === 'hand' && st.penOnly) st.tool = 'pen';
     st.eraser = st.tool === 'cut' || (st.tool !== 'eraser' && opts.eraser === 'cut') ? 'cut' : 'eraser';
     root.classList.add(embedded ? 'ink-embed' : 'viewer');
     root.innerHTML = `<div class="viewer-bar">
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
       <div class="title">${esc(f.name)}</div>
+      <div class="grp"><button class="icon-btn" data-v="undo" title="Rückgängig">${icon('undo')}</button><button class="icon-btn" data-v="redo" title="Wiederholen">${icon('redo')}</button></div>
       <div class="grp">
-        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen und verschieben, Bilder verschieben und skalieren'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
+        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen, dann verschieben oder an den Ecken skalieren; Bilder ebenso'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
           ['pen', 'ballpen', 'Stift', 'Stift'], ['fountain', 'fountain', 'Füller', 'Füller (druckempfindlich)'], ['marker', 'highlighter', 'Marker', 'Textmarker'],
-          ['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}">${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
+          ['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}"${t === 'hand' && st.penOnly ? ' hidden' : ''}>${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
         <button class="icon-btn tool-btn" data-v="image" title="Bild einfügen (Strg+V)">${icon('imagePlus')}<span class="tool-swatch"></span><span class="tool-lbl">Bild</span></button>
         <button class="icon-btn tool-btn" data-v="lookup" title="Nachschlagen (Wörterbuch)">${icon('search')}<span class="tool-swatch"></span><span class="tool-lbl">Nachschlagen</span></button>
       </div>
       <div class="grp" data-colors></div>
       <div class="grp"><button class="btn btn-sm btn-ghost" data-v="width" title="Strichstärke">●●</button></div>
-      <div class="grp"><button class="icon-btn" data-v="undo" title="Rückgängig">${icon('undo')}</button><button class="icon-btn" data-v="redo" title="Wiederholen">${icon('redo')}</button></div>
       <div class="grp"><button class="icon-btn" data-v="zout" title="Verkleinern">${icon('zoomOut')}</button><button class="btn btn-sm btn-ghost" data-v="fit" title="Einpassen">100%</button><button class="icon-btn" data-v="zin" title="Vergrößern">${icon('zoomIn')}</button></div>
       <div class="grp">
         <button class="btn btn-sm ${st.penOnly ? 'btn-sec' : ''}" data-v="penonly" title="Wenn aktiv: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">✍ Nur Stift</button>
@@ -483,7 +485,10 @@
       scroller.setPointerCapture(e.pointerId);
       if (st.tool === 'select') {
         const pt = norm(p, e), cur = selImg();
-        // markierte Schrift greifen: ziehen = verschieben
+        // markierte Schrift greifen: Ecke = skalieren, im Rahmen ziehen = verschieben (kleine Auswahl: kleinere Ecken, damit die Mitte greifbar bleibt)
+        const sb = st.ssel && st.ssel.p === p ? st.ssel.box : null;
+        const sh = sb && SEL.handleAt(sb, pt, Math.max(0.006, Math.min(0.02, Math.min(sb.w, sb.h) / 3)) / st.zoom);
+        if (sh) { startScale(p, sh, pt); return; }
         if (st.ssel && st.ssel.p === p && SEL.inBox(st.ssel.box, pt, 0.01 / st.zoom)) { startMove(p, e); return; }
         const h = cur && st.sel.p === p ? II.handleAt(cur, pt, 0.02 / st.zoom) : null;
         const im = h ? cur : II.hit(p.images, pt);
@@ -529,6 +534,12 @@
       if (drawing.mv) {
         drawing.d = SEL.clampDelta(drawing.mv.box, (e.clientX - drawing.x) / drawing.W, (e.clientY - drawing.y) / drawing.W, drawing.area);
         drawMove();
+        return;
+      }
+      if (drawing.sc) {
+        const pt = norm(p, e);
+        drawing.r = SEL.scaleAt(drawing.inner, drawing.handle, [pt[0] - drawing.off[0], pt[1] - drawing.off[1]], drawing.area);
+        drawScale();
         return;
       }
       if (drawing.lasso) { drawing.lasso.push(norm(p, e)); drawLasso(p, drawing.lasso); return; }
@@ -581,6 +592,7 @@
         return;
       }
       if (drawing.mv) { dropMove(); return; }
+      if (drawing.sc) { dropScale(); return; }
       if (drawing.cut) {
         p.live.getContext('2d').clearRect(0, 0, p.live.width, p.live.height);
         // Kopie: spätere Striche hängen sich an p.strokes an und dürfen den Undo-Stand nicht verändern
@@ -628,7 +640,7 @@
         if (el) el.remove();
         el = document.createElement('div');
         el.className = 'ink-ssel';
-        el.innerHTML = `<button class="ink-sel-del" data-del title="Auswahl löschen">${icon('trash')}</button>`;
+        el.innerHTML = ['nw', 'ne', 'sw', 'se'].map((h) => `<span class="h" data-h="${h}"></span>`).join('') + `<button class="ink-sel-del" data-del title="Auswahl löschen">${icon('trash')}</button>`;
         pg.el.appendChild(el);
       }
       const r = pg.def.ratio;
@@ -696,6 +708,38 @@
         from.links = from.links.filter((l) => !links.includes(l)); to.links = to.links.concat(links);
       }
       new Set([from, to]).forEach((pg) => { drawInk(pg); renderLinks(pg); markDirty(pg); });
+    };
+    // ---------- Schrift skalieren: an einer Ecke des Rahmens ziehen; bleibt auf der eigenen Seite ----------
+    const startScale = (p, handle, pt) => {
+      // gerechnet wird mit dem Rahmen ohne Rand, so bleibt die Gegenecke genau stehen; off = Abstand Zeiger–Ecke beim Greifen
+      const b = SEL.bounds(st.ssel.strokes, 0), off = [pt[0] - (b.x + (handle[1] === 'e' ? b.w : 0)), pt[1] - (b.y + (handle[0] === 's' ? b.h : 0))];
+      drawing = { p, sc: st.ssel, handle, off, inner: b, area: { x0: 0, x1: 1, y0: 0, y1: p.def.ratio }, r: { k: 1, fx: 0, fy: 0 } };
+      st.moving = st.ssel.strokes;
+      drawInk(p); drawScale();
+    };
+    const drawScale = () => {
+      const { p, sc, inner, r } = drawing, c = p.live.getContext('2d'), W = p.live.width;
+      clearLive(p);
+      c.save(); c.translate(r.fx * W, r.fy * W); c.scale(r.k, r.k); c.translate(-r.fx * W, -r.fy * W);
+      sc.strokes.forEach((s) => drawStroke(c, s, W));
+      c.restore();
+      // Rahmen wie nach dem Loslassen: skalierte Schrift plus fester Rand
+      const g = [{ ...inner }]; SEL.scaleBoxes(g, r.k, r.fx, r.fy);
+      showSSel(p, { x: g[0].x - SEL.PAD, y: g[0].y - SEL.PAD, w: g[0].w + 2 * SEL.PAD, h: g[0].h + 2 * SEL.PAD });
+    };
+    const dropScale = () => {
+      const { p, sc, r } = drawing;
+      clearLive(p); drawing = null; st.moving = null;
+      if (r.k !== 1) {
+        const links = sc.links.filter((l) => p.links.includes(l));
+        const a = { type: 'sel-scale', pi: p.i, strokes: sc.strokes, links, before: SEL.snap(sc.strokes, links) };
+        SEL.scale(sc.strokes, r.k, r.fx, r.fy); SEL.scaleBoxes(links, r.k, r.fx, r.fy);
+        a.after = SEL.snap(sc.strokes, links);
+        st.undo.push(a); st.redo = [];
+        st.ssel = { ...sc, box: SEL.bounds(sc.strokes) };
+        renderLinks(p); markDirty(p);
+      }
+      drawInk(p); showSSel(p, st.ssel.box);
     };
     const deleteSel = () => {
       if (st.ssel) {
@@ -888,6 +932,7 @@
       else if (a.type === 'img-add') { if (back) p.images = p.images.filter((x) => x !== a.im); else p.images.push(a.im); }
       else if (a.type === 'img-del') { if (back) p.images.splice(Math.min(a.idx, p.images.length), 0, a.im); else p.images = p.images.filter((x) => x !== a.im); }
       else if (a.type === 'sel-move') applySelMove(a, back);
+      else if (a.type === 'sel-scale') { SEL.restore(a.strokes, a.links, back ? a.before : a.after); renderLinks(p); }
       else if (a.type === 'img-edit') { const im = p.images.find((x) => x.id === a.id); if (im) Object.assign(im, back ? a.before : a.after); }
       to.push(a); drawInk(p); markDirty(p); updateSel();
     };
@@ -959,6 +1004,8 @@
       }
       if (a === 'penonly') {
         st.penOnly = !st.penOnly; v.classList.toggle('btn-sec', st.penOnly); App.saveSettings({ penOnly: st.penOnly });
+        root.querySelector('[data-tool=hand]').hidden = st.penOnly;
+        if (st.penOnly && st.tool === 'hand') setTool('pen');
         note(st.penOnly ? 'Nur der Stift schreibt – mit dem Finger scrollen & zoomen' : 'Finger schreibt jetzt auch');
       }
       if (a === 'addpage') addPage();
