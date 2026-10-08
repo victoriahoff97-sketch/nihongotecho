@@ -162,10 +162,11 @@
     const II = App.inkImages;
     const IE = App.inkErase;
     const BK = App.inkBook;
+    const SEL = App.inkSelect;
     // Buchlayout: nur im Vollbild und nur für Notizblätter (PDF-/Bildseiten haben beliebige Formate)
     const bookable = !embedded && kind === 'notebook';
     const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser', 'cut'];
-    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, book: bookable && !!S.inkBook, spread: 0 };
+    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, book: bookable && !!S.inkBook, spread: 0 };
     // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
     st.eraser = st.tool === 'cut' || (st.tool !== 'eraser' && opts.eraser === 'cut') ? 'cut' : 'eraser';
     root.classList.add(embedded ? 'ink-embed' : 'viewer');
@@ -173,7 +174,7 @@
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
       <div class="title">${esc(f.name)}</div>
       <div class="grp">
-        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Bilder verschieben und skalieren'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
+        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen und verschieben, Bilder verschieben und skalieren'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
           ['pen', 'ballpen', 'Stift', 'Stift'], ['fountain', 'fountain', 'Füller', 'Füller (druckempfindlich)'], ['marker', 'highlighter', 'Marker', 'Textmarker'],
           ['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}">${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
         <button class="icon-btn tool-btn" data-v="image" title="Bild einfügen (Strg+V)">${icon('imagePlus')}<span class="tool-swatch"></span><span class="tool-lbl">Bild</span></button>
@@ -337,7 +338,7 @@
       const last = st.spread === BK.spreadCount(n) - 1;
       bk.next.textContent = last ? '+' : '›';
       bk.next.title = last ? 'Leere Seite anhängen' : 'Weiterblättern';
-      if (ready) { closeHw(); hideTip(); if (st.sel && st.sel.p.el.hidden) clearSel(); }
+      if (ready) { closeHw(); hideTip(); if (st.sel && st.sel.p.el.hidden) clearSel(); if (st.ssel && st.ssel.p.el.hidden) clearSSel(); }
     };
     const turn = (d) => {
       if (!st.book) return;
@@ -403,7 +404,8 @@
       c.clearRect(0, 0, p.ink.width, p.ink.height);
       p.images.forEach((im) => { if (!imgCache.get(im.id)) imgEl(im, () => { if (p.visible) drawInk(p); }); });
       drawImages(c, p, p.ink.width);
-      p.strokes.forEach((s) => drawStroke(c, s, p.ink.width));
+      // Striche, die gerade verschoben werden, zeichnet drawMove auf die Live-Ebene
+      p.strokes.forEach((s) => { if (!st.moving || !st.moving.includes(s)) drawStroke(c, s, p.ink.width); });
     };
     const io = new IntersectionObserver((ents) => ents.forEach((en) => {
       const p = st.pages.find((x) => x.el === en.target);
@@ -481,9 +483,12 @@
       scroller.setPointerCapture(e.pointerId);
       if (st.tool === 'select') {
         const pt = norm(p, e), cur = selImg();
+        // markierte Schrift greifen: ziehen = verschieben
+        if (st.ssel && st.ssel.p === p && SEL.inBox(st.ssel.box, pt, 0.01 / st.zoom)) { startMove(p, e); return; }
         const h = cur && st.sel.p === p ? II.handleAt(cur, pt, 0.02 / st.zoom) : null;
         const im = h ? cur : II.hit(p.images, pt);
-        if (!im) { clearSel(); return; }
+        // freie Stelle: Schrift einkreisen
+        if (!im) { clearSel(); drawing = { p, lasso: [pt], pick: true }; return; }
         select(p, im.id);
         drawing = { p, img: im, handle: h, start: pt, before: { x: im.x, y: im.y, w: im.w, h: im.h } };
         return;
@@ -519,6 +524,11 @@
         const pt = norm(p, e), b = drawing.before;
         Object.assign(drawing.img, drawing.handle ? II.resize(b, drawing.handle, pt) : II.move(b, pt[0] - drawing.start[0], pt[1] - drawing.start[1], p.def.ratio));
         drawInk(p); updateSel();
+        return;
+      }
+      if (drawing.mv) {
+        drawing.d = SEL.clampDelta(drawing.mv.box, (e.clientX - drawing.x) / drawing.W, (e.clientY - drawing.y) / drawing.W, drawing.area);
+        drawMove();
         return;
       }
       if (drawing.lasso) { drawing.lasso.push(norm(p, e)); drawLasso(p, drawing.lasso); return; }
@@ -565,10 +575,12 @@
       if (drawing.lasso) {
         const poly = drawing.lasso;
         p.live.getContext('2d').clearRect(0, 0, p.live.width, p.live.height);
+        const pick = drawing.pick;
         drawing = null;
-        recognize(p, poly);
+        if (pick) pickStrokes(p, poly); else recognize(p, poly);
         return;
       }
+      if (drawing.mv) { dropMove(); return; }
       if (drawing.cut) {
         p.live.getContext('2d').clearRect(0, 0, p.live.width, p.live.height);
         // Kopie: spätere Striche hängen sich an p.strokes an und dürfen den Undo-Stand nicht verändern
@@ -606,9 +618,93 @@
       const r = st.sel.p.def.ratio;
       Object.assign(el.style, { left: im.x * 100 + '%', top: (im.y / r) * 100 + '%', width: im.w * 100 + '%', height: (im.h / r) * 100 + '%' });
     };
-    const select = (p, id) => { st.sel = { p, id }; updateSel(); };
-    const clearSel = () => { st.sel = null; updateSel(); };
+    const select = (p, id) => { clearSSel(); st.sel = { p, id }; updateSel(); };
+    const clearSel = () => { st.sel = null; updateSel(); clearSSel(); };
+    // ---------- Schrift: mit dem Auswahl-Werkzeug einkreisen, im Rahmen ziehen = verschieben ----------
+    // st.ssel = { p, strokes, links, box }; im Buch darf die Auswahl auf die Nachbarseite der Doppelseite
+    const showSSel = (pg, b) => {
+      let el = root.querySelector('.ink-ssel');
+      if (!el || el.parentNode !== pg.el) {
+        if (el) el.remove();
+        el = document.createElement('div');
+        el.className = 'ink-ssel';
+        el.innerHTML = `<button class="ink-sel-del" data-del title="Auswahl löschen">${icon('trash')}</button>`;
+        pg.el.appendChild(el);
+      }
+      const r = pg.def.ratio;
+      Object.assign(el.style, { left: b.x * 100 + '%', top: (b.y / r) * 100 + '%', width: b.w * 100 + '%', height: (b.h / r) * 100 + '%' });
+    };
+    const clearSSel = () => { st.ssel = null; const el = root.querySelector('.ink-ssel'); if (el) el.remove(); };
+    const pickStrokes = (p, poly) => {
+      const strokes = SEL.pick(p.strokes, poly);
+      if (!strokes.length) return;
+      st.ssel = { p, strokes, links: SEL.pickLinks(p.links, poly), box: SEL.bounds(strokes) };
+      showSSel(p, st.ssel.box);
+    };
+    const clearLive = (pg) => pg.live.getContext('2d').clearRect(0, 0, pg.live.width, pg.live.height);
+    const startMove = (p, e) => {
+      const r = p.el.getBoundingClientRect();
+      let other = null, off = null;
+      if (st.book) {
+        const sp = BK.pagesOf(st.spread, st.pages.length);
+        other = st.pages[p.i === sp.l ? sp.r : sp.l] || null;
+        if (other) { const o = other.el.getBoundingClientRect(); off = [(o.left - r.left) / r.width, (o.top - r.top) / r.width]; }
+      }
+      const area = { x0: Math.min(0, off ? off[0] : 0), x1: Math.max(1, off ? off[0] + 1 : 1), y0: 0, y1: p.def.ratio };
+      drawing = { p, mv: st.ssel, x: e.clientX, y: e.clientY, W: r.width, other, off, area, d: [0, 0], host: p };
+      st.moving = st.ssel.strokes;
+      drawInk(p); drawMove();
+    };
+    // Auswahl am Zeiger zeichnen – auf beiden Seiten der Doppelseite, damit sie über den Falz wandern kann
+    const drawMove = () => {
+      const { p, mv, other, off, d } = drawing;
+      [[p, d[0], d[1]], other && [other, d[0] - off[0], d[1] - off[1]]].forEach((x) => {
+        if (!x) return;
+        const [pg, dx, dy] = x, c = pg.live.getContext('2d'), W = pg.live.width;
+        clearLive(pg);
+        c.save(); c.translate(dx * W, dy * W);
+        mv.strokes.forEach((s) => drawStroke(c, s, W));
+        c.restore();
+      });
+      const over = !!other && SEL.overOther(mv.box, d[0], off[0]);
+      drawing.host = over ? other : p;
+      showSSel(drawing.host, { ...mv.box, x: mv.box.x + d[0] - (over ? off[0] : 0), y: mv.box.y + d[1] - (over ? off[1] : 0) });
+    };
+    // Loslassen: die Auswahl landet als Ganzes auf der Seite, über der ihre Mitte liegt
+    const dropMove = () => {
+      const { p, mv, other, off, host } = drawing;
+      let d = drawing.d;
+      clearLive(p); if (other) clearLive(other);
+      drawing = null; st.moving = null;
+      if (host !== p) d = [d[0] - off[0], d[1] - off[1]];
+      d = SEL.clampDelta(mv.box, d[0], d[1], { x0: 0, x1: 1, y0: 0, y1: host.def.ratio });
+      if (host !== p || d[0] || d[1]) {
+        const a = { type: 'sel-move', pi: p.i, to: host.i, strokes: mv.strokes, links: mv.links, dx: d[0], dy: d[1] };
+        applySelMove(a, false);
+        st.undo.push(a); st.redo = [];
+        st.ssel = { p: host, strokes: mv.strokes, links: mv.links, box: SEL.bounds(mv.strokes) };
+      } else drawInk(p);
+      showSSel(st.ssel.p, st.ssel.box);
+    };
+    // Verschieben anwenden oder zurücknehmen; Verknüpfungen, die es noch gibt, wandern mit
+    const applySelMove = (a, back) => {
+      const from = st.pages[back ? a.to : a.pi], to = st.pages[back ? a.pi : a.to], k = back ? -1 : 1;
+      const links = a.links.filter((l) => from.links.includes(l));
+      SEL.shift(a.strokes, k * a.dx, k * a.dy); SEL.shiftBoxes(links, k * a.dx, k * a.dy);
+      if (from !== to) {
+        from.strokes = from.strokes.filter((s) => !a.strokes.includes(s)); to.strokes = to.strokes.concat(a.strokes);
+        from.links = from.links.filter((l) => !links.includes(l)); to.links = to.links.concat(links);
+      }
+      new Set([from, to]).forEach((pg) => { drawInk(pg); renderLinks(pg); markDirty(pg); });
+    };
     const deleteSel = () => {
+      if (st.ssel) {
+        const { p, strokes } = st.ssel;
+        p.strokes = p.strokes.filter((s) => !strokes.includes(s));
+        st.undo.push({ type: 'erase', pi: p.i, removed: strokes }); st.redo = [];
+        clearSSel(); drawInk(p); markDirty(p);
+        return;
+      }
       const im = selImg(); if (!im) return;
       const p = st.sel.p, idx = p.images.indexOf(im);
       p.images.splice(idx, 1);
@@ -785,11 +881,13 @@
       const a = from.pop(); if (!a) return;
       const p = st.pages[a.pi];
       const back = from === st.undo;
+      clearSSel();
       if (a.type === 'add') { if (back) p.strokes = p.strokes.filter((x) => x !== a.s); else p.strokes.push(a.s); }
       else if (a.type === 'erase') { if (back) p.strokes = p.strokes.concat(a.removed); else p.strokes = p.strokes.filter((x) => !a.removed.includes(x)); }
       else if (a.type === 'cut') p.strokes = (back ? a.before : a.after).slice();
       else if (a.type === 'img-add') { if (back) p.images = p.images.filter((x) => x !== a.im); else p.images.push(a.im); }
       else if (a.type === 'img-del') { if (back) p.images.splice(Math.min(a.idx, p.images.length), 0, a.im); else p.images = p.images.filter((x) => x !== a.im); }
+      else if (a.type === 'sel-move') applySelMove(a, back);
       else if (a.type === 'img-edit') { const im = p.images.find((x) => x.id === a.id); if (im) Object.assign(im, back ? a.before : a.after); }
       to.push(a); drawInk(p); markDirty(p); updateSel();
     };
@@ -829,9 +927,9 @@
       // Escape schließt zuerst das Nachschlagen-Fenster (auch wenn der Fokus auf einem seiner Knöpfe oder auf der Seite liegt)
       if (e.key === 'Escape' && root._lookup && !$('.modal-back') && !(embedded && $('.viewer'))) { root._lookup.close(); return; }
       if (inactive(e)) return;
-      if (st.sel && e.key === 'Escape') { clearSel(); return; }
+      if ((st.sel || st.ssel) && e.key === 'Escape') { clearSel(); return; }
       if (e.key === 'Escape' && root.querySelector('.hw-pop')) { closeHw(); return; }
-      if (st.sel && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSel(); return; }
+      if ((st.sel || st.ssel) && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSel(); return; }
       if (e.key === 'Escape' && !embedded) close();
       if (st.book && (e.key === 'ArrowRight' || e.key === 'PageDown')) { e.preventDefault(); turn(1); }
       if (st.book && (e.key === 'ArrowLeft' || e.key === 'PageUp')) { e.preventDefault(); turn(-1); }
