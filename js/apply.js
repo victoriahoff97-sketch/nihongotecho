@@ -493,19 +493,23 @@
       const group = (label, list, cls) => (list.length ? `<div class="w-sec ${cls}">${label}</div><div class="w-chips">${list.map(chip).join('')}</div>` : '');
       const nNew = all.filter((it) => news.has(it.id)), nUsed = all.filter((it) => !news.has(it.id));
       side.innerHTML = `<h3>${isAnswer ? 'In dieser Antwort' : 'In diesem Eintrag'}</h3>
-        ${all.length ? group('NEU', nNew, 'new') + group('ANGEWENDET', nUsed, '') : '<div class="small muted" style="margin:6px 0">Noch nichts verknüpft. Neue Wörter mit „+ Vokabel“ / „+ Grammatik“ anlegen.</div>'}
+        ${all.length ? group('NEU', nNew, 'new') + group('ANGEWENDET', nUsed, '') : '<div class="small muted" style="margin:6px 0">Noch nichts verknüpft. Neue Wörter mit „+ Vokabel“ / „+ Grammatik“ anlegen – oder ein geschriebenes Wort mit „Erkennen“ einkreisen und verknüpfen.</div>'}
         <button class="btn btn-ghost btn-sm w-pick" data-w-pick>${icon('link')} Vorhandenes verknüpfen</button>`;
     };
     drawSide();
+    // Verknüpfung lösen: aus dem Eintrag nehmen; fromSheet = die Markierung auf dem Blatt ist schon weg
+    let inkApi = null;
+    const sheetIds = () => App.filesFor({ itemId: item.id }).filter((f) => App.fileKind(f) === 'notebook').map((f) => f.id);
+    const dropMarks = (id) => (inkApi ? inkApi.dropLinks(id) : Promise.all(sheetIds().map((fid) => App.ink.dropLinks(fid, id))));
+    const unlink = async (id, fromSheet) => {
+      ['vocabIds', 'grammarIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => v !== id); });
+      await App.saveItem(item, { silent: true });
+      if (!fromSheet) await dropMarks(id);
+      drawSide();
+    };
     side.addEventListener('click', async (e) => {
       const x = e.target.closest('[data-w-unlink]');
-      if (x) {
-        const id = x.dataset.wUnlink;
-        ['vocabIds', 'grammarIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => v !== id); });
-        await App.saveItem(item, { silent: true });
-        drawSide();
-        return;
-      }
+      if (x) { await unlink(x.dataset.wUnlink); return; }
       if (!e.target.closest('[data-w-pick]')) return;
       const before = new Set(linkedIds(item));
       const ids = await App.pickItems({ title: 'Vorhandenes verknüpfen', types: ['grammar', 'vocab'], selected: Array.from(before) });
@@ -513,6 +517,7 @@
       const keep = new Set(ids);
       // Abgewählte entfernen, neu gewählte als „angewendet“ übernehmen
       ['vocabIds', 'grammarIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => keep.has(v)); });
+      for (const id of before) if (!keep.has(id)) await dropMarks(id);
       ids.filter((id) => !before.has(id)).forEach((id) => {
         const it = App.item(id), k = it && LINK_KEYS[it.type];
         if (k) item[k] = uniq(item[k].concat(id));
@@ -572,7 +577,7 @@
     };
     const linkLabel = isAnswer ? 'mit dieser Antwort' : 'mit diesem Eintrag';
     if (tab === 'hand') {
-      App.inkArea(body, {
+      inkApi = App.inkArea(body, {
         sheets: App.filesFor({ itemId: item.id }).filter((f) => App.fileKind(f) === 'notebook'),
         activeId: nb && nb.id, // dasselbe Blatt, das Karten/Vorschau zeigen
         multiSheet: false,
@@ -582,7 +587,7 @@
         newDefaults: (type) => (type === 'vocab'
           ? Object.assign({}, newDefaults, { contexts: [{ itemId: item.id, label: source + ' · ' + App.fmtDate(item.date), date: item.date, text: '' }] })
           : newDefaults),
-        onLinked,
+        onLinked, onUnlinked: (id) => unlink(id, true),
       });
     } else {
       typedEd = App.typedArea(body, {

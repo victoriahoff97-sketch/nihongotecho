@@ -149,7 +149,9 @@
   };
 
   // ---------- Schreibfläche (eingebettet oder Vollbild) ----------
-  // opts: { embedded, extraTools: [{ id, label, icon, onClick }], onFullscreen, onClose }
+  // opts: { embedded, extraTools: [{ id, label, icon, onClick }], onFullscreen, onClose, onLinkWord, onUnlinkWord }
+  // onLinkWord(r) → Eintrag: Treffer aus dem Nachschlagen-Fenster mit dem eingekreisten Wort verknüpfen (ohne: kein „Verknüpfen“)
+  // onUnlinkWord(itemId): die letzte Markierung eines Wortes wurde auf diesem Blatt gelöst
   INK.mount = async (root, fileId, opts = {}) => {
     const f = App.store.files.get(fileId);
     if (!f) return null;
@@ -167,7 +169,7 @@
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
       <div class="title">${esc(f.name)}</div>
       <div class="grp">
-        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Bilder verschieben und skalieren'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen und nachschlagen'],
+        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Bilder verschieben und skalieren'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
           ['pen', 'ballpen', 'Stift', 'Stift'], ['fountain', 'fountain', 'Füller', 'Füller (druckempfindlich)'], ['marker', 'highlighter', 'Marker', 'Textmarker'],
           ['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}">${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
         <button class="icon-btn tool-btn" data-v="image" title="Bild einfügen (Strg+V)">${icon('imagePlus')}<span class="tool-swatch"></span><span class="tool-lbl">Bild</span></button>
@@ -256,14 +258,14 @@
 
     // Tinte laden
     const inkRows = await App.db.all('ink');
-    const inkMap = new Map(inkRows.filter((r) => r.fileId === f.id).map((r) => [r.page, { strokes: r.strokes || [], images: r.images || [] }]));
+    const inkMap = new Map(inkRows.filter((r) => r.fileId === f.id).map((r) => [r.page, { strokes: r.strokes || [], images: r.images || [], links: r.links || [] }]));
     // Alle geänderten Seiten speichern (nicht nur die zuletzt beschriebene)
     const dirty = new Set();
     const flushAll = () => {
       if (!dirty.size) return;
       dirty.forEach((pi) => {
         const p = st.pages[pi];
-        App.db.put('ink', { key: f.id + ':' + pi, fileId: f.id, page: pi, strokes: p.strokes, images: p.images })
+        App.db.put('ink', { key: f.id + ':' + pi, fileId: f.id, page: pi, strokes: p.strokes, images: p.images, links: p.links })
           .catch((e) => { console.error(e); if (p.images.length) App.toast('Bild konnte nicht gespeichert werden'); });
       });
       dirty.clear();
@@ -276,14 +278,28 @@
     window.addEventListener('pagehide', flushAll);
     document.addEventListener('visibilitychange', onHide);
 
+    // Wort-Verknüpfungen: feine Markierung unter dem Wort (nur für Einträge, die es noch gibt)
+    const renderLinks = (p) => {
+      p.el.querySelectorAll('.ink-link').forEach((x) => x.remove());
+      const r = p.def.ratio;
+      p.links.forEach((l) => {
+        if (!App.item(l.itemId)) return;
+        const el = document.createElement('div');
+        el.className = 'ink-link';
+        Object.assign(el.style, { left: l.x * 100 + '%', top: (l.y / r) * 100 + '%', width: l.w * 100 + '%', height: (l.h / r) * 100 + '%' });
+        p.el.appendChild(el);
+      });
+    };
+
     const baseWidth = () => Math.min(scroller.clientWidth - 44, 1100);
     const buildPage = (def, i) => {
       const el = document.createElement('div');
       el.className = 'vpage';
       el.innerHTML = `<canvas class="bgc"></canvas><canvas class="inkc"></canvas><canvas class="livec"></canvas><div class="loading">…</div><span class="pno">${i + 1}${def.extra ? ' · Zusatzseite' : ''}</span>`;
       pagesEl.appendChild(el);
-      const pg = { def, el, bg: el.querySelector('.bgc'), ink: el.querySelector('.inkc'), live: el.querySelector('.livec'), strokes: (inkMap.get(i) || {}).strokes || [], images: (inkMap.get(i) || {}).images || [], renderedW: 0, visible: false, i };
+      const pg = { def, el, bg: el.querySelector('.bgc'), ink: el.querySelector('.inkc'), live: el.querySelector('.livec'), strokes: (inkMap.get(i) || {}).strokes || [], images: (inkMap.get(i) || {}).images || [], links: (inkMap.get(i) || {}).links || [], renderedW: 0, visible: false, i };
       st.pages.push(pg);
+      renderLinks(pg);
       return pg;
     };
     pageDefs.forEach(buildPage);
@@ -380,7 +396,9 @@
     };
     scroller.addEventListener('pointerdown', (e) => {
       if (e.target.closest && e.target.closest('[data-del]')) { e.preventDefault(); deleteSel(); return; }
+      hideTip();
       const useTouchNav = e.pointerType === 'touch' && (st.penOnly || st.tool === 'hand');
+      tap = useTouchNav ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
       if (useTouchNav || st.tool === 'hand' || e.button === 1) {
         touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
         scroller.setPointerCapture(e.pointerId);
@@ -429,7 +447,7 @@
         }
         return;
       }
-      if (!drawing) return;
+      if (!drawing) { if (e.pointerType !== 'touch' && !e.buttons) hoverLinks(e); return; }
       const p = drawing.p;
       if (drawing.img) {
         const pt = norm(p, e), b = drawing.before;
@@ -450,7 +468,16 @@
       else { const n = drawing.s.pts.length; drawStroke(c, { ...drawing.s, pts: drawing.s.pts.slice(Math.max(0, n - evs.length - 2)) }, p.ink.width); }
     });
     const up = (e) => {
-      if (touches.has(e.pointerId)) { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; return; }
+      if (touches.has(e.pointerId)) {
+        touches.delete(e.pointerId); if (touches.size < 2) pinch = null;
+        // kurzer Fingertipp auf ein verknüpftes Wort zeigt das Schildchen
+        if (tap && tap.id === e.pointerId && e.type === 'pointerup' && e.timeStamp - tap.t < 500 && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10) {
+          const p = pageAt(e.clientX, e.clientY), l = p && liveLinkAt(p, e, 0.006);
+          if (l) showTip(p, l);
+        }
+        tap = null;
+        return;
+      }
       if (!drawing) return;
       const p = drawing.p;
       if (drawing.img) {
@@ -486,6 +513,7 @@
       }
       drawing = null;
     };
+    scroller.addEventListener('pointerleave', () => { clearTimeout(tipWait); tipNext = null; leaveTip(); });
     scroller.addEventListener('pointerup', up);
     scroller.addEventListener('pointercancel', up);
     scroller.addEventListener('wheel', (e) => { if (e.ctrlKey) { e.preventDefault(); const r = scroller.getBoundingClientRect(); setZoom(st.zoom * (e.deltaY < 0 ? 1.1 : 0.9), e.clientX - r.left, e.clientY - r.top); } }, { passive: false });
@@ -516,10 +544,77 @@
       st.undo.push({ type: 'img-del', pi: p.i, im, idx }); st.redo = [];
       clearSel(); drawInk(p); markDirty(p);
     };
-    // ---------- Erkennen: eingekreiste Striche an den Handschrift-Dienst, Vorschlag antippen = nachschlagen ----------
+    // ---------- Wort-Verknüpfungen: Schildchen mit Lesung und Bedeutung (Stift/Maus darüber halten, Finger antippen) ----------
     const HW = App.hwLogic;
+    let tap = null, tip = null, tipFor = null, tipWait = 0, tipHide = 0, tipNext = null;
+    const liveLinkAt = (p, e, pad = 0) => HW.linkAt(p.links.filter((l) => App.item(l.itemId)), norm(p, e), pad);
+    const hideTip = () => {
+      clearTimeout(tipWait); clearTimeout(tipHide); tipHide = 0; tipNext = null; tipFor = null;
+      if (tip) { tip.remove(); tip = null; }
+    };
+    const leaveTip = () => { if (tip && !tipHide) tipHide = setTimeout(hideTip, 350); };
+    const showTip = (p, l) => {
+      const it = App.item(l.itemId);
+      hideTip();
+      if (!it) return;
+      tipFor = l;
+      tip = document.createElement('div');
+      tip.className = 'ink-tip card ' + App.SECTIONS[it.type].cls;
+      tip.innerHTML = `${App.wordTipHtml(it)}<span class="ink-tip-acts"><button class="btn btn-sm btn-ghost" data-tip="open">Öffnen</button><button class="btn btn-sm btn-ghost" data-tip="del">Lösen</button></span>`;
+      Object.assign(tip.style, { left: App.clamp(l.x, 0.01, 0.6) * 100 + '%', top: ((l.y + l.h) / p.def.ratio) * 100 + '%' });
+      tip.addEventListener('pointerdown', (e) => e.stopPropagation());
+      tip.addEventListener('pointerenter', () => { clearTimeout(tipHide); tipHide = 0; });
+      tip.addEventListener('pointerleave', leaveTip);
+      tip.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-tip]'); if (!b) return;
+        if (b.dataset.tip === 'del') { removeLink(p, l); return; }
+        hideTip();
+        if (!embedded) close();
+        App.go(App.link(it));
+      });
+      p.el.appendChild(tip);
+    };
+    const hoverLinks = (e) => {
+      if (e.target.closest && e.target.closest('.ink-tip')) return;
+      const p = pageAt(e.clientX, e.clientY);
+      const l = p && p.links.length ? liveLinkAt(p, e) : null;
+      if (!l) { clearTimeout(tipWait); tipNext = null; leaveTip(); return; }
+      if (l === tipFor) { clearTimeout(tipHide); tipHide = 0; return; }
+      if (l === tipNext) return;
+      // kurz warten: beim Schreiben über ein Wort hinweg soll nichts aufspringen
+      clearTimeout(tipWait); tipNext = l;
+      tipWait = setTimeout(() => { tipNext = null; showTip(p, l); }, 300);
+    };
+    const itemLinked = (itemId) => st.pages.some((p) => p.links.some((l) => l.itemId === itemId));
+    const removeLink = (p, l) => {
+      p.links = p.links.filter((x) => x !== l);
+      hideTip(); renderLinks(p); markDirty(p);
+      // letzte Stelle dieses Wortes auf dem Blatt gelöst → auch aus dem Eintrag/der Stunde nehmen
+      if (opts.onUnlinkWord && !itemLinked(l.itemId)) opts.onUnlinkWord(l.itemId);
+    };
+    // Verknüpfung in der Seitenleiste entfernt → Markierungen dieses Wortes vom Blatt nehmen
+    const dropLinks = (itemId) => {
+      hideTip();
+      st.pages.forEach((p) => { if (p.links.some((l) => l.itemId === itemId)) { p.links = p.links.filter((l) => l.itemId !== itemId); renderLinks(p); markDirty(p); } });
+    };
+    // Zuletzt eingekreistes Wort (Seite + Rahmen) – Ziel für „Verknüpfen“ im Nachschlagen-Fenster
+    let hwSel = null;
+    const linkWord = async (r) => {
+      const sel = hwSel;
+      if (!sel) return;
+      const it = await opts.onLinkWord(r);
+      if (!it || destroyed) return;
+      sel.p.links = HW.addLink(sel.p.links, { id: II.newId(), itemId: it.id, ...sel.box });
+      renderLinks(sel.p); markDirty(sel.p);
+      closeHw();
+      if (root._lookup) root._lookup.close();
+      note('Verknüpft: ' + App.itemPlain(it));
+    };
+    const lookupOpts = () => ({ onLink: opts.onLinkWord && hwSel ? linkWord : null });
+
+    // ---------- Erkennen: eingekreiste Striche an den Handschrift-Dienst, Vorschlag antippen = nachschlagen ----------
     let hwRun = 0;
-    const closeHw = () => { hwRun++; const el = root.querySelector('.hw-pop'); if (el) el.remove(); };
+    const closeHw = () => { hwRun++; hwSel = null; const el = root.querySelector('.hw-pop'); if (el) el.remove(); if (root._lookup) root._lookup.setLink(null); };
     const drawLasso = (p, pts) => {
       const c = p.live.getContext('2d'), W = p.live.width, k = W / p.el.clientWidth;
       c.clearRect(0, 0, W, p.live.height);
@@ -545,6 +640,7 @@
       }
       closeHw();
       const run = hwRun;
+      hwSel = { p, box: HW.wordBox(sel) };
       let x0 = Infinity, y1 = -Infinity;
       sel.forEach((s) => s.pts.forEach((q) => { x0 = Math.min(x0, q[0]); y1 = Math.max(y1, q[1]); }));
       const pop = document.createElement('div');
@@ -554,7 +650,7 @@
       pop.addEventListener('pointerdown', (e) => e.stopPropagation());
       pop.addEventListener('click', (e) => {
         const chip = e.target.closest('[data-hw]');
-        if (chip) App.lookup.open(root, chip.dataset.hw);
+        if (chip) App.lookup.open(root, chip.dataset.hw, lookupOpts());
         else if (e.target.closest('[data-hwclose]')) closeHw();
       });
       p.el.appendChild(pop);
@@ -639,7 +735,7 @@
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('paste', onPaste);
       if (root._lookup) root._lookup.close();
-      closeHw();
+      closeHw(); hideTip();
       window.removeEventListener('pagehide', flushAll);
       document.removeEventListener('visibilitychange', onHide);
       root.innerHTML = '';
@@ -706,7 +802,7 @@
       }
       if (a === 'print') printAll();
       if (a === 'image') pickImage();
-      if (a === 'lookup') App.lookup.open(root);
+      if (a === 'lookup') App.lookup.open(root, '', lookupOpts());
       if (a === 'vocab') App.importVocab({ fileId: f.id });
     });
 
@@ -736,7 +832,15 @@
 
     if (!st.pages.length && !pagesEl.children.length) pagesEl.innerHTML = '<div class="card">Keine Seiten.</div>';
     if (st.penOnly && !embedded) note('✍ Stift schreibt · Finger scrollt & zoomt');
-    return { flush: flushAll, destroy, state: () => ({ defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx }) };
+    return { flush: flushAll, destroy, dropLinks, state: () => ({ defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx }) };
+  };
+
+  // Markierungen eines Wortes von einem Blatt nehmen, das gerade nicht geöffnet ist (direkt im Speicher)
+  INK.dropLinks = async (fileId, itemId) => {
+    for (const row of (await App.db.all('ink')).filter((r) => r.fileId === fileId && (r.links || []).some((l) => l.itemId === itemId))) {
+      row.links = row.links.filter((l) => l.itemId !== itemId);
+      await App.db.put('ink', row);
+    }
   };
 
   // ---------- Vollbild-Viewer ----------

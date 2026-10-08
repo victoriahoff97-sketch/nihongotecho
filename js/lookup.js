@@ -1,4 +1,5 @@
-/* Nihongo Techō – Nachschlagen-Fenster auf Stift-Seiten: eigene Wörter + Offline-Wörterbuch, groß mit Strichfolge. Übernimmt nichts. */
+/* Nihongo Techō – Nachschlagen-Fenster auf Stift-Seiten: eigene Wörter + Offline-Wörterbuch, groß mit Strichfolge.
+   Übernimmt von sich aus nichts; nach „Erkennen“ kann die Schreibfläche einen Treffer mit dem eingekreisten Wort verknüpfen (onLink). */
 'use strict';
 (function (App) {
   const { esc, icon } = App;
@@ -22,11 +23,13 @@
   };
   LK.glossLoaded = () => !!gloss && glossSig === dictSig();
 
+  // id = eigener Eintrag (zum Verknüpfen); Wörterbuch-Treffer tragen stattdessen entry
   const ownResult = (it) => {
-    if (it.type === 'kanji') return { jp: it.char, kana: (it.kun || [])[0] || (it.on || [])[0] || '', meaning: App.meaning(it).text };
-    if (it.type === 'phrase') return { jp: JP.plain(it.jp), kana: JP.kana(it.jp), meaning: App.meaning(it).text };
-    return { jp: it.kanji || it.kana || '', kana: it.kana || '', meaning: App.meaning(it).text };
+    if (it.type === 'kanji') return { id: it.id, jp: it.char, kana: (it.kun || [])[0] || (it.on || [])[0] || '', meaning: App.meaning(it).text };
+    if (it.type === 'phrase') return { id: it.id, jp: JP.plain(it.jp), kana: JP.kana(it.jp), meaning: App.meaning(it).text };
+    return { id: it.id, jp: it.kanji || it.kana || '', kana: it.kana || '', meaning: App.meaning(it).text };
   };
+  const dictResult = (row) => Object.assign(LL.dictResult(row), { entry: row });
 
   LK.search = async (q) => {
     q = (q || '').trim();
@@ -67,10 +70,10 @@
       const seen = new Set();
       found = found.filter((e) => !seen.has(e.id) && seen.add(e.id));
       scanOwn = found.filter((e) => e.own).map((e) => ownResult(e.own));
-      scanDict = found.filter((e) => !e.own).map(LL.dictResult);
+      scanDict = found.filter((e) => !e.own).map(dictResult);
     }
     const allOwn = LL.uniq(scanOwn.concat(own)).slice(0, MAX);
-    return { own: allOwn, dict: LL.dedupe(allOwn, LL.uniq(scanDict.concat(rows.map(LL.dictResult)))).slice(0, MAX), dictInstalled };
+    return { own: allOwn, dict: LL.dedupe(allOwn, LL.uniq(scanDict.concat(rows.map(dictResult)))).slice(0, MAX), dictInstalled };
   };
 
   // Eigene Vokabeln als Scan-Index; neu, sobald sich Einträge ändern
@@ -81,9 +84,10 @@
   const rowHtml = (r, i, grp) => `<button class="lk-row" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</span><span class="lk-de">${r.lang === 'en' ? '<span class="badge">EN</span> ' : ''}${esc(r.meaning)}</span></span></button>`;
 
   // Ein Fenster pro Schreibfläche; erneutes Öffnen holt das vorhandene nach vorn
-  LK.open = (root, q = '') => {
+  // onLink(r) (optional): Treffer mit dem zuletzt eingekreisten Wort verknüpfen – zeigt in der Detailansicht „Verknüpfen“
+  LK.open = (root, q = '', { onLink = null } = {}) => {
     // q leer = Knopf in der Leiste (Feld fokussieren, Eingabe behalten); q gesetzt = Vorschlag aus „Erkennen“ (keine Bildschirmtastatur)
-    if (root._lookup) { if (q) root._lookup.setQuery(q); else root._lookup.focus(); return root._lookup; }
+    if (root._lookup) { root._lookup.setLink(onLink); if (q) root._lookup.setQuery(q); else root._lookup.focus(); return root._lookup; }
     const pop = document.createElement('div');
     pop.className = 'lookup-pop card';
     pop.innerHTML = `<div class="lk-head"><input class="input" type="search" autocomplete="off" placeholder="Deutsch, かな, 漢字 oder Romaji"><button class="icon-btn sm" data-lkclose title="Schließen">${icon('close')}</button></div><div class="lk-body"></div>`;
@@ -91,7 +95,7 @@
     pop.style.top = (bar ? bar.offsetHeight : 0) + 8 + 'px';
     root.appendChild(pop);
     const input = pop.querySelector('input'), body = pop.querySelector('.lk-body');
-    let run = 0, last = { q: '', own: [], dict: [] };
+    let run = 0, last = { q: '', own: [], dict: [] }, shown = null;
 
     // Ohne Offline-Wörterbuch gibt es nur eigene Wörter: direkt hier installieren (kein Seitenwechsel, geht auch im Vollbild)
     const DICT_ID = 'dict-common';
@@ -113,7 +117,7 @@
       }
     };
     const list = (res) => {
-      last = res;
+      last = res; shown = null;
       if (!res.q) { body.innerHTML = '<p class="muted small">Wort eingeben – Treffer antippen, um es groß mit Strichfolge zu sehen.</p>'; return; }
       const hint = res.dictInstalled ? '' : installHint();
       if (!res.own.length && !res.dict.length) { body.innerHTML = '<p class="muted">Nichts gefunden</p>' + hint; return; }
@@ -128,9 +132,11 @@
     };
     const detail = (r) => {
       run++; // eine noch laufende Suche soll die Detailansicht nicht überschreiben
+      shown = r;
       const chars = Array.from(r.jp.replace(/\s/g, '')).slice(0, MAX_CHARS);
       body.innerHTML = `<button class="btn btn-sm btn-ghost" data-lkback>${icon('back')} Treffer</button>
         <div class="lk-big">${esc(r.jp)}</div><div class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</div><div class="lk-de">${esc(r.meaning)}</div>
+        ${onLink ? `<button class="btn btn-sm btn-primary lk-link" data-lklink>${icon('link')} ${r.id ? 'Mit dem Wort verknüpfen' : 'Als Vokabel speichern & verknüpfen'}</button>` : ''}
         <div class="lk-strokes">${chars.map(() => '<div class="lk-stroke"></div>').join('')}</div>`;
       body.scrollTop = 0;
       body.querySelectorAll('.lk-stroke').forEach((host, i) => App.stroke.animator(host, chars[i], { compact: true, autoplay: i === 0 }));
@@ -138,6 +144,8 @@
 
     const close = () => { run++; pop.remove(); root._lookup = null; };
     const setQuery = (v) => { input.value = v; search(); };
+    // Ziel fürs Verknüpfen wechselt mit jedem eingekreisten Wort; ohne Ziel verschwindet der Knopf
+    const setLink = (fn) => { if (fn === onLink) return; onLink = fn; if (shown) detail(shown); };
     const focus = () => input.focus();
     const debounced = App.debounce(search, 200);
     input.addEventListener('input', debounced);
@@ -147,12 +155,13 @@
     pop.addEventListener('click', (e) => {
       if (e.target.closest('[data-lkclose]')) { close(); return; }
       if (e.target.closest('[data-lkback]')) { list(last); return; }
+      if (e.target.closest('[data-lklink]')) { if (onLink && shown) onLink(shown); return; }
       const inst = e.target.closest('[data-lkinstall]');
       if (inst) { install(inst); return; }
       const row = e.target.closest('[data-lk]');
       if (row) { const [grp, i] = row.dataset.lk.split(':'); detail(last[grp][+i]); }
     });
-    root._lookup = { close, setQuery, focus };
+    root._lookup = { close, setQuery, focus, setLink };
     setQuery(q);
     if (!q) focus();
     return root._lookup;

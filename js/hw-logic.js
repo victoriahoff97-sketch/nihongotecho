@@ -49,6 +49,34 @@
     return out;
   };
 
-  const P = { MAX_STROKES, HW_URL, pointInPoly, strokesInLasso, inkPayload, parseCandidates };
+  // ---------- Wort-Verknüpfungen auf dem Blatt: { id, itemId, x, y, w, h } (Anteile der Seitenbreite, wie die Striche) ----------
+  const r4 = (v) => +v.toFixed(4);
+  // Rahmen um die Striche eines Wortes, mit etwas Rand; null ohne Punkte.
+  // Mindestgröße, damit auch ein flaches 一 mit dem Stift zu treffen ist
+  const MIN_BOX = 0.02;
+  const wordBox = (strokes, pad = 0.004) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    strokes.forEach((s) => (s.pts || []).forEach((q) => { minX = Math.min(minX, q[0]); minY = Math.min(minY, q[1]); maxX = Math.max(maxX, q[0]); maxY = Math.max(maxY, q[1]); }));
+    if (minX === Infinity) return null;
+    const span = (a, b) => { a -= pad; b += pad; if (b - a < MIN_BOX) { const c = (a + b) / 2; a = c - MIN_BOX / 2; b = c + MIN_BOX / 2; } a = Math.max(0, a); return [a, b - a]; };
+    const [x, w] = span(minX, maxX), [y, h] = span(minY, maxY);
+    return { x: r4(x), y: r4(y), w: r4(w), h: r4(h) };
+  };
+  // Verknüpfung unter dem Punkt; bei Überlappung die kleinste (das genauer eingekreiste Wort)
+  const linkAt = (links, pt, pad = 0) => {
+    let best = null;
+    (links || []).forEach((l) => {
+      if (pt[0] < l.x - pad || pt[0] > l.x + l.w + pad || pt[1] < l.y - pad || pt[1] > l.y + l.h + pad) return;
+      if (!best || l.w * l.h < best.w * best.h) best = l;
+    });
+    return best;
+  };
+  // Neue Verknüpfung; eine vorhandene an (fast) derselben Stelle wird ersetzt (Wort neu erkannt/korrigiert)
+  const addLink = (links, link) => {
+    const same = (l) => Math.abs(l.x - link.x) < 0.01 && Math.abs(l.y - link.y) < 0.01 && Math.abs(l.w - link.w) < 0.02 && Math.abs(l.h - link.h) < 0.02;
+    return (links || []).filter((l) => !same(l)).concat(link);
+  };
+
+  const P = { MAX_STROKES, HW_URL, pointInPoly, strokesInLasso, inkPayload, parseCandidates, wordBox, linkAt, addLink };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.hwLogic = P;
 })(this);

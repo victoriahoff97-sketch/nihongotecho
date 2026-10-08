@@ -11,10 +11,38 @@
   });
 
   // ---------- Handschrift ----------
-  // opts: { sheets, activeId, sheetMeta(paper, n), multiSheet, onSelect(fileId), newDefaults (Objekt oder (type) => Objekt), onLinked }
-  App.inkArea = (host, { sheets = [], activeId, sheetMeta, multiSheet = true, onSelect, newDefaults = {}, onLinked } = {}) => {
+  // opts: { sheets, activeId, sheetMeta(paper, n), multiSheet, onSelect(fileId), newDefaults (Objekt oder (type) => Objekt), onLinked, onUnlinked }
+  // onUnlinked(itemId): die letzte Markierung eines Wortes wurde auf dem Blatt gelöst
+  // Liefert { dropLinks(itemId) }: Markierungen eines Wortes vom Blatt nehmen (Verknüpfung wurde woanders entfernt)
+  App.inkArea = (host, { sheets = [], activeId, sheetMeta, multiSheet = true, onSelect, newDefaults = {}, onLinked, onUnlinked } = {}) => {
     const defaultsFor = (type) => (typeof newDefaults === 'function' ? newDefaults(type) : newDefaults);
+    // Treffer aus dem Nachschlagen-Fenster (nach „Erkennen“) verknüpfen: eigener Eintrag direkt, Wörterbuch-Treffer über den
+    // vorbelegten Vokabel-Dialog. Liefert den Eintrag; bleibt offen, wenn der Dialog abgebrochen wird.
+    const linkWord = (r) => new Promise((res) => {
+      const own = r.id && App.item(r.id);
+      if (own) {
+        (async () => {
+          // wie beim Verknüpfen im getippten Text: Fundort merken, ungeprüfte Vokabel zum Lernen vormerken
+          const ctx = own.type === 'vocab' && (defaultsFor('vocab').contexts || [])[0];
+          if (ctx) {
+            own.contexts = (own.contexts || []).filter((c) => !(c.sessionId === ctx.sessionId && c.itemId === ctx.itemId && c.text === ctx.text)).concat(ctx);
+            await App.saveItem(own, { silent: true });
+          }
+          if (own.type === 'vocab' && App.vocabStatus(own.id) === 'unchecked') await App.setCheck(own.id, 'learn');
+          if (onLinked) await onLinked(own, false);
+          res(own);
+        })();
+        return;
+      }
+      const d = r.entry ? App.dictVocabDefaults(r.entry, [r.jp, r.kana]) : { kanji: r.jp !== r.kana ? r.jp : '', kana: r.kana, de: r.meaning };
+      App.editItem({
+        type: 'vocab', single: true, title: 'Neue Vokabel verknüpfen', defaults: Object.assign({}, defaultsFor('vocab'), d),
+        onSaved: async (it) => { if (onLinked) await onLinked(it, true); res(it); },
+      });
+    });
     const UL = App.uLogic;
+    let ctrl = null, left = false;
+    const api = { dropLinks: (itemId) => (ctrl ? ctrl.dropLinks(itemId) : Promise.all(sheets.map((f) => App.ink.dropLinks(f.id, itemId)))) };
     if (!sheets.length) {
       host.innerHTML = `<div class="card pad-lg"><h3 style="margin-top:0">Auf welchem Papier schreibst du?</h3>
         <div class="paper-pick">${UL.PAPERS.map(([k, l]) => `<button class="paper-tile" data-paper="${k}"><canvas width="120" height="170"></canvas><span>${l}</span></button>`).join('')}</div></div>`;
@@ -31,7 +59,7 @@
         } catch (err) { busy = false; throw err; }
         onSelect && onSelect(f.id);
       });
-      return;
+      return api;
     }
     const active = sheets.find((f) => f.id === activeId) || sheets[sheets.length - 1];
     host.innerHTML = `${multiSheet ? `<div class="nb-switch chips">${sheets.length > 1 ? sheets.map((f, i) => `<button class="chip ${f === active ? 'on' : ''}" data-nb="${f.id}">Blatt ${i + 1}</button>`).join('') : ''}
@@ -44,7 +72,6 @@
       };
     }
     // Schreibfläche einbetten; beim Verlassen/Neuzeichnen sauber abbauen
-    let ctrl = null, left = false;
     App.onLeave(() => { left = true; if (ctrl) ctrl.destroy(); });
     // Schreibfläche füllt genau den restlichen Bildschirm (nicht darüber hinaus)
     const inkEl = host.querySelector('[data-ink]');
@@ -60,9 +87,11 @@
         { id: 'vocab', label: 'Vokabel', icon: 'plus', onClick: () => App.newLinked('vocab', defaultsFor('vocab'), onLinked) },
         { id: 'grammar', label: 'Grammatik', icon: 'plus', onClick: () => App.newLinked('grammar', defaultsFor('grammar'), onLinked) },
       ],
+      onLinkWord: linkWord, onUnlinkWord: onUnlinked,
       // Vollbild: eingebettete Fläche abbauen, damit sie nach dem Schließen frisch geladen wird
-      onFullscreen: () => { const tools = ctrl ? ctrl.state() : {}; if (ctrl) ctrl.destroy(); App.ink.open(active.id, tools); },
+      onFullscreen: () => { const tools = ctrl ? ctrl.state() : {}; if (ctrl) ctrl.destroy(); App.ink.open(active.id, { ...tools, onLinkWord: linkWord, onUnlinkWord: onUnlinked }); },
     }).then((c) => { ctrl = c; if (left && c) c.destroy(); });
+    return api;
   };
 
   // ---------- Getippt ----------

@@ -145,6 +145,33 @@
       default: return '';
     }
   };
+  // Inhalt des kleinen Schildchens zu einem Eintrag: Wort, Lesung, Bedeutung (verknüpfte Wörter auf der Stiftfläche, Verweise im Text)
+  App.wordTipHtml = (it) => {
+    const kana = it.type === 'vocab' && it.kanji ? it.kana || '' : '';
+    const sub = it.type === 'vocab' || it.type === 'kanji' ? App.meaningHtml(it) : esc(App.itemSub(it) || '');
+    return `<span class="tip-w" lang="ja">${esc(App.itemPlain(it) || '')}</span>${kana ? `<span class="tip-k" lang="ja">${esc(kana)}</span>` : ''}<span class="tip-m">${sub}</span>`;
+  };
+  // Verweise im Text (a.ref): beim Darüberfahren Lesung und Bedeutung zeigen
+  let refTip = null;
+  const hideRefTip = () => { if (refTip) { refTip.remove(); refTip = null; } };
+  const refOf = (e) => e.target.closest && e.target.closest('a.ref[data-ref]');
+  document.addEventListener('pointerover', (e) => {
+    const a = refOf(e), it = a && App.item(a.dataset.ref);
+    if (!it) return;
+    hideRefTip();
+    refTip = document.createElement('div');
+    refTip.className = 'ref-tip card ' + App.SECTIONS[it.type].cls;
+    refTip.innerHTML = App.wordTipHtml(it);
+    document.body.appendChild(refTip);
+    const r = a.getBoundingClientRect(), w = refTip.offsetWidth, h = refTip.offsetHeight;
+    refTip.style.left = App.clamp(r.left, 8, Math.max(8, window.innerWidth - w - 8)) + 'px';
+    refTip.style.top = (r.bottom + 6 + h > window.innerHeight ? r.top - h - 6 : r.bottom + 6) + 'px';
+  });
+  document.addEventListener('pointerout', (e) => { if (refOf(e)) hideRefTip(); });
+  document.addEventListener('pointerdown', hideRefTip);
+  document.addEventListener('scroll', hideRefTip, true);
+  App.onChange((w) => { if (w === 'route') hideRefTip(); });
+
   App.relItem = (it) => {
     const sec = App.SECTIONS[it.type];
     const t = it.type === 'kanji' ? it.char : sec.jp[0];

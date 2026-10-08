@@ -896,3 +896,14 @@ details.adv[open] summary { margin-bottom: 12px; }
 .fm-use:hover { border-color: var(--ai); background: var(--ai-soft); }
 .fm-use > span:first-child { display: grid; gap: 1px; }
 .fm-use .jp { color: var(--ai); font-family: var(--font-jp); }
+
+/* Verknüpfte Wörter: Markierung auf der Stiftfläche + Schildchen mit Lesung und Bedeutung */
+.vpage .ink-link { position: absolute; z-index: 1; box-sizing: border-box; pointer-events: none; border-bottom: 2px dotted var(--sec, var(--shu)); border-radius: 3px; background: color-mix(in srgb, var(--sec, var(--shu)) 7%, transparent); }
+.ink-tip, .ref-tip { width: max-content; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 6px 10px; max-width: 300px; font-size: 14px; line-height: 1.35; box-shadow: 0 6px 22px rgba(0,0,0,.28); }
+.ink-tip .tip-w, .ref-tip .tip-w { font-family: var(--font-jp); font-weight: 700; font-size: 17px; color: var(--sec); }
+.ink-tip .tip-k, .ref-tip .tip-k { font-family: var(--font-jp); font-size: 13px; color: var(--muted); }
+.ink-tip .tip-m, .ref-tip .tip-m { flex-basis: 100%; color: var(--ink); }
+.vpage .ink-tip { position: absolute; z-index: 3; margin-top: 4px; min-width: 150px; max-width: 46%; }
+.ink-tip .ink-tip-acts { flex-basis: 100%; display: flex; gap: 4px; margin: 4px -6px -2px; }
+.ref-tip { position: fixed; z-index: 150; pointer-events: none; }
+.lookup-pop .lk-link { display: flex; margin: 10px auto 0; }
