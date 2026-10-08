@@ -157,8 +157,11 @@
     const kind = App.fileKind(f);
     const S = App.store.settings;
     const II = App.inkImages;
-    const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser'];
+    const IE = App.inkErase;
+    const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser', 'cut'];
     const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null };
+    // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
+    st.eraser = st.tool === 'cut' || (st.tool !== 'eraser' && opts.eraser === 'cut') ? 'cut' : 'eraser';
     root.classList.add(embedded ? 'ink-embed' : 'viewer');
     root.innerHTML = `<div class="viewer-bar">
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
@@ -166,7 +169,7 @@
       <div class="grp">
         ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Bilder verschieben und skalieren'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen und nachschlagen'],
           ['pen', 'ballpen', 'Stift', 'Stift'], ['fountain', 'fountain', 'Füller', 'Füller (druckempfindlich)'], ['marker', 'highlighter', 'Marker', 'Textmarker'],
-          ['eraser', 'eraser', 'Radierer', 'Radierer (ganze Striche)']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}">${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
+          ['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}">${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
         <button class="icon-btn tool-btn" data-v="image" title="Bild einfügen (Strg+V)">${icon('imagePlus')}<span class="tool-swatch"></span><span class="tool-lbl">Bild</span></button>
         <button class="icon-btn tool-btn" data-v="lookup" title="Nachschlagen (Wörterbuch)">${icon('search')}<span class="tool-swatch"></span><span class="tool-lbl">Nachschlagen</span></button>
       </div>
@@ -363,6 +366,18 @@
       });
       if (keep.length !== p.strokes.length) { p.strokes = keep; drawInk(p); }
     };
+    // Punkt-Radierer: nur das Stück unter der Spitze; der Kreis zeigt, wo er wirkt
+    const cutAt = (p, pt) => {
+      const rad = IE.radius(st.zoom);
+      let changed = false;
+      IE.sweep(drawing.last, pt, rad).forEach((q) => { const r = IE.cutAll(p.strokes, q, rad); if (r) { p.strokes = r; changed = true; } });
+      drawing.last = pt;
+      if (changed) drawInk(p);
+      const c = p.live.getContext('2d'), W = p.live.width;
+      c.clearRect(0, 0, W, p.live.height);
+      c.save(); c.lineWidth = Math.max(1, W / p.el.clientWidth); c.strokeStyle = '#1f2430'; c.fillStyle = 'rgba(255,255,255,.6)';
+      c.beginPath(); c.arc(pt[0] * W, pt[1] * W, Math.max(rad * W, 2 * c.lineWidth), 0, 7); c.fill(); c.stroke(); c.restore();
+    };
     scroller.addEventListener('pointerdown', (e) => {
       if (e.target.closest && e.target.closest('[data-del]')) { e.preventDefault(); deleteSel(); return; }
       const useTouchNav = e.pointerType === 'touch' && (st.penOnly || st.tool === 'hand');
@@ -390,7 +405,8 @@
         return;
       }
       if (st.tool === 'lasso') { closeHw(); drawing = { p, lasso: [norm(p, e)] }; return; }
-      const erasing = st.tool === 'eraser' || (e.pointerType === 'pen' && (e.buttons & 32));
+      const erasing = st.tool === 'eraser' || st.tool === 'cut' || (e.pointerType === 'pen' && (e.buttons & 32));
+      if (erasing && (st.tool === 'cut' || (st.tool !== 'eraser' && st.eraser === 'cut'))) { drawing = { p, cut: true, last: null, before: p.strokes }; cutAt(p, norm(p, e)); return; }
       if (erasing) { drawing = { p, erase: true, act: { type: 'erase', pi: p.i, removed: [] } }; eraseAt(p, norm(p, e), drawing.act); return; }
       if (st.tool === 'fountain') {
         drawing = { p, s: { t: 'fp', c: st.color, w: App.inkPen.FOUNTAIN_WIDTHS[st.wIdx], th: App.inkPen.clampThinning(S.inkThinning), sim: e.pointerType !== 'pen', pts: [norm(p, e)] }, pid: e.pointerId };
@@ -422,6 +438,7 @@
         return;
       }
       if (drawing.lasso) { drawing.lasso.push(norm(p, e)); drawLasso(p, drawing.lasso); return; }
+      if (drawing.cut) { cutAt(p, norm(p, e)); return; }
       if (drawing.erase) { eraseAt(p, norm(p, e), drawing.act); return; }
       const ce = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
       const evs = ce.length ? ce : [e];
@@ -454,7 +471,12 @@
         recognize(p, poly);
         return;
       }
-      if (drawing.erase) { if (drawing.act.removed.length) { st.undo.push(drawing.act); st.redo = []; dirty.add(p.i); saveInk(p.i); } }
+      if (drawing.cut) {
+        p.live.getContext('2d').clearRect(0, 0, p.live.width, p.live.height);
+        // Kopie: spätere Striche hängen sich an p.strokes an und dürfen den Undo-Stand nicht verändern
+        if (p.strokes !== drawing.before) { st.undo.push({ type: 'cut', pi: p.i, before: drawing.before, after: p.strokes.slice() }); st.redo = []; dirty.add(p.i); saveInk(p.i); }
+      }
+      else if (drawing.erase) { if (drawing.act.removed.length) { st.undo.push(drawing.act); st.redo = []; dirty.add(p.i); saveInk(p.i); } }
       else {
         const s = drawing.s;
         s.pts = s.pts.map((q) => [+q[0].toFixed(4), +q[1].toFixed(4), +q[2].toFixed(2)]);
@@ -546,6 +568,7 @@
       closeHw();
       if (t !== 'select') clearSel();
       st.tool = t;
+      if (t === 'eraser' || t === 'cut') st.eraser = t;
       $$('[data-tool]', root).forEach((b) => b.classList.toggle('active', b.dataset.tool === t));
       drawColors();
       const fp = root.querySelector('.fp-pop'); if (fp) fp.remove();
@@ -597,6 +620,7 @@
       const back = from === st.undo;
       if (a.type === 'add') { if (back) p.strokes = p.strokes.filter((x) => x !== a.s); else p.strokes.push(a.s); }
       else if (a.type === 'erase') { if (back) p.strokes = p.strokes.concat(a.removed); else p.strokes = p.strokes.filter((x) => !a.removed.includes(x)); }
+      else if (a.type === 'cut') p.strokes = (back ? a.before : a.after).slice();
       else if (a.type === 'img-add') { if (back) p.images = p.images.filter((x) => x !== a.im); else p.images.push(a.im); }
       else if (a.type === 'img-del') { if (back) p.images.splice(Math.min(a.idx, p.images.length), 0, a.im); else p.images = p.images.filter((x) => x !== a.im); }
       else if (a.type === 'img-edit') { const im = p.images.find((x) => x.id === a.id); if (im) Object.assign(im, back ? a.before : a.after); }
@@ -608,7 +632,7 @@
     const destroy = () => {
       if (destroyed) return;
       destroyed = true;
-      INK.lastState = { fileId: f.id, defaultTool: st.tool, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx };
+      INK.lastState = { fileId: f.id, defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx };
       flushAll(); io.disconnect(); ro.disconnect();
       // Bild-Cache dieser Datei freigeben (sonst wächst er mit jedem geöffneten Blatt)
       st.pages.forEach((p) => (p.images || []).forEach((im) => imgCache.delete(im.id)));
@@ -712,11 +736,11 @@
 
     if (!st.pages.length && !pagesEl.children.length) pagesEl.innerHTML = '<div class="card">Keine Seiten.</div>';
     if (st.penOnly && !embedded) note('✍ Stift schreibt · Finger scrollt & zoomt');
-    return { flush: flushAll, destroy, state: () => ({ defaultTool: st.tool, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx }) };
+    return { flush: flushAll, destroy, state: () => ({ defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx }) };
   };
 
   // ---------- Vollbild-Viewer ----------
-  // opts: Werkzeug-Zustand übernehmen (defaultTool, color, mcolor, wIdx)
+  // opts: Werkzeug-Zustand übernehmen (defaultTool, eraser, color, mcolor, wIdx)
   INK.open = async (fileId, opts = {}) => {
     const root = document.createElement('div');
     $('#overlay-root').appendChild(root);
