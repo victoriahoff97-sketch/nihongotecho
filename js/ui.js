@@ -257,7 +257,7 @@
       if (lesson !== undefined && lesson !== '' && String(f.lesson) !== String(lesson)) return;
       out.push(f);
     });
-    return out.sort((a, b) => b.created - a.created);
+    return out.sort(App.byFileOrder);
   };
   const kanjiChars = (s) => Array.from(String(s || '')).filter((c) => JP.hasKanji(c) && c !== '々');
   App.related = (it) => {
@@ -343,17 +343,167 @@
     const ink = App.store.inkCount.get(f.id);
     const ext = (f.name.split('.').pop() || '').toUpperCase().slice(0, 5);
     return `<div class="file-card" data-open-file="${f.id}">
-      <div class="thumb">${k === 'image' ? `<img data-thumb="${f.id}" alt="">` : `<span class="ext" style="--c:${EXT_COLOR[k]}">${esc(k === 'notebook' ? '✎' : ext || EXT_LABEL[k])}</span>`}
+      <div class="thumb">${k === 'image' ? `<img data-thumb="${f.id}" alt="">` : `<span class="ext" style="--c:${EXT_COLOR[k]}">${esc(k === 'notebook' ? '✎' : ext || EXT_LABEL[k])}</span>`}${k === 'pdf' ? `<img class="pdf-thumb" data-pdf-thumb="${f.id}" alt="" hidden>` : ''}
       ${ink ? `<span class="ink-dot">✎ ${ink}</span>` : ''}</div>
       <div class="info"><b title="${esc(f.name)}">${esc(f.name)}</b>
       <div class="row" style="gap:4px">${App.srcBadge(f)}<span class="badge">${EXT_LABEL[k]}</span></div></div></div>`;
   };
+  // ---------- Reihenfolge der Dateikarten ----------
+  // Platz einer Datei: selbst gesetzt (f.order) oder – solange nie verschoben – neueste zuerst
+  App.fileOrder = (f) => (typeof f.order === 'number' ? f.order : -(f.created || 0));
+  App.byFileOrder = (a, b) => App.fileOrder(a) - App.fileOrder(b);
+  // files = die sichtbaren Dateien in der neuen Reihenfolge. Sie tauschen nur ihre bisherigen Plätze untereinander,
+  // gerade nicht sichtbare (gefilterte) Dateien bleiben, wo sie sind. Ergebnis: [[datei, neuerPlatz], …] nur für Geändertes
+  App.reorderKeys = (files) => {
+    const keys = files.map(App.fileOrder).sort((a, b) => a - b);
+    for (let i = 1; i < keys.length; i++) if (keys[i] <= keys[i - 1]) keys[i] = keys[i - 1] + 1;
+    return files.map((f, i) => [f, keys[i]]).filter(([f, k]) => App.fileOrder(f) !== k);
+  };
+  App.reorderFiles = async (ids) => {
+    const ch = App.reorderKeys(ids.map((id) => App.store.files.get(id)).filter(Boolean));
+    if (!ch.length) return;
+    ch.forEach(([f, k]) => { f.order = k; });
+    await App.db.putMany('files', ch.map(([f]) => f));
+    App.emit('files');
+  };
+  // Karten ziehen: Maus sofort, Finger/Stift nach kurzem Gedrückthalten (sonst wäre Scrollen nicht mehr möglich)
+  let drag = null;
+  const HOLD_MS = 350, SLOP = 8;
+  const endDrag = (save) => {
+    const d = drag;
+    if (!d) return;
+    drag = null;
+    clearTimeout(d.timer);
+    d.card.classList.remove('dragging');
+    d.grid.classList.remove('sorting');
+    if (!d.active) return;
+    // der Klick nach dem Loslassen soll die Datei nicht öffnen
+    const stop = (e) => { e.stopPropagation(); e.preventDefault(); };
+    document.addEventListener('click', stop, { capture: true, once: true });
+    setTimeout(() => document.removeEventListener('click', stop, { capture: true }), 50);
+    if (save) App.reorderFiles($$('.file-card[data-open-file]', d.grid).map((c) => c.dataset.openFile));
+    else App.render(true);
+  };
+  const startDrag = () => { drag.active = true; drag.card.classList.add('dragging'); drag.grid.classList.add('sorting'); };
+  document.addEventListener('pointerdown', (e) => {
+    if (drag || e.button > 0 || !e.target.closest) return;
+    const card = e.target.closest('.file-card[data-open-file]');
+    const grid = card && card.closest('.file-grid:not([data-fixed])');
+    if (!grid || grid.children.length < 2) return;
+    drag = { card, grid, id: e.pointerId, x: e.clientX, y: e.clientY, active: false, mouse: e.pointerType === 'mouse' };
+    if (!drag.mouse) drag.timer = setTimeout(() => { if (drag && !drag.active) startDrag(); }, HOLD_MS);
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.active) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < SLOP) return;
+      if (!drag.mouse) { endDrag(false); return; } // vor Ablauf der Haltezeit bewegt = Scrollen
+      startDrag();
+    }
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const over = el && el.closest && el.closest('.file-card');
+    if (!over || over === drag.card || over.parentNode !== drag.grid) return;
+    const after = drag.card.compareDocumentPosition(over) & Node.DOCUMENT_POSITION_FOLLOWING;
+    drag.grid.insertBefore(drag.card, after ? over.nextSibling : over);
+  });
+  document.addEventListener('pointerup', (e) => { if (drag && e.pointerId === drag.id) endDrag(true); });
+  document.addEventListener('pointercancel', (e) => { if (drag && e.pointerId === drag.id) endDrag(false); });
+  // während des Ziehens mit dem Finger nicht scrollen; kein Kontextmenü durch das Gedrückthalten; Bilder nicht „herausziehen“
+  document.addEventListener('touchmove', (e) => { if (drag && drag.active && e.cancelable) e.preventDefault(); }, { passive: false });
+  document.addEventListener('contextmenu', (e) => { if (drag && !drag.mouse) e.preventDefault(); });
+  document.addEventListener('dragstart', (e) => { if (e.target.closest && e.target.closest('.file-grid:not([data-fixed]) .file-card')) e.preventDefault(); });
+
   const urls = [];
   App.hydrateThumbs = async (root) => {
+    hydratePdfThumbs(root);
     for (const img of $$('img[data-thumb]', root)) {
       const b = await App.fileBlob(img.dataset.thumb);
       if (b) { const u = URL.createObjectURL(b); urls.push(u); img.src = u; }
     }
+  };
+
+  // ---------- PDF-Vorschaubilder (erste Seite, klein gerendert und im Store 'thumbs' aufbewahrt) ----------
+  const PTH = App.pdfThumb = {};
+  PTH.WIDTH = 400;
+  // Die Karte zeigt nur den Seitenanfang (4:3) – mehr als ein Quadrat wird nie gebraucht
+  PTH.size = (w, h, target = PTH.WIDTH) => {
+    const scale = target / w;
+    return { scale, w: target, h: Math.min(Math.round(h * scale), target) };
+  };
+  PTH.render = async (blob) => {
+    const lib = await App.ink.pdfjs();
+    const pdf = await lib.getDocument({
+      data: await blob.arrayBuffer(),
+      cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true,
+      standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/',
+    }).promise;
+    try {
+      const page = await pdf.getPage(1);
+      const vp1 = page.getViewport({ scale: 1 });
+      const sz = PTH.size(vp1.width, vp1.height);
+      const cv = document.createElement('canvas');
+      cv.width = sz.w; cv.height = sz.h;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, sz.w, sz.h);
+      // intent 'print': rendert ohne requestAnimationFrame – läuft so auch weiter, wenn das Fenster gerade im Hintergrund ist
+      await page.render({ canvasContext: ctx, viewport: page.getViewport({ scale: sz.scale }), intent: 'print' }).promise;
+      return await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.82));
+    } finally { pdf.destroy(); }
+  };
+  const thumbUrls = new Map(); // Datei-ID -> Objekt-URL (bleibt für die Sitzung, damit Karten beim Neuzeichnen nicht flackern)
+  const thumbFailed = new Set(); // defekte PDFs in dieser Sitzung nicht nochmal versuchen
+  const thumbQueue = [];
+  let thumbRunning = false;
+  const showThumb = (img, url) => {
+    img.onload = () => { img.classList.toggle('wide', img.naturalHeight / img.naturalWidth < 0.75); img.hidden = false; img.parentNode.classList.add('has-prev'); };
+    img.src = url;
+  };
+  PTH.url = async (id) => {
+    if (thumbUrls.has(id)) return thumbUrls.get(id);
+    let blob = (await App.db.get('thumbs', id))?.blob;
+    if (!blob) {
+      const src = await App.fileBlob(id);
+      if (!src) return null;
+      blob = await PTH.render(src);
+      if (!blob) return null;
+      if (App.store.files.has(id)) await App.db.put('thumbs', { id, blob }); // inzwischen gelöscht? dann nicht aufbewahren
+    }
+    const u = URL.createObjectURL(blob);
+    thumbUrls.set(id, u);
+    return u;
+  };
+  PTH.forget = (id) => { const u = thumbUrls.get(id); if (u) URL.revokeObjectURL(u); thumbUrls.delete(id); thumbFailed.delete(id); };
+  async function runThumbs() {
+    if (thumbRunning) return;
+    thumbRunning = true;
+    while (thumbQueue.length) {
+      const img = thumbQueue.shift();
+      const id = img.dataset.pdfThumb;
+      if (!img.isConnected || thumbFailed.has(id)) continue;
+      try {
+        const u = await PTH.url(id);
+        if (u) showThumb(img, u);
+      } catch (e) {
+        console.warn('PDF-Vorschau konnte nicht erzeugt werden:', id, e);
+        thumbFailed.add(id);
+      }
+    }
+    thumbRunning = false;
+  }
+  // Schon bekannte Vorschauen sofort zeigen, die übrigen erst, wenn die Karte ins Bild kommt – eine nach der anderen
+  const hydratePdfThumbs = (root) => {
+    const todo = [];
+    for (const img of $$('img[data-pdf-thumb]', root)) {
+      const u = thumbUrls.get(img.dataset.pdfThumb);
+      if (u) showThumb(img, u); else if (!thumbFailed.has(img.dataset.pdfThumb)) todo.push(img);
+    }
+    if (!todo.length) return;
+    // beobachtet wird der Rahmen – das Bild selbst ist bis zum Laden versteckt und käme nie „ins Bild“
+    const io = new IntersectionObserver((es) => {
+      es.forEach((e) => { if (e.isIntersecting) { io.unobserve(e.target); thumbQueue.push(e.target.querySelector('img[data-pdf-thumb]')); } });
+      runThumbs();
+    }, { rootMargin: '200px' });
+    todo.forEach((img) => io.observe(img.parentNode));
   };
   App.onChange((w) => { if (w === 'route') { urls.splice(0).forEach((u) => URL.revokeObjectURL(u)); } });
   document.addEventListener('click', (e) => {
@@ -413,7 +563,7 @@
     const g = (n) => root.querySelector(`[name="${n}"]`);
     return { source: g('source').value, lesson: g('lesson').value.trim(), section: g('section').value, tags: g('tags').value.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean), note: g('note').value.trim() };
   };
-  App.editFileMeta = (f) => {
+  App.editFileMeta = (f, opts = {}) => {
     const md = App.modal({
       title: 'Datei-Details', body: `<div class="field" style="margin-bottom:14px"><label>Name</label><input class="input" name="fname" value="${esc(f.name)}"></div>` + App.fileMetaForm(f),
       foot: '<button class="btn" data-no>Abbrechen</button><button class="btn btn-primary" data-ok>Speichern</button>',
@@ -422,6 +572,7 @@
     md.el.querySelector('[data-ok]').onclick = async () => {
       Object.assign(f, readMeta(md.el), { name: md.el.querySelector('[name=fname]').value.trim() || f.name });
       await App.updateFile(f); md.close(); App.toast('Gespeichert');
+      if (opts.onSave) opts.onSave(f);
     };
   };
   // Upload-Dialog. defaults: {source, lesson, section, sessionId, itemId, role, accept}

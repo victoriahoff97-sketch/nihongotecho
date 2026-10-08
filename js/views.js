@@ -564,7 +564,7 @@
           : `<div class="card"><div class="rel-list">${list.map(App.relItem).join('')}</div></div>`;
         return `<div class="${s.cls}"><div class="group-head"><h2>${s.label}</h2><span class="badge">${list.length}</span><span class="line"></span></div>${inner}</div>`;
       }).join('')}
-      ${fileRes.length ? `<div class="sec-library"><div class="group-head"><h2>Dateien</h2><span class="line"></span></div><div class="file-grid">${fileRes.map(App.fileCard).join('')}</div></div>` : ''}
+      ${fileRes.length ? `<div class="sec-library"><div class="group-head"><h2>Dateien</h2><span class="line"></span></div><div class="file-grid" data-fixed>${fileRes.map(App.fileCard).join('')}</div></div>` : ''}
       ${textRes.length ? `<div class="sec-library"><div class="group-head"><h2>In PDFs gefunden</h2><span class="badge">${textRes.length}</span><span class="line"></span></div><div class="stack">${textRes.map(pdfHitCard).join('')}</div></div>` : ''}
       ${q.q && App.pdfText.pending() ? '<p class="small muted">PDF-Texte werden gerade eingelesen – weitere Treffer erscheinen gleich.</p>' : ''}
       ${!res.length && !fileRes.length && !textRes.length ? `<div class="empty-state"><div class="big">探</div><h3>Nichts gefunden</h3><p>Tipp: Du kannst auf Deutsch, in Kana, Kanji oder Romaji suchen. Mit #schlagwort findest du alles zu einem Thema.</p>

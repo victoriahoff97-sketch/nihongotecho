@@ -186,7 +186,7 @@
     if (q.sec) files = files.filter((f) => f.section === q.sec);
     if (q.kind) files = files.filter((f) => App.fileKind(f) === q.kind);
     if (q.l) files = files.filter((f) => String(f.lesson) === q.l);
-    files.sort((a, b) => b.created - a.created);
+    files.sort(App.byFileOrder);
     const kinds = Array.from(new Set(all.map(App.fileKind)));
     const secs = Array.from(new Set(all.map((f) => f.section)));
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Alle Materialien: Buchseiten, Präsentationen, Hausaufgaben, Notizblätter – filterbar nach Quelle, Bereich und Lektion.',
@@ -389,7 +389,7 @@
       if (b.matches('[data-reset]')) {
         if (await App.confirm('Wirklich ALLE Daten (Einträge, Dateien, Notizen, Lernstand) löschen? Das kann nicht rückgängig gemacht werden. Mach vorher ein Backup!', { ok: 'Alles löschen' })) {
           await App.backup.detach(); // die Sicherung im Ordner bleibt, wie sie ist
-          for (const s of ['items', 'files', 'blobs', 'ink', 'srs', 'meta', 'dict']) await App.db.clear(s);
+          for (const s of ['items', 'files', 'blobs', 'thumbs', 'ink', 'srs', 'meta', 'dict']) await App.db.clear(s);
           location.reload();
         }
       }

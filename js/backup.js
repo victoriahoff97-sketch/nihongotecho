@@ -66,6 +66,7 @@
       await App.db.replace((await dataOps(daten, true)).concat([
         { store: 'blobs', clear: true, put: entries.filter((e) => e.blob).map((e) => ({ id: e.id, blob: e.blob })) },
         { store: 'ink', clear: true, put: rows },
+        { store: 'thumbs', clear: true }, // Vorschaubilder gehören zu den alten Dateien – werden neu erzeugt
       ]));
     },
   };

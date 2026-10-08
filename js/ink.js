@@ -175,6 +175,7 @@
     root.innerHTML = `<div class="viewer-bar">
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
       <div class="title">${esc(f.name)}</div>
+      ${embedded ? '' : `<button class="icon-btn" data-v="details" title="Umbenennen / Details">${icon('edit')}</button>`}
       <div class="grp"><button class="icon-btn" data-v="undo" title="Rückgängig">${icon('undo')}</button><button class="icon-btn" data-v="redo" title="Wiederholen">${icon('redo')}</button></div>
       <div class="grp">
         ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen, dann verschieben oder an den Ecken skalieren; Bilder ebenso'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
@@ -985,6 +986,7 @@
       const v = e.target.closest('[data-v]'); if (!v) return;
       const a = v.dataset.v;
       if (a === 'close') close();
+      if (a === 'details') App.editFileMeta(f, { onSave: () => { root.querySelector('.viewer-bar .title').textContent = f.name; } });
       if (a === 'full') { flushAll(); opts.onFullscreen(); }
       if (a === 'undo') doUndo(st.undo, st.redo);
       if (a === 'redo') doUndo(st.redo, st.undo);

@@ -106,8 +106,9 @@ window.App = window.App || {};
   function openDB() {
     if (dbp) return dbp;
     dbp = new Promise((res, rej) => {
-      // v2: Store 'dict' (Wörterbuch-Pakete). Upgrade legt nur fehlende Stores an – vorhandene Daten bleiben unberührt.
-      const r = indexedDB.open(DB_NAME, 2);
+      // v2: Store 'dict' (Wörterbuch-Pakete), v3: Store 'thumbs' (PDF-Vorschaubilder, jederzeit neu erzeugbar – nicht in der Sicherung).
+      // Upgrade legt nur fehlende Stores an – vorhandene Daten bleiben unberührt.
+      const r = indexedDB.open(DB_NAME, 3);
       r.onupgradeneeded = () => {
         const db = r.result;
         const need = (name, keyPath) => (db.objectStoreNames.contains(name) ? null : db.createObjectStore(name, { keyPath }));
@@ -117,6 +118,7 @@ window.App = window.App || {};
         need('ink', 'key');
         need('srs', 'id');
         need('meta', 'key');
+        need('thumbs', 'id');
         const dict = need('dict', 'id');
         if (dict) {
           dict.createIndex('k', 'k', { multiEntry: true });
@@ -349,6 +351,8 @@ window.App = window.App || {};
     S.files.delete(id);
     await App.db.del('files', id);
     await App.db.del('blobs', id);
+    await App.db.del('thumbs', id);
+    if (App.pdfThumb) App.pdfThumb.forget(id);
     const inks = await App.db.all('ink');
     for (const k of inks.filter((x) => x.fileId === id)) await App.db.del('ink', k.key);
     S.inkCount.delete(id);
