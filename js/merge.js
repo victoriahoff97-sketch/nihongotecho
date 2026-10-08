@@ -52,7 +52,8 @@
   const phraseKey = (it) => norm(App.jp.plain(it.jp || '')) + '|' + App.jp.toHira(norm(App.jp.kana(it.jp || '')));
   const phraseMatches = (packItem, existingAll) => {
     const pKey = App.vocabKey(packItem);
-    return existingAll.filter((ex) => ex.type === 'phrase' && phraseKey(ex) === pKey);
+    // gen trägt die Kanji-Schreibung, wo der Ausdruck selbst in Kana steht (だれ / 誰)
+    return existingAll.filter((ex) => ex.type === 'phrase' && (phraseKey(ex) === pKey || (ex.gen && ex.gen.kana && App.vocabKey(ex.gen) === pKey)));
   };
 
   const kanjiMatches = (packItem, existingKanji) => existingKanji.filter((ex) => ex.char === packItem.char);
