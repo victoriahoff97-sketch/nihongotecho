@@ -1100,3 +1100,16 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .gk-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px; align-items: center; }
 .gk-legend > span { display: inline-flex; align-items: center; gap: 8px; }
 @media (max-width: 640px) { .gk-group summary { flex-wrap: wrap; } .gk-kana { min-width: 0; } }
+
+/* ---------- Buchaufgaben ---------- */
+.ex-block { margin-top: 16px; }
+.ex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-top: 8px; }
+.ex-grid.wide { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.ex-thumb { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; text-decoration: none; color: inherit; box-shadow: var(--shadow); transition: transform .12s; }
+.ex-thumb:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.ex-img { display: block; height: 120px; overflow: hidden; background: #fff; }
+.ex-img img { display: block; width: 100%; }
+.ex-cap { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; font-weight: 800; border-top: 3px solid var(--sec); }
+.ex-full { display: block; width: 100%; max-width: 860px; margin-top: 14px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+.ex-attempt { cursor: pointer; }
+.ex-attempt canvas { display: block; width: 100%; margin-top: 8px; background: #fff; border-radius: 8px; }

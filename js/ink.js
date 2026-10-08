@@ -260,9 +260,14 @@
           pageDefs.push({ kind: 'pdf', n: i, ratio: vp.height / vp.width, page: p });
         }
       } else if (kind === 'image') {
-        const url = URL.createObjectURL(await App.fileBlob(f.id));
-        img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
-        pageDefs.push({ kind: 'image', ratio: img.naturalHeight / img.naturalWidth });
+        // Buchaufgabe: der Hintergrund kommt aus dem Buchaufgaben-Paket, die Datei selbst hat keinen Blob
+        const blob = f.exerciseId ? await App.exercises.blobOf(f.exerciseId) : await App.fileBlob(f.id);
+        if (!blob && f.exerciseId) pageDefs.push({ kind: 'paper', ratio: f.exW && f.exH ? f.exH / f.exW : 0.5, paper: 'blank', missing: 'Buchaufgaben-Paket nicht geladen' });
+        else {
+          const url = URL.createObjectURL(blob);
+          img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
+          pageDefs.push({ kind: 'image', ratio: img.naturalHeight / img.naturalWidth });
+        }
       } else {
         for (let i = 0; i < (f.pages || 1); i++) pageDefs.push({ kind: 'paper', ratio: A4, paper: UL.pagePaper(f, i) });
       }
@@ -400,6 +405,7 @@
           await p.def.page.render({ canvasContext: ctx, viewport: vp }).promise;
         } else if (p.def.kind === 'image') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, tw, th); ctx.drawImage(img, 0, 0, tw, th); }
         else drawPaper(ctx, tw, th, p.def.paper, st.book ? BOOK_PAPER : null);
+        if (p.def.missing) { ctx.fillStyle = '#8a8d96'; ctx.font = `700 ${Math.round(tw / 40)}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText(p.def.missing, tw / 2, th / 2); }
         p.bg.width = tw; p.bg.height = th; p.bg.getContext('2d').drawImage(off, 0, 0);
         p.renderedW = tw;
         p.el.querySelector('.loading').hidden = true;

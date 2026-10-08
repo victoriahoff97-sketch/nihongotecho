@@ -273,8 +273,8 @@
     view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Pakete <span class="jp-title">包</span></h1>
       <p>JLPT-Wortschatz, Kanji und Grammatik freischalten und das Wörterbuch für den Satz-Scan installieren. Alles bleibt offline in diesem Browser.</p></div>
       <a class="btn btn-sm" href="#/lizenzen">${icon('info')} Lizenzen</a></div>
-      ${App.genki && App.genki.present() ? `<div class="section-title">Lehrbuch</div>
-      ${App.genki.card()}` : ''}
+      <div class="section-title">Lehrbuch</div>
+      <div class="stack">${App.genki && App.genki.present() ? App.genki.card() : ''}${App.exercises.card()}</div>
       <div class="section-title">JLPT-Niveaus</div>
       <div class="grid cols-3">${packs.filter((p) => p.kind === 'level').map(packCard).join('')}</div>
       <div class="section-title">Wörterbuch</div>

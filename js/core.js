@@ -108,9 +108,10 @@ window.App = window.App || {};
   function openDB() {
     if (dbp) return dbp;
     dbp = new Promise((res, rej) => {
-      // v2: Store 'dict' (Wörterbuch-Pakete), v3: Store 'thumbs' (PDF-Vorschaubilder, jederzeit neu erzeugbar – nicht in der Sicherung).
+      // v2: Store 'dict' (Wörterbuch-Pakete), v3: Store 'thumbs' (PDF-Vorschaubilder, jederzeit neu erzeugbar – nicht in der Sicherung),
+      // v4: Store 'exblobs' (Bilder des Buchaufgaben-Pakets, aus der Paket-Datei wiederherstellbar – nicht in der Sicherung).
       // Upgrade legt nur fehlende Stores an – vorhandene Daten bleiben unberührt.
-      const r = indexedDB.open(DB_NAME, 3);
+      const r = indexedDB.open(DB_NAME, 4);
       r.onupgradeneeded = () => {
         const db = r.result;
         const need = (name, keyPath) => (db.objectStoreNames.contains(name) ? null : db.createObjectStore(name, { keyPath }));
@@ -121,6 +122,7 @@ window.App = window.App || {};
         need('srs', 'id');
         need('meta', 'key');
         need('thumbs', 'id');
+        need('exblobs', 'id');
         const dict = need('dict', 'id');
         if (dict) {
           dict.createIndex('k', 'k', { multiEntry: true });
@@ -525,6 +527,8 @@ window.App = window.App || {};
     if (App.genki) { try { await App.genki.loadIfOpen(); } catch (e) { console.error('Genki: Laden fehlgeschlagen', e); } }
     // WaniKani-Verbindung (nur lokal): ein Fehler hier darf den Start nie verhindern
     if (App.wk) { try { await App.wk.load(); } catch (e) { console.error('WaniKani: Laden fehlgeschlagen', e); } }
+    // Buchaufgaben-Paket: ein Fehler hier darf den Start nie verhindern
+    if (App.exercises) { try { await App.exercises.init(); } catch (e) { console.error('Buchaufgaben: Laden fehlgeschlagen', e); } }
     await seed();
     await applyJlptIndexOnce();
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* egal */ }

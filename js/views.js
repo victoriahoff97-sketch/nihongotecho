@@ -431,9 +431,11 @@
         <div class="section-title">Üben</div>
         <div class="row"><a class="btn btn-sec" href="#/ueben/saetze?g=${encodeURIComponent(it.id)}">${icon('sparkle')} Übersetzungsübung zu diesem Thema</a>
         <span class="small muted">${(it.patterns || []).length ? `${it.patterns.length} Satzmuster + Beispielsätze` : 'Nutzt die Beispielsätze dieses Punktes'}</span></div>
+        ${App.exercises.grammarBlock(it)}
         ${App.attachmentsHtml(it)}
       </div><aside>${App.relatedHtml(it)}</aside></div></div>`;
     App.hydrateThumbs(view);
+    App.exercises.hydrate(view);
     view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.STATUS[b.dataset.v].label); App.render(true); } };
   });
 
@@ -553,7 +555,7 @@
     // PDF-Inhalt (Textebene); diese Dateien erscheinen nur dort, nicht nochmal bei den Datei-Namen
     const textRes = q.q ? App.pdfText.search(Array.from(S.files.values()), q.q) : [];
     const inText = new Set(textRes.map((r) => r.file.id));
-    const fileRes = q.q ? Array.from(S.files.values()).filter((f) => !inText.has(f.id)).filter((f) => (f.name + ' ' + (f.tags || []).join(' ') + ' ' + (f.note || '')).toLowerCase().includes(q.q.toLowerCase().replace(/^#/, ''))) : [];
+    const fileRes = q.q ? Array.from(S.files.values()).filter((f) => !inText.has(f.id) && !f.exerciseId).filter((f) => (f.name + ' ' + (f.tags || []).join(' ') + ' ' + (f.note || '')).toLowerCase().includes(q.q.toLowerCase().replace(/^#/, ''))) : [];
     view.innerHTML = `<div class="page-head"><div class="titles"><h1>Suche <span class="jp-title">検索</span></h1><p>${res.length + fileRes.length + textRes.length} Treffer für „${esc(q.q || '')}“${JP.looksRomaji(q.q) ? ` · auch als <span lang="ja">${esc(JP.romaji(q.q))}</span>` : ''}</p></div></div>
       ${['vocab', 'grammar', 'kanji', 'phrase', 'session', 'prompt', 'answer', 'journal'].filter((t) => groups.has(t)).map((t) => {
         const s = App.SECTIONS[t];

@@ -177,10 +177,12 @@
   // Bibliothek
   // =========================================================
   const KIND_LABEL = { pdf: 'PDF', image: 'Bilder', slides: 'Präsentationen', notebook: 'Notizblätter', video: 'Videos', audio: 'Audio', doc: 'Dokumente', deck: 'Anki/Tabellen', other: 'Sonstige' };
-  const SEC_LABEL = { library: 'Allgemein', grammar: 'Grammatik', vocab: 'Vokabeln', kanji: 'Kanji', phrase: 'Ausdrücke', session: 'Unterricht' };
+  const SEC_LABEL = { library: 'Allgemein', grammar: 'Grammatik', vocab: 'Vokabeln', kanji: 'Kanji', phrase: 'Ausdrücke', session: 'Unterricht', exercise: 'Buchaufgaben' };
   App.route('/bibliothek', (view, p, q) => {
     const sec = App.SECTIONS.library;
-    const all = Array.from(S.files.values());
+    // Versuche zu Buchaufgaben stehen bei ihrer Aufgabe (Kategorie „Buchaufgaben“), nicht als einzelne Dateien in der Liste
+    const all = Array.from(S.files.values()).filter((f) => !f.exerciseId);
+    const exMode = q.sec === 'exercise';
     let files = all;
     if (q.src) files = files.filter((f) => App.srcMatch(f, q.src));
     if (q.sec) files = files.filter((f) => f.section === q.sec);
@@ -189,15 +191,17 @@
     files.sort(App.byFileOrder);
     const kinds = Array.from(new Set(all.map(App.fileKind)));
     const secs = Array.from(new Set(all.map((f) => f.section)));
+    if (App.exercises.inLibrary()) secs.push('exercise');
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Alle Materialien: Buchseiten, Präsentationen, Hausaufgaben, Notizblätter – filterbar nach Quelle, Bereich und Lektion.',
-      `<button class="btn" data-nb>${icon('notebook')} Notizblatt</button><button class="btn btn-sec" data-upload="library">${icon('upload')} Hochladen</button>`)}
-      <div class="dropzone" data-drop style="margin-bottom:18px">${icon('upload')} <b>Dateien hierher ziehen</b> – PDF, Fotos, PowerPoint, Videos …</div>
+      `${App.exercises.inLibrary() ? `<a class="btn ${exMode ? 'btn-sec' : ''}" href="${exMode ? '#/bibliothek' : App.exercises.libHref()}">${icon('practice')} Buchaufgaben</a>` : ''}<button class="btn" data-nb>${icon('notebook')} Notizblatt</button><button class="btn btn-sec" data-upload="library">${icon('upload')} Hochladen</button>`)}
+      <div class="dropzone" data-drop style="margin-bottom:18px"${exMode ? ' hidden' : ''}>${icon('upload')} <b>Dateien hierher ziehen</b> – PDF, Fotos, PowerPoint, Videos …</div>
       <div class="toolbar"><div class="filter-row">
         ${App.sourceSelect(all, q.src)}<select class="input" data-q-select="sec"><option value="">Alle Bereiche</option>${secs.map((s) => `<option value="${s}" ${q.sec === s ? 'selected' : ''}>${SEC_LABEL[s] || s}</option>`).join('')}</select>
-        <select class="input" data-q-select="kind"><option value="">Alle Dateitypen</option>${kinds.map((k) => `<option value="${k}" ${q.kind === k ? 'selected' : ''}>${KIND_LABEL[k]}</option>`).join('')}</select>
-        ${App.lessonSelect(all, q.l)}</div></div>
-      <div style="margin-top:16px">${files.length ? `<div class="file-grid">${files.map(App.fileCard).join('')}</div>` : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien</h3><p>Lade deine Genki-Seiten, Marugoto-PDFs, PowerPoints aus dem VHS-Kurs oder Hausaufgaben hoch.</p></div>`}</div></div>`;
+        ${exMode ? '' : `<select class="input" data-q-select="kind"><option value="">Alle Dateitypen</option>${kinds.map((k) => `<option value="${k}" ${q.kind === k ? 'selected' : ''}>${KIND_LABEL[k]}</option>`).join('')}</select>
+        ${App.lessonSelect(all, q.l)}`}</div></div>
+      <div style="margin-top:16px">${exMode ? App.exercises.libraryHtml(q) : files.length ? `<div class="file-grid">${files.map(App.fileCard).join('')}</div>` : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien</h3><p>Lade deine Genki-Seiten, Marugoto-PDFs, PowerPoints aus dem VHS-Kurs oder Hausaufgaben hoch.</p></div>`}</div></div>`;
     App.hydrateThumbs(view);
+    App.exercises.hydrate(view);
     view.querySelector('[data-nb]').onclick = () => App.newNotebook({ section: 'library' });
     const dz = view.querySelector('[data-drop]');
     dz.onclick = () => App.uploadDialog({ source: App.oneSrc(q.src), section: q.sec || 'library' });
@@ -242,6 +246,8 @@
     if (withFiles) {
       data.files = [];
       let fl = Array.from(S.files.values());
+      // eigene Versuche zu Buchaufgaben (Handschrift) werden nicht geteilt – im Komplett-Backup bleiben sie
+      if (share) fl = fl.filter((f) => !f.exerciseId);
       if (share && sections) fl = fl.filter((f) => sections.includes(f.section === 'library' ? 'library' : f.section) || sections.includes('library'));
       if (share && sources) fl = fl.filter((f) => !f.source || sources.includes(f.source));
       for (const f of fl) { const b = await App.fileBlob(f.id); data.files.push({ meta: f, data: b ? await blobToB64(b) : null }); }
@@ -277,8 +283,9 @@
       }
     }
     for (const x of data.files || []) {
-      if (S.files.has(x.meta.id) || !x.data) continue;
-      await App.db.put('blobs', { id: x.meta.id, blob: await b64ToBlob(x.data) });
+      // Versuche zu Buchaufgaben haben keinen eigenen Blob (das Bild kommt aus dem Buchaufgaben-Paket)
+      if (S.files.has(x.meta.id) || (!x.data && !x.meta.exerciseId)) continue;
+      if (x.data) await App.db.put('blobs', { id: x.meta.id, blob: await b64ToBlob(x.data) });
       await App.db.put('files', x.meta); S.files.set(x.meta.id, x.meta); nf++;
     }
     for (const k of data.ink || []) { await App.db.put('ink', k); if (App.inkImages.hasInk(k)) S.inkCount.set(k.fileId, (S.inkCount.get(k.fileId) || 0) + 1); }
@@ -389,7 +396,7 @@
       if (b.matches('[data-reset]')) {
         if (await App.confirm('Wirklich ALLE Daten (Einträge, Dateien, Notizen, Lernstand) löschen? Das kann nicht rückgängig gemacht werden. Mach vorher ein Backup!', { ok: 'Alles löschen' })) {
           await App.backup.detach(); // die Sicherung im Ordner bleibt, wie sie ist
-          for (const s of ['items', 'files', 'blobs', 'thumbs', 'ink', 'srs', 'meta', 'dict']) await App.db.clear(s);
+          for (const s of ['items', 'files', 'blobs', 'thumbs', 'exblobs', 'ink', 'srs', 'meta', 'dict']) await App.db.clear(s);
           location.reload();
         }
       }

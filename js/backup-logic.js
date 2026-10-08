@@ -245,7 +245,8 @@
       const exact = B.fileName(f);
       const name = have.includes(exact) ? exact : have.find((n) => B.idOfName(n) === f.id);
       const blob = name ? await fileOf(dFiles, name) : null;
-      if (!blob) miss++;
+      // Versuche zu Buchaufgaben haben nie eine eigene Datei (das Bild kommt aus dem Buchaufgaben-Paket) – nichts fehlt
+      if (!blob && !f.exerciseId) miss++;
       entries.push({ id: f.id, blob });
     }
     const inks = [];
