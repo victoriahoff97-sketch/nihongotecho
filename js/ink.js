@@ -199,8 +199,6 @@
     root.classList.add(embedded ? 'ink-embed' : 'viewer');
     root.innerHTML = `<div class="viewer-bar">
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
-      <div class="title">${esc(f.name)}</div>
-      ${embedded ? '' : `<button class="icon-btn" data-v="details" title="Umbenennen / Details">${icon('edit')}</button>`}
       <div class="grp"><button class="icon-btn" data-v="undo" title="Rückgängig">${icon('undo')}</button><button class="icon-btn" data-v="redo" title="Wiederholen">${icon('redo')}</button></div>
       <div class="grp">
         ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen, dann verschieben oder an den Ecken skalieren; Bilder ebenso'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
@@ -213,19 +211,25 @@
       </div>
       <div class="grp" data-colors></div>
       <div class="grp"><button class="btn btn-sm btn-ghost" data-v="width" title="Strichstärke">●●</button></div>
-      <div class="grp"><button class="icon-btn" data-v="zout" title="Verkleinern">${icon('zoomOut')}</button><button class="btn btn-sm btn-ghost" data-v="fit" title="Einpassen">100%</button><button class="icon-btn" data-v="zin" title="Vergrößern">${icon('zoomIn')}</button></div>
-      <div class="grp">
-        <button class="btn btn-sm ${st.penOnly ? 'btn-sec' : ''}" data-v="penonly" title="Wenn aktiv: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">✍ Nur Stift</button>
+      <div class="grp grp-end">
         ${bookable ? `<button class="btn btn-sm ${st.book ? 'btn-sec' : ''}" data-v="book" title="Buchlayout: zwei Seiten nebeneinander wie in einem Notizbuch">📖 Buch</button>` : ''}
-        ${splittable ? `<button class="btn btn-sm ${st.split ? 'btn-sec' : ''}" data-v="split" title="Aufgabe und Schreibblatt nebeneinander (im Querformat)">◫ Nebeneinander</button><button class="btn btn-sm" data-v="swap" title="Seiten tauschen: Aufgabe links oder rechts (z. B. für Linkshänder)"${st.split ? '' : ' hidden'}>⇄ Tauschen</button>` : ''}
-        <button class="icon-btn" data-v="paper" title="Papier dieser Seite ändern (liniert, kariert, Kanji-Raster …)">${icon('lines')}</button>
+        ${splittable ? `<button class="btn btn-sm ${st.split ? 'btn-sec' : ''}" data-v="split" title="Aufgabe und Schreibblatt nebeneinander (im Querformat)">◫ Nebeneinander</button>` : ''}
+        <button class="btn btn-sm" data-v="paper" title="Papier dieser Seite ändern (liniert, kariert, Kanji-Raster …)">Papier</button>
         <button class="icon-btn" data-v="addpage" title="Leere Seite anhängen">${icon('filePlus')}</button>
-        <button class="icon-btn" data-v="print" title="Drucken / als PDF speichern">${icon('print')}</button>
         ${kind === 'pdf' ? `<button class="btn btn-sm" data-v="vocab" title="Vokabeln aus dieser PDF importieren">${icon('vocab')} Vokabeln auslesen</button>` : ''}
         ${embedded && opts.onFullscreen ? `<button class="icon-btn" data-v="full" title="Vollbild">⛶</button>` : ''}
       </div>
-      ${(opts.extraTools || []).length ? `<div class="grp">${opts.extraTools.map((t) => `<button class="btn btn-sm" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''} ${esc(t.label)}</button>`).join('')}</div>` : ''}</div>
-      <div class="viewer-scroll"><div class="viewer-pages"></div></div>`;
+      ${(opts.extraTools || []).length ? `<div class="grp">${opts.extraTools.map((t) => `<button class="btn btn-sm" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''} ${esc(t.label)}</button>`).join('')}</div>` : ''}
+      <div class="grp"><button class="icon-btn" data-v="more" title="Mehr: Zoom, Nur Stift, Drucken …">${icon('more')}</button></div>
+      <div class="more-pop card" hidden>
+        <div class="more-title" data-title>${esc(f.name)}</div>
+        ${embedded ? '' : `<button class="more-item" data-v="details">${icon('edit')}<span>Umbenennen / Details</span></button>`}
+        <button class="more-item" data-v="penonly" title="Wenn an: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">${icon('ballpen')}<span>Nur Stift schreibt</span><b data-state>${st.penOnly ? 'an' : 'aus'}</b></button>
+        ${splittable ? `<button class="more-item" data-v="swap" title="Aufgabe links oder rechts (z. B. für Linkshänder)"${st.split ? '' : ' hidden'}>${icon('shuffle')}<span>Seiten tauschen</span></button>` : ''}
+        <div class="more-item more-zoom">${icon('zoomIn')}<span>Zoom</span><button class="icon-btn sm" data-v="zout" title="Verkleinern">${icon('zoomOut')}</button><button class="btn btn-sm btn-ghost" data-v="fit" title="Einpassen">100%</button><button class="icon-btn sm" data-v="zin" title="Vergrößern">${icon('zoomIn')}</button></div>
+        <button class="more-item" data-v="print">${icon('print')}<span>Drucken / als PDF</span></button>
+      </div></div>
+      <div class="viewer-scroll">${embedded ? '' : `<div class="viewer-name" data-title>${esc(f.name)}</div>`}<div class="viewer-pages"></div></div>`;
     root.style.setProperty('--sec', 'var(--sora)');
     if (!embedded) document.body.style.overflow = 'hidden';
     const scroller = root.querySelector('.viewer-scroll');
@@ -1118,6 +1122,8 @@
       if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); doUndo(st.redo, st.undo); }
     };
     document.addEventListener('keydown', onKey);
+    const morePop = root.querySelector('.more-pop');
+    root.addEventListener('pointerdown', (e) => { if (!morePop.hidden && !e.target.closest('.more-pop, [data-v=more]')) morePop.hidden = true; }, true);
     root.querySelector('.viewer-bar').addEventListener('click', async (e) => {
       const t = e.target.closest('[data-tool]');
       if (t) { setTool(t.dataset.tool); return; }
@@ -1127,8 +1133,11 @@
       if (x) { const t = (opts.extraTools || []).find((y) => y.id === x.dataset.x); if (t) t.onClick(); return; }
       const v = e.target.closest('[data-v]'); if (!v) return;
       const a = v.dataset.v;
+      // „Mehr“-Menü: klappt auf den Knopf auf und nach jeder Wahl wieder zu – nur beim Zoomen bleibt es offen
+      if (a === 'more') morePop.hidden = !morePop.hidden;
+      else if (!['zin', 'zout', 'fit'].includes(a)) morePop.hidden = true;
       if (a === 'close') close();
-      if (a === 'details') App.editFileMeta(f, { onSave: () => { root.querySelector('.viewer-bar .title').textContent = f.name; } });
+      if (a === 'details') App.editFileMeta(f, { onSave: () => { $$('[data-title]', root).forEach((el) => { el.textContent = f.name; }); } });
       if (a === 'full') { flushAll(); opts.onFullscreen(); }
       if (a === 'undo') doUndo(st.undo, st.redo);
       if (a === 'redo') doUndo(st.redo, st.undo);
@@ -1140,7 +1149,7 @@
         st.wIdx = (st.wIdx + 1) % 3; v.textContent = ['●', '●●', '●●●'][st.wIdx];
       }
       if (a === 'penonly') {
-        st.penOnly = !st.penOnly; v.classList.toggle('btn-sec', st.penOnly); App.saveSettings({ penOnly: st.penOnly });
+        st.penOnly = !st.penOnly; v.querySelector('[data-state]').textContent = st.penOnly ? 'an' : 'aus'; App.saveSettings({ penOnly: st.penOnly });
         root.querySelector('[data-tool=hand]').hidden = st.penOnly;
         if (st.penOnly && st.tool === 'hand') setTool('pen');
         note(st.penOnly ? 'Nur der Stift schreibt – mit dem Finger scrollen & zoomen' : 'Finger schreibt jetzt auch');

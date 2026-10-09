@@ -63,6 +63,7 @@
     <circle cx="8" cy="16" r="3" fill="#85B7EB"/><circle cx="84" cy="14" r="2.5" fill="#FAC775"/></svg>`;
   const readTile = (cls, href, art, kicker, title, text, go) => `<a class="read-tile ${cls}" href="${href}" target="_blank" rel="noopener">
       <span class="art">${art}</span><span class="txt"><span class="kicker" lang="ja">${kicker}</span><b>${title}</b><span class="desc">${text}</span><span class="go">${go} →</span></span></a>`;
+  App.readTile = readTile;
   const readStrip = () => `<div class="read-strip">
       ${readTile('news', 'https://news.web.nhk/news/easy/', NEWS_SVG, '今日のニュース', 'NHK Easy lesen', 'Eine kurze Nachricht in einfachem Japanisch – mit Furigana.', 'Zur heutigen Nachricht')}
       ${readTile('wani', 'https://www.wanikani.com/', KANJI_SVG, '今日の漢字', 'WaniKani', 'Deine Kanji- und Vokabel-Reviews von heute erledigen.', 'Zu den Reviews')}</div>`;

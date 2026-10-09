@@ -469,6 +469,8 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .read-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 16px; }
 .read-tile { --c: var(--yamabuki); --soft: var(--yamabuki-soft); display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 18px; background: var(--soft); border: 2px dashed var(--c); text-decoration: none; color: var(--ink); transition: transform .15s, box-shadow .15s; }
 .read-tile.wani { --c: var(--sakura); --soft: var(--sakura-soft); }
+.read-tile.verb { --c: var(--daidai); --soft: var(--daidai-soft); }
+.read-tile.vocab { --c: var(--fuji); --soft: var(--fuji-soft); }
 .read-tile:hover { transform: translateY(-2px) rotate(-.4deg); box-shadow: var(--shadow); }
 .read-tile .art { flex: none; width: 92px; height: 84px; }
 .read-tile .art svg { width: 100%; height: 100%; }
@@ -618,10 +620,25 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .ink-embed { position: relative; display: flex; flex-direction: column; background: #5a5c63; border-radius: 14px; overflow: hidden; height: calc(100vh - var(--topbar-h) - 190px); min-height: 480px; }
 :root[data-theme="dark"] .ink-embed { background: #0e0f12; }
 .ink-embed .viewer-bar { box-shadow: none; }
-.viewer-bar {display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; box-shadow: var(--shadow); z-index: 2; }
-.viewer-bar .title { font-weight: 800; flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.viewer-bar .grp { display: flex; gap: 4px; align-items: center; padding: 0 6px; border-left: 1px solid var(--line); }
-.viewer-bar .color { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--card); box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; }
+.viewer-bar {display: flex; align-items: center; gap: 4px; padding: 8px 12px; background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; box-shadow: var(--shadow); z-index: 2; }
+.viewer-bar { position: relative; }
+.viewer-bar .grp-end { margin-left: auto; }
+/* „Mehr“-Menü der Leiste: selten Gebrauchtes (Zoom, Nur Stift, Tauschen, Drucken) und der Name des Blatts */
+.more-pop { position: absolute; z-index: 5; right: 8px; top: 100%; margin-top: 6px; width: 270px; max-width: calc(100% - 16px); padding: 6px; display: flex; flex-direction: column; }
+.more-pop[hidden], .more-item[hidden] { display: none; }
+.more-title { padding: 6px 10px 8px; font-size: 12px; font-weight: 600; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.more-item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 9px; background: none; color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+button.more-item:hover { background: var(--paper-2); }
+.more-item > span:not(.ico) { flex: 1; }
+.more-item > b { font-size: 12px; color: var(--sec, var(--shu)); }
+.more-zoom { cursor: default; padding-right: 2px; gap: 2px; }
+.more-zoom > .ico { margin-right: 8px; }
+/* Name des Blatts: klein über der ersten Seite, scrollt mit weg */
+.viewer-name { position: absolute; top: 4px; left: 22px; max-width: calc(100% - 44px); font-size: 12px; font-weight: 600; color: rgba(255,255,255,.62); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+.viewer-book .viewer-name { color: rgba(0,0,0,.45); }
+:root[data-theme="dark"] .viewer-book .viewer-name { color: rgba(255,255,255,.5); }
+.viewer-bar .grp { display: flex; gap: 3px; align-items: center; padding: 0 5px; border-left: 1px solid var(--line); }
+.viewer-bar .color { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--card); box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; }
 .viewer-bar .color.on { box-shadow: 0 0 0 2px var(--ink); }
 .viewer-scroll { flex: 1; overflow: auto; position: relative; touch-action: none; }
 /* wächst mit den Seiten: sonst ragt eine gezoomte, mittig stehende Seite links aus dem Scrollbereich und ist dort nicht erreichbar */
@@ -785,10 +802,11 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .nb-switch { margin-bottom: 12px; }
 /* Stift-Werkzeuge: Symbol · Farbstreifen · Beschriftung */
 .viewer-bar { container-type: inline-size; }
-.icon-btn.tool-btn { width: auto; min-width: 48px; height: auto; min-height: 44px; padding: 4px 4px 3px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+/* Lange Beschriftungen (Strich-Radierer) brechen am Bindestrich um, damit die Leiste auf dem Surface in eine Zeile passt */
+.icon-btn.tool-btn { width: auto; min-width: 44px; height: auto; min-height: 44px; padding: 4px 4px 3px; display: inline-flex; flex-direction: column; align-items: center; align-self: stretch; justify-content: flex-start; gap: 2px; }
 .tool-btn .tool-swatch { display: block; box-sizing: border-box; width: 20px; height: 6px; border-top: 3px solid transparent; background-clip: padding-box; border-radius: 2px; }
 .tool-btn .tool-swatch.mk { border-top: 0; opacity: .55; }
-.tool-btn .tool-lbl { font-size: 11px; line-height: 1.1; font-weight: 600; color: var(--muted); }
+.tool-btn .tool-lbl { width: min-content; text-align: center; font-size: 11px; line-height: 1.1; font-weight: 600; color: var(--muted); }
 .tool-btn.active .tool-lbl { color: var(--sec, var(--shu)); }
 @container (max-width: 720px) { .tool-btn .tool-lbl { display: none; } }
 

@@ -11,6 +11,25 @@
   const lessonNum = (it) => (it.lesson === '' || it.lesson == null || isNaN(+it.lesson)) ? null : +it.lesson;
   const maxLessonOptions = (cur) => Array.from({ length: 12 }, (_, i) => i + 1).map((l) => `<option value="${l}" ${+cur === l ? 'selected' : ''}>bis Lektion ${l}</option>`).join('');
 
+  // ---------- Übersicht: Leiste „Extern üben“ (externe Seiten, brauchen Internet) ----------
+  const VERB_SVG = `<svg viewBox="0 0 92 84" aria-hidden="true"><g transform="rotate(-5 46 42)">
+    <rect x="8" y="12" width="40" height="26" rx="8" fill="#fff" stroke="#993C1D" stroke-width="2"/>
+    <text x="28" y="31" text-anchor="middle" font-size="15" fill="#993C1D" style="font-family:var(--font-kanji)">聞く</text>
+    <path d="M40 44q8 2 10 10" fill="none" stroke="#993C1D" stroke-width="2" stroke-linecap="round"/><path d="M46 53l4 2 2-5" fill="none" stroke="#993C1D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="36" y="48" width="48" height="26" rx="8" fill="#F0997B" stroke="#993C1D" stroke-width="2"/>
+    <text x="60" y="67" text-anchor="middle" font-size="15" fill="#fff" style="font-family:var(--font-kanji)">聞いて</text></g>
+    <circle cx="78" cy="16" r="3" fill="#FAC775"/><circle cx="10" cy="68" r="2.5" fill="#85B7EB"/></svg>`;
+  const VOCAB_SVG = `<svg viewBox="0 0 92 84" aria-hidden="true">
+    <rect x="22" y="16" width="52" height="56" rx="9" fill="#CECBF6" stroke="#534AB7" stroke-width="2" transform="rotate(-10 48 44)"/>
+    <rect x="22" y="16" width="52" height="56" rx="9" fill="#AFA9EC" stroke="#534AB7" stroke-width="2" transform="rotate(-2 48 44)"/>
+    <g transform="rotate(6 48 44)"><rect x="22" y="16" width="52" height="56" rx="9" fill="#fff" stroke="#534AB7" stroke-width="2"/>
+    <text x="48" y="48" text-anchor="middle" font-size="20" fill="#534AB7" style="font-family:var(--font-kanji)">単語</text>
+    <path d="M34 58h28" stroke="#CECBF6" stroke-width="3" stroke-linecap="round"/></g>
+    <circle cx="10" cy="18" r="3" fill="#ED93B1"/><circle cx="84" cy="70" r="2.5" fill="#FAC775"/></svg>`;
+  const externStrip = () => `<div class="section-title">Extern üben</div><div class="read-strip" style="margin-top:0">
+      ${App.readTile('verb', 'https://ocamejp.com/Web-App/Verbformen/GENKI_ALL/index.html', VERB_SVG, '動詞の活用', 'Verbformen (Genki)', 'Alle Genki-Verben nach Lektion: ない-, ます-, て-, た-Form und mehr zum Aufdecken. Auf Englisch.', 'Zum Verbformen-Trainer')}
+      ${App.readTile('vocab', 'https://ocamejp.com/Web-App/genki-vokabeln/index.html', VOCAB_SVG, '単語', 'Genki-Vokabeln', 'Vokabeltrainer zu den Genki-Lektionen, Japanisch ⇔ Englisch.', 'Zum Vokabeltrainer')}</div>`;
+
   // =========================================================
   // Übersicht
   // =========================================================
@@ -27,7 +46,7 @@
         <a class="mode-card sec-kanji" href="#/ueben/kanji"><span class="k">書</span><h3>Kanji-Quiz</h3><span class="muted">Bedeutung sehen → mit dem Stift schreiben, oder Lesungen erkennen.</span>${wDue ? `<span class="badge count">${wDue} zu schreiben</span>` : ''}</a>
         <a class="mode-card sec-phrase" href="#/ueben/karten?type=phrase"><span class="k">表</span><h3>Auswendig-Lernen</h3><span class="muted">Wochentage, Zahlen, Zähler, Uhrzeiten, Floskeln …</span></a>
         <button class="mode-card sec-library" data-ai-prompt><span class="k">AI</span><h3>KI-Prompt</h3><span class="muted">Fertigen Prompt mit deinem Wortschatz & deiner Grammatik kopieren – für Claude & Co.</span></button>
-      </div></div>`;
+      </div>${externStrip()}</div>`;
     view.querySelector('[data-ai-prompt]').onclick = () => aiPromptDialog(S.settings.level || 12);
   });
 
