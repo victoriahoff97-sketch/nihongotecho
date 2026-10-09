@@ -913,7 +913,9 @@ button.more-item:hover { background: var(--paper-2); }
 .cal-entry-title { font-family: var(--font-jp); font-weight: 600; margin-bottom: 2px; }
 .cal-entry-text { font-family: var(--font-jp); font-size: 14px; line-height: 1.6; }
 .cal-entry-text p { margin: 0; }
-.cal-entry-preview { display: block; width: 100%; height: 56px; border-radius: 8px; border: 1px solid var(--line); }
+/* Handschrift-Vorschau: erste Seite ganz gezeichnet, in der Karte scrollbar */
+.cal-entry-scroll { max-height: 220px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable; border-radius: 8px; border: 1px solid var(--line); }
+.cal-entry-preview { display: block; width: 100%; height: 56px; margin-top: 0; border: 0; border-radius: 0; }
 /* Vergleich zweier Antworten */
 .cmp-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: start; }
 .cmp-col { min-width: 0; }

@@ -76,7 +76,14 @@
   const hydratePreviews = (root) => {
     const canvases = root.querySelectorAll('canvas[data-preview]');
     if (!canvases.length) return null;
-    const draw = async (c) => { const ok = await App.ink.preview(c, c.dataset.preview); if (!ok) c.hidden = true; };
+    // data-preview-full: ganze erste Seite bis zur letzten beschriebenen Zeile (Karte scrollt selbst), sonst nur der obere Ausschnitt
+    const draw = async (c) => {
+      const full = c.dataset.previewFull != null;
+      const ok = await App.ink.preview(c, c.dataset.preview, full ? { maxH: Infinity } : {});
+      if (!ok) (c.closest('.cal-entry-scroll') || c).hidden = true;
+      // Höhe folgt der Breite: bleibt unverzerrt, wenn sich die Kartenbreite nach dem Zeichnen ändert
+      else if (full) c.style.height = 'auto';
+    };
     if (!('IntersectionObserver' in window)) { canvases.forEach(draw); return null; }
     const io = new IntersectionObserver((entries) => {
       entries.forEach((en) => { if (en.isIntersecting) { io.unobserve(en.target); draw(en.target); } });
@@ -145,7 +152,7 @@
         <div class="cal-entry-body">
           ${j.title ? `<div class="cal-entry-title" lang="ja">${esc(j.title)}</div>` : ''}
           ${text ? `<div class="cal-entry-text" lang="ja">${text.split(/\n+/).map((l) => l.trim()).filter(Boolean).slice(0, 2).map((l) => `<p>${esc(l)}</p>`).join('')}</div>`
-            : hasInk ? `<canvas class="ans-preview cal-entry-preview" data-preview="${esc(nb.id)}"></canvas>` : '<div class="muted small">noch leer</div>'}
+            : hasInk ? `<div class="cal-entry-scroll"><canvas class="ans-preview cal-entry-preview" data-preview="${esc(nb.id)}" data-preview-full></canvas></div>` : '<div class="muted small">noch leer</div>'}
           ${badges ? `<div class="row" style="gap:4px;margin-top:6px">${badges}</div>` : ''}
         </div></a>`;
     };
