@@ -13,23 +13,43 @@
   const dropUrls = () => { urls.forEach((u) => URL.revokeObjectURL(u)); urls.clear(); };
 
   // ---------- Paket ----------
-  X.init = async () => { const r = await App.db.get('exblobs', DIR_KEY); dir = (r && r.dir) || null; };
+  X.init = async () => { const r = await App.db.get('exblobs', DIR_KEY); dir = (r && r.dir) || null; await syncPages(); };
   X.dir = () => dir;
   X.all = () => (dir ? dir.exercises : []);
   X.get = (id) => X.all().find((e) => e.id === id);
+  X.pages = () => (dir && dir.pages) || [];
+
+  // Buchseiten (PDF) als Dateien bei den Vokabeln: Einträge an das geladene Paket angleichen.
+  // Beim Abräumen bleibt, was auf die Seiten geschrieben wurde – liest man das Paket wieder ein, ist es wieder da.
+  const syncPages = async (fresh) => {
+    const plan = L.planPages(X.pages(), Array.from(App.store.files.values()), Date.parse(dir && dir.stand) || 0);
+    const touched = fresh ? X.pages().map((p) => L.pageFileId(p.id)) : plan.put.map((f) => f.id);
+    if (!plan.put.length && !plan.del.length && !touched.length) return;
+    plan.put.forEach((f) => App.store.files.set(f.id, f));
+    plan.del.forEach((id) => App.store.files.delete(id));
+    if (plan.put.length) await App.db.putMany('files', plan.put);
+    if (plan.del.length) await App.db.delMany('files', plan.del);
+    // Vorschaubilder gehören zum alten Inhalt
+    for (const id of plan.del.concat(touched)) { await App.db.del('thumbs', id); if (App.pdfThumb) App.pdfThumb.forget(id); }
+    App.emit('files');
+  };
 
   // Paket-Datei einlesen. Alles oder nichts: bei einem Fehler bleibt der bisherige Stand.
   X.load = async (file) => {
     const p = L.parsePack(new Uint8Array(await file.arrayBuffer()));
-    const rows = p.dir.exercises.map((e, i) => ({ id: e.id, blob: new Blob([p.image(i)], { type: 'image/webp' }) }));
-    const d = Object.assign({}, p.dir, { exercises: p.dir.exercises.map((e) => { const c = Object.assign({}, e); delete c.offset; delete c.size; return c; }) });
+    const pages = p.dir.pages || [];
+    const rows = p.dir.exercises.map((e, i) => ({ id: e.id, blob: new Blob([p.image(i)], { type: 'image/webp' }) }))
+      .concat(pages.map((e, i) => ({ id: e.id, blob: new Blob([p.file(i)], { type: 'application/pdf' }) })));
+    const d = Object.assign({}, p.dir, { exercises: p.dir.exercises.map((e) => { const c = Object.assign({}, e); delete c.offset; delete c.size; return c; }) },
+      p.dir.pages ? { pages: pages.map((e) => { const c = Object.assign({}, e); delete c.offset; return c; }) } : {});
     await App.db.replace([{ store: 'exblobs', clear: true, put: rows.concat({ id: DIR_KEY, dir: d }) }]);
     dir = d;
     dropUrls();
+    await syncPages(true);
     return d.exercises.length;
   };
   // Entfernt nur die Buchbilder – die eigenen Versuche bleiben
-  X.remove = async () => { await App.db.clear('exblobs'); dir = null; dropUrls(); };
+  X.remove = async () => { await App.db.clear('exblobs'); dir = null; dropUrls(); await syncPages(); };
 
   X.blobOf = async (id) => (id === DIR_KEY ? undefined : ((await App.db.get('exblobs', id)) || {}).blob);
   X.url = async (id) => {
@@ -68,8 +88,9 @@
     return `<div class="card" data-ex-pack>
       <div class="row between"><h3>${esc(TITLE)}</h3>${dir ? '<span class="pack-status ok">Geladen</span>' : ''}</div>
       <p class="small muted">${dir
-    ? `${n} Aufgaben · Stand ${esc(App.fmtDate(dir.stand))}. Die Aufgaben stehen bei den Grammatik-Einträgen unter „Üben“.`
+    ? `${n} Aufgaben${X.pages().length ? ` · ${X.pages().length} Buchseiten-PDFs` : ''} · Stand ${esc(App.fmtDate(dir.stand))}. Die Aufgaben stehen bei den Grammatik-Einträgen unter „Üben“${X.pages().length ? ', die Vokabelseiten und „Useful Expressions“ bei den <a href="#/vokabeln?tab=files">Vokabeln unter „Dateien“</a>' : ''}.`
     : 'Übungsaufgaben aus dem Lehrbuch als Bildausschnitte, zum Lösen mit dem Stift. Die Paket-Datei (.ntpaket) wird einmal pro Gerät eingelesen und bleibt dann in diesem Browser.'}</p>
+      ${L.packOutdated(dir) ? '<p class="small" data-ex-old style="color:var(--shu)">Es gibt eine neuere Paket-Datei mit den Vokabelseiten und „Useful Expressions“ als PDF. Bitte die neue Datei über „Neu einlesen“ laden – deine Versuche bleiben erhalten.</p>' : ''}
       <div class="row"><button class="btn ${dir ? '' : 'btn-primary'}" data-ex-pick>${icon('upload')} ${dir ? 'Neu einlesen' : 'Paket-Datei wählen'}</button>
       ${dir ? `<button class="btn" data-ex-remove>${icon('trash')} Entfernen</button>` : ''}</div>
       <p class="small" role="alert" data-ex-err hidden style="color:var(--shu)"></p></div>`;
@@ -84,7 +105,7 @@
       err.hidden = true;
       try {
         const n = await X.load(file);
-        App.toast(`${TITLE}: ${n} Aufgaben geladen`);
+        App.toast(`${TITLE}: ${n} Aufgaben${X.pages().length ? ` und ${X.pages().length} Buchseiten-PDFs` : ''} geladen`);
         App.render(true);
       } catch (e) {
         if (!e.code) console.error(e);

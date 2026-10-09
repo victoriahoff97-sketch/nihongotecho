@@ -7,16 +7,19 @@
 
   // Behälter: Kennung (5 Bytes) · Länge des Verzeichnisses (4 Bytes, Little Endian) · Verzeichnis (JSON, UTF-8) · Bilder hintereinander.
   // offset zählt ab dem Ende des Verzeichnisses.
-  const buildPack = (dir, images) => {
+  // Buchseiten als PDF (dir.pages, Inhalte in files) stehen hinter allen Bildern: eine ältere App-Version liest das Paket weiter und übergeht sie.
+  const buildPack = (dir, images, files = []) => {
     let off = 0;
-    const exercises = dir.exercises.map((ex, i) => { const e = Object.assign({}, ex, { offset: off, size: images[i].length }); off += images[i].length; return e; });
-    const head = new TextEncoder().encode(JSON.stringify(Object.assign({}, dir, { exercises })));
+    const place = (list, blobs) => list.map((x, i) => { const e = Object.assign({}, x, { offset: off, size: blobs[i].length }); off += blobs[i].length; return e; });
+    const exercises = place(dir.exercises, images);
+    const pages = dir.pages ? place(dir.pages, files) : undefined;
+    const head = new TextEncoder().encode(JSON.stringify(Object.assign({}, dir, { exercises }, pages ? { pages } : {})));
     const out = new Uint8Array(MAGIC.length + 4 + head.length + off);
     for (let i = 0; i < MAGIC.length; i++) out[i] = MAGIC.charCodeAt(i);
     new DataView(out.buffer).setUint32(MAGIC.length, head.length, true);
     out.set(head, MAGIC.length + 4);
     let pos = MAGIC.length + 4 + head.length;
-    images.forEach((im) => { out.set(im, pos); pos += im.length; });
+    images.concat(pages ? files : []).forEach((im) => { out.set(im, pos); pos += im.length; });
     return out;
   };
 
@@ -29,8 +32,10 @@
     try { dir = JSON.parse(new TextDecoder().decode(bytes.subarray(start, start + len))); } catch (e) { throw fail('magic', 'Das ist keine Buchaufgaben-Datei.'); }
     if (!dir || dir.pack !== PACK || !Array.isArray(dir.exercises)) throw fail('pack', 'Diese Datei gehört zu einem anderen Paket.');
     const base = start + len;
-    if (dir.exercises.some((e) => !(e.size > 0) || !(e.offset >= 0) || base + e.offset + e.size > bytes.length)) throw fail('short', 'Die Datei ist unvollständig.');
-    return { dir, image: (i) => { const e = dir.exercises[i]; return bytes.subarray(base + e.offset, base + e.offset + e.size); } };
+    if (dir.pages !== undefined && !Array.isArray(dir.pages)) throw fail('magic', 'Das ist keine Buchaufgaben-Datei.');
+    if (dir.exercises.concat(dir.pages || []).some((e) => !(e.size > 0) || !(e.offset >= 0) || base + e.offset + e.size > bytes.length)) throw fail('short', 'Die Datei ist unvollständig.');
+    const part = (e) => bytes.subarray(base + e.offset, base + e.offset + e.size);
+    return { dir, image: (i) => part(dir.exercises[i]), file: (i) => part(dir.pages[i]) };
   };
 
   const byPage = (a, b) => a.lesson - b.lesson || a.page - b.page || String(a.label).localeCompare(String(b.label));
@@ -69,6 +74,49 @@
     return errs;
   };
 
+  // ---------- Buchseiten als PDF (Vokabelseiten, Useful Expressions) ----------
+  // Sie erscheinen als Dateien bei den Vokabeln (Quelle Genki I, ihre Lektion). Der Inhalt bleibt im Paket-Speicher:
+  // der Datei-Eintrag trägt nur packFile und kommt so in keine Sicherung und keinen Export.
+  const SOURCE = 'Genki I';
+  const packOutdated = (dir) => !!dir && !(Array.isArray(dir.pages) && dir.pages.length);
+  const pageFileId = (pageId) => 'pk-' + pageId;
+  // i = Platz im Paket, base = Zeitstempel des Pakets: frühere Seiten gelten als „neuer“ und stehen in der Dateiliste vorn
+  const pageFile = (p, i, base) => ({
+    id: pageFileId(p.id), name: p.name + '.pdf', mime: 'application/pdf', size: p.size || 0,
+    source: SOURCE, lesson: p.lesson, section: 'vocab', tags: [], sessionId: '', itemId: '', role: '', note: '',
+    created: base - 1 - i, pages: p.pages || 0, paper: '', packFile: p.id,
+  });
+  // Gleicht die Datei-Einträge mit dem geladenen Paket ab: put = anlegen oder auffrischen, del = Einträge ohne Seite im Paket.
+  // Was das Paket vorgibt (Name, Lektion, Größe …), gilt; alles andere am Eintrag (Notiz, Tags, eigene Reihenfolge) bleibt.
+  const planPages = (pages, files, base) => {
+    const have = new Map(files.filter((f) => f.packFile).map((f) => [f.id, f]));
+    const put = [];
+    pages.forEach((p, i) => {
+      const want = pageFile(p, i, base);
+      const old = have.get(want.id);
+      have.delete(want.id);
+      if (!old) { put.push(want); return; }
+      const keys = ['name', 'mime', 'size', 'source', 'lesson', 'section', 'pages', 'packFile', 'created'];
+      if (keys.some((k) => old[k] !== want[k])) put.push(Object.assign({}, old, Object.fromEntries(keys.map((k) => [k, want[k]]))));
+    });
+    return { put, del: Array.from(have.keys()) };
+  };
+  // Seitenliste des Bau-Werkzeugs: welche Buchseiten (PDF-Seiten from–to) als eine Datei ins Paket kommen
+  const checkPages = (list) => {
+    const errs = [];
+    const seen = new Set();
+    list.forEach((p, i) => {
+      const who = p.id || 'Eintrag ' + (i + 1);
+      if (!p.id) errs.push(`${who}: id fehlt`);
+      else if (seen.has(p.id)) errs.push(`${who}: id doppelt`);
+      seen.add(p.id);
+      if (!(p.lesson >= 0) || !['vocab', 'expr'].includes(p.kind)) errs.push(`${who}: lesson oder kind fehlt`);
+      if (!p.name || /[\\/:*?"<>|]/.test(p.name)) errs.push(`${who}: Name fehlt oder enthält Zeichen, die in Dateinamen nicht gehen`);
+      if (!(p.from >= 1) || !(p.to >= p.from)) errs.push(`${who}: Seiten ungültig`);
+    });
+    return errs;
+  };
+
   // ---------- Nebeneinander: Aufgabe und Schreibblatt als zwei Spalten ----------
   // PAD/GAP wie in .viewer-pages; unter MIN_W und im Hochformat wären beide Spalten zu schmal
   const SPLIT = { PAD: 22, GAP: 18, MIN_W: 800, EX: 0.45, MAX_SHEET: 1100 };
@@ -83,5 +131,5 @@
   // off ≤ 0 = so weit ist sie nach oben geschoben, höchstens bis ihr unteres Ende zu sehen ist
   const splitOffset = (off, exH, ch) => Math.min(0, Math.max(ch - 2 * SPLIT.PAD - exH, off || 0));
 
-  App.exercisesLogic = { MAGIC, PACK, buildPack, parsePack, forGrammar, forLesson, title, attemptName, cutParts, checkCuts, SPLIT, splitLayout, splitOffset };
+  App.exercisesLogic = { MAGIC, PACK, buildPack, parsePack, forGrammar, forLesson, title, attemptName, cutParts, checkCuts, packOutdated, pageFileId, pageFile, planPages, checkPages, SPLIT, splitLayout, splitOffset };
 })(window.App);

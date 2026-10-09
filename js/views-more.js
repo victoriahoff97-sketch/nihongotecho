@@ -281,7 +281,8 @@
     }
     if (withFiles) {
       data.files = [];
-      let fl = Array.from(S.files.values());
+      // Buchseiten aus dem Buchaufgaben-Paket verlassen die App nie – auf dem Zielgerät legt das Paket sie selbst wieder an
+      let fl = Array.from(S.files.values()).filter((f) => !f.packFile);
       // eigene Versuche zu Buchaufgaben (Handschrift) werden nicht geteilt – im Komplett-Backup bleiben sie
       if (share) fl = fl.filter((f) => !f.exerciseId);
       if (share && sections) fl = fl.filter((f) => sections.includes(f.section === 'library' ? 'library' : f.section) || sections.includes('library'));

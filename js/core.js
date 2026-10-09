@@ -353,7 +353,11 @@ window.App = window.App || {};
     return f;
   };
   App.updateFile = async (f) => { S.files.set(f.id, f); await App.db.put('files', f); emit('files'); };
-  App.fileBlob = async (id) => (await App.db.get('blobs', id))?.blob;
+  // Buchseiten aus dem Buchaufgaben-Paket (f.packFile) haben keinen eigenen Blob – ihr Inhalt liegt im Paket-Speicher
+  App.fileBlob = async (id) => {
+    const f = S.files.get(id);
+    return (await (f && f.packFile ? App.db.get('exblobs', f.packFile) : App.db.get('blobs', id)))?.blob;
+  };
   // Mehrere Dateien in einem Rutsch löschen (samt Vorschaubild und Handschrift) – die Ansicht wird nur einmal neu gezeichnet
   App.deleteFiles = async (ids) => {
     ids = Array.from(new Set(ids));

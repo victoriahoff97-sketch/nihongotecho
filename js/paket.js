@@ -55,7 +55,8 @@
     }
     const d = App.exercises.dir && App.exercises.dir();
     const titel = d && d.pack === 'genki1-aufgaben' ? 'Genki I Aufgaben' : stripExt(name);
-    return { art: 'aufgaben', text: `Paket ‚${titel}‘ eingelesen – ${n} Aufgaben` };
+    const pdfs = d && d.pages ? d.pages.length : 0;
+    return { art: 'aufgaben', text: `Paket ‚${titel}‘ eingelesen – ${n} Aufgaben${pdfs ? `, ${pdfs} Buchseiten-PDFs` : ''}` };
   };
 
   const open = async (file) => {
