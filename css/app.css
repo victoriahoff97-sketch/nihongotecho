@@ -624,7 +624,8 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .viewer-bar .color { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--card); box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; }
 .viewer-bar .color.on { box-shadow: 0 0 0 2px var(--ink); }
 .viewer-scroll { flex: 1; overflow: auto; position: relative; touch-action: none; }
-.viewer-pages { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 22px; transform-origin: 0 0; }
+/* wächst mit den Seiten: sonst ragt eine gezoomte, mittig stehende Seite links aus dem Scrollbereich und ist dort nicht erreichbar */
+.viewer-pages { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 22px; transform-origin: 0 0; box-sizing: border-box; width: max-content; min-width: 100%; }
 .vpage { position: relative; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.35); flex: none; }
 .vpage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .vpage .pno { position: absolute; bottom: -18px; right: 0; font-size: 11px; color: #ddd; font-weight: 700; }
@@ -1028,7 +1029,7 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .viewer-pages:not(.book) > .bk-ghost, .viewer-pages:not(.book) > .bk-turn { display: none; }
 .viewer-book .viewer-scroll { display: flex; padding: 36px 44px; background-color: #d9d1c2; background-image: repeating-linear-gradient(0deg, rgba(0,0,0,.03) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.03) 0 1px, transparent 1px 3px); }
 :root[data-theme="dark"] .viewer-book .viewer-scroll { background-color: #2b2823; }
-.viewer-pages.book { flex: none; flex-direction: row; align-items: stretch; gap: 0; padding: 0; margin: auto; position: relative; }
+.viewer-pages.book { flex: none; flex-direction: row; align-items: stretch; gap: 0; padding: 0; margin: auto; position: relative; min-width: 0; }
 .viewer-pages.book::before { content: ""; position: absolute; inset: -.9em -1em; border-radius: 1em; background: #2f4a3c; outline: .06em dashed rgba(255,255,255,.3); outline-offset: -.3em; box-shadow: 0 1.6em 3em -1.2em rgba(0,0,0,.5), 0 .3em .8em rgba(0,0,0,.25); }
 .book .vpage { background: #fbf8f0; }
 .book .vpage.bk-l, .book .vpage.bk-l canvas { border-radius: .5em 0 0 .5em; }

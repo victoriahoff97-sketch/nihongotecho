@@ -1079,7 +1079,7 @@
         const page = st.book ? st.pages[BK.pagesOf(st.spread, st.pages.length).l] : topPage();
         st.book = !st.book; v.classList.toggle('btn-sec', st.book); App.saveSettings({ inkBook: st.book });
         clearSel(); closeHw(); hideTip();
-        applyMode(page); layout();
+        applyMode(page); layout(); fillSpread();
         if (!st.book && page) scroller.scrollTop += page.el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 12;
         st.pages.forEach((p) => { if (p.visible) renderPage(p); });
         if (st.book) note('Blättern: Ecken unten, Pfeiltasten oder mit dem Finger wischen', 3200);
@@ -1096,10 +1096,11 @@
       if (a === 'vocab') App.importVocab({ fileId: f.id });
     });
 
-    const addPage = async () => {
+    // fill: Plan zum Auffüllen einer halben Doppelseite – die aufgeschlagene Doppelseite bleibt stehen
+    const addPage = async (fill) => {
       const last = st.pages[st.pages.length - 1];
       // Im Buch: eine Doppelseite hat immer ein Papier – ganze Doppelseite anhängen oder die rechte Seite passend auffüllen
-      const plan = st.book ? BK.addPlan(st.pages.length) : { count: 1, like: null };
+      const plan = fill || (st.book ? BK.addPlan(st.pages.length) : { count: 1, like: null });
       const paper = plan.like != null ? st.pages[plan.like].def.paper
         : await INK.pickPaper({ title: st.book ? 'Leere Doppelseite anhängen' : 'Leere Seite anhängen', current: (last && last.def.paper) || f.paper || 'lines' });
       if (!paper || destroyed) return;
@@ -1110,10 +1111,12 @@
       }
       await App.updateFile(f);
       const pg = added[0];
-      if (st.book) { const d = BK.spreadOf(pg.i) - st.spread; st.spread += d; showSpread(d); }
+      if (st.book) { const d = fill ? 0 : BK.spreadOf(pg.i) - st.spread; st.spread += d; showSpread(d); }
       layout(); added.forEach((p) => io.observe(p.el));
       if (!st.book) pg.el.scrollIntoView({ behavior: 'smooth' });
     };
+    // Im Buch gibt es keine halbe Doppelseite: die fehlende rechte Seite bekommt gleich das Papier der linken
+    const fillSpread = () => { const plan = st.book && BK.fillPlan(st.pages.length); if (plan) addPage(plan); };
 
     // Drucken / als PDF speichern
     const printAll = async () => {
@@ -1141,6 +1144,7 @@
 
     if (!st.pages.length && !pagesEl.children.length) pagesEl.innerHTML = '<div class="card">Keine Seiten.</div>';
     ready = true;
+    fillSpread();
     if (st.penOnly && !embedded) note('✍ Stift schreibt · Finger scrollt & zoomt');
     return { flush: flushAll, destroy, dropLinks, state: () => ({ defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx }) };
   };
