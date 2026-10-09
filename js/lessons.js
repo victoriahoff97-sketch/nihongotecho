@@ -68,11 +68,21 @@
   App.route('/unterricht', (view) => {
     const sec = App.SECTIONS.session;
     const groups = UL.groupByCourse(sessions());
+    const folded = (c) => (S.settings.coursesFolded || []).includes(c);
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Deine Kursstunden: mit dem Stift mitschreiben, Präsentationen ablegen, Hausaufgaben lösen – und nach jeder Stunde eine Zusammenfassung.',
       `<a class="btn" href="#/karte">${icon('map')} Lernlandkarte</a><button class="btn btn-sec" data-action="new-session">${icon('plus')} Neue Stunde</button>`)}
-      ${groups.length ? groups.map((gr) => `<div class="course-group"><div class="section-title">${esc(gr.course)} <span class="badge">${gr.sessions.length}</span></div>
-        <div class="timeline">${gr.sessions.map(sessionCard).join('')}</div></div>`).join('')
+      ${groups.length ? groups.map((gr) => `<div class="course-group"><div class="section-title"><button type="button" class="fold-btn" data-fold-course="${esc(gr.course)}" aria-expanded="${!folded(gr.course)}" title="Kurs ein- oder ausklappen"><span class="chev"></span>${esc(gr.course)}<span class="fold-sum">· ${esc(UL.courseSummary(gr.sessions, App.fmtDate))}</span></button> <span class="badge">${gr.sessions.length}</span></div>
+        <div class="timeline${folded(gr.course) ? ' is-folded' : ''}">${gr.sessions.map(sessionCard).join('')}</div></div>`).join('')
       : `<div class="empty-state"><div class="big">授</div><h3>Noch keine Stunde angelegt</h3><p>Lege zu jeder VHS-Stunde einen Eintrag an. Dort schreibst du mit dem Stift mit, legst die PowerPoint ab und erledigst Hausaufgaben.</p><button class="btn btn-primary" data-action="new-session">${icon('plus')} Erste Stunde anlegen</button></div>`}</div>`;
+    // Kurs über die Überschrift ein-/ausklappen; gemerkt in den Einstellungen (coursesFolded: Namen der eingeklappten Kurse)
+    view.querySelectorAll('[data-fold-course]').forEach((b) => {
+      b.onclick = () => {
+        const list = UL.toggleFolded(S.settings.coursesFolded, b.dataset.foldCourse), on = list.includes(b.dataset.foldCourse);
+        b.setAttribute('aria-expanded', String(!on));
+        b.closest('.course-group').querySelector('.timeline').classList.toggle('is-folded', on);
+        App.saveSettings({ coursesFolded: list });
+      };
+    });
   });
 
   // ---------- Detail ----------
@@ -97,8 +107,9 @@
     view.querySelector('[data-edit-session]').onclick = () => App.editSession(s);
     const body = view.querySelector('[data-body]');
     const save = async (patch) => { Object.assign(s, patch); await App.saveItem(s, { silent: true }); };
-    // Neu angelegte/verknüpfte Einträge landen in der passenden Liste der Stunde
-    const newDefaults = { source: 'VHS-Kurs', lesson: s.number || '', tags: ['vhs'] };
+    // Neu angelegte/verknüpfte Einträge landen in der passenden Liste der Stunde. „Lektion“ bleibt leer:
+    // die laufende Nummer der Stunde ist keine Lehrbuch-Lektion.
+    const newDefaults = { source: UL.CLASS_SOURCE, tags: ['vhs'] };
     const onLinked = (it) => { const k = KEYS[it.type]; s[k] = Array.from(new Set((s[k] || []).concat(it.id))); return save({}); };
     const newLinked = (type, defaults, after) => App.newLinked(type, Object.assign({}, newDefaults, defaults), async (it) => { after && after(it); await onLinked(it); });
 
@@ -106,7 +117,7 @@
       App.inkArea(body, {
         sheets: files.filter((f) => f.role === 'notes').sort((a, b) => a.created - b.created),
         activeId: q.nb,
-        sheetMeta: (paper, n) => ({ sessionId: s.id, role: 'notes', section: 'session', source: 'VHS-Kurs', lesson: s.number, paper, name: 'Mitschrift ' + sessionTitle(s) + (n > 1 ? ` (${n})` : '') }),
+        sheetMeta: (paper, n) => ({ sessionId: s.id, role: 'notes', section: 'session', source: UL.CLASS_SOURCE, paper, name: 'Mitschrift ' + sessionTitle(s) + (n > 1 ? ` (${n})` : '') }),
         multiSheet: true,
         onSelect: (id) => App.setQuery({ nb: id }),
         newDefaults, onLinked, newPhrase: true,
@@ -124,7 +135,7 @@
       body.innerHTML = `<div class="row" style="margin-bottom:14px"><button class="btn btn-sec" data-up>${icon('upload')} Präsentation / Material hochladen</button>
         <span class="small muted">PowerPoint wird mit PowerPoint geöffnet. Als PDF gespeichert kannst du hier direkt auf den Folien mitschreiben.</span></div>
         ${mat.length ? `<div class="file-grid">${mat.map(App.fileCard).join('')}</div>` : '<div class="empty-state"><div class="big">資</div><h3>Noch kein Material</h3><p>Lade die PowerPoint-Präsentation oder Arbeitsblätter dieser Stunde hoch.</p></div>'}`;
-      body.querySelector('[data-up]').onclick = () => App.uploadDialog({ sessionId: s.id, role: 'material', section: 'session', source: 'VHS-Kurs', lesson: s.number });
+      body.querySelector('[data-up]').onclick = () => App.uploadDialog({ sessionId: s.id, role: 'material', section: 'session', source: UL.CLASS_SOURCE });
     }
     if (tab === 'homework') {
       body.innerHTML = `<div class="row" style="margin-bottom:14px"><button class="btn btn-sec" data-up>${icon('upload')} Hausaufgabe (PDF/Foto) hochladen</button><button class="btn" data-blank>${icon('notebook')} Leeres Blatt</button></div>
@@ -132,8 +143,8 @@
           <div><b>${esc(f.name)}</b><div class="small muted">${App.store.inkCount.get(f.id) ? `✎ ${App.store.inkCount.get(f.id)} Seite(n) beschrieben` : 'noch nicht bearbeitet'}</div></div></div>
           <div class="row"><button class="btn btn-sec btn-sm" data-open-file="${f.id}">${icon('pen')} Mit Stift bearbeiten</button></div></div>`).join('')}</div>`
         : '<div class="empty-state"><div class="big">宿</div><h3>Keine Hausaufgaben</h3><p>Lade das Aufgabenblatt als PDF hoch – dann kannst du es mit dem Surface-Stift direkt ausfüllen und als PDF wieder ausdrucken/abgeben.</p></div>'}`;
-      body.querySelector('[data-up]').onclick = () => App.uploadDialog({ sessionId: s.id, role: 'homework', section: 'session', source: 'VHS-Kurs', lesson: s.number, accept: 'application/pdf,image/*' });
-      body.querySelector('[data-blank]').onclick = () => App.newNotebook({ sessionId: s.id, role: 'homework', section: 'session', source: 'VHS-Kurs', lesson: s.number, name: `Hausaufgabe Stunde ${s.number || ''}` });
+      body.querySelector('[data-up]').onclick = () => App.uploadDialog({ sessionId: s.id, role: 'homework', section: 'session', source: UL.CLASS_SOURCE, accept: 'application/pdf,image/*' });
+      body.querySelector('[data-blank]').onclick = () => App.newNotebook({ sessionId: s.id, role: 'homework', section: 'session', source: UL.CLASS_SOURCE, name: `Hausaufgabe Stunde ${s.number || ''}` });
       body.addEventListener('change', async (e) => { const c = e.target.closest('[data-done]'); if (c) { const f = S.files.get(c.dataset.done); f.done = c.checked; await App.updateFile(f); App.render(true); } });
     }
     if (tab === 'learned') {

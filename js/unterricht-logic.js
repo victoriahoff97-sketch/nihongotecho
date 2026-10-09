@@ -40,7 +40,27 @@
     return { prev: list[i + 1] || null, next: i > 0 ? list[i - 1] : null };
   };
 
-  const pagePaper = (f, i) => (f.pagePapers && f.pagePapers[i]) || f.paper || 'lines';
+  // Kurzfassung neben dem Kursnamen, wenn der Kurs eingeklappt ist (sessions: neueste zuerst, wie aus groupByCourse)
+  const courseSummary = (sessions, fmtDate) => {
+    const n = sessions.length, last = sessions[0] && sessions[0].date;
+    return `${n} ${n === 1 ? 'Stunde' : 'Stunden'}${last ? ' · zuletzt ' + fmtDate(last) : ''}`;
+  };
+  const toggleFolded = (folded, course) => {
+    const list = folded || [];
+    return list.includes(course) ? list.filter((c) => c !== course) : list.concat(course);
+  };
+
+  // Früher landete die laufende Nummer der Stunde im Feld „Lektion“ – bei Einträgen und Dateien aus dem Unterricht.
+  // Leert das Feld (nur Quelle VHS-Kurs; Dateien nur, wenn sie an einer Stunde hängen) und gibt das Geänderte zurück.
+  const CLASS_SOURCE = 'VHS-Kurs';
+  const hasLesson = (x) => x.source === CLASS_SOURCE && x.lesson !== '' && x.lesson != null;
+  const clearClassLessons = (items, files) => {
+    const out = { items: items.filter((it) => it.type !== 'session' && hasLesson(it)), files: files.filter((f) => f.sessionId && hasLesson(f)) };
+    out.items.concat(out.files).forEach((x) => { x.lesson = ''; });
+    return out;
+  };
+
+  const pagePaper =(f, i) => (f.pagePapers && f.pagePapers[i]) || f.paper || 'lines';
   const extraPaper = (f, j) => (f.extraPapers && f.extraPapers[j]) || 'lines';
   const appendPaper = (f, paper, isNotebook) => {
     if (isNotebook) {
@@ -54,6 +74,6 @@
     }
   };
 
-  const L = { DEFAULT_COURSE, PAPERS, NO_COURSE, jpDate, isAutoTitle, suggestCourse, nextNumber, groupByCourse, courseNeighbors, pagePaper, extraPaper, appendPaper };
+  const L = { DEFAULT_COURSE, PAPERS, NO_COURSE, jpDate, isAutoTitle, suggestCourse, nextNumber, groupByCourse, courseNeighbors, courseSummary, toggleFolded, CLASS_SOURCE, clearClassLessons, pagePaper, extraPaper, appendPaper };
   if (typeof module !== 'undefined' && module.exports) module.exports = L; else root.App.uLogic = L;
 })(this);

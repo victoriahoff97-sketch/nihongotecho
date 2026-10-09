@@ -511,6 +511,17 @@ window.App = window.App || {};
     await App.db.put('meta', { key: 'jlptIndexVersion', value: idx.version });
   }
 
+  // Einmalig: die Stundennummer aus dem Feld „Lektion“ der Unterrichts-Einträge und -Dateien entfernen (App.uLogic.clearClassLessons)
+  async function clearClassLessonsOnce() {
+    if (await App.db.get('meta', 'classLessonsCleared')) return;
+    const r = App.uLogic.clearClassLessons(Array.from(S.items.values()), Array.from(S.files.values()));
+    const now = Date.now();
+    r.items.forEach((it) => { it.updated = now; });
+    if (r.items.length) await App.db.putMany('items', r.items);
+    if (r.files.length) await App.db.putMany('files', r.files);
+    await App.db.put('meta', { key: 'classLessonsCleared', value: true });
+  }
+
   App.load = async () => {
     const [items, files, srs, settings, inks, packs] = await Promise.all([
       App.db.all('items'), App.db.all('files'), App.db.all('srs'), App.db.get('meta', 'settings'), App.db.all('ink'), App.db.get('meta', 'packs'),
@@ -531,6 +542,7 @@ window.App = window.App || {};
     if (App.exercises) { try { await App.exercises.init(); } catch (e) { console.error('Buchaufgaben: Laden fehlgeschlagen', e); } }
     await seed();
     await applyJlptIndexOnce();
+    await clearClassLessonsOnce();
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* egal */ }
   };
 
