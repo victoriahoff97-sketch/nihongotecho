@@ -24,7 +24,7 @@
   const MARK_COLORS = ['#ffe066', '#8ce99a', '#fcc2d7', '#a5d8ff'];
   const WIDTHS = { pen: [0.0022, 0.0038, 0.006], marker: [0.012, 0.02, 0.03] };
   const A4 = 842 / 595;
-  const BOOK_PAPER = '#fbf8f0'; // cremefarbenes Papier im Buchlayout
+  const BOOK_PAPER = INK.BOOK_PAPER = '#fbf8f0'; // cremefarbenes Papier im Buchlayout
 
   // ---------- Papier-Hintergründe ----------
   const drawPaper = INK.drawPaper = function (ctx, W, H, paper, bg) {
@@ -131,15 +131,16 @@
   const drawImages = (ctx, p, W) => p.images.forEach((im) => { const el = imgEl(im); if (el) drawImg(ctx, el, im, W); });
 
   // ---------- Vorschau: eine Seite verkleinert, schreibgeschützt ----------
-  // opts: { page = 0, maxH = 220, crop = true } – zeichnet Papier + Bilder + Striche in Canvas-Breite (canvas.clientWidth).
+  // opts: { page = 0, maxH = 220, crop = true, bg, always } – zeichnet Papier + Bilder + Striche in Canvas-Breite (canvas.clientWidth).
+  // bg: Papierfarbe (Kurs-Notizbuch: cremefarben); always: auch eine leere Seite als Papier zeichnen.
   // Liefert false (Canvas bleibt leer) ohne Striche/Bilder, sonst true.
-  INK.preview = App.ink.preview = async function (canvas, fileId, { page = 0, maxH = 220, crop = true } = {}) {
+  INK.preview = App.ink.preview = async function (canvas, fileId, { page = 0, maxH = 220, crop = true, bg = null, always = false } = {}) {
     const f = App.store.files.get(fileId);
     if (!f) return false;
     const row = await App.db.get('ink', fileId + ':' + page);
     const strokes = (row && row.strokes) || [];
     const images = (row && row.images) || [];
-    if (!strokes.length && !images.length) { canvas.width = canvas.width; return false; }
+    if (!strokes.length && !images.length && !always) { canvas.width = canvas.width; return false; }
     // Bilder vor dem Zeichnen dekodieren (wie beim Drucken), sonst fehlen sie in der ersten Vorschau
     for (const im of images) { imgEl(im); try { await imgCache.get(im.id).decode(); } catch (e) { /* kaputtes Bild auslassen */ } }
     const kind = App.fileKind(f);
@@ -162,7 +163,7 @@
     canvas.width = W; canvas.height = H;
     canvas.style.height = cssH + 'px';
     const ctx = canvas.getContext('2d');
-    drawPaper(ctx, W, H, paper);
+    drawPaper(ctx, W, H, paper, bg);
     drawImages(ctx, { images }, W);
     strokes.forEach((s) => drawStroke(ctx, s, W));
     return true;
