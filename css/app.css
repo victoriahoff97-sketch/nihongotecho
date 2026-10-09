@@ -627,6 +627,12 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 /* wächst mit den Seiten: sonst ragt eine gezoomte, mittig stehende Seite links aus dem Scrollbereich und ist dort nicht erreichbar */
 .viewer-pages { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 22px; transform-origin: 0 0; box-sizing: border-box; width: max-content; min-width: 100%; }
 .vpage { position: relative; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.35); flex: none; }
+/* Buchaufgabe nebeneinander: Aufgabe in der einen Spalte (bleibt stehen), Schreibblätter in der anderen; Breiten und Abstand setzt ink.js */
+.viewer-pages.split { display: grid; grid-template-columns: auto auto; justify-content: safe center; align-items: start; }
+.viewer-pages.split > .vpage { grid-column: 2; }
+.viewer-pages.split > .vpage.ex-page { grid-column: 1; position: sticky; }
+.viewer-pages.split.split-r > .vpage { grid-column: 1; }
+.viewer-pages.split.split-r > .vpage.ex-page { grid-column: 2; }
 .vpage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .vpage .pno { position: absolute; bottom: -18px; right: 0; font-size: 11px; color: #ddd; font-weight: 700; }
 .vpage .loading { position: absolute; inset: 0; display: grid; place-items: center; color: #999; font-weight: 700; }

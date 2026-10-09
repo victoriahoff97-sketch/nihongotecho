@@ -69,5 +69,19 @@
     return errs;
   };
 
-  App.exercisesLogic = { MAGIC, PACK, buildPack, parsePack, forGrammar, forLesson, title, attemptName, cutParts, checkCuts };
+  // ---------- Nebeneinander: Aufgabe und Schreibblatt als zwei Spalten ----------
+  // PAD/GAP wie in .viewer-pages; unter MIN_W und im Hochformat wären beide Spalten zu schmal
+  const SPLIT = { PAD: 22, GAP: 18, MIN_W: 800, EX: 0.45, MAX_SHEET: 1100 };
+  // Spaltenbreiten für die Fläche cw × ch; null = untereinander wie bisher
+  const splitLayout = (cw, ch) => {
+    if (!(cw >= SPLIT.MIN_W) || cw <= ch) return null;
+    const avail = cw - 2 * SPLIT.PAD - SPLIT.GAP;
+    const exW = Math.round(avail * SPLIT.EX);
+    return { exW, sheetW: Math.min(avail - exW, SPLIT.MAX_SHEET) };
+  };
+  // Die Aufgabe bleibt beim Scrollen stehen. Ist sie höher als die Fläche, lässt sie sich für sich verschieben:
+  // off ≤ 0 = so weit ist sie nach oben geschoben, höchstens bis ihr unteres Ende zu sehen ist
+  const splitOffset = (off, exH, ch) => Math.min(0, Math.max(ch - 2 * SPLIT.PAD - exH, off || 0));
+
+  App.exercisesLogic = { MAGIC, PACK, buildPack, parsePack, forGrammar, forLesson, title, attemptName, cutParts, checkCuts, SPLIT, splitLayout, splitOffset };
 })(window.App);

@@ -126,7 +126,7 @@
       <div class="section-title">Deine Versuche</div>
       ${atts.length ? `<div class="ex-grid wide">${atts.map((f, i) => `<div class="card ex-attempt" data-ex-open="${esc(f.id)}"><div class="row between"><b>Versuch ${atts.length - i}</b><span class="row" style="gap:4px"><span class="small muted">${esc(when(f.created))}</span>
         <button class="icon-btn" data-ex-del="${esc(f.id)}" title="Versuch löschen">${icon('trash')}</button></span></div><canvas data-ex-prev="${esc(f.id)}"></canvas><div class="small muted" data-ex-empty hidden>noch leer</div></div>`).join('')}</div>`
-    : '<p class="muted">Noch kein Versuch. „Neuer Versuch“ öffnet ein Blatt mit der Aufgabe oben und liniertem Papier darunter.</p>'}</div>`;
+    : '<p class="muted">Noch kein Versuch. „Neuer Versuch“ öffnet ein Blatt mit der Aufgabe und liniertem Papier zum Schreiben.</p>'}</div>`;
     X.hydrate(view);
     view.querySelectorAll('canvas[data-ex-prev]').forEach(async (cv) => {
       const id = cv.dataset.exPrev;

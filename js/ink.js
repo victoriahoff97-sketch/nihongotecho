@@ -171,8 +171,11 @@
     const STK = App.inkStickers;
     // Buchlayout: nur im Vollbild und nur für Notizblätter (PDF-/Bildseiten haben beliebige Formate)
     const bookable = !embedded && kind === 'notebook';
+    // Buchaufgabe: Aufgabe (Seite 1) und Schreibblatt nebeneinander, die Aufgabe bleibt beim Scrollen stehen
+    const XL = App.exercisesLogic;
+    const splittable = !embedded && !!f.exerciseId;
     const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser', 'cut'];
-    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, ruler: false, stamp: null, book: bookable && !!S.inkBook, spread: 0 };
+    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, ruler: false, stamp: null, book: bookable && !!S.inkBook, spread: 0, split: splittable && S.exSplit !== false, side: S.exSide === 'r' ? 'r' : 'l', cols: null, exOff: 0 };
     // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
     // Blättern gibt es nur ohne „Nur Stift“ – sonst scrollt ohnehin der Finger
     if (st.tool === 'hand' && st.penOnly) st.tool = 'pen';
@@ -198,6 +201,7 @@
       <div class="grp">
         <button class="btn btn-sm ${st.penOnly ? 'btn-sec' : ''}" data-v="penonly" title="Wenn aktiv: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">✍ Nur Stift</button>
         ${bookable ? `<button class="btn btn-sm ${st.book ? 'btn-sec' : ''}" data-v="book" title="Buchlayout: zwei Seiten nebeneinander wie in einem Notizbuch">📖 Buch</button>` : ''}
+        ${splittable ? `<button class="btn btn-sm ${st.split ? 'btn-sec' : ''}" data-v="split" title="Aufgabe und Schreibblatt nebeneinander (im Querformat)">◫ Nebeneinander</button><button class="btn btn-sm" data-v="swap" title="Seiten tauschen: Aufgabe links oder rechts (z. B. für Linkshänder)"${st.split ? '' : ' hidden'}>⇄ Tauschen</button>` : ''}
         <button class="icon-btn" data-v="addpage" title="Leere Seite anhängen">${icon('filePlus')}</button>
         <button class="icon-btn" data-v="print" title="Drucken / als PDF speichern">${icon('print')}</button>
         ${kind === 'pdf' ? `<button class="btn btn-sm" data-v="vocab" title="Vokabeln aus dieser PDF importieren">${icon('vocab')} Vokabeln auslesen</button>` : ''}
@@ -325,6 +329,7 @@
       return pg;
     };
     pageDefs.forEach(buildPage);
+    if (splittable && st.pages[0]) st.pages[0].el.classList.add('ex-page');
     // ---------- Buchlayout: immer eine Doppelseite, blättern statt scrollen ----------
     let ready = false; // erst nach dem Aufbau gibt es Schildchen/Auswahl zum Aufräumen
     const bk = {};
@@ -376,10 +381,26 @@
         bk.ghost.hidden = true;
       }
     };
+    // Stehende Aufgabe: Abstand nach oben (eine zu hohe Aufgabe ist um exOff nach oben geschoben)
+    const placeEx = () => {
+      const ex = st.pages[0];
+      if (!splittable || !ex) return;
+      if (st.cols) st.exOff = XL.splitOffset(st.exOff, ex.el.offsetHeight, scroller.clientHeight);
+      ex.el.style.gridRow = st.cols ? `1 / span ${st.pages.length - 1}` : '';
+      ex.el.style.top = st.cols ? XL.SPLIT.PAD + st.exOff + 'px' : '';
+      ex.el.style.marginTop = st.cols ? st.exOff + 'px' : '';
+      // die Aufgabe zählt nicht zur Höhe: wie weit gescrollt wird, bestimmen allein die Schreibblätter
+      ex.el.style.marginBottom = st.cols ? -(ex.el.offsetHeight + st.exOff) + 'px' : '';
+    };
+    const exTall = () => !!st.cols && st.pages[0].el.offsetHeight > scroller.clientHeight - 2 * XL.SPLIT.PAD;
+    const moveEx = (dy) => { st.exOff += dy; placeEx(); };
     const layout = () => {
+      st.cols = splittable && st.split && st.pages.length > 1 ? XL.splitLayout(scroller.clientWidth, scroller.clientHeight) : null;
+      pagesEl.classList.toggle('split', !!st.cols); pagesEl.classList.toggle('split-r', !!st.cols && st.side === 'r');
       const W = baseWidth() * st.zoom;
       if (W > 0) {
-        st.pages.forEach((p) => { p.el.style.width = W + 'px'; p.el.style.height = W * p.def.ratio + 'px'; });
+        st.pages.forEach((p) => { const w = st.cols ? (p.i ? st.cols.sheetW : st.cols.exW) * st.zoom : W; p.el.style.width = w + 'px'; p.el.style.height = w * p.def.ratio + 'px'; });
+        placeEx();
         // Einband, Falz und Ecken sind in em bemessen: 1em = 1/30 Seitenbreite
         if (st.book) { pagesEl.style.fontSize = W / 30 + 'px'; bk.ghost.style.width = W + 'px'; bk.ghost.style.height = W * A4 + 'px'; }
         else pagesEl.style.fontSize = '';
@@ -436,7 +457,7 @@
     const rerender = App.debounce(() => st.pages.forEach((p) => { if (p.visible) renderPage(p); }), 250);
     // Breite ändert sich (Tablet gedreht, Sidebar, Pane war versteckt) → Seiten neu einpassen
     let lastW = scroller.clientWidth, lastH = scroller.clientHeight;
-    const ro = new ResizeObserver(() => { const w = scroller.clientWidth, h = scroller.clientHeight; if (w && (w !== lastW || (st.book && h !== lastH))) { lastW = w; lastH = h; layout(); st.pages.forEach((p) => { if (p.visible) drawInk(p); }); rerender(); } });
+    const ro = new ResizeObserver(() => { const w = scroller.clientWidth, h = scroller.clientHeight; if (w && (w !== lastW || ((st.book || splittable) && h !== lastH))) { lastW = w; lastH = h; layout(); st.pages.forEach((p) => { if (p.visible) drawInk(p); }); rerender(); } });
     ro.observe(scroller);
     const setZoom = (z, cx, cy) => {
       z = App.clamp(z, 0.4, 4);
@@ -451,7 +472,7 @@
 
     // ---------- Eingabe ----------
     const touches = new Map();
-    let pinch = null, drawing = null;
+    let pinch = null, drawing = null, exDrag = false;
     const pageAt = (x, y) => st.pages.find((p) => { const r = p.el.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; });
     const norm = (p, e) => { const r = p.el.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width, e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5]; };
     const eraseAt = (p, pt, act) => {
@@ -485,6 +506,8 @@
       tap = useTouchNav ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
       if (useTouchNav || st.tool === 'hand' || e.button === 1) {
         touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        // eine Aufgabe, die höher ist als die Fläche, wird für sich verschoben – das Blatt bleibt, wo es ist
+        exDrag = touches.size === 1 && exTall() && pageAt(e.clientX, e.clientY) === st.pages[0];
         scroller.setPointerCapture(e.pointerId);
         if (touches.size === 2) {
           const [a, b] = Array.from(touches.values());
@@ -531,7 +554,7 @@
       if (touches.has(e.pointerId)) {
         const prev = touches.get(e.pointerId);
         touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        if (touches.size === 1) { scroller.scrollLeft -= e.clientX - prev.x; scroller.scrollTop -= e.clientY - prev.y; }
+        if (touches.size === 1) { scroller.scrollLeft -= e.clientX - prev.x; if (exDrag) moveEx(e.clientY - prev.y); else scroller.scrollTop -= e.clientY - prev.y; }
         else if (pinch && touches.size === 2) {
           const [a, b] = Array.from(touches.values());
           const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -641,7 +664,7 @@
     scroller.addEventListener('pointerleave', () => { clearTimeout(tipWait); tipNext = null; leaveTip(); ghost(null); });
     scroller.addEventListener('pointerup', up);
     scroller.addEventListener('pointercancel', up);
-    scroller.addEventListener('wheel', (e) => { if (e.ctrlKey) { e.preventDefault(); const r = scroller.getBoundingClientRect(); setZoom(st.zoom * (e.deltaY < 0 ? 1.1 : 0.9), e.clientX - r.left, e.clientY - r.top); } }, { passive: false });
+    scroller.addEventListener('wheel', (e) => { if (e.ctrlKey) { e.preventDefault(); const r = scroller.getBoundingClientRect(); setZoom(st.zoom * (e.deltaY < 0 ? 1.1 : 0.9), e.clientX - r.left, e.clientY - r.top); } else if (exTall() && pageAt(e.clientX, e.clientY) === st.pages[0]) { e.preventDefault(); moveEx(-e.deltaY); } }, { passive: false });
 
     // ---------- Bilder: Auswahl, Löschen, Einfügen ----------
     const selImg = () => st.sel && st.sel.p.images.find((x) => x.id === st.sel.id);
@@ -1083,6 +1106,16 @@
         if (!st.book && page) scroller.scrollTop += page.el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 12;
         st.pages.forEach((p) => { if (p.visible) renderPage(p); });
         if (st.book) note('Blättern: Ecken unten, Pfeiltasten oder mit dem Finger wischen', 3200);
+      }
+      if (a === 'split' || a === 'swap') {
+        if (a === 'split') st.split = !st.split; else st.side = st.side === 'r' ? 'l' : 'r';
+        App.saveSettings({ exSplit: st.split, exSide: st.side });
+        root.querySelector('[data-v=split]').classList.toggle('btn-sec', st.split);
+        root.querySelector('[data-v=swap]').hidden = !st.split;
+        closeHw(); hideTip();
+        st.exOff = 0; layout();
+        st.pages.forEach((p) => { if (p.visible) renderPage(p); });
+        if (st.split && !st.cols) note('Nebeneinander gibt es im Querformat – hochkant bleibt die Aufgabe über dem Blatt', 3200);
       }
       if (a === 'print') printAll();
       if (a === 'image') pickImage();
