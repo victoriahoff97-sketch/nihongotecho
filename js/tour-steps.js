@@ -84,6 +84,7 @@
       { target: '#view [data-upload="library"]', text: 'Lege Arbeitsblätter, PDFs und Bilder aus dem Kurs hier ab.' },
       { target: '#view [data-nb]', text: 'Oder beginne ein leeres Blatt zum Schreiben, unabhängig von einer Stunde.' },
       { target: '#view .toolbar', text: 'Später findest du Dateien über Bereich und Dateityp wieder.' },
+      { target: '#view [data-pick-on]', text: 'Zum Aufräumen: Markiere eine oder mehrere Dateien und lösche sie zusammen.' },
     ],
     '/pakete': [
       { target: '#view .pack-card:has([data-id="dict-common"])', text: 'Mit dem Wörterbuch kann die App Wörter nachschlagen und beim Anlegen vorausfüllen.' },

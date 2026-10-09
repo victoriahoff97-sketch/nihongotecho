@@ -558,6 +558,14 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .file-card .thumb .ext { font-weight: 800; font-size: 22px; color: #fff; padding: 12px 16px; border-radius: 12px; background: var(--c, var(--sora)); }
 .file-card .info { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
 .file-card .info b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Bibliothek: Auswahl-Modus (mehrere Dateien markieren und löschen) */
+.pick-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border: 1px solid var(--sec, var(--sora)); border-radius: 12px; background: var(--sec-soft, var(--sora-soft)); position: sticky; top: calc(var(--topbar-h) + 8px); z-index: 5; }
+.file-card .pick-box { position: absolute; top: 8px; left: 8px; z-index: 1; width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--line-2); background: var(--card); display: grid; place-items: center; color: transparent; }
+.file-card .pick-box svg { width: 16px; height: 16px; stroke-width: 3; }
+.file-grid.picking .file-card { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.file-card.picked { border-color: var(--sec, var(--sora)); box-shadow: 0 0 0 2px var(--sec, var(--sora)); }
+.file-card.picked .pick-box { background: var(--sec, var(--sora)); border-color: var(--sec, var(--sora)); color: #fff; }
+.file-card[data-pick]:focus-visible { outline: 2px solid var(--sec, var(--sora)); outline-offset: 2px; }
 .file-card .ink-dot { position: absolute; top: 8px; right: 8px; background: var(--shu); color: #fff; border-radius: 99px; font-size: 11px; font-weight: 800; padding: 2px 8px; }
 .dropzone { border: 2px dashed var(--line-2); border-radius: 16px; padding: 26px; text-align: center; color: var(--muted); background: var(--card-2); cursor: pointer; transition: border-color .15s, background .15s; }
 .dropzone.over, .dropzone:hover { border-color: var(--sec, var(--sora)); background: var(--sec-soft, var(--sora-soft)); color: var(--ink); }

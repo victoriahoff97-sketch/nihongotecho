@@ -354,17 +354,22 @@ window.App = window.App || {};
   };
   App.updateFile = async (f) => { S.files.set(f.id, f); await App.db.put('files', f); emit('files'); };
   App.fileBlob = async (id) => (await App.db.get('blobs', id))?.blob;
-  App.deleteFile = async (id) => {
-    S.files.delete(id);
-    await App.db.del('files', id);
-    await App.db.del('blobs', id);
-    await App.db.del('thumbs', id);
-    if (App.pdfThumb) App.pdfThumb.forget(id);
-    const inks = await App.db.all('ink');
-    for (const k of inks.filter((x) => x.fileId === id)) await App.db.del('ink', k.key);
-    S.inkCount.delete(id);
+  // Mehrere Dateien in einem Rutsch löschen (samt Vorschaubild und Handschrift) – die Ansicht wird nur einmal neu gezeichnet
+  App.deleteFiles = async (ids) => {
+    ids = Array.from(new Set(ids));
+    if (!ids.length) return;
+    const gone = new Set(ids);
+    ids.forEach((id) => S.files.delete(id));
+    await App.db.delMany('files', ids);
+    await App.db.delMany('blobs', ids);
+    await App.db.delMany('thumbs', ids);
+    if (App.pdfThumb) ids.forEach((id) => App.pdfThumb.forget(id));
+    const inkKeys = (await App.db.all('ink')).filter((x) => gone.has(x.fileId)).map((x) => x.key);
+    if (inkKeys.length) await App.db.delMany('ink', inkKeys);
+    ids.forEach((id) => S.inkCount.delete(id));
     emit('files');
   };
+  App.deleteFile = (id) => App.deleteFiles([id]);
   App.fileKind = (f) => {
     const n = (f.name || '').toLowerCase();
     if (f.mime === 'application/x-notebook') return 'notebook';

@@ -178,6 +178,12 @@
   // =========================================================
   const KIND_LABEL = { pdf: 'PDF', image: 'Bilder', slides: 'Präsentationen', notebook: 'Notizblätter', video: 'Videos', audio: 'Audio', doc: 'Dokumente', deck: 'Anki/Tabellen', other: 'Sonstige' };
   const SEC_LABEL = { library: 'Allgemein', grammar: 'Grammatik', vocab: 'Vokabeln', kanji: 'Kanji', phrase: 'Ausdrücke', session: 'Unterricht', exercise: 'Buchaufgaben' };
+  // Auswahl-Modus: mehrere Dateien markieren und zusammen löschen. null = aus, sonst die markierten Datei-IDs
+  let pick = null;
+  App.onChange((w) => { if (w === 'route' && pick && App.parseHash().path !== '/bibliothek') pick = null; });
+  const pickCard = (f) => App.fileCard(f).replace(`class="file-card" data-open-file="${f.id}"`,
+    `class="file-card${pick.has(f.id) ? ' picked' : ''}" data-pick="${f.id}" role="checkbox" aria-checked="${pick.has(f.id)}" tabindex="0"`)
+    .replace('<div class="thumb">', `<div class="thumb"><span class="pick-box">${icon('check')}</span>`);
   App.route('/bibliothek', (view, p, q) => {
     const sec = App.SECTIONS.library;
     // Versuche zu Buchaufgaben stehen bei ihrer Aufgabe (Kategorie „Buchaufgaben“), nicht als einzelne Dateien in der Liste
@@ -189,20 +195,50 @@
     if (q.kind) files = files.filter((f) => App.fileKind(f) === q.kind);
     if (q.l) files = files.filter((f) => String(f.lesson) === q.l);
     files.sort(App.byFileOrder);
+    if (exMode || !files.length) pick = null;
+    // nur Sichtbares bleibt markiert (Filter gewechselt, Datei inzwischen gelöscht)
+    if (pick) pick = new Set(files.filter((f) => pick.has(f.id)).map((f) => f.id));
     const kinds = Array.from(new Set(all.map(App.fileKind)));
     const secs = Array.from(new Set(all.map((f) => f.section)));
     if (App.exercises.inLibrary()) secs.push('exercise');
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Alle Materialien: Buchseiten, Präsentationen, Hausaufgaben, Notizblätter – filterbar nach Quelle, Bereich und Lektion.',
-      `${App.exercises.inLibrary() ? `<a class="btn ${exMode ? 'btn-sec' : ''}" href="${exMode ? '#/bibliothek' : App.exercises.libHref()}">${icon('practice')} Buchaufgaben</a>` : ''}<button class="btn" data-nb>${icon('notebook')} Notizblatt</button><button class="btn btn-sec" data-upload="library">${icon('upload')} Hochladen</button>`)}
-      <div class="dropzone" data-drop style="margin-bottom:18px"${exMode ? ' hidden' : ''}>${icon('upload')} <b>Dateien hierher ziehen</b> – PDF, Fotos, PowerPoint, Videos …</div>
+      `${App.exercises.inLibrary() ? `<a class="btn ${exMode ? 'btn-sec' : ''}" href="${exMode ? '#/bibliothek' : App.exercises.libHref()}">${icon('practice')} Buchaufgaben</a>` : ''}${!exMode && files.length && !pick ? `<button class="btn" data-pick-on>${icon('check')} Auswählen</button>` : ''}<button class="btn" data-nb>${icon('notebook')} Notizblatt</button><button class="btn btn-sec" data-upload="library">${icon('upload')} Hochladen</button>`)}
+      <div class="dropzone" data-drop style="margin-bottom:18px"${exMode || pick ? ' hidden' : ''}>${icon('upload')} <b>Dateien hierher ziehen</b> – PDF, Fotos, PowerPoint, Videos …</div>
       <div class="toolbar"><div class="filter-row">
         ${App.sourceSelect(all, q.src)}<select class="input" data-q-select="sec"><option value="">Alle Bereiche</option>${secs.map((s) => `<option value="${s}" ${q.sec === s ? 'selected' : ''}>${SEC_LABEL[s] || s}</option>`).join('')}</select>
         ${exMode ? '' : `<select class="input" data-q-select="kind"><option value="">Alle Dateitypen</option>${kinds.map((k) => `<option value="${k}" ${q.kind === k ? 'selected' : ''}>${KIND_LABEL[k]}</option>`).join('')}</select>
         ${App.lessonSelect(all, q.l)}`}</div></div>
-      <div style="margin-top:16px">${exMode ? App.exercises.libraryHtml(q) : files.length ? `<div class="file-grid">${files.map(App.fileCard).join('')}</div>` : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien</h3><p>Lade deine Genki-Seiten, Marugoto-PDFs, PowerPoints aus dem VHS-Kurs oder Hausaufgaben hoch.</p></div>`}</div></div>`;
+      ${pick ? `<div class="pick-bar"><b data-pick-count></b><button class="btn btn-sm" data-pick-all></button><span class="grow"></span><button class="btn btn-sm btn-danger" data-pick-del>${icon('trash')} Löschen</button><button class="btn btn-sm btn-sec" data-pick-off>Fertig</button></div>` : ''}
+      <div style="margin-top:16px">${exMode ? App.exercises.libraryHtml(q) : files.length ? (pick ? `<div class="file-grid picking" data-fixed>${files.map(pickCard).join('')}</div>` : `<div class="file-grid">${files.map(App.fileCard).join('')}</div>`) : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien</h3><p>Lade deine Genki-Seiten, Marugoto-PDFs, PowerPoints aus dem VHS-Kurs oder Hausaufgaben hoch.</p></div>`}</div></div>`;
     App.hydrateThumbs(view);
     App.exercises.hydrate(view);
     view.querySelector('[data-nb]').onclick = () => App.newNotebook({ section: 'library' });
+    const on = view.querySelector('[data-pick-on]');
+    if (on) on.onclick = () => { pick = new Set(); App.render(true); };
+    if (pick) {
+      const bar = view.querySelector('.pick-bar'), grid = view.querySelector('.file-grid');
+      const sync = () => {
+        bar.querySelector('[data-pick-count]').textContent = pick.size + ' ausgewählt';
+        bar.querySelector('[data-pick-all]').textContent = pick.size === files.length ? 'Keine auswählen' : 'Alle auswählen';
+        bar.querySelector('[data-pick-del]').disabled = !pick.size;
+        grid.querySelectorAll('[data-pick]').forEach((c) => { const y = pick.has(c.dataset.pick); c.classList.toggle('picked', y); c.setAttribute('aria-checked', y); });
+      };
+      const toggle = (c) => { const id = c.dataset.pick; if (!pick.delete(id)) pick.add(id); sync(); };
+      grid.onclick = (e) => { const c = e.target.closest('[data-pick]'); if (c) toggle(c); };
+      grid.onkeydown = (e) => { const c = e.target.closest('[data-pick]'); if (c && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); toggle(c); } };
+      bar.querySelector('[data-pick-all]').onclick = () => { pick = new Set(pick.size === files.length ? [] : files.map((f) => f.id)); sync(); };
+      bar.querySelector('[data-pick-off]').onclick = () => { pick = null; App.render(true); };
+      bar.querySelector('[data-pick-del]').onclick = async () => {
+        const ids = Array.from(pick), n = ids.length;
+        const one = n === 1 ? S.files.get(ids[0]) : null;
+        if (!(await App.confirm(`${one ? `„${one.name}“` : n + ' Dateien'} endgültig löschen? Auch alles, was du darauf geschrieben hast.`))) return;
+        pick = null;
+        await App.deleteFiles(ids);
+        App.toast(n === 1 ? 'Datei gelöscht' : n + ' Dateien gelöscht');
+        App.render(true);
+      };
+      sync();
+    }
     const dz = view.querySelector('[data-drop]');
     dz.onclick = () => App.uploadDialog({ source: App.oneSrc(q.src), section: q.sec || 'library' });
     dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });
