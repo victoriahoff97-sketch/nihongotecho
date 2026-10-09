@@ -12,9 +12,9 @@
     const get = web
       ? `<a class="btn btn-sec" href="extension.zip" download="NihongoTecho-Erweiterung.zip">${icon('download')} Erweiterung herunterladen</a>`
       : '<p class="small">Der Ordner <b>extension</b> liegt im App-Ordner (nach der Installation: <b>Dokumente\\NihongoTecho\\extension</b>).</p>';
-    return `<div class="card sec-vocab"><h3>Aus dem Browser direkt in die App</h3>
+    return `<div class="card sec-vocab" data-ext-card><h3>Aus dem Browser direkt in die App</h3>
       <p class="muted small">Mit der Browser-Erweiterung (Chrome oder Edge am PC) markierst du japanischen Text auf einer beliebigen Webseite (z. B. NHK Easy oder WaniKani) und landest mit einem Klick bei „Sätze zuordnen“ oder im Vokabel-Formular – mit Lesung, Beispielsatz und Fundstelle.</p>
-      <div class="row">${get}</div>
+      <div class="row">${get}<button class="btn btn-ghost btn-sm" data-tour="erweiterung">So geht's</button></div>
       <ol class="small" style="margin:10px 0 0;padding-left:20px">
         ${web ? '<li>Die heruntergeladene ZIP-Datei entpacken – an einen Ort, an dem der Ordner bleiben kann (z. B. Dokumente).</li>' : ''}
         <li>Im Browser <b>chrome://extensions</b> (Edge: <b>edge://extensions</b>) öffnen und den <b>Entwicklermodus</b> einschalten.</li>

@@ -51,6 +51,7 @@
     if (act === 'toggle-theme') { const dark = document.documentElement.dataset.theme === 'dark'; App.saveSettings({ theme: dark ? 'light' : 'dark' }).then(App.applyTheme); }
     if (act === 'toggle-sidebar') { document.body.classList.toggle('sidebar-collapsed'); App.saveSettings({ sidebarCollapsed: document.body.classList.contains('sidebar-collapsed') }); }
     if (act === 'open-sidebar') document.body.classList.toggle('sidebar-open');
+    if (act === 'help') App.tour.startForPage();
   });
   document.addEventListener('keydown', (e) => {
     const typing = e.target.matches('input, textarea, select, [contenteditable="true"]');
@@ -60,7 +61,7 @@
       if (e.key === 'n') { e.preventDefault(); App.quickAdd(); }
     }
   });
-  document.addEventListener('click', (e) => { if (document.body.classList.contains('sidebar-open') && !e.target.closest('#sidebar') && !e.target.closest('[data-action="open-sidebar"]')) document.body.classList.remove('sidebar-open'); });
+  document.addEventListener('click', (e) => { if (document.body.classList.contains('sidebar-open') && !App.tour.active() && !e.target.closest('#sidebar') && !e.target.closest('[data-action="open-sidebar"]')) document.body.classList.remove('sidebar-open'); });
 
   // Bei Datenänderungen die aktuelle Ansicht neu zeichnen (außer während man tippt)
   let pending = false;

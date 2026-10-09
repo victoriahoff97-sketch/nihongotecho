@@ -1175,3 +1175,19 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .ex-full { display: block; width: 100%; max-width: 860px; margin-top: 14px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
 .ex-attempt { cursor: pointer; }
 .ex-attempt canvas { display: block; width: 100%; margin-top: 8px; background: #fff; border-radius: 8px; }
+
+/* ---------- Tutorial: geführte Tour (js/tour.js) ---------- */
+.tour-block { position: fixed; inset: 0; z-index: 160; }
+.tour-block.dim { background: rgba(20, 16, 12, .55); }
+.tour-ring { position: fixed; z-index: 161; pointer-events: none; border: 2px solid var(--shu); border-radius: 10px; box-shadow: 0 0 0 9999px rgba(20, 16, 12, .55); transition: left .18s ease, top .18s ease, width .18s ease, height .18s ease; }
+.tour-bubble { position: fixed; z-index: 162; width: min(320px, calc(100vw - 16px)); padding: 14px 14px 12px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); font-size: 14px; line-height: 1.5; }
+.tour-bubble p { margin: 0; }
+.tour-title { display: block; margin: 0 28px 4px 0; font-size: 15px; }
+.tour-x { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
+.tour-x:hover { background: var(--paper-2); color: var(--ink); }
+.tour-x + p { margin-right: 26px; }
+.tour-link { display: block; margin-top: 8px; padding: 0; border: 0; background: none; color: var(--shu); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.tour-foot { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+.tour-foot .grow { flex: 1; }
+.tour-count { color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .tour-ring { transition: none; } }
