@@ -496,24 +496,26 @@
     const custom = S.settings.phraseGroups || [];
     let items = filterItems(all, q);
     if (q.g) items = items.filter((i) => i.group === q.g);
+    if (q.st) items = items.filter((i) => App.vocabStatus(i.id) === q.st);
+    const unchecked = App.vocabCounts(q.g ? all.filter((i) => i.group === q.g) : all).unchecked;
     const files = App.filesFor({ section: 'phrase', source: q.src || undefined });
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Floskeln, Zeitangaben, Zahlen, Zähler & Satzbausteine – alles, was man einfach auswendig lernen muss.',
-      `<a class="btn" href="#/ueben/karten?type=phrase${q.g ? '&g=' + encodeURIComponent(q.g) : ''}">${icon('practice')} Karteikarten</a><button class="btn" data-new-group>${icon('plus')} Neue Gruppe</button><button class="btn btn-sec" data-new="phrase">${icon('plus')} Ausdruck</button>`)}
+      `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?type=phrase${q.g ? '&g=' + encodeURIComponent(q.g) : ''}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?type=phrase${q.g ? '&g=' + encodeURIComponent(q.g) : ''}">${icon('practice')} Karteikarten</a><button class="btn" data-new-group>${icon('plus')} Neue Gruppe</button><button class="btn btn-sec" data-new="phrase">${icon('plus')} Ausdruck</button>`)}
       ${tabsHtml(q, items.length, files.length)}
-      <div class="toolbar">${filterInput(q, 'Suchen, z. B. Montag, 3 Uhr, ひとつ …')}</div>
+      <div class="toolbar">${filterInput(q, 'Suchen, z. B. Montag, 3 Uhr, ひとつ …')}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st)}</select></div>
       <div class="chips scroll" style="margin-bottom:16px"><button class="chip ${!q.g ? 'on' : ''}" data-q-g="">Alle Gruppen</button>${groupsOrder.map((g) => `<button class="chip ${q.g === g ? 'on' : ''}" data-q-g="${esc(g)}">${esc(g)}</button>`).join('')}<button class="chip" data-new-group>${icon('plus')} Gruppe</button></div>
       <div data-body></div></div>`;
     const body = view.querySelector('[data-body]');
     if (q.tab === 'files') body.innerHTML = filesTab('phrase', q);
     else {
       const gm = groupBy(items, (i) => i.group);
-      const showEmpty = !q.f && !q.src && !q.l && !q.star;
+      const showEmpty = !q.f && !q.src && !q.l && !q.star && !q.st;
       const gs = groupsOrder.filter((g) => gm.has(g) || (showEmpty && custom.includes(g) && (!q.g || q.g === g)));
       body.innerHTML = gs.map((g) => {
         const list = (gm.get(g) || []).sort((a, b) => (a.order || 0) - (b.order || 0));
         return `<div class="card" style="margin-bottom:16px"><div class="row between" style="margin-bottom:8px"><h3 style="margin:0">${esc(g)} <span class="badge">${list.length}</span></h3>
           <div class="row">${list.length ? `<a class="btn btn-sm" href="#/ueben/karten?type=phrase&g=${encodeURIComponent(g)}">${icon('practice')} Lernen</a>` : ''}<button class="btn btn-sm btn-ghost" data-group="${esc(g)}" title="Ausdruck hinzufügen">${icon('plus')}</button><button class="btn btn-sm btn-ghost" data-edit-group="${esc(g)}" title="Gruppe umbenennen oder löschen">${icon('edit')}</button></div></div>
-          ${list.length ? `<div class="list" style="box-shadow:none">${list.map((it) => `<a class="list-row" href="${App.link(it)}" style="grid-template-columns:minmax(160px,1.2fr) minmax(140px,1fr) minmax(120px,1.2fr) auto"><span class="k" lang="ja">${JP.ruby(it.jp)}</span><span><b>${esc(it.de)}</b></span><span class="small muted">${esc(it.note || '')}</span><span>${App.speakBtn(it.jp)}</span></a>`).join('')}</div>`
+          ${list.length ? `<div class="list" style="box-shadow:none">${list.map((it) => `<a class="list-row" href="${App.link(it)}" style="grid-template-columns:minmax(160px,1.2fr) minmax(140px,1fr) minmax(120px,1.2fr) auto"><span class="k" lang="ja">${JP.ruby(it.jp)}</span><span><b>${esc(it.de)}</b></span><span class="small muted">${esc(it.note || '')}</span><span class="row" style="gap:8px;flex-wrap:nowrap">${App.statusBadge(it.id)}${App.speakBtn(it.jp)}</span></a>`).join('')}</div>`
           : `<div class="empty-state" style="padding:18px"><p style="margin:0 0 10px">Noch leer.</p><button class="btn btn-sec btn-sm" data-group="${esc(g)}">${icon('plus')} Ersten Ausdruck hinzufügen</button></div>`}</div>`;
       }).join('') || '<div class="empty-state"><div class="big">表</div><h3>Nichts gefunden</h3></div>';
     }
@@ -531,15 +533,19 @@
     const it = App.item(p.id);
     if (!it) { view.innerHTML = '<div class="empty-state"><h3>Nicht gefunden</h3></div>'; return; }
     const sec = App.SECTIONS.phrase;
+    const srs = S.srs.get(it.id);
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/ausdruecke">Ausdrücke</a> › <a href="#/ausdruecke?g=${encodeURIComponent(it.group)}">${esc(it.group)}</a></div>
       <div class="split"><div><div class="card pad-lg"><div class="row between" style="align-items:flex-start">
         <div class="detail-hero"><div class="big" lang="ja">${JP.ruby(it.jp)}</div>${App.speakBtn(it.jp, '')}</div><div class="row">${detailActions(it)}</div></div>
         <div class="de-big" style="margin:4px 0 12px">${esc(it.de)}</div>
         ${it.note ? `<div class="pitfall" style="background:var(--yamabuki-soft);border-color:var(--yamabuki)">${JP.ruby(it.note)}</div>` : ''}
         <dl class="kv" style="margin-top:14px"><dt>Lesung</dt><dd lang="ja">${esc(JP.kana(it.jp))}</dd><dt>Gruppe</dt><dd>${esc(it.group)}</dd><dt>Quelle</dt><dd>${App.srcBadge(it) || '–'}</dd>
-        ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}</dl></div>
+        ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
+          <dt>Lernstand</dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
+            <div class="small muted" style="margin-top:4px">${srs && srs.reps ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : 'noch nicht eingestuft'}</div></dd></dl></div>
         ${App.attachmentsHtml(it)}</div><aside>${App.relatedHtml(it)}</aside></div></div>`;
     App.hydrateThumbs(view);
+    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.STATUS[b.dataset.v].label); App.render(true); } };
   });
 
   // =========================================================

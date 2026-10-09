@@ -11,12 +11,12 @@
   // „Kann ich“ ist, was so eingestuft wurde – oder was mit den Karten bis 3 Wochen Abstand gelernt ist (springt von allein um).
   // Grammatik, die mit einer Unterrichtsstunde verknüpft ist, gilt ohne Einstufung als „Lernstapel“.
   const autoLearn = (id) => { const it = S.items.get(id); return !!it && it.type === 'grammar' && App.sessionsFor(id).length > 0; };
-  // Eingestuft werden nur Vokabeln/Kanji aus Paketen (Genki, JLPT, Kanji) und aus importierten Listen.
+  // Eingestuft werden nur Vokabeln/Kanji/Ausdrücke aus Paketen (Genki, JLPT, Kanji) und aus importierten Listen.
   // Eigene Einträge (selbst angelegt, aus Satzerkennung/Suche übernommen) sind nie „ungeprüft“ – sie sind direkt im Lernstapel.
   // Einstufen lässt sich in den Einstellungen abschalten (check: 'off'): dann liegt auch das direkt im Lernstapel.
   // Am Speicher ändert das nichts – wieder eingeschaltet, ist Unberührtes wieder „ungeprüft“. Grammatik bleibt davon unberührt.
   App.checkOn = () => S.settings.check !== 'off';
-  App.needsCheck = (it) => !!it && !((it.type === 'vocab' || it.type === 'kanji') && (!App.checkOn() || (!it._seed && !it._pack && !it.imported)));
+  App.needsCheck = (it) => !!it && !((it.type === 'vocab' || it.type === 'kanji' || it.type === 'phrase') && (!App.checkOn() || (!it._seed && !it._pack && !it.imported)));
   // Lernstand-Filter der Vokabel- und Kanji-Liste: ohne Einstufen gibt es „Ungeprüft“ nicht
   App.statusFilter = (cur) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.checkOn()).map(([k, s]) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('');
   const ownWord = (id) => { const it = S.items.get(id); return !!it && !App.needsCheck(it); };
@@ -125,8 +125,8 @@
   // =========================================================
   App.route('/ueben/einstufen', (view, p, q) => {
     if (!App.checkOn()) return App.go('#/ueben'); // abgeschaltet: alte Links und Lesezeichen führen zur Übersicht
-    const type = q.type === 'kanji' ? 'kanji' : 'vocab';
-    const isK = type === 'kanji';
+    const type = q.type === 'kanji' || q.type === 'phrase' ? q.type : 'vocab';
+    const isK = type === 'kanji', isP = type === 'phrase';
     const sec = App.SECTIONS[type];
     const all = App.itemsOf(type).filter((i) => i.char !== '々');
     let items = all;
@@ -134,9 +134,10 @@
     if (q.l) items = items.filter((i) => String(i.lesson) === q.l);
     if (q.mark) items = items.filter((i) => App.hasMark(i, q.mark));
     if (q.lvl) items = items.filter((i) => App.levelMatch(i, q.lvl));
+    if (isP && q.g) items = items.filter((i) => i.group === q.g);
     // Vokabeln haben zwei Einstufungen: lesen (Japanisch → Deutsch) und aktiv (Deutsch → Japanisch, eigener Lernstand unter „w:<Id>“).
     // Aktiv eingestuft wird, was man schon lesen kann.
-    const active = !isK && q.dir === 'de';
+    const active = type === 'vocab' && q.dir === 'de';
     const W = App.writeLogic;
     const statusOf = active ? App.activeStatus : (v) => App.vocabStatus(v.id);
     const counts = active ? (list) => W.activeCounts(list, S.srs, App.needsCheck) : App.vocabCounts;
@@ -146,21 +147,21 @@
     const pct = (n) => (c.total ? (n / c.total) * 100 : 0);
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="crumbs"><a href="#/ueben">Üben</a> › Einstufen</div>
       <div class="page-head"><div class="titles"><h1>Einstufen <span class="jp-title">確認</span></h1>
-        <p>${active ? 'Welche Wörter weißt du auch aus dem Deutschen heraus? Geh alle, die du schon lesen kannst, in Runden durch – danach landet im Aktiv-Lernstapel nur, was du noch üben musst.' : `Was kannst du schon? Geh deine ${isK ? 'Kanji' : 'Vokabeln'} in Runden durch – danach landet im Lernstapel nur, was du wirklich noch lernen musst.`}</p></div>
-        <div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div></div>
+        <p>${active ? 'Welche Wörter weißt du auch aus dem Deutschen heraus? Geh alle, die du schon lesen kannst, in Runden durch – danach landet im Aktiv-Lernstapel nur, was du noch üben musst.' : `Was kannst du schon? Geh deine ${isK ? 'Kanji' : isP ? 'Ausdrücke' : 'Vokabeln'} in Runden durch – danach landet im Lernstapel nur, was du wirklich noch lernen musst.`}</p></div>
+        <div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div></div>
       <div class="card" data-setup><div class="stack">
-        ${isK ? '' : `<div class="row"><div class="seg">${[['', 'Japanisch → Deutsch (lesen)'], ['de', 'Deutsch → Japanisch (aktiv)']].map(([k, l]) => `<button class="${(active ? 'de' : '') === k ? 'on' : ''}" data-q-dir="${k}">${l}</button>`).join('')}</div></div>`}
+        ${type !== 'vocab' ? '' : `<div class="row"><div class="seg">${[['', 'Japanisch → Deutsch (lesen)'], ['de', 'Deutsch → Japanisch (aktiv)']].map(([k, l]) => `<button class="${(active ? 'de' : '') === k ? 'on' : ''}" data-q-dir="${k}">${l}</button>`).join('')}</div></div>`}
         <div class="row between"><div class="row" style="gap:18px">
           <span><b style="font-size:24px;color:var(--muted)">${c.unchecked}</b> ungeprüft</span>
           <span><b style="font-size:24px;color:var(--ai)">${c.learn}</b> im ${active ? 'Aktiv-' : ''}Lernstapel</span>
           <span><b style="font-size:24px;color:var(--matcha)">${c.known}</b> kann ich${active ? ' aktiv' : ''}</span></div>
-          <span class="small muted">${q.src || q.l || q.lvl ? `Auswahl · insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
+          <span class="small muted">${q.src || q.l || q.lvl || (isP && q.g) ? `Auswahl · insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
         <div class="progress" style="display:flex;height:10px"><i style="width:${pct(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pct(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
-        <div class="row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}
-          <label class="row small" style="gap:8px"><b>${isK ? 'Kanji' : 'Wörter'} pro Runde</b><input class="input" type="number" min="3" max="100" value="${batch}" data-batch style="width:90px"></label>
+        <div class="row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}${isP ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${App.phraseGroups().map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}
+          <label class="row small" style="gap:8px"><b>${isK ? 'Kanji' : isP ? 'Ausdrücke' : 'Wörter'} pro Runde</b><input class="input" type="number" min="3" max="100" value="${batch}" data-batch style="width:90px"></label>
           <button class="btn btn-primary" data-go ${c.unchecked ? '' : 'disabled'}>${icon('play')} Runde starten (${Math.min(batch, c.unchecked)})</button>
           ${!c.unchecked && c.total ? `<span class="verdict ok">✓ ${active && !(c.learn + c.known) ? 'Noch nichts einzustufen' : 'Alles in dieser Auswahl ist eingestuft'}</span>` : ''}</div>
-        ${active ? `<div class="small muted">Tipp: Tippe auf die Bedeutung, um das japanische Wort zu sehen. „Kann ich“ = weiß ich aus dem Deutschen heraus (wird nicht mehr abgefragt). „Lernen“ = kommt in die Karteikarten Deutsch → Japanisch. Der Lese-Lernstand bleibt davon unberührt.${c.locked ? ` ${c.locked} ${c.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} dazu, sobald du ${c.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : `<div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (wird nicht mehr abgefragt). „Lernen“ = kommt in deine Karteikarten.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>`}
+        ${active ? `<div class="small muted">Tipp: Tippe auf die Bedeutung, um das japanische Wort zu sehen. „Kann ich“ = weiß ich aus dem Deutschen heraus (wird nicht mehr abgefragt). „Lernen“ = kommt in die Karteikarten Deutsch → Japanisch. Der Lese-Lernstand bleibt davon unberührt.${c.locked ? ` ${c.locked} ${c.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} dazu, sobald du ${c.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : `<div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : isP ? 'einen Ausdruck, um Lesung & Übersetzung' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (wird nicht mehr abgefragt). „Lernen“ = kommt in deine Karteikarten.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>`}
       </div></div>
       <div data-stage style="margin-top:18px"></div></div>`;
     const bi = view.querySelector('[data-batch]');
@@ -185,6 +186,7 @@
     const answer = (v) => {
       if (active) { const ex = v.examples && v.examples[0]; return `<b lang="ja" style="font-family:var(--font-jp);font-size:26px;font-weight:500">${JP.wordRuby(v)}</b>${App.levelBadge(v)}${App.accentHtml(v)}${ex ? `<div class="small muted" lang="ja">${JP.ruby(ex.jp)}</div>` : ''}`; }
       if (isK) return `<b>${App.meaningHtml(v)}</b>${App.levelBadge(v)}<div lang="ja" class="small muted">${(v.on || []).length ? 'On: ' + esc(v.on.join('、')) : ''}${(v.kun || []).length ? ' · Kun: ' + esc(v.kun.map(App.kanjiLogic.kunText).join('、')) : ''}</div>${(v.words || [])[0] ? `<div class="small muted" lang="ja">${JP.ruby(v.words[0].jp)} – ${App.meaningHtml(v.words[0])}</div>` : ''}`;
+      if (type === 'phrase') return `<div lang="ja" class="muted">${JP.kana(v.jp) !== JP.plain(v.jp) ? esc(JP.kana(v.jp)) : ''}</div><b>${App.meaningHtml(v)}</b>${v.note ? `<div class="small muted" lang="ja">${JP.ruby(v.note)}</div>` : ''}`;
       const ex = v.examples && v.examples[0];
       return `<div lang="ja" class="muted">${v.kanji ? esc(v.kana) : ''}</div><b>${App.meaningHtml(v)}</b>${App.levelBadge(v)}${App.accentHtml(v)}${ex ? `<div class="small muted" lang="ja">${JP.ruby(ex.jp)}</div>` : ''}`;
     };
@@ -207,7 +209,7 @@
         <div class="check-list">${list.map(row).join('')}</div>
         ${left ? `<div class="row" style="justify-content:flex-end;margin-top:10px">${rest}</div>` : ''}
         ${!left ? `<div class="card row between" style="margin-top:16px"><div><b>Runde geschafft!</b> ${k} kannst du schon, ${list.length - k} kommen in den ${active ? 'Aktiv-' : ''}Lernstapel.</div>
-          <div class="row"><a class="btn" href="#/ueben/karten${isK ? '?type=kanji' : active ? '?dir=de' : ''}">${icon('practice')} Lernstapel üben</a><button class="btn btn-primary" data-next>${icon('next')} Nächste Runde</button></div></div>` : ''}`;
+          <div class="row"><a class="btn" href="#/ueben/karten${isK ? '?type=kanji' : type === 'phrase' ? '?type=phrase' : active ? '?dir=de' : ''}">${icon('practice')} Lernstapel üben</a><button class="btn btn-primary" data-next>${icon('next')} Nächste Runde</button></div></div>` : ''}`;
     };
     stage.onclick = async (e) => {
       const r = e.target.closest('.check-row');
