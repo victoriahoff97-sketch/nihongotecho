@@ -38,7 +38,7 @@
     const due = App.dueCount();
     const wDue = kanjiFocus() === 'read' ? 0 : App.writeQueue().due.length;
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Wiederholen, übersetzen, schreiben – alles passend zu deinem Niveau und aus deinen eigenen Inhalten.')}
-      <div class="practice-home">
+      ${externStrip()}<div class="practice-home" style="margin-top:22px">
         <a class="mode-card sec-practice" href="#/ueben/karten"><span class="k">札</span><h3>Karteikarten</h3><span class="muted">Vokabeln, Kanji, Grammatik & Ausdrücke mit Wiederholungsplan (wie Anki).</span>${due ? `<span class="badge count">${due} fällig</span>` : ''}</a>
         ${!App.checkOn() ? '' : `<a class="mode-card sec-vocab" href="#/ueben/einstufen"><span class="k">確</span><h3>Einstufen</h3><span class="muted">Vokabeln &amp; Kanji: Kenne ich das? In Runden prüfen, was in den Lernstapel kommt.</span>${(() => { const n = App.vocabCounts().unchecked + W.activeCounts(App.itemsOf('vocab'), S.srs, App.needsCheck).unchecked; return n ? `<span class="badge">${n} ungeprüft</span>` : ''; })()}</a>`}
         <a class="mode-card sec-apply" href="#/anwenden"><span class="k">使</span><h3>Anwenden</h3><span class="muted">Tagebuch schreiben und Smalltalk-Fragen beantworten – mit Stift oder Tastatur.</span></a>
@@ -46,7 +46,7 @@
         <a class="mode-card sec-kanji" href="#/ueben/kanji"><span class="k">書</span><h3>Kanji-Quiz</h3><span class="muted">Bedeutung sehen → mit dem Stift schreiben, oder Lesungen erkennen.</span>${wDue ? `<span class="badge count">${wDue} zu schreiben</span>` : ''}</a>
         <a class="mode-card sec-phrase" href="#/ueben/karten?type=phrase"><span class="k">表</span><h3>Auswendig-Lernen</h3><span class="muted">Wochentage, Zahlen, Zähler, Uhrzeiten, Floskeln …</span></a>
         <button class="mode-card sec-library" data-ai-prompt><span class="k">AI</span><h3>KI-Prompt</h3><span class="muted">Fertigen Prompt mit deinem Wortschatz & deiner Grammatik kopieren – für Claude & Co.</span></button>
-      </div>${externStrip()}</div>`;
+      </div></div>`;
     view.querySelector('[data-ai-prompt]').onclick = () => aiPromptDialog(S.settings.level || 12);
   });
 
