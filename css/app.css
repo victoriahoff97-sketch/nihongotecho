@@ -1189,6 +1189,8 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .welcome-body p { margin: 2px 0 0; }
 .welcome-body .row { margin-top: 8px; gap: 8px; flex-wrap: wrap; }
 .welcome-step { display: inline-block; width: 22px; height: 22px; vertical-align: middle; margin: 0 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: 6px; }
+.welcome-link { color: inherit; text-decoration: underline; cursor: pointer; }
+.welcome-body .row + p { margin-top: 8px; }
 .welcome-dict { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
 /* Einladungslink erstellen (Karte Web-App) */
 .invite-make { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }

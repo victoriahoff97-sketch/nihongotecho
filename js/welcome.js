@@ -53,14 +53,18 @@
       manual: ['Sicherung', 'Sichern kannst du von Hand unter Einstellungen &gt; Sicherung.', ''],
     },
   };
-  const fileLabel = (label) => `<label class="btn btn-sm">${label}<input type="file" accept=".json,.ntpaket,.zip,application/json,application/zip" data-welcome-file hidden></label>`;
+  const ACCEPT = '.json,.ntpaket,.zip,application/json,application/zip';
+  const fileLabel = (label) => `<label class="btn btn-sm">${label}<input type="file" accept="${ACCEPT}" data-welcome-file hidden></label>`;
   const fileInput = fileLabel('Backup-Datei wählen');
 
   const rowHtml = (r) => {
-    let title, text = '', btns = '';
+    let title, text = '', btns = '', extra = '';
     if (r.id === 'stand') {
       title = 'Ich habe schon einen Stand';
-      btns = (r.variant === 'folder+file' ? b('data-bk="pick"', 'Sicherungsordner wählen', 'btn-sm') : '') + fileInput;
+      // ein Knopf: mit Ordnerzugriff der Sicherungsordner (Backup-Datei als schlichter Textlink darunter), sonst die Backup-Datei
+      const folder = r.variant === 'folder+file';
+      btns = folder ? b('data-bk="pick"', 'Sicherungsordner wählen', 'btn-sm') : fileInput;
+      if (folder) extra = `<p class="muted small">Kein Sicherungsordner? <label class="welcome-link">Backup-Datei öffnen<input type="file" accept="${ACCEPT}" data-welcome-file hidden></label></p>`;
     } else if (r.id === 'genki') {
       [title, text, btns] = TEXT.genki[r.done ? 'open' : '_'];
     } else if (r.id === 'backup') {
@@ -70,7 +74,7 @@
     }
     return `<div class="welcome-row${r.done ? ' done' : ''}" data-welcome-row="${r.id}">
       <span class="welcome-mark">${r.done ? icon('check') : ''}</span>
-      <div class="welcome-body"><b>${title}</b>${text ? `<p class="muted small">${text}</p>` : ''}${btns ? `<div class="row">${btns}</div>` : ''}</div></div>`;
+      <div class="welcome-body"><b>${title}</b>${text ? `<p class="muted small">${text}</p>` : ''}${btns ? `<div class="row">${btns}</div>` : ''}${extra}</div></div>`;
   };
 
   // HTML der Karte oder '' (kein Web, „Später“ gewählt, alles erledigt)
@@ -91,11 +95,14 @@
     // Genki-Aufgaben kommen als eigene Datei (nie über die Webadresse): Hinweis, solange keine eingelesen sind
     const aufgabenLine = App.exercises && !App.exercises.dir()
       ? `<p class="muted small welcome-dict" data-welcome-aufgaben>Genki-Aufgaben: Die Übungsaufgaben aus dem Buch kommen als eigene Datei – von der Person, die dir die App gegeben hat. ${fileLabel("Aufgaben-Datei öffnen")}</p>` : "";
-    const dictLine = res.dictLine ? `<p class="muted small welcome-dict">${res.dictLine === 'ready' ? 'Wörterbuch bereit' : 'Wörterbuch wird geladen …'}</p>` : '';
+    // Wörterbuch: gleiche Zeile mit Haken wie die Schritte, aber kein zugesagter Anker (lädt von selbst, nichts zu tun)
+    const dictLine = res.dictLine ? `<div class="welcome-row${res.dictLine === 'ready' ? ' done' : ''}" data-welcome-dict>
+      <span class="welcome-mark">${res.dictLine === 'ready' ? icon('check') : ''}</span>
+      <div class="welcome-body"><b>${res.dictLine === 'ready' ? 'Wörterbuch ist bereit' : 'Wörterbuch wird geladen …'}</b></div></div>` : '';
     return `<div class="card welcome" data-welcome>
       <div class="welcome-head"><div><h3>Willkommen bei Nihongo Techō</h3><p class="muted small">Ein paar kurze Schritte, dann ist alles eingerichtet.</p></div>
         ${b('data-welcome-act="later"', 'Später', 'btn-ghost btn-sm')}</div>
-      ${res.rows.map(rowHtml).join('')}${aufgabenLine}${dictLine}</div>`;
+      ${res.rows.map(rowHtml).join('')}${dictLine}${aufgabenLine}</div>`;
   };
 
   // An Ort und Stelle neu zeichnen (wie refresh in pwa.js); die Sicherungs-Zeile auf der Startseite folgt mit
