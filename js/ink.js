@@ -202,6 +202,7 @@
         <button class="btn btn-sm ${st.penOnly ? 'btn-sec' : ''}" data-v="penonly" title="Wenn aktiv: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">✍ Nur Stift</button>
         ${bookable ? `<button class="btn btn-sm ${st.book ? 'btn-sec' : ''}" data-v="book" title="Buchlayout: zwei Seiten nebeneinander wie in einem Notizbuch">📖 Buch</button>` : ''}
         ${splittable ? `<button class="btn btn-sm ${st.split ? 'btn-sec' : ''}" data-v="split" title="Aufgabe und Schreibblatt nebeneinander (im Querformat)">◫ Nebeneinander</button><button class="btn btn-sm" data-v="swap" title="Seiten tauschen: Aufgabe links oder rechts (z. B. für Linkshänder)"${st.split ? '' : ' hidden'}>⇄ Tauschen</button>` : ''}
+        <button class="icon-btn" data-v="paper" title="Papier dieser Seite ändern (liniert, kariert, Kanji-Raster …)">${icon('lines')}</button>
         <button class="icon-btn" data-v="addpage" title="Leere Seite anhängen">${icon('filePlus')}</button>
         <button class="icon-btn" data-v="print" title="Drucken / als PDF speichern">${icon('print')}</button>
         ${kind === 'pdf' ? `<button class="btn btn-sm" data-v="vocab" title="Vokabeln aus dieser PDF importieren">${icon('vocab')} Vokabeln auslesen</button>` : ''}
@@ -1098,6 +1099,7 @@
         note(st.penOnly ? 'Nur der Stift schreibt – mit dem Finger scrollen & zoomen' : 'Finger schreibt jetzt auch');
       }
       if (a === 'addpage') addPage();
+      if (a === 'paper') changePaper();
       if (a === 'book') {
         const page = st.book ? st.pages[BK.pagesOf(st.spread, st.pages.length).l] : topPage();
         st.book = !st.book; v.classList.toggle('btn-sec', st.book); App.saveSettings({ inkBook: st.book });
@@ -1173,6 +1175,32 @@
       }
       setTimeout(() => { window.print(); }, 300);
       App.toast('Tipp: Drucker „Microsoft Print to PDF“ wählen, um die Hausaufgabe als PDF zu speichern.');
+    };
+
+    // Papier einer vorhandenen Seite wechseln. Gemeint ist das Schreibblatt, das gerade oben zu sehen ist; steht dort
+    // die Buchaufgabe/PDF-Seite, das nächste (sichtbare) Schreibblatt dahinter – der Dialog nennt die Seite. Im Buch die ganze Doppelseite.
+    const changePaper = async () => {
+      const isPaper = (p) => p && p.def.kind === 'paper' && (kind === 'notebook' || p.def.extra);
+      let targets;
+      if (st.book) { const { l, r } = BK.pagesOf(st.spread, st.pages.length); targets = [st.pages[l], st.pages[r]].filter(isPaper); }
+      else {
+        const top = topPage(); const sheets = st.pages.filter(isPaper);
+        const after = sheets.filter((p) => top && p.i >= top.i);
+        targets = [isPaper(top) ? top : after.find((p) => p.visible) || after[0] || sheets[sheets.length - 1]].filter(Boolean);
+      }
+      if (!targets.length) { note('Hier gibt es noch kein Schreibblatt – mit „Leere Seite anhängen“ kommt eines dazu', 3200); return; }
+      const paper = await INK.pickPaper({ title: st.book ? 'Papier dieser Doppelseite' : `Papier von Seite ${targets[0].i + 1}`, current: targets[0].def.paper });
+      if (!paper || destroyed) return;
+      const firstExtra = st.pages.findIndex((p) => p.def.extra);
+      targets.forEach((p) => {
+        UL.setPaper(f, kind === 'notebook' ? p.i : p.i - firstExtra, paper, kind === 'notebook');
+        p.def.paper = paper; p.renderedW = 0;
+        if (p.visible) renderPage(p);
+      });
+      if (!st.book && !targets[0].visible) targets[0].el.scrollIntoView({ behavior: 'smooth' });
+      await App.updateFile(f);
+      // Buchaufgaben: der nächste Versuch beginnt mit dem zuletzt gewählten Papier
+      if (f.exerciseId) App.saveSettings({ exercisePaper: paper });
     };
 
     if (!st.pages.length && !pagesEl.children.length) pagesEl.innerHTML = '<div class="card">Keine Seiten.</div>';

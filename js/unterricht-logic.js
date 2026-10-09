@@ -73,7 +73,13 @@
       f.extraPages = n + 1;
     }
   };
+  // Papier einer vorhandenen Seite wechseln (idx: Seite im Notizblatt bzw. Nummer der Zusatzseite) – das Geschriebene bleibt
+  const setPaper = (f, idx, paper, isNotebook) => {
+    if (isNotebook) f.pagePapers = Array.from({ length: f.pages || 1 }, (_, i) => (i === idx ? paper : pagePaper(f, i)));
+    else f.extraPapers = Array.from({ length: f.extraPages || 0 }, (_, j) => (j === idx ? paper : extraPaper(f, j)));
+  };
+  const knownPaper = (p) => (PAPERS.some(([k]) => k === p) ? p : 'lines');
 
-  const L = { DEFAULT_COURSE, PAPERS, NO_COURSE, jpDate, isAutoTitle, suggestCourse, nextNumber, groupByCourse, courseNeighbors, courseSummary, toggleFolded, CLASS_SOURCE, clearClassLessons, pagePaper, extraPaper, appendPaper };
+  const L = { DEFAULT_COURSE, PAPERS, NO_COURSE, jpDate, isAutoTitle, suggestCourse, nextNumber, groupByCourse, courseNeighbors, courseSummary, toggleFolded, CLASS_SOURCE, clearClassLessons, pagePaper, extraPaper, appendPaper, setPaper, knownPaper };
   if (typeof module !== 'undefined' && module.exports) module.exports = L; else root.App.uLogic = L;
 })(this);

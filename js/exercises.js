@@ -41,7 +41,7 @@
   };
 
   // ---------- Versuche ----------
-  // Ein Versuch ist ein Datei-Eintrag ohne eigenen Blob: Seite 1 = Ausschnitt aus dem Paket (ink.js), dahinter liniertes Papier.
+  // Ein Versuch ist ein Datei-Eintrag ohne eigenen Blob: Seite 1 = Ausschnitt aus dem Paket (ink.js), dahinter ein Schreibblatt.
   X.attempts = (exId) => Array.from(App.store.files.values()).filter((f) => f.exerciseId === exId).sort((a, b) => b.created - a.created);
   X.newAttempt = async (exId) => {
     const ex = X.get(exId);
@@ -50,6 +50,7 @@
       id: App.uid('f'), name: L.attemptName(ex, X.attempts(exId).length + 1), mime: 'image/webp', size: 0,
       source: 'Genki I', lesson: ex.lesson, section: 'exercise', tags: [], sessionId: '', itemId: '', role: 'exercise', note: '',
       created: Date.now(), pages: 0, paper: '', exerciseId: exId, exW: ex.w, exH: ex.h, extraPages: 1,
+      extraPapers: [App.uLogic.knownPaper(App.store.settings.exercisePaper)], // zuletzt gewähltes Papier (umstellen: im Blatt, ink.js)
     };
     await App.updateFile(f);
     return f;
@@ -126,11 +127,11 @@
       <div class="section-title">Deine Versuche</div>
       ${atts.length ? `<div class="ex-grid wide">${atts.map((f, i) => `<div class="card ex-attempt" data-ex-open="${esc(f.id)}"><div class="row between"><b>Versuch ${atts.length - i}</b><span class="row" style="gap:4px"><span class="small muted">${esc(when(f.created))}</span>
         <button class="icon-btn" data-ex-del="${esc(f.id)}" title="Versuch löschen">${icon('trash')}</button></span></div><canvas data-ex-prev="${esc(f.id)}"></canvas><div class="small muted" data-ex-empty hidden>noch leer</div></div>`).join('')}</div>`
-    : '<p class="muted">Noch kein Versuch. „Neuer Versuch“ öffnet ein Blatt mit der Aufgabe und liniertem Papier zum Schreiben.</p>'}</div>`;
+    : '<p class="muted">Noch kein Versuch. „Neuer Versuch“ öffnet ein Blatt mit der Aufgabe und einem Schreibblatt. Das Papier (liniert, kariert, Kanji-Raster …) stellst du im Blatt oben in der Leiste um; der nächste Versuch übernimmt es.</p>'}</div>`;
     X.hydrate(view);
     view.querySelectorAll('canvas[data-ex-prev]').forEach(async (cv) => {
       const id = cv.dataset.exPrev;
-      // Geschrieben wird meist auf dem linierten Blatt (Seite 2); sonst die Notizen direkt an der Aufgabe zeigen
+      // Geschrieben wird meist auf dem Schreibblatt (Seite 2); sonst die Notizen direkt an der Aufgabe zeigen
       if (await App.ink.preview(cv, id, { page: 1, maxH: 180 }) || await App.ink.preview(cv, id, { page: 0, maxH: 180 })) return;
       cv.hidden = true;
       cv.parentElement.querySelector('[data-ex-empty]').hidden = false;
