@@ -752,6 +752,8 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .vpage .ink-sel { position: absolute; border: 1.5px solid var(--sec, var(--shu)); pointer-events: none; box-sizing: border-box; }
 .vpage .ink-sel .h, .vpage .ink-ssel .h { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--sec, var(--shu)); transform: translate(-50%, -50%); }
 .vpage .h[data-h=nw] { left: 0; top: 0; } .vpage .h[data-h=ne] { left: 100%; top: 0; }
+.vpage .ink-sel .h.rot { left: 50%; top: -30px; background: var(--sec, var(--shu)); }
+.vpage .ink-sel .h.rot::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1.5px; height: 20px; margin-left: -.75px; background: var(--sec, var(--shu)); }
 .vpage .h[data-h=sw] { left: 0; top: 100%; } .vpage .h[data-h=se] { left: 100%; top: 100%; }
 .vpage .ink-ssel { position: absolute; z-index: 5; border: 1.5px dashed var(--sec, var(--shu)); border-radius: 4px; background: color-mix(in srgb, var(--sec, var(--shu)) 5%, transparent); pointer-events: none; box-sizing: border-box; }
 .vpage .ink-sel .ink-sel-del, .vpage .ink-ssel .ink-sel-del { position: absolute; right: -8px; top: -40px; width: 30px; height: 30px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--sec, var(--shu)); color: #fff; pointer-events: auto; touch-action: none; cursor: pointer; }
@@ -760,7 +762,9 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .stk-pop { position: absolute; z-index: 5; width: min(600px, calc(100% - 16px)); max-height: min(70%, 440px); overflow: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 4px; }
 .stk-pop .stk { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px 4px; border: 0; border-radius: 10px; background: none; color: var(--ink); cursor: pointer; font: inherit; }
 .stk-pop .stk:hover { background: var(--sec-soft, var(--shu-soft)); }
-.stk-pop .stk svg { width: 44px; height: 44px; }
+.stk-pop .stk svg, .stk-pop .stk img { width: 44px; height: 44px; object-fit: contain; }
+.stk-pop .stk-tabs { grid-column: 1 / -1; display: flex; gap: 6px; }
+.stk-pop .stk-head { grid-column: 1 / -1; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .stk-pop .stk span { font-size: 11px; line-height: 1.2; font-weight: 600; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Unterricht: Kursgruppen, Stundenkopf */

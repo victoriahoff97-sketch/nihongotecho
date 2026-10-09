@@ -104,16 +104,31 @@
   // Bilder: einmal dekodieren, pro id zwischenspeichern (modulweit, damit auch INK.preview darauf zugreifen kann)
   const imgCache = new Map();
   const imgEl = (im, onload) => {
+    // Kawaii-Sticker und Merkzettel (im.k) haben kein gespeichertes Bild, sie werden aus ihrer Vorlage gezeichnet
+    const KW = App.inkKawaii, key = im.k ? KW.key(im) : '';
     let el = imgCache.get(im.id);
     if (!el) {
-      el = new Image();
+      el = new Image(); el._key = key;
       if (onload) el.onload = onload;
-      el.src = im.src;
+      el.src = im.k ? KW.src(im) : im.src;
       imgCache.set(im.id, el);
+    } else if (el._key !== key && !el._next) {
+      // Zettel hat eine neue Form: neu zeichnen, bis dahin bleibt das alte Bild stehen
+      const cur = el, nx = cur._next = new Image();
+      nx._key = key;
+      nx.onload = () => { if (imgCache.get(im.id) === cur) imgCache.set(im.id, nx); if (onload) onload(); };
+      nx.onerror = () => { cur._key = key; cur._next = null; };
+      nx.src = KW.src(im);
     }
     return el.complete && el.naturalWidth ? el : null;
   };
-  const drawImages = (ctx, p, W) => p.images.forEach((im) => { const el = imgEl(im); if (el) ctx.drawImage(el, im.x * W, im.y * W, im.w * W, im.h * W); });
+  const drawImg = (ctx, el, im, W) => {
+    if (!im.r) { ctx.drawImage(el, im.x * W, im.y * W, im.w * W, im.h * W); return; }
+    ctx.save(); ctx.translate((im.x + im.w / 2) * W, (im.y + im.h / 2) * W); ctx.rotate((im.r * Math.PI) / 180);
+    ctx.drawImage(el, (-im.w / 2) * W, (-im.h / 2) * W, im.w * W, im.h * W);
+    ctx.restore();
+  };
+  const drawImages = (ctx, p, W) => p.images.forEach((im) => { const el = imgEl(im); if (el) drawImg(ctx, el, im, W); });
 
   // ---------- Vorschau: eine Seite verkleinert, schreibgeschützt ----------
   // opts: { page = 0, maxH = 220, crop = true } – zeichnet Papier + Bilder + Striche in Canvas-Breite (canvas.clientWidth).
@@ -169,6 +184,7 @@
     const SEL = App.inkSelect;
     const PEN = App.inkPen;
     const STK = App.inkStickers;
+    const KW = App.inkKawaii;
     // Buchlayout: nur im Vollbild und nur für Notizblätter (PDF-/Bildseiten haben beliebige Formate)
     const bookable = !embedded && kind === 'notebook';
     // Buchaufgabe: Aufgabe (Seite 1) und Schreibblatt nebeneinander, die Aufgabe bleibt beim Scrollen stehen
@@ -441,7 +457,7 @@
     const drawInk = (p) => {
       const c = p.ink.getContext('2d');
       c.clearRect(0, 0, p.ink.width, p.ink.height);
-      p.images.forEach((im) => { if (!imgCache.get(im.id)) imgEl(im, () => { if (p.visible) drawInk(p); }); });
+      p.images.forEach((im) => imgEl(im, () => { if (p.visible) drawInk(p); }));
       drawImages(c, p, p.ink.width);
       // Striche, die gerade verschoben werden, zeichnet drawMove auf die Live-Ebene
       p.strokes.forEach((s) => { if (!st.moving || !st.moving.includes(s)) drawStroke(c, s, p.ink.width); });
@@ -530,12 +546,12 @@
         const sh = sb && SEL.handleAt(sb, pt, Math.max(0.006, Math.min(0.02, Math.min(sb.w, sb.h) / 3)) / st.zoom);
         if (sh) { startScale(p, sh, pt); return; }
         if (st.ssel && st.ssel.p === p && SEL.inBox(st.ssel.box, pt, 0.01 / st.zoom)) { startMove(p, e); return; }
-        const h = cur && st.sel.p === p ? II.handleAt(cur, pt, 0.02 / st.zoom) : null;
+        const h = cur && st.sel.p === p ? II.handleAt(cur, pt, 0.02 / st.zoom, ROT_PX / p.el.clientWidth) : null;
         const im = h ? cur : II.hit(p.images, pt);
         // freie Stelle: Schrift einkreisen
         if (!im) { clearSel(); drawing = { p, lasso: [pt], pick: true }; return; }
         select(p, im.id);
-        drawing = { p, img: im, handle: h, start: pt, before: { x: im.x, y: im.y, w: im.w, h: im.h } };
+        drawing = { p, img: im, handle: h, start: pt, before: { x: im.x, y: im.y, w: im.w, h: im.h, r: im.r || 0 } };
         return;
       }
       if (st.tool === 'lasso') { closeHw(); drawing = { p, lasso: [norm(p, e)] }; return; }
@@ -568,7 +584,8 @@
       const p = drawing.p;
       if (drawing.img) {
         const pt = norm(p, e), b = drawing.before;
-        Object.assign(drawing.img, drawing.handle ? II.resize(b, drawing.handle, pt) : II.move(b, pt[0] - drawing.start[0], pt[1] - drawing.start[1], p.def.ratio));
+        if (drawing.handle === 'rot') drawing.img.r = II.angle(b, pt);
+        else Object.assign(drawing.img, drawing.handle ? II.resizeTurned(b, drawing.handle, pt, KW.free(drawing.img.k) ? (o, h, q) => II.resizeFree(o, h, q, KW.min(drawing.img.k)) : II.resize) : II.move(b, pt[0] - drawing.start[0], pt[1] - drawing.start[1], p.def.ratio));
         drawInk(p); updateSel();
         return;
       }
@@ -628,9 +645,17 @@
       const p = drawing.p;
       if (drawing.img) {
         const im = drawing.img, b = drawing.before;
+        // Kanji-Feld: auf ganze Kästchen einrasten, die feste Ecke bleibt stehen
+        if (drawing.handle && drawing.handle !== 'rot' && im.k) {
+          const r = im.x + im.w, bt = im.y + im.h;
+          Object.assign(im, KW.snap(im.k, im.w, im.h));
+          if (drawing.handle[1] === 'w') im.x = r - im.w;
+          if (drawing.handle[0] === 'n') im.y = bt - im.h;
+        }
         ['x', 'y', 'w', 'h'].forEach((k) => { im[k] = +im[k].toFixed(4); });
-        if (['x', 'y', 'w', 'h'].some((k) => im[k] !== b[k])) {
-          st.undo.push({ type: 'img-edit', pi: p.i, id: im.id, before: b, after: { x: im.x, y: im.y, w: im.w, h: im.h } }); st.redo = [];
+        if (!im.r) delete im.r;
+        if (['x', 'y', 'w', 'h'].some((k) => im[k] !== b[k]) || (im.r || 0) !== b.r) {
+          st.undo.push({ type: 'img-edit', pi: p.i, id: im.id, before: b, after: { x: im.x, y: im.y, w: im.w, h: im.h, r: im.r || 0 } }); st.redo = [];
           markDirty(p);
         }
         drawInk(p); updateSel();
@@ -668,6 +693,7 @@
     scroller.addEventListener('wheel', (e) => { if (e.ctrlKey) { e.preventDefault(); const r = scroller.getBoundingClientRect(); setZoom(st.zoom * (e.deltaY < 0 ? 1.1 : 0.9), e.clientX - r.left, e.clientY - r.top); } else if (exTall() && pageAt(e.clientX, e.clientY) === st.pages[0]) { e.preventDefault(); moveEx(-e.deltaY); } }, { passive: false });
 
     // ---------- Bilder: Auswahl, Löschen, Einfügen ----------
+    const ROT_PX = 30; // Abstand des Dreh-Griffs über dem Bild (wie in der CSS)
     const selImg = () => st.sel && st.sel.p.images.find((x) => x.id === st.sel.id);
     const updateSel = () => {
       const old = root.querySelector('.ink-sel');
@@ -678,11 +704,11 @@
         if (old) old.remove();
         el = document.createElement('div');
         el.className = 'ink-sel';
-        el.innerHTML = ['nw', 'ne', 'sw', 'se'].map((h) => `<span class="h" data-h="${h}"></span>`).join('') + `<button class="ink-sel-del" data-del title="Bild löschen">${icon('trash')}</button>`;
+        el.innerHTML = ['nw', 'ne', 'sw', 'se'].map((h) => `<span class="h" data-h="${h}"></span>`).join('') + `<span class="h rot" title="Drehen"></span><button class="ink-sel-del" data-del title="Bild löschen">${icon('trash')}</button>`;
         st.sel.p.el.appendChild(el);
       }
       const r = st.sel.p.def.ratio;
-      Object.assign(el.style, { left: im.x * 100 + '%', top: (im.y / r) * 100 + '%', width: im.w * 100 + '%', height: (im.h / r) * 100 + '%' });
+      Object.assign(el.style, { left: im.x * 100 + '%', top: (im.y / r) * 100 + '%', width: im.w * 100 + '%', height: (im.h / r) * 100 + '%', transform: im.r ? `rotate(${im.r}deg)` : '' });
     };
     const select = (p, id) => { clearSSel(); st.sel = { p, id }; updateSel(); };
     const clearSel = () => { st.sel = null; updateSel(); clearSSel(); };
@@ -928,8 +954,10 @@
       const fp = root.querySelector('.fp-pop'); if (fp) fp.remove();
       setStamp(null);
     };
-    // ---------- Sticker: wählen, dann aufs Blatt tippen; landen als Striche in Stift- und Markerfarbe ----------
+    // ---------- Sticker: wählen, dann aufs Blatt tippen ----------
+    // „Normal“ landet als Striche in Stift- und Markerfarbe, „Kawaii“ (st.stamp = 'k:…') als buntes Bild, das sich wie ein eingefügtes Bild verschieben und skalieren lässt
     let ghostP = null;
+    const kawaii = () => (st.stamp && st.stamp.startsWith('k:') ? st.stamp.slice(2) : null);
     const stickerAt = (p, pt) => STK.strokes(st.stamp, { x: pt[0], y: pt[1], pageH: p.def.ratio, color: st.color, mcolor: st.mcolor });
     // Vorschau unter Stift/Maus, solange ein Sticker gewählt ist
     const ghost = (e) => {
@@ -940,7 +968,11 @@
       const c = p.live.getContext('2d');
       clearLive(p);
       c.save(); c.globalAlpha = 0.45;
-      stickerAt(p, norm(p, e)).forEach((s) => drawStroke(c, s, p.live.width));
+      if (kawaii()) {
+        const b = KW.place(kawaii(), norm(p, e), p.def.ratio), W = p.live.width;
+        const el = imgEl({ id: 'ghost:' + st.stamp, ...b });
+        if (el) c.drawImage(el, b.x * W, b.y * W, b.w * W, b.h * W);
+      } else stickerAt(p, norm(p, e)).forEach((s) => drawStroke(c, s, p.live.width));
       c.restore();
     };
     const setStamp = (id) => {
@@ -950,6 +982,14 @@
       if (!st.stamp) ghost(null);
     };
     const placeSticker = (p, pt) => {
+      if (kawaii()) {
+        const im = { id: II.newId(), ...KW.place(kawaii(), pt, p.def.ratio) };
+        p.images.push(im);
+        st.undo.push({ type: 'img-add', pi: p.i, im }); st.redo = [];
+        drawInk(p); markDirty(p);
+        setTool('select'); select(p, im.id);
+        return;
+      }
       const strokes = stickerAt(p, pt);
       setStamp(null);
       p.strokes = p.strokes.concat(strokes);
@@ -960,12 +1000,19 @@
       if (root.querySelector('.stk-pop') || st.stamp) { setStamp(null); return; }
       const pop = document.createElement('div');
       pop.className = 'stk-pop card';
-      pop.innerHTML = STK.LIST.map((s) => `<button class="stk" data-stk="${s.id}" title="${esc(s.label)}">${STK.svg(s.id, st.mcolor)}<span>${esc(s.label)}</span></button>`).join('');
+      const kw = (g) => KW.LIST.filter((s) => s.group === g).map((s) => `<button class="stk" data-stk="k:${s.id}" title="${esc(s.label)}"><img src="${KW.src({ k: s.id, w: s.w, h: s.h })}" alt=""><span>${esc(s.label)}</span></button>`).join('');
+      const fill = () => {
+        const tab = App.lsGet('stkTab') === 'normal' ? 'normal' : 'kawaii';
+        pop.innerHTML = `<div class="stk-tabs">${[['kawaii', 'Kawaii'], ['normal', 'Normal']].map(([t, l]) => `<button class="chip ${tab === t ? 'on' : ''}" data-stk-tab="${t}">${l}</button>`).join('')}</div>`
+          + (tab === 'kawaii' ? `<div class="stk-head">Merkzettel und Kanji-Feld</div>${kw('zettel')}<div class="stk-head">Sticker</div>${kw('sticker')}`
+            : STK.LIST.map((s) => `<button class="stk" data-stk="${s.id}" title="${esc(s.label)}">${STK.svg(s.id, st.mcolor)}<span>${esc(s.label)}</span></button>`).join(''));
+      };
+      fill();
       root.appendChild(pop);
       const r = btn.getBoundingClientRect(), rr = root.getBoundingClientRect();
       pop.style.left = Math.max(8, Math.min(r.left - rr.left - 80, rr.width - pop.offsetWidth - 8)) + 'px';
       pop.style.top = r.bottom - rr.top + 6 + 'px';
-      pop.addEventListener('click', (e) => { const b = e.target.closest('[data-stk]'); if (b) { setStamp(b.dataset.stk); note('Jetzt auf die Stelle im Blatt tippen'); } });
+      pop.addEventListener('click', (e) => { const t = e.target.closest('[data-stk-tab]'); if (t) { App.lsSet('stkTab', t.dataset.stkTab); fill(); return; } const b = e.target.closest('[data-stk]'); if (b) { setStamp(b.dataset.stk); note('Jetzt auf die Stelle im Blatt tippen'); } });
     };
     // Zielseite = größte sichtbare Fläche; Bild mittig im sichtbaren Ausschnitt
     const insertImage = async (blob) => {
