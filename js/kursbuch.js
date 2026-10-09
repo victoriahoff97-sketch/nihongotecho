@@ -38,11 +38,11 @@
     const sessionHref = (pg) => `${App.link(byId.get(pg.sessionId))}?nb=${encodeURIComponent(pg.fileId)}`;
 
     view.innerHTML = `<div class="${sec.cls} kursbuch"><div class="row between kb-bar">${crumbs}
-        <div class="row"><span class="small muted" data-kb-pos></span><button class="btn btn-sm" data-kb-toc>${icon('list')} Inhalt</button>
+        <div class="row"><span class="small muted" data-kb-pos></span><span class="kb-zoom"><button class="btn btn-sm" data-kb-zoom="-1" title="Verkleinern">−</button><button class="btn btn-sm" data-kb-zoom="0" title="Ganze Doppelseite zeigen">100 %</button><button class="btn btn-sm" data-kb-zoom="1" title="Vergrößern">+</button></span><button class="btn btn-sm" data-kb-toc>${icon('list')} Inhalt</button>
         <select class="input" data-kb-jump title="Zu einer Stunde blättern"><option value="">Zur Stunde …</option>${sessions.map((s, i) => KL.sessionPage(pages, s.id) >= 0 ? `<option value="${esc(s.id)}">${i + 1} · ${esc(title(s))}${s.topic ? ' – ' + esc(s.topic) : ''}</option>` : '').join('')}</select></div></div>
       <div class="kb-stage viewer-book"><div class="viewer-scroll"><div class="viewer-pages book" data-kb-book></div></div></div></div>`;
     const stage = view.querySelector('.kb-stage'), scroller = stage.firstElementChild, book = view.querySelector('[data-kb-book]');
-    const pos = view.querySelector('[data-kb-pos]'), jump = view.querySelector('[data-kb-jump]');
+    const pos = view.querySelector('[data-kb-pos]'), jump = view.querySelector('[data-kb-jump]'), zoomBtn = view.querySelector('[data-kb-zoom="0"]');
 
     let spread = Math.min(Math.max(0, +q.p || 0), nSpreads - 1);
     let hl = null; // { page, itemId }: Markierung eines Grammatikpunkts hervorheben, zu dem geblättert wurde
@@ -66,29 +66,49 @@
       const i = leaf - 2 * toc, pg = pages[i];
       if (!pg) return `<div class="${cls}"></div>`;
       const marks = hl && hl.page === i ? (rows.get(pg.fileId + ':' + pg.page).links || []).filter((l) => l.itemId === hl.itemId) : [];
-      return `<div class="${cls} kb-page" data-kb-open="${i}" title="Tippen: Stunde zum Schreiben öffnen"><canvas data-kb-ink="${i}"></canvas>
+      return `<div class="${cls} kb-page"><canvas data-kb-ink="${i}"></canvas>
         ${marks.map((l) => `<span class="kb-hl" style="left:${l.x * 100}%;top:${l.y / A4 * 100}%;width:${l.w * 100}%;height:${l.h / A4 * 100}%"></span>`).join('')}<span class="pno">${i + 1}</span></div>`;
     };
     const tabHtml = (leaf, side, other) => {
       const pg = pages[leaf - 2 * toc], o = pages[other - 2 * toc];
       if (leaf < 2 * toc || !pg || (side === 'r' && o && other >= 2 * toc && o.sessionId === pg.sessionId)) return '';
       const s = byId.get(pg.sessionId);
-      return `<a class="kb-tab ${side}" href="${sessionHref(pg)}" title="Stunde zum Schreiben öffnen"><span lang="ja">${esc(title(s))}</span>${s.topic ? ' · ' + esc(s.topic) : ''} ${icon('pen')}</a>`;
+      return `<a class="kb-tab ${side}" href="${sessionHref(pg)}" title="Stunde zum Schreiben öffnen"><span class="kb-tab-t"><span lang="ja">${esc(title(s))}</span>${s.topic ? ' · ' + esc(s.topic) : ''}</span><b>${icon('pen')} öffnen</b></a>`;
+    };
+    let zoom = 1, inkTimer = 0;
+    const drawInk = () => book.querySelectorAll('[data-kb-ink]').forEach((cv) => {
+      const pg = pages[+cv.dataset.kbInk];
+      App.ink.preview(cv, pg.fileId, { page: pg.page, crop: false, maxH: 1e5, bg: App.ink.BOOK_PAPER, always: true });
+    });
+    // Seitengröße: die Doppelseite passt bei 100 % genau in die Fläche; Einband, Reiter und Schrift sind in em bemessen
+    const size = () => {
+      const W = BK.fitWidth(scroller.clientWidth, scroller.clientHeight - TAB_H, A4) * zoom;
+      book.style.fontSize = W / 30 + 'px';
+      book.querySelectorAll('.vpage').forEach((el) => { el.style.width = W + 'px'; el.style.height = W * A4 + 'px'; });
+      book.querySelectorAll('[data-kb-ink]').forEach((cv) => { cv.style.height = ''; });
+      stage.classList.toggle('kb-zoomed', zoom > 1);
+      zoomBtn.textContent = Math.round(zoom * 100) + ' %';
+    };
+    // Zoomen um einen Punkt (Bildschirm-Koordinaten; ohne Angabe die Mitte): er bleibt unter dem Finger/Zeiger stehen
+    const setZoom = (z, cx, cy) => {
+      z = KL.clampZoom(z);
+      if (z === zoom) return;
+      const sr = scroller.getBoundingClientRect();
+      if (cx == null) { cx = sr.left + sr.width / 2; cy = sr.top + sr.height / 2; }
+      const a = book.getBoundingClientRect(), fx = (cx - a.left) / a.width, fy = (cy - a.top) / a.height;
+      zoom = z; size();
+      const b = book.getBoundingClientRect();
+      scroller.scrollLeft += b.left + fx * b.width - cx; scroller.scrollTop += b.top + fy * b.height - cy;
+      clearTimeout(inkTimer); inkTimer = setTimeout(drawInk, 140); // scharf nachzeichnen, sobald die Größe steht
     };
     const show = (dir) => {
-      const W = BK.fitWidth(scroller.clientWidth, scroller.clientHeight - TAB_H, A4);
       const l = 2 * spread, r = l + 1;
-      book.style.fontSize = W / 30 + 'px';
       book.innerHTML = leafHtml(l, 'l') + leafHtml(r, 'r') + tabHtml(l, 'l', r) + tabHtml(r, 'r', l)
         + `<button class="bk-turn prev" data-kb-turn="-1" title="Zurückblättern"${spread ? '' : ' hidden'}>‹</button><button class="bk-turn next" data-kb-turn="1" title="Weiterblättern"${spread < nSpreads - 1 ? '' : ' hidden'}>›</button>`;
-      book.querySelectorAll('.vpage').forEach((el) => {
-        el.style.width = W + 'px'; el.style.height = W * A4 + 'px';
-        if (dir) el.classList.add(dir > 0 ? 'flip-next' : 'flip-prev');
-      });
-      book.querySelectorAll('[data-kb-ink]').forEach((cv) => {
-        const pg = pages[+cv.dataset.kbInk];
-        App.ink.preview(cv, pg.fileId, { page: pg.page, crop: false, maxH: 1e5, bg: App.ink.BOOK_PAPER, always: true });
-      });
+      size();
+      if (dir) book.querySelectorAll('.vpage').forEach((el) => el.classList.add(dir > 0 ? 'flip-next' : 'flip-prev'));
+      scroller.scrollLeft = 0; scroller.scrollTop = 0;
+      drawInk();
       pos.textContent = spread < toc ? 'Inhaltsverzeichnis' : `Doppelseite ${spread - toc + 1} von ${nSpreads - toc}`;
       const first = pages[Math.max(0, l - 2 * toc)];
       jump.value = spread >= toc && first ? first.sessionId : '';
@@ -99,27 +119,59 @@
     const turn = (d) => { const s = spread + d; if (s >= 0 && s < nSpreads) goTo(s); };
     const toPage = (i, mark) => goTo(KL.spreadOfPage(i, toc), mark);
 
-    // ---------- Bedienung: tippen, wischen, Pfeiltasten ----------
-    let down = null, swipedAt = 0;
-    scroller.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: e.timeStamp }; });
-    scroller.addEventListener('pointerup', (e) => {
-      const d = down ? BK.swipeDir(e.clientX - down.x, e.clientY - down.y, e.timeStamp - down.t) : 0;
-      down = null;
-      if (d) { swipedAt = e.timeStamp; turn(d); }
+    // ---------- Bedienung: wischen blättert; vergrößert verschiebt der Finger das Blatt; zwei Finger / Strg+Mausrad zoomen ----------
+    // Geschrieben wird hier nie. Zur Stunde geht es nur über den Reiter über dem Buch (ein Link), nicht per Tipp auf die Seite.
+    const ptrs = new Map();
+    let down = null, pinch = null, movedAt = 0;
+    const dist = () => { const [p, q2] = Array.from(ptrs.values()); return Math.hypot(p.x - q2.x, p.y - q2.y) || 1; };
+    scroller.addEventListener('pointerdown', (e) => {
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptrs.size === 1) down = { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false };
+      else if (ptrs.size === 2) { down = null; pinch = { d: dist(), z: zoom }; }
     });
+    scroller.addEventListener('pointermove', (e) => {
+      const p = ptrs.get(e.pointerId);
+      if (!p) return;
+      const dx = e.clientX - p.x, dy = e.clientY - p.y;
+      p.x = e.clientX; p.y = e.clientY;
+      if (pinch && ptrs.size === 2) {
+        const [m, n] = Array.from(ptrs.values());
+        setZoom(pinch.z * dist() / pinch.d, (m.x + n.x) / 2, (m.y + n.y) / 2);
+        movedAt = e.timeStamp;
+      } else if (down) {
+        if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) down.moved = true;
+        if (zoom > 1 && down.moved) { scroller.scrollLeft -= dx; scroller.scrollTop -= dy; }
+      }
+    });
+    const up = (e) => {
+      if (!ptrs.delete(e.pointerId)) return;
+      if (ptrs.size < 2) pinch = null;
+      if (down && e.type === 'pointerup') {
+        if (down.moved) movedAt = e.timeStamp;
+        const d = zoom <= 1.02 ? BK.swipeDir(e.clientX - down.x, e.clientY - down.y, e.timeStamp - down.t) : 0;
+        if (d) turn(d);
+      }
+      if (!ptrs.size) down = null;
+    };
+    scroller.addEventListener('pointerup', up);
+    scroller.addEventListener('pointercancel', up);
+    scroller.addEventListener('wheel', (e) => { if (e.ctrlKey) { e.preventDefault(); setZoom(zoom * Math.exp(-e.deltaY * 0.002), e.clientX, e.clientY); } }, { passive: false });
+    scroller.addEventListener('dblclick', (e) => { if (!e.target.closest('button, a')) setZoom(zoom > 1 ? 1 : 2, e.clientX, e.clientY); });
+    view.querySelectorAll('[data-kb-zoom]').forEach((bt) => { bt.onclick = () => setZoom(+bt.dataset.kbZoom ? KL.stepZoom(zoom, +bt.dataset.kbZoom) : 1); });
     book.addEventListener('click', (e) => {
-      if (e.timeStamp - swipedAt < 400) { e.preventDefault(); return; }
-      const t = e.target.closest('[data-kb-turn], [data-kb-session], [data-kb-topic], [data-kb-open]');
+      // nach dem Verschieben oder Zoomen ist das Loslassen kein Tipp
+      if (e.timeStamp - movedAt < 400) { e.preventDefault(); return; }
+      const t = e.target.closest('[data-kb-turn], [data-kb-session], [data-kb-topic]');
       if (!t) return;
       if (t.dataset.kbTurn) turn(+t.dataset.kbTurn);
       else if (t.dataset.kbSession) {
         const i = KL.sessionPage(pages, t.dataset.kbSession);
         if (i >= 0) toPage(i); else App.go(App.link(byId.get(t.dataset.kbSession)));
-      } else if (t.dataset.kbTopic) {
+      } else {
         const tp = topics.find((x) => x.itemId === t.dataset.kbTopic);
         const i = KL.topicPage(pages, tp.itemId, tp.sessionId);
         if (i >= 0) toPage(i, { page: i, itemId: tp.itemId }); else App.go(App.link(byId.get(tp.sessionId)) + '?tab=learned');
-      } else App.go(sessionHref(pages[+t.dataset.kbOpen]));
+      }
     });
     view.querySelector('[data-kb-toc]').onclick = () => goTo(0);
     jump.onchange = () => { const i = KL.sessionPage(pages, jump.value); if (i >= 0) toPage(i); else goTo(0); };
@@ -128,6 +180,7 @@
       if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); turn(1); }
       if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); turn(-1); }
       if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+      if (e.key === '+' || e.key === '-') { e.preventDefault(); setZoom(KL.stepZoom(zoom, e.key === '+' ? 1 : -1)); }
     };
     document.addEventListener('keydown', onKey);
 
@@ -138,7 +191,7 @@
     let lastW = scroller.clientWidth, lastH = scroller.clientHeight;
     const ro = new ResizeObserver(() => { const w = scroller.clientWidth, h = scroller.clientHeight; if (w && (w !== lastW || h !== lastH)) { lastW = w; lastH = h; show(); } });
     window.addEventListener('resize', fit);
-    App.onLeave(() => { document.removeEventListener('keydown', onKey); window.removeEventListener('resize', fit); ro.disconnect(); });
+    App.onLeave(() => { document.removeEventListener('keydown', onKey); window.removeEventListener('resize', fit); ro.disconnect(); clearTimeout(inkTimer); });
     ro.observe(scroller);
   });
 })(window.App);

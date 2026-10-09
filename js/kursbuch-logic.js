@@ -44,6 +44,14 @@
   const spreadOfPage = (pageIdx, toc) => Math.floor(leafOf(pageIdx, toc) / 2);
   const spreadCount = (nPages, toc) => toc + Math.ceil(nPages / 2);
 
-  const K = { TOC_ROWS, courseSessions, pages, topics, sessionPage, topicPage, tocSpreads, chunk, leafOf, spreadOfPage, spreadCount };
+  // Zoom: 100 % = ganze Doppelseite; die Knöpfe gehen in festen Stufen, Finger und Mausrad stufenlos
+  const ZOOM_MAX = 4, ZOOM_STEPS = [1, 1.25, 1.5, 2, 2.5, 3, 4];
+  const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(1, +z || 1));
+  const stepZoom = (z, dir) => {
+    const next = dir > 0 ? ZOOM_STEPS.find((s) => s > z + 0.01) : ZOOM_STEPS.slice().reverse().find((s) => s < z - 0.01);
+    return next || clampZoom(z);
+  };
+
+  const K = { ZOOM_MAX, clampZoom, stepZoom, TOC_ROWS, courseSessions, pages, topics, sessionPage, topicPage, tocSpreads, chunk, leafOf, spreadOfPage, spreadCount };
   if (typeof module !== 'undefined' && module.exports) module.exports = K; else root.App.kursbuchLogic = K;
 })(this);
