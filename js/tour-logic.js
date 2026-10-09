@@ -40,8 +40,9 @@
   };
 
   // Die Frage „Rundgang?“ kommt genau einmal: auf der Startseite, wenn nichts anderes offen ist, und nicht in
-  // In-App-Browsern (Instagram u. ä.), in denen ohnehin nichts gespeichert bleibt.
-  const shouldAsk = ({ asked, path, busy, inApp }) => !asked && path === '/' && !busy && !inApp;
+  // In-App-Browsern (Instagram u. ä.), in denen ohnehin nichts gespeichert bleibt. Solange die Willkommenskarte
+  // noch Schritte zeigt (setup), wartet sie: erst einrichten, dann der Rundgang.
+  const shouldAsk = ({ asked, path, busy, inApp, setup }) => !asked && path === '/' && !busy && !inApp && !setup;
 
   const T = { GAP, MARGIN, tourKeyFor, visibleSteps, placeBubble, shouldAsk };
   if (typeof module !== 'undefined' && module.exports) module.exports = T; else root.App.tourLogic = T;

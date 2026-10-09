@@ -53,7 +53,8 @@
       manual: ['Sicherung', 'Sichern kannst du von Hand unter Einstellungen &gt; Sicherung.', ''],
     },
   };
-  const fileInput = '<label class="btn btn-sm">Backup-Datei wählen<input type="file" accept=".json,.ntpaket,.zip,application/json,application/zip" data-welcome-file hidden></label>';
+  const fileLabel = (label) => `<label class="btn btn-sm">${label}<input type="file" accept=".json,.ntpaket,.zip,application/json,application/zip" data-welcome-file hidden></label>`;
+  const fileInput = fileLabel('Backup-Datei wählen');
 
   const rowHtml = (r) => {
     let title, text = '', btns = '';
@@ -87,11 +88,14 @@
       dismissed: App.lsGet('welcome') === 'off',
     });
     if (!res.show) return '';
+    // Genki-Aufgaben kommen als eigene Datei (nie über die Webadresse): Hinweis, solange keine eingelesen sind
+    const aufgabenLine = App.exercises && !App.exercises.dir()
+      ? `<p class="muted small welcome-dict" data-welcome-aufgaben>Genki-Aufgaben: Die Übungsaufgaben aus dem Buch kommen als eigene Datei – von der Person, die dir die App gegeben hat. ${fileLabel("Aufgaben-Datei öffnen")}</p>` : "";
     const dictLine = res.dictLine ? `<p class="muted small welcome-dict">${res.dictLine === 'ready' ? 'Wörterbuch bereit' : 'Wörterbuch wird geladen …'}</p>` : '';
     return `<div class="card welcome" data-welcome>
       <div class="welcome-head"><div><h3>Willkommen bei Nihongo Techō</h3><p class="muted small">Ein paar kurze Schritte, dann ist alles eingerichtet.</p></div>
         ${b('data-welcome-act="later"', 'Später', 'btn-ghost btn-sm')}</div>
-      ${res.rows.map(rowHtml).join('')}${dictLine}</div>`;
+      ${res.rows.map(rowHtml).join('')}${aufgabenLine}${dictLine}</div>`;
   };
 
   // An Ort und Stelle neu zeichnen (wie refresh in pwa.js); die Sicherungs-Zeile auf der Startseite folgt mit
@@ -102,6 +106,8 @@
     if (el) { if (html) el.outerHTML = html; else el.remove(); }
     const h = document.querySelector('[data-backup-home]');
     if (h && App.backup.homeCard) h.innerHTML = App.backup.homeCard({ noRestoreHint: !!html });
+    // Karte weg (alles erledigt oder „Später“): jetzt darf die Frage nach dem Rundgang kommen
+    if (!html && App.tour) App.tour.askSoon();
   };
 
   // ---------- Einladungslink ----------

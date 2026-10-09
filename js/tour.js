@@ -165,7 +165,8 @@
   };
   const askOnce = () => {
     const busy = asking || !!cur || !!$('.modal-back') || !!$('.viewer');
-    if (!L.shouldAsk({ asked: !!App.store.settings.tourAsked, path: App.parseHash().path, busy, inApp: inAppBrowser() })) return;
+    const setup = !!(App.welcome && App.welcome.card());
+    if (!L.shouldAsk({ asked: !!App.store.settings.tourAsked, path: App.parseHash().path, busy, inApp: inAppBrowser(), setup })) return;
     asking = true;
     // sofort merken – auch wer jetzt neu lädt, wird nicht noch einmal gefragt
     App.saveSettings({ tourAsked: true });
@@ -180,6 +181,8 @@
     md.el.querySelector('[data-no]').onclick = () => md.close();
   };
 
+  const askSoon = () => { if (!App.store.settings.tourAsked) { clearTimeout(askTimer); askTimer = setTimeout(askOnce, 600); } };
+
   // Seite gewechselt: Tour beenden. Nur neu gezeichnet (z. B. Abgleich im Hintergrund): Schritt neu ausrichten.
   App.onChange((w) => {
     if (w !== 'route') return;
@@ -190,7 +193,7 @@
       if (path === HOME[p.key]) start(p.key, p.opts);
     }
     // kurz nach dem Anzeigen der Startseite fragen (auch wenn man zuerst auf einer Unterseite gelandet ist)
-    if (!App.store.settings.tourAsked) { clearTimeout(askTimer); askTimer = setTimeout(askOnce, 600); }
+    askSoon();
   });
 
   // Knöpfe auf den Seiten, die eine bestimmte Tour starten (z. B. „So geht's“ in der Erweiterungs-Karte)
@@ -200,7 +203,7 @@
   });
 
   App.tour = {
-    start, stop, askOnce,
+    start, stop, askOnce, askSoon,
     active: () => !!cur,
     startForPage: () => start(L.tourKeyFor(App.parseHash().path)),
   };
