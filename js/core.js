@@ -399,6 +399,7 @@ window.App = window.App || {};
     s.last = now;
     S.srs.set(id, s);
     await App.db.put('srs', s);
+    if (App.backup && App.backup.noteChange) App.backup.noteChange(); // Üben zählt als Änderung (kein emit: die Runde soll nicht neu zeichnen)
     return s;
   };
   App.srsStage = (id) => { const s = S.srs.get(id); if (!s || !s.reps) return 0; return s.ivl >= 21 ? 2 : 1; };

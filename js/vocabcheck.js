@@ -41,6 +41,7 @@
       s = { id, check: 'unchecked', ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: now, last: 0, checked: now };
       S.srs.set(id, s);
       await App.db.put('srs', s);
+      if (App.backup && App.backup.noteChange) App.backup.noteChange();
       return;
     }
     if (st === 'known') {
@@ -52,6 +53,7 @@
     }
     S.srs.set(id, s);
     await App.db.put('srs', s);
+    if (App.backup && App.backup.noteChange) App.backup.noteChange();
   };
   App.vocabCounts = (items = App.itemsOf('vocab')) => {
     const c = { unchecked: 0, learn: 0, known: 0, total: items.length };

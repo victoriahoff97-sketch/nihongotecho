@@ -79,7 +79,11 @@
       App.render(true);
     }, 60);
   });
-  window.addEventListener('hashchange', () => App.render());
+  // Einladungslink in eine schon offene Seite eingefügt: erst verarbeiten (Code aus der Adresse nehmen), dann zeichnen
+  window.addEventListener('hashchange', async () => {
+    try { if (App.invite && App.inviteLogic && App.inviteLogic.read(location.hash)) await App.invite.boot(); } catch (e) { /* boot wirft nie */ }
+    App.render();
+  });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => App.applyTheme());
 
   (async () => {
@@ -88,13 +92,20 @@
       await App.load();
     } catch (e) {
       console.error(e);
+      if (App.invite) App.invite.clean(); // den Code auch hier nicht in der Adresse stehen lassen
       $('#view').innerHTML = `<div class="card"><h3>Speicher nicht verfügbar</h3><p>Dein Browser erlaubt keinen lokalen Speicher (IndexedDB). Bitte öffne die App in Microsoft Edge oder Chrome und nicht im privaten Modus.</p><pre class="small">${esc(e.message || e)}</pre></div>`;
       return;
     }
     if (App.store.settings.sidebarCollapsed) document.body.classList.add('sidebar-collapsed');
     App.applyTheme();
     App.initSearch();
+    // Einladungslink (#freischalten=…) verarbeiten und Adresse bereinigen – vor dem ersten Zeichnen, wirft nie
+    if (App.invite) await App.invite.boot();
+    // Teilen-Menü (?text=…&url=…) in die Eingangs-Adresse umsetzen – synchron, wirft nie
+    if (App.inbox) App.inbox.bootShare();
     App.render();
+    // Kleines Wörterbuch beim ersten Web-Start von selbst laden (nicht abgewartet)
+    if (App.welcome) App.welcome.autoDict();
     // Ordner-Sicherung anschließen – ein Fehler hier darf den Start nie verhindern
     App.backup.init().catch((e) => console.error('Sicherung: Start fehlgeschlagen', e));
     // PDF-Texte für die Suche im Hintergrund einlesen (nach dem ersten Anzeigen)

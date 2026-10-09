@@ -1176,6 +1176,26 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .ex-attempt { cursor: pointer; }
 .ex-attempt canvas { display: block; width: 100%; margin-top: 8px; background: #fff; border-radius: 8px; }
 
+/* ---------- Willkommenskarte (Web-Version, Startseite) ---------- */
+.card.welcome { margin-bottom: 18px; border-top: 4px solid var(--sakura); }
+.welcome-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.welcome-head h3 { margin-bottom: 2px; }
+.welcome-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.welcome-mark { flex: none; width: 24px; height: 24px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--line-2); display: inline-flex; align-items: center; justify-content: center; }
+.welcome-mark .ico { width: 14px; height: 14px; }
+.welcome-row.done .welcome-mark { background: var(--sakura); border-color: var(--sakura); color: #fff; }
+.welcome-row.done b { color: var(--muted); }
+.welcome-body { flex: 1; min-width: 0; }
+.welcome-body p { margin: 2px 0 0; }
+.welcome-body .row { margin-top: 8px; gap: 8px; flex-wrap: wrap; }
+.welcome-step { display: inline-block; width: 22px; height: 22px; vertical-align: middle; margin: 0 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: 6px; }
+.welcome-dict { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
+/* Einladungslink erstellen (Karte Web-App) */
+.invite-make { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.invite-make h4 { margin: 0 0 8px; }
+.invite-make .row { gap: 8px; flex-wrap: wrap; }
+.invite-make .input { flex: 1; min-width: 12em; }
+.invite-make p { margin: 8px 0 0; }
 /* ---------- Tutorial: geführte Tour (js/tour.js) ---------- */
 .tour-block { position: fixed; inset: 0; z-index: 160; }
 .tour-block.dim { background: rgba(20, 16, 12, .55); }

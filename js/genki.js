@@ -75,6 +75,21 @@
     return unlocking;
   };
 
+  // Code zur Probe prüfen (für den Einladungslink) → true/false; speichert nichts und ändert den Zustand nicht.
+  // Falscher Code = false; GENKI_UNSUPPORTED und GENKI_NONE werden weitergeworfen.
+  G.check = async (code) => {
+    const enc = window.GENKI_ENC;
+    if (!enc) throw fail('GENKI_NONE', 'Keine Genki-Daten in dieser Version');
+    if (!L().supported()) throw fail('GENKI_UNSUPPORTED', 'Dieser Browser kann die Genki-Daten nicht entschlüsseln');
+    try {
+      await L().decrypt(enc, await L().deriveKey(code, enc));
+      return true;
+    } catch (e) {
+      if (e && e.code === 'GENKI_CODE') return false;
+      throw e;
+    }
+  };
+
   // ---------- Karte „Genki I freischalten“ ----------
   const T = {
     title: 'Genki I freischalten',

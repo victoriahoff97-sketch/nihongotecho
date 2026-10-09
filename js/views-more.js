@@ -256,10 +256,13 @@
     const name = `nihongo-techo-${share ? 'paket' : 'backup'}-${App.today()}.json`;
     App.downloadBlob(new Blob([JSON.stringify(data)], { type: 'application/json' }), name);
     App.toast('Export erstellt: ' + name);
+    if (!share) App.lsSet('changed-days', '[]');
   };
   App.importData = async (file) => {
     const data = JSON.parse(await file.text());
-    if (data.app !== 'nihongo-techo') throw new Error('Das ist keine Nihongo-Techō-Datei.');
+    if (!data || data.app !== 'nihongo-techo') throw new Error('Das ist keine Nihongo-Techō-Datei.');
+    // Form prüfen, bevor etwas geschrieben wird (Vollbackup, Light-Backup und Teilen-Paket haben dieselbe Grundform)
+    if (!App.paketLogic.backupShape(data)) throw Object.assign(new Error('Die Backup-Datei ist beschädigt.'), { code: 'IMPORT_FORM' });
     let n = 0, nf = 0;
     if (!data.share) {
       // Paket-Status nur übernehmen, wenn das Backup Einträge dieses Pakets enthält und es hier noch nicht installiert ist
@@ -346,7 +349,7 @@
         <h4 class="sub-h">Von Hand</h4><p class="muted small" data-backup-manual ${App.backup.manualHint() ? '' : 'hidden'}>Alles wird lokal in diesem Browser gespeichert. Mach regelmäßig ein Backup – damit kannst du auch auf ein anderes Gerät umziehen.</p>
         <div class="stack"><button class="btn" data-exp>${icon('download')} Komplett-Backup (mit Dateien & Stiftnotizen)</button>
         <button class="btn" data-exp-light>${icon('download')} Backup ohne Dateien (klein)</button>
-        <label class="btn">${icon('upload')} Backup oder Paket importieren<input type="file" accept=".json,application/json" hidden data-imp></label></div></div>
+        <label class="btn">${icon('upload')} Paket oder Backup öffnen<input type="file" accept=".json,.ntpaket,.zip,application/json,application/zip" hidden data-imp></label></div></div>
       <div class="card"><h3>Pakete &amp; Wörterbuch</h3><p class="muted small">JLPT-Niveaus N5–N1 freischalten, das Wörterbuch für den Satz-Scan installieren und den belegten Speicher ansehen.</p>
         <div class="row"><a class="btn btn-primary" href="#/pakete">${icon('package')} Pakete verwalten</a><a class="btn btn-ghost" href="#/lizenzen">${icon('info')} Lizenzen</a></div></div>
       <div class="card"><h3>Mit Freunden teilen</h3><p class="muted small">Erstelle ein Paket mit deinen eigenen Einträgen (z. B. alle Vokabeln aus NHK Easy oder deine Unterrichtsnotizen). Deine Freunde importieren es in ihre eigene App – ihr Lernstand bleibt getrennt.</p>
@@ -371,7 +374,7 @@
       const lv = e.target.closest('[data-wk-level]');
       if (lv) { await App.wk.setLevel(+lv.dataset.wkLevel, lv.checked); App.toast(`WaniKani Level ${lv.dataset.wkLevel} ${lv.checked ? 'freigeschaltet' : 'ausgeschaltet'}`); App.render(true); }
       const imp = e.target.closest('[data-imp]');
-      if (imp && imp.files[0]) { try { const r = await App.importData(imp.files[0]); App.toast(`Importiert: ${r.n} Einträge, ${r.nf} Dateien`); App.render(); } catch (er) { App.toast('Import fehlgeschlagen: ' + er.message); } }
+      if (imp && imp.files[0]) { const file = imp.files[0]; imp.value = ''; try { const r = await App.paket.open(file); App.toast(r.text); App.render(); } catch (er) { App.toast(er.message); } }
     });
     root.addEventListener('click', async (e) => {
       const b = e.target.closest('button'); if (!b) return;

@@ -196,7 +196,8 @@
     // Genki-Freischaltung: auf der Startseite nur, solange sie noch aussteht (nicht bei none/open)
     const genkiCard = App.genki && ['locked', 'stale'].includes(App.genki.state()) ? `<div style="margin-bottom:18px">${App.genki.card()}</div>` : '';
     view.innerHTML = `<div class="sec-home">
-      <div data-backup-home>${App.backup.homeCard()}</div>
+      ${App.welcome.card()}
+      <div data-backup-home>${App.backup.homeCard({ noRestoreHint: !!App.welcome.card() })}</div>
       ${genkiCard}
       <div class="hero"><div class="big-jp">日本語</div>
         <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>

@@ -20,18 +20,39 @@
     const install = state.standalone ? ''
       : state.installEvt ? `<button class="btn" data-pwa="install">${icon('download')} Als App installieren</button>`
         : '<p class="muted small">Als App installieren: im Browser-Menü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen.</p>';
+    // Einladungslink erstellen: nur, wo Genki-Daten dabei sind (Web-Version); Ablauf in welcome.js (App.invite.make)
+    const invite = App.genki && App.genki.present() ? `<div class="invite-make" data-invite>
+      <h4>Einladungslink erstellen</h4>
+      <form class="row" data-invite-form>
+        <input class="input" type="text" data-invite-code placeholder="XXXX-XXXX-XXXX-XXXX" aria-label="Freischaltcode" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button class="btn" type="submit">${icon('copy')} Link kopieren</button>
+      </form>
+      <p class="small" role="alert" data-invite-err hidden style="color:var(--shu)"></p>
+      <p class="muted small">Nur persönlich weitergeben, nicht in Gruppen – wer den Link hat, kann Genki I freischalten.</p></div>` : '';
     return `<div class="card" data-pwa-card><h3>Web-App</h3><p class="muted small">${status}</p>
       <div class="row">${state.waiting
     ? `<button class="btn btn-primary" data-pwa="apply">${icon('replay')} Neue Version laden</button>`
-    : `<button class="btn" data-pwa="check">${icon('replay')} Nach Update suchen</button>`}${install}</div></div>`;
+    : `<button class="btn" data-pwa="check">${icon('replay')} Nach Update suchen</button>`}${install}<button class="btn btn-ghost btn-sm" data-welcome-show>Erste Schritte anzeigen</button></div>${invite}</div>`;
   };
 
-  App.pwa = { enabledFor, state, card };
+  // install: Installation von außen auslösen (Willkommenskarte); false, wenn der Browser keine angeboten hat
+  App.pwa = { enabledFor, state, card, install: async () => false };
   if (!sw || typeof location === 'undefined' || !enabledFor(location, !!sw.controller)) return;
   state.enabled = true;
   state.standalone = window.matchMedia('(display-mode: standalone)').matches;
 
-  const refresh = () => { const el = document.querySelector('[data-pwa-card]'); if (el) el.outerHTML = card(); };
+  const refresh = () => {
+    const el = document.querySelector('[data-pwa-card]'); if (el) el.outerHTML = card();
+    if (App.welcome) App.welcome.refresh();
+  };
+  App.pwa.install = async () => {
+    const evt = state.installEvt;
+    if (!evt) return false;
+    state.installEvt = null;
+    evt.prompt();
+    refresh();
+    try { return (await evt.userChoice).outcome === 'accepted'; } catch (e) { return false; }
+  };
   const apply = () => { if (state.waiting) state.waiting.postMessage('skipWaiting'); };
   const offer = (worker) => {
     state.waiting = worker;
@@ -74,7 +95,7 @@
     if (!b) return;
     const act = b.dataset.pwa;
     if (act === 'apply') apply();
-    if (act === 'install' && state.installEvt) { const evt = state.installEvt; state.installEvt = null; evt.prompt(); refresh(); }
+    if (act === 'install') App.pwa.install();
     if (act === 'check' && reg) {
       try {
         await reg.update();

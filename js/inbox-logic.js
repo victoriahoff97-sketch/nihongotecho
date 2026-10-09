@@ -61,5 +61,66 @@
   // Woher bekommt man die Browser-Erweiterung? Die Web-Version liefert sie als ZIP mit, lokal liegt der Ordner neben der App.
   const extSource = (protocol) => (protocol === 'https:' ? 'download' : 'folder');
 
-  App.inboxLogic = { LIMIT, parse, sentences, vocabDefaults, findExisting, extSource };
+  // Nur NHK bekommt automatisch eine Quelle (Regel wie extension/selection-logic.js); kaputte Adresse → ''
+  const quelleFor = (ref) => {
+    try {
+      const u = new URL(str(ref).trim());
+      return /^https?:$/.test(u.protocol) && /(^|\.)nhk\.or\.jp$|(^|\.)web\.nhk$/i.test(u.hostname) ? 'NHK Easy' : '';
+    } catch (e) { return ''; }
+  };
+
+  // Eingefügter Text vor der Übernahme prüfen: 'leer' | 'kein-jp' | 'ok' (nicht Japanisches kommt nie in die Adresse)
+  const checkPaste = (text) => {
+    const t = str(text).trim();
+    return !t ? 'leer' : isJp(t) ? 'ok' : 'kein-jp';
+  };
+
+  // Suchteil einer Adresse → Objekt (ohne URLSearchParams, damit die Tests ohne Browser-Globals laufen)
+  const queryOf = (search) => {
+    const dec = (t) => { try { return decodeURIComponent(t.replace(/\+/g, ' ')); } catch (e) { return t; } };
+    const out = {};
+    for (const part of str(search).replace(/^\?/, '').split('&')) {
+      if (!part) continue;
+      const i = part.indexOf('=');
+      out[dec(i < 0 ? part : part.slice(0, i))] = i < 0 ? '' : dec(part.slice(i + 1));
+    }
+    return out;
+  };
+
+  // Teilen-Menü (Web Share Target, GET): titel/text/url aus dem Suchteil; null, wenn nichts geteilt wurde
+  const fromShare = (search) => {
+    const q = queryOf(search);
+    if (!['titel', 'text', 'url'].some((k) => Object.prototype.hasOwnProperty.call(q, k))) return null;
+    let text = str(q.text).trim();
+    let ref = str(q.url).trim();
+    if (!ref) {
+      const found = text.match(/https?:\/\/\S+/g);
+      if (found) {
+        ref = found[found.length - 1];
+        const at = text.lastIndexOf(ref);
+        text = (text.slice(0, at) + text.slice(at + ref.length)).trim();
+      }
+    }
+    if (!text) text = str(q.titel).trim();
+    return { text, ref };
+  };
+
+  // Wie parse, aber ohne Ziel: Auswahlseite „Text übernehmen“
+  const parseOpen = (query) => {
+    const q = query || {};
+    const raw = str(q.text).trim();
+    const ref = str(q.ref).trim();
+    return {
+      ok: isJp(raw),
+      text: raw.slice(0, LIMIT),
+      ref: /^https?:\/\//i.test(ref) ? ref.slice(0, 2000) : '',
+      quelle: quelleFor(ref),
+      gekuerzt: raw.length > LIMIT,
+    };
+  };
+
+  // Sieht der Text nach einem einzelnen Wort aus (→ Knopf „Vokabel speichern“)?
+  const wordLike = (text) => { const t = str(text).trim(); return t.length > 0 && t.length <= 20 && !/[\r\n。！？!?]/.test(t); };
+
+  App.inboxLogic = { LIMIT, parse, sentences, vocabDefaults, findExisting, extSource, quelleFor, checkPaste, fromShare, parseOpen, wordLike };
 })(window.App);

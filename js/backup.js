@@ -343,13 +343,21 @@
         <div class="row">${btn('pick', 'Anderen Ordner wählen', 'btn-ghost btn-sm')}${btn('disconnect', 'Sicherung trennen', 'btn-ghost btn-sm')}</div>
       </div>`;
   };
+  // Tage mit Änderungen (Merker `changed-days`); unlesbar = leer
+  const changedDays = () => App.remindLogic.readDays(App.lsGet);
+  // Öffentlich, damit auch das Üben (schreibt ohne emit) einen Tag mit Änderungen zählen kann
+  K.noteChange = () => { if (App.remindLogic) App.remindLogic.noteToday(App.lsGet, App.lsSet, App.today()); };
   // Hinweis auf der Startseite (Inhalt von [data-backup-home]); leer, wenn es nichts zu sagen gibt
-  K.homeCard = () => {
+  K.homeCard = (o) => {
     const st = K.status();
     if (st.kind === 'paused') {
       return `<div class="card backup-line"><span>${App.icon('alert')} Sicherung pausiert – ${HOME_WHY[st.ask] || HOME_WHY.permission}</span>${btn('resume', 'Sicherung fortsetzen', 'btn-primary btn-sm')}</div>`;
     }
-    if (st.kind === 'off' && K.isEmptyLocal() && App.lsGet('backup-hint') !== 'off') {
+    if (App.remindLogic && App.remindLogic.due({ days: changedDays(), backupOn: st.kind !== 'off' && st.kind !== 'unsupported' })) {
+      return `<div class="card backup-line"><span>Lange nicht gesichert – jetzt Backup speichern</span>
+        <span class="row">${btn('remind-save', 'Backup speichern', 'btn-primary btn-sm', 'backup')}${btn('remind-later', 'Später', 'btn-ghost btn-sm')}</span></div>`;
+    }
+    if (st.kind === 'off' && !(o && o.noRestoreHint) && K.isEmptyLocal() && App.lsGet('backup-hint') !== 'off') {
       return `<div class="card backup-line"><span><b>Sicherung wiederherstellen</b><br><span class="muted small">Hast du schon einen Sicherungsordner? Dann hol deine Daten zurück.</span></span>
         <span class="row">${btn('pick', 'Ordner wählen', 'btn-primary btn-sm', 'backup')}${btn('hide-hint', 'Ausblenden', 'btn-ghost btn-sm')}</span></div>`;
     }
@@ -373,7 +381,7 @@
     K.renderStatus();
     if (!document.querySelector) return;
     const a = document.querySelector('[data-backup-auto]'); if (a) a.innerHTML = K.card();
-    const h = document.querySelector('[data-backup-home]'); if (h) h.innerHTML = K.homeCard();
+    const h = document.querySelector('[data-backup-home]'); if (h) h.innerHTML = K.homeCard({ noRestoreHint: !!(App.welcome && App.welcome.card()) });
     const m = document.querySelector('[data-backup-manual]'); if (m) m.hidden = !K.manualHint();
   };
   const versionsDialog = async () => {
@@ -404,6 +412,8 @@
     resume: () => K.resume(),
     versions: versionsDialog,
     disconnect: async () => { if (await App.confirm('Automatische Sicherung trennen? Die Dateien im Ordner bleiben liegen.', { ok: 'Trennen', title: 'Sicherung trennen' })) K.disconnect(); },
+    'remind-save': async () => { await App.exportData({ withFiles: true }); refresh(); },
+    'remind-later': () => { App.lsSet('changed-days', '[]'); refresh(); },
     'hide-hint': () => { App.lsSet('backup-hint', 'off'); refresh(); },
     status: () => { const k = K.status().kind; if (k === 'paused') K.resume(); else if (k === 'error') errorDialog(); else location.hash = '#/einstellungen'; },
   };
@@ -418,7 +428,10 @@
   K.init = async () => {
     App.dbWritten = dbWritten;
     document.addEventListener('click', onClick);
-    if (App.onChange) App.onChange((w) => { if (w === 'backup') refresh(); });
+    if (App.onChange) App.onChange((w) => {
+      if (w === 'backup') refresh();
+      else if (w !== 'route') K.noteChange();
+    });
     try {
       const n = +sessionStorage.getItem('nt-backup-missing');
       if (n) { sessionStorage.removeItem('nt-backup-missing'); App.toast(n === 1 ? '1 Datei fehlt im Ordner.' : `${n} Dateien fehlen im Ordner.`); }

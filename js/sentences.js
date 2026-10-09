@@ -131,7 +131,7 @@
           <textarea class="input jp-in" rows="8" data-text placeholder="きのう、東京で大きい地震がありました。&#10;Gestern gab es in Tokio ein großes Erdbeben.&#10;わたしは毎朝コーヒーを飲みます。 | Ich trinke jeden Morgen Kaffee."></textarea></div>
         <div class="three"><div class="field"><label>Quelle</label><select class="input" data-src>${App.sourceOptions(lastSrc)}</select></div>
           <div class="field" style="grid-column:span 2"><label>Fundstelle / Link <small>optional</small></label><input class="input" data-ref placeholder="z. B. https://www3.nhk.or.jp/news/easy/… oder „Genki S. 112“"></div></div>
-        <div class="row"><button class="btn btn-sec" data-go>${icon('sparkle')} Sätze erkennen</button></div></div></div>
+        <div class="row"><a class="btn btn-sec" href="#/eingang" data-clip-link>Aus Zwischenablage</a><button class="btn btn-sec" data-go>${icon('sparkle')} Sätze erkennen</button></div></div></div>
       <div data-out style="margin-top:18px"></div></div>`;
     const out = view.querySelector('[data-out]');
     const txt = view.querySelector('[data-text]'), srcSel = view.querySelector('[data-src]'), refIn = view.querySelector('[data-ref]');

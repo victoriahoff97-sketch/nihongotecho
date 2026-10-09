@@ -123,6 +123,7 @@
     const s = W.markedKnown(id, Date.now());
     App.store.srs.set(s.id, s);
     await App.db.put('srs', s);
+    if (App.backup && App.backup.noteChange) App.backup.noteChange();
     return s;
   };
 })(window.App);

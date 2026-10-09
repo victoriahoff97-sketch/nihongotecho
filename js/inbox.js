@@ -77,6 +77,67 @@
     });
   };
 
+  // Auswahlseite „Text übernehmen“: Vorschau, „Sätze erkennen“ / „Vokabel speichern“, Einfügen aus der Zwischenablage
+  const choose = (view, query) => {
+    const p = L.parseOpen(query);
+    const given = !!(String(query.text || '').trim() || String(query.ref || '').trim());
+    const open = (ziel) => App.go('#/eingang?' + new URLSearchParams({ ziel, text: p.text, ref: p.ref, quelle: p.quelle }));
+    const shown = p.text.length > 300 ? p.text.slice(0, 300) + '…' : p.text;
+    const sec = App.SECTIONS.vocab;
+    const take = p.ok ? `<div class="card"><h3>Text übernehmen</h3>
+        <p class="jp-in" style="white-space:pre-wrap;margin:6px 0">${App.esc(shown)}</p>
+        ${p.ref ? `<p class="small muted">Fundstelle: ${App.esc(p.ref)}${p.quelle ? ' · ' + App.esc(p.quelle) : ''}</p>` : ''}
+        <div class="row"><button class="btn btn-primary" data-sent>${icon('sparkle')} Sätze erkennen</button>
+          ${L.wordLike(p.text) ? '<button class="btn btn-sec" data-word>Vokabel speichern</button>' : ''}</div></div>` : '';
+    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/vokabeln">Vokabeln</a> › Text übernehmen</div>
+      <div class="page-head"><div class="titles"><h1>Text übernehmen <span class="jp-title">取込</span></h1>
+        <p>Japanischen Text aus einer anderen App oder von einer Webseite hierher holen – über das Teilen-Menü oder die Zwischenablage.</p></div></div>
+      ${take}
+      <div class="card"><div class="form">
+        <p class="small" data-hint>${!p.ok && given ? 'Kein japanischer Text gefunden.' : ''}</p>
+        <div class="row"><button class="btn btn-sec" data-clip>Aus Zwischenablage einfügen</button></div>
+        <div class="field"><label>… oder hier einfügen</label><textarea class="input jp-in" rows="5" data-paste></textarea></div>
+        <div class="row"><button class="btn" data-take>Übernehmen</button></div></div></div></div>`;
+    const hint = view.querySelector('[data-hint]'), area = view.querySelector('[data-paste]');
+    // Erst prüfen, dann übergeben: leerer oder nicht japanischer Text kommt nie in die Adresse (Verlauf); kein neuer Verlaufseintrag
+    const give = (text, emptyMsg) => {
+      const c = L.checkPaste(text);
+      if (c !== 'ok') { hint.textContent = c === 'leer' ? emptyMsg : 'Kein japanischer Text gefunden.'; area.focus(); return; }
+      history.replaceState(null, '', location.pathname + location.search + '#/eingang?' + new URLSearchParams({ text: String(text).trim().slice(0, L.LIMIT + 1) }));
+      App.render();
+    };
+    if (p.gekuerzt) App.toast('Text war zu lang und wurde gekürzt');
+    const sent = view.querySelector('[data-sent]'), word = view.querySelector('[data-word]');
+    if (sent) sent.onclick = () => open('saetze');
+    if (word) word.onclick = () => open('vokabel');
+    view.querySelector('[data-take]').onclick = () => give(area.value, 'Bitte erst Text einfügen.');
+    view.querySelector('[data-clip]').onclick = async () => {
+      let text;
+      try {
+        if (!(navigator.clipboard && navigator.clipboard.readText)) throw new Error('keine Zwischenablage');
+        text = await navigator.clipboard.readText();
+      } catch (e) {
+        hint.textContent = 'Zugriff auf die Zwischenablage nicht möglich – bitte unten einfügen.';
+        area.focus();
+        return;
+      }
+      give(text, 'Zwischenablage ist leer.');
+    };
+  };
+
+  // Teilen-Menü: ?titel=&text=&url= (Web Share Target) vor dem ersten Zeichnen in die Eingangs-Adresse umsetzen.
+  // Synchron, wirft nie; andere Suchparameter (z. B. ?sw=1) bleiben unberührt, wenn nichts geteilt wurde.
+  App.inbox = {
+    bootShare() {
+      try {
+        const s = L.fromShare(location.search);
+        if (!s) return;
+        const hash = s.text || s.ref ? '#/eingang?' + new URLSearchParams({ text: s.text, ref: s.ref }) : '#/';
+        history.replaceState(null, '', location.pathname + hash);
+      } catch (e) { console.error('Teilen: Übernahme fehlgeschlagen', e); }
+    },
+  };
+
   App.route('/eingang', (view, params, query) => {
     // Offenes Formular nicht überfahren: zurück zur vorigen Ansicht, Übergabe verfällt
     if (document.querySelector('.modal-back, .viewer')) {
@@ -84,6 +145,8 @@
       history.back();
       return;
     }
+    // ohne Ziel (Teilen-Menü, Zwischenablage): erst fragen, was mit dem Text geschehen soll
+    if (!query.ziel) return choose(view, query);
     const p = L.parse(query);
     if (!p.ok) { App.toast('Kein japanischer Text übergeben'); return land('#/'); }
     // nur Quellen, die es in den Einstellungen gibt – keine frei erfundenen Namen aus der Adresse
