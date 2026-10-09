@@ -13,7 +13,16 @@
   const dropUrls = () => { urls.forEach((u) => URL.revokeObjectURL(u)); urls.clear(); };
 
   // ---------- Paket ----------
-  X.init = async () => { const r = await App.db.get('exblobs', DIR_KEY); dir = (r && r.dir) || null; await syncPages(); };
+  X.init = async () => {
+    const r = await App.db.get('exblobs', DIR_KEY);
+    dir = (r && r.dir) || null;
+    if (dir && dir.pages) {
+      const have = new Set();
+      for (const p of dir.pages) if (await App.db.get('exblobs', p.id)) have.add(p.id);
+      if (!L.readyPages(dir.pages, have).length) { dir = Object.assign({}, dir); delete dir.pages; }
+    }
+    await syncPages();
+  };
   X.dir = () => dir;
   X.all = () => (dir ? dir.exercises : []);
   X.get = (id) => X.all().find((e) => e.id === id);

@@ -79,6 +79,9 @@
   // der Datei-Eintrag trägt nur packFile und kommt so in keine Sicherung und keinen Export.
   const SOURCE = 'Genki I';
   const packOutdated = (dir) => !!dir && !(Array.isArray(dir.pages) && dir.pages.length);
+  // have = Schlüssel im Paket-Speicher. Wurde das Paket mit einer älteren App-Version eingelesen, steht das Verzeichnis der Seiten da,
+  // ihre PDFs aber nicht – dann gilt das Paket als ohne Buchseiten (und damit als veraltet: neu einlesen)
+  const readyPages = (pages, have) => (Array.isArray(pages) && pages.length && pages.every((p) => have.has(p.id)) ? pages : []);
   const pageFileId = (pageId) => 'pk-' + pageId;
   // i = Platz im Paket, base = Zeitstempel des Pakets: frühere Seiten gelten als „neuer“ und stehen in der Dateiliste vorn
   const pageFile = (p, i, base) => ({
@@ -131,5 +134,5 @@
   // off ≤ 0 = so weit ist sie nach oben geschoben, höchstens bis ihr unteres Ende zu sehen ist
   const splitOffset = (off, exH, ch) => Math.min(0, Math.max(ch - 2 * SPLIT.PAD - exH, off || 0));
 
-  App.exercisesLogic = { MAGIC, PACK, buildPack, parsePack, forGrammar, forLesson, title, attemptName, cutParts, checkCuts, packOutdated, pageFileId, pageFile, planPages, checkPages, SPLIT, splitLayout, splitOffset };
+  App.exercisesLogic = { MAGIC, PACK, buildPack, parsePack, forGrammar, forLesson, title, attemptName, cutParts, checkCuts, packOutdated, readyPages, pageFileId, pageFile, planPages, checkPages, SPLIT, splitLayout, splitOffset };
 })(window.App);

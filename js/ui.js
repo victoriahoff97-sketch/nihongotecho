@@ -372,7 +372,7 @@
     const ink = App.store.inkCount.get(f.id);
     const ext = (f.name.split('.').pop() || '').toUpperCase().slice(0, 5);
     return `<div class="file-card" data-open-file="${f.id}">
-      <div class="thumb">${k === 'image' ? `<img data-thumb="${f.id}" alt="">` : `<span class="ext" style="--c:${EXT_COLOR[k]}">${esc(k === 'notebook' ? '✎' : ext || EXT_LABEL[k])}</span>`}${k === 'pdf' ? `<img class="pdf-thumb" data-pdf-thumb="${f.id}" alt="" hidden>` : ''}
+      <div class="thumb">${k === 'image' ? `<img data-thumb="${f.id}" alt="">` : `<span class="ext" style="--c:${EXT_COLOR[k]}">${esc(k === 'notebook' ? '✎' : ext || EXT_LABEL[k])}</span>`}${PTH.KINDS.includes(k) ? `<img class="pdf-thumb" data-pdf-thumb="${f.id}" alt="" hidden>` : ''}${k === 'notebook' ? `<canvas data-nb-thumb="${f.id}"></canvas>` : ''}
       ${ink ? `<span class="ink-dot">✎ ${ink}</span>` : ''}</div>
       <div class="info"><b title="${esc(f.name)}">${esc(f.name)}</b>
       <div class="row" style="gap:4px">${App.srcBadge(f)}<span class="badge">${EXT_LABEL[k]}</span></div></div></div>`;
@@ -443,17 +443,89 @@
   document.addEventListener('dragstart', (e) => { if (e.target.closest && e.target.closest('.file-grid:not([data-fixed]) .file-card')) e.preventDefault(); });
 
   const urls = [];
+  // Notizblätter: erste Seite (Papier + Handschrift) direkt in die Karte zeichnen – immer der aktuelle Stand
+  const hydrateNotebookThumbs = (root) => {
+    if (!App.ink || !App.ink.preview) return;
+    for (const cv of $$('canvas[data-nb-thumb]', root)) {
+      const box = cv.parentNode;
+      App.ink.preview(cv, cv.dataset.nbThumb, { page: 0, crop: false, always: true, maxH: box.clientHeight || 160 })
+        .then((ok) => { if (ok) box.classList.add('has-prev'); }).catch((e) => console.warn('Notizblatt-Vorschau:', e));
+    }
+  };
   App.hydrateThumbs = async (root) => {
     hydratePdfThumbs(root);
+    hydrateNotebookThumbs(root);
     for (const img of $$('img[data-thumb]', root)) {
       const b = await App.fileBlob(img.dataset.thumb);
       if (b) { const u = URL.createObjectURL(b); urls.push(u); img.src = u; }
     }
   };
 
-  // ---------- PDF-Vorschaubilder (erste Seite, klein gerendert und im Store 'thumbs' aufbewahrt) ----------
+  // ---------- Vorschaubilder (erste Seite, klein gerendert und im Store 'thumbs' aufbewahrt) ----------
+  // PDF: erste Seite · Video: erstes Bild · Office-Dateien: das in der Datei mitgespeicherte Vorschaubild · Text: der Anfang.
+  // Bilder zeigen sich selbst, Notizblätter werden live gezeichnet (hydrateNotebookThumbs), Ton hat keine erste Seite.
   const PTH = App.pdfThumb = {};
   PTH.WIDTH = 400;
+  PTH.KINDS = ['pdf', 'video', 'slides', 'doc', 'deck', 'other'];
+  // Office-Formate sind ZIP-Archive und bringen oft ein fertiges Vorschaubild mit (PowerPoint/Word, LibreOffice, Keynote/Pages)
+  const ZIP_THUMBS = ['docProps/thumbnail.jpeg', 'docProps/thumbnail.jpg', 'docProps/thumbnail.png', 'Thumbnails/thumbnail.png', 'QuickLook/Thumbnail.jpg', 'QuickLook/Thumbnail.png', 'preview.jpg'];
+  PTH.zipThumb = (entries) => ZIP_THUMBS.map((n) => entries.find((e) => e.name === n)).find(Boolean) || null;
+  // Textanfang in Zeilen der Breite cols, höchstens rows Zeilen
+  PTH.textLines = (text, cols, rows) => {
+    const out = [];
+    for (const line of String(text).split(/\r?\n/)) {
+      if (!line) out.push('');
+      for (let i = 0; i < line.length && out.length < rows; i += cols) out.push(line.slice(i, i + cols));
+      if (out.length >= rows) break;
+    }
+    return out.slice(0, rows);
+  };
+  const canvasJpeg = (cv) => new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.82));
+  const zipThumbOf = async (blob) => {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    if (bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) return null; // kein ZIP
+    const e = PTH.zipThumb(App.paketLogic.zipEntries(bytes));
+    if (!e) return null;
+    const raw = bytes.subarray(e.dataStart, e.dataStart + e.compSize);
+    const data = e.method === 0 ? raw : new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    return new Blob([data], { type: e.name.endsWith('.png') ? 'image/png' : 'image/jpeg' });
+  };
+  const videoFrame = (blob) => new Promise((res, rej) => {
+    const v = document.createElement('video');
+    const u = URL.createObjectURL(blob);
+    const done = (fn, x) => { clearTimeout(timer); URL.revokeObjectURL(u); v.removeAttribute('src'); fn(x); };
+    const timer = setTimeout(() => done(rej, new Error('Video-Vorschau: Zeit abgelaufen')), 15000);
+    v.muted = true; v.playsInline = true; v.preload = 'auto';
+    v.onloadeddata = () => { v.currentTime = Math.min(0.1, (v.duration || 1) / 2); };
+    v.onseeked = () => {
+      const sz = PTH.size(v.videoWidth, v.videoHeight);
+      const cv = document.createElement('canvas');
+      cv.width = sz.w; cv.height = sz.h;
+      cv.getContext('2d').drawImage(v, 0, 0, sz.w, Math.round(v.videoHeight * sz.scale));
+      canvasJpeg(cv).then((b) => done(res, b));
+    };
+    v.onerror = () => done(rej, new Error('Video-Vorschau: nicht lesbar'));
+    v.src = u;
+  });
+  const textThumb = async (blob) => {
+    const lines = PTH.textLines(await blob.slice(0, 4000).text(), 46, 17);
+    if (!lines.some((l) => l.trim())) return null;
+    const cv = document.createElement('canvas');
+    cv.width = PTH.WIDTH; cv.height = 300;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = '#2a2a33'; ctx.font = '14px system-ui, "Noto Sans JP", sans-serif'; ctx.textBaseline = 'top';
+    lines.forEach((l, i) => ctx.fillText(l, 14, 12 + i * 17));
+    return canvasJpeg(cv);
+  };
+  // Vorschaubild für eine beliebige Datei; null = dieses Format hat keins
+  PTH.renderAny = async (blob, f) => {
+    const k = App.fileKind(f);
+    if (k === 'pdf') return PTH.render(blob);
+    if (k === 'video') return videoFrame(blob);
+    if (/\.(txt|md|csv|tsv)$/i.test(f.name || '')) return textThumb(blob);
+    return zipThumbOf(blob);
+  };
   // Die Karte zeigt nur den Seitenanfang (4:3) – mehr als ein Quadrat wird nie gebraucht
   PTH.size = (w, h, target = PTH.WIDTH) => {
     const scale = target / w;
@@ -491,10 +563,11 @@
     if (thumbUrls.has(id)) return thumbUrls.get(id);
     let blob = (await App.db.get('thumbs', id))?.blob;
     if (!blob) {
-      const src = await App.fileBlob(id);
+      const f = App.store.files.get(id);
+      const src = f && await App.fileBlob(id);
       if (!src) return null;
-      blob = await PTH.render(src);
-      if (!blob) return null;
+      blob = await PTH.renderAny(src, f);
+      if (!blob) { thumbFailed.add(id); return null; } // kein Vorschaubild in dieser Datei: in dieser Sitzung nicht nochmal einlesen
       if (App.store.files.has(id)) await App.db.put('thumbs', { id, blob }); // inzwischen gelöscht? dann nicht aufbewahren
     }
     const u = URL.createObjectURL(blob);
@@ -513,7 +586,7 @@
         const u = await PTH.url(id);
         if (u) showThumb(img, u);
       } catch (e) {
-        console.warn('PDF-Vorschau konnte nicht erzeugt werden:', id, e);
+        console.warn('Vorschau konnte nicht erzeugt werden:', id, e);
         thumbFailed.add(id);
       }
     }
