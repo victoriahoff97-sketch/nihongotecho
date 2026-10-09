@@ -358,7 +358,7 @@
         <span class="row">${btn('remind-save', 'Backup speichern', 'btn-primary btn-sm', 'backup')}${btn('remind-later', 'Später', 'btn-ghost btn-sm')}</span></div>`;
     }
     if (st.kind === 'off' && !(o && o.noRestoreHint) && K.isEmptyLocal() && App.lsGet('backup-hint') !== 'off') {
-      return `<div class="card backup-line"><span><b>Sicherung wiederherstellen</b><br><span class="muted small">Hast du schon einen Sicherungsordner? Dann hol deine Daten zurück.</span></span>
+      return `<div class="card backup-line"><span><b>Sicherung einrichten</b><br><span class="muted small">Wähle einen Ordner – die App sichert dort von selbst. Liegt darin schon eine Sicherung, kannst du deine Daten zurückholen.</span></span>
         <span class="row">${btn('pick', 'Ordner wählen', 'btn-primary btn-sm', 'backup')}${btn('hide-hint', 'Ausblenden', 'btn-ghost btn-sm')}</span></div>`;
     }
     return '';
