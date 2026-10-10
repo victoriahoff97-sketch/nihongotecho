@@ -80,9 +80,15 @@
     }, 60);
   });
   // Einladungslink in eine schon offene Seite eingefügt: erst verarbeiten (Code aus der Adresse nehmen), dann zeichnen
-  window.addEventListener('hashchange', async () => {
+  window.addEventListener('hashchange', async (ev) => {
+    // Herkunft einer Lernrunde merken (vor dem Zeichnen: die Scroll-Position der alten Seite steht noch)
+    const old = ev.oldURL && ev.oldURL.includes('#') ? ev.oldURL.slice(ev.oldURL.indexOf('#')) : '';
+    const { origin, restore } = App.originLogic.step(App.origin(), old, location.hash, window.scrollY);
+    App.setOrigin(origin);
     try { if (App.invite && App.inviteLogic && App.inviteLogic.read(location.hash)) await App.invite.boot(); } catch (e) { /* boot wirft nie */ }
     App.render();
+    // zurück von der Lernrunde: wieder an dieselbe Stelle der Seite
+    if (restore != null) { window.scrollTo(0, restore); requestAnimationFrame(() => window.scrollTo(0, restore)); }
   });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => App.applyTheme());
 

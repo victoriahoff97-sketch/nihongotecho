@@ -158,7 +158,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const unchecked = active ? items.filter((i) => App.activeStatus(i) === 'unchecked').length : items.filter((i) => i.char !== '々' && App.vocabStatus(i.id) === 'unchecked').length;
     const allOfType = App.itemsOf(type);
     const groups = type === 'phrase' ? Array.from(new Set(allOfType.map((x) => x.group))) : [];
-    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/ueben">Üben</a> › Karteikarten</div>
+    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Karteikarten</div>
       <div class="page-head"><div class="titles"><h1>Karteikarten <span class="jp-title">札</span></h1><p>${due.length} fällig · ${fresh.length} neu in dieser Auswahl</p></div></div>
       <div class="card" data-setup><div class="stack">
         <div class="row"><div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['grammar', 'Grammatik'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div>
@@ -220,7 +220,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       flipped = false;
       if (!cur) {
         stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Alles erledigt für jetzt.'}</p>
-          <div class="row" style="justify-content:center"><a class="btn" href="#/ueben">Zur Übersicht</a>${cram ? '<button class="btn btn-primary" data-again>Weitere Runde</button>' : roundEnd(more())}</div></div></div>`;
+          <div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${cram ? '<button class="btn btn-primary" data-again>Weitere Runde</button>' : roundEnd(more())}</div></div></div>`;
         if (cram) stage.querySelector('[data-again]').onclick = () => App.render();
         bindRoundEnd(stage);
         return;
@@ -274,7 +274,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const inLevel = allG.filter((g) => g.source !== 'Genki I' || (lessonNum(g) || 0) <= maxL);
     const selected = new Set(preset && preset.length ? preset : inLevel.map((g) => g.id));
     const dir = q.dir || 'de';
-    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/ueben">Üben</a> › Übersetzungsübungen</div>
+    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Übersetzungsübungen</div>
       <div class="page-head"><div class="titles"><h1>Übersetzen <span class="jp-title">翻訳</span></h1><p>${session ? `Zur Stunde „${esc(session.title || session.number)}“ – ` : ''}Sätze nur aus Grammatik & Vokabeln bis zu deinem Niveau.</p></div></div>
       <div class="card" data-setup><div class="stack">
         <div class="row"><label class="small"><b>Niveau</b></label><select class="input" data-max>${maxLessonOptions(maxL)}</select>
@@ -346,7 +346,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       if (i >= exs.length) {
         stage.innerHTML = `<div class="ex-card"><div class="card pad-lg" style="text-align:center"><div class="score-ring">${score} / ${exs.length}</div><h2>${score === exs.length ? '完璧！ Perfekt!' : score > exs.length / 2 ? 'よくできました！' : 'がんばって！ Dranbleiben!'}</h2>
           ${wrong.length ? `<div class="section-title">Zum Wiederholen</div><div class="stack" style="text-align:left">${wrong.map((e) => `<div class="example"><div class="grow"><div class="jp-s" lang="ja">${JP.ruby(e.jp)}</div><div class="de-s">${esc(e.de)}</div><a class="small" href="${App.link(e.g)}">${esc(e.g.title)}</a></div></div>`).join('')}</div>` : ''}
-          <div class="row" style="justify-content:center;margin-top:16px"><a class="btn" href="#/ueben">Übersicht</a><button class="btn btn-primary" data-again>Neue Runde</button></div></div></div>`;
+          <div class="row" style="justify-content:center;margin-top:16px">${App.backBtn('Übersicht')}<button class="btn btn-primary" data-again>Neue Runde</button></div></div></div>`;
         stage.querySelector('[data-again]').onclick = () => App.render();
         return;
       }
@@ -414,7 +414,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     // Schreiben mit Lernstand: unabhängig vom Niveau-Filter, denn neu sind nur Kanji, die du schon lesen kannst
     const wq = App.writeQueue({ l: q.l });
     const wc = W.counts(wq.items, S.srs, wq.unlocked);
-    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/ueben">Üben</a> › Kanji-Quiz</div>
+    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Kanji-Quiz</div>
       <div class="page-head"><div class="titles"><h1>Kanji-Quiz <span class="jp-title">書</span></h1><p>${pool.length} Kanji in der Auswahl</p></div></div>
       <div class="card" data-setup><div class="row">
         <div class="seg">${[['write', 'Bedeutung → schreiben'], ['read', 'Kanji → Bedeutung'], ['reading', 'Wort → Lesung']].map(([k, l]) => `<button class="${mode === k ? 'on' : ''}" data-q-mode="${k === defMode ? '' : k}">${l}</button>`).join('')}</div>
@@ -442,7 +442,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     let i = 0, score = 0;
     const next = () => {
       if (i >= qs.length) {
-        stage.innerHTML = `<div class="card pad-lg" style="text-align:center;max-width:640px;margin:0 auto"><div class="score-ring">${score} / ${qs.length}</div><h2>${score >= qs.length * 0.8 ? 'すごい！' : 'がんばって！'}</h2>${queue ? `<p class="muted">${qs.length > queue.length ? 'Falsch Geschriebenes kam in dieser Runde gleich noch einmal dran.' : 'Alles auf Anhieb richtig geschrieben.'}</p>` : ''}<div class="row" style="justify-content:center"><a class="btn" href="#/ueben">Zur Übersicht</a>${queue ? roundEnd(more()) : '<button class="btn btn-primary" data-again>Nochmal</button>'}</div></div>`;
+        stage.innerHTML = `<div class="card pad-lg" style="text-align:center;max-width:640px;margin:0 auto"><div class="score-ring">${score} / ${qs.length}</div><h2>${score >= qs.length * 0.8 ? 'すごい！' : 'がんばって！'}</h2>${queue ? `<p class="muted">${qs.length > queue.length ? 'Falsch Geschriebenes kam in dieser Runde gleich noch einmal dran.' : 'Alles auf Anhieb richtig geschrieben.'}</p>` : ''}<div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${queue ? roundEnd(more()) : '<button class="btn btn-primary" data-again>Nochmal</button>'}</div></div>`;
         if (!queue) stage.querySelector('[data-again]').onclick = () => App.render();
         bindRoundEnd(stage);
         return;

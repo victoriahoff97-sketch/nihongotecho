@@ -147,7 +147,7 @@
     const cAll = counts(all);
     const batch = +S.settings.checkBatch || 15;
     const pct = (n) => (c.total ? (n / c.total) * 100 : 0);
-    view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="crumbs"><a href="#/ueben">Üben</a> › Einstufen</div>
+    view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="crumbs">${App.backCrumb()} › Einstufen</div>
       <div class="page-head"><div class="titles"><h1>Einstufen <span class="jp-title">確認</span></h1>
         <p>${active ? 'Welche Wörter weißt du auch aus dem Deutschen heraus? Geh alle, die du schon lesen kannst, in Runden durch – danach landet im Aktiv-Lernstapel nur, was du noch üben musst.' : `Was kannst du schon? Geh deine ${isK ? 'Kanji' : isP ? 'Ausdrücke' : 'Vokabeln'} in Runden durch – danach landet im Lernstapel nur, was du wirklich noch lernen musst.`}</p></div>
         <div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div></div>
@@ -211,7 +211,7 @@
         <div class="check-list">${list.map(row).join('')}</div>
         ${left ? `<div class="row" style="justify-content:flex-end;margin-top:10px">${rest}</div>` : ''}
         ${!left ? `<div class="card row between" style="margin-top:16px"><div><b>Runde geschafft!</b> ${k} kannst du schon, ${list.length - k} kommen in den ${active ? 'Aktiv-' : ''}Lernstapel.</div>
-          <div class="row"><a class="btn" href="#/ueben/karten${isK ? '?type=kanji' : type === 'phrase' ? '?type=phrase' : active ? '?dir=de' : ''}">${icon('practice')} Lernstapel üben</a><button class="btn btn-primary" data-next>${icon('next')} Nächste Runde</button></div></div>` : ''}`;
+          <div class="row">${App.origin() ? App.backBtn() : ''}<a class="btn" href="#/ueben/karten${isK ? '?type=kanji' : type === 'phrase' ? '?type=phrase' : active ? '?dir=de' : ''}">${icon('practice')} Lernstapel üben</a><button class="btn btn-primary" data-next>${icon('next')} Nächste Runde</button></div></div>` : ''}`;
     };
     stage.onclick = async (e) => {
       const r = e.target.closest('.check-row');

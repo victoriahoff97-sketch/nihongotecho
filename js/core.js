@@ -580,6 +580,12 @@ window.App = window.App || {};
     const h = '#' + path + (qs ? '?' + qs : '');
     if (replace) { history.replaceState(null, '', h); App.render(true); } else location.hash = h;
   };
+  // Herkunft einer Lernrunde (Seite, von der man in den Lernbereich kam) – gilt für diesen Tab, übersteht Neuladen
+  App.origin = () => App.originLogic.read((k) => sessionStorage.getItem(k));
+  App.setOrigin = (o) => { try { if (o) sessionStorage.setItem('nt-origin', JSON.stringify(o)); else sessionStorage.removeItem('nt-origin'); } catch (e) { /* egal */ } };
+  // Zeile oben und Abschluss-Knopf der Lernseiten: zurück zur Herkunft, sonst zur Üben-Übersicht
+  App.backCrumb = () => { const o = App.origin(); return o ? `<a href="${esc(o.hash)}">${esc(App.originLogic.label(o.hash).name)}</a>` : '<a href="#/ueben">Üben</a>'; };
+  App.backBtn = (fallback = 'Zur Übersicht') => { const o = App.origin(); return o ? `<a class="btn" href="${esc(o.hash)}">${App.icon('back')} Zurück ${esc(App.originLogic.label(o.hash).to)}</a>` : `<a class="btn" href="#/ueben">${fallback}</a>`; };
   let cleanup = [];
   App.onLeave = (fn) => cleanup.push(fn);
   App.render = (keepScroll) => {
