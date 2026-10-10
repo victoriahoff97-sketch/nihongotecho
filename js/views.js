@@ -105,16 +105,17 @@
   const qsObj = (qs) => Object.fromEntries(new URLSearchParams(qs));
   const cardBtns = (sets, qs) => {
     const and = qs ? qs + '&' : '', batch = S.settings.checkBatch || 15, many = Object.keys(sets).length > 1;
-    const de = ' <span class="badge">DE → 日</span>', deTip = 'Deutsch → Japanisch';
+    const deTip = 'Deutsch → Japanisch';
     const btn = (cls, href, label, title = '') => `<a class="btn ${cls}" href="${href}"${title ? ` title="${title}"` : ''}>${label}</a>`;
     // Neues lernen
     const fq = (type) => (sets[type] && (type !== 'kanji' || App.writeLogic.focus(S.settings) !== 'write') ? App.cardQueue(Object.assign({ type, dir: 'jp' }, qsObj(qs))).fresh.length : 0);
-    const newN = (n) => `${icon('plus')} ${Math.min(n, S.settings.newPerDay)} neue`;
+    // Der Knopf sagt, wie viele die Runde hat und wie viele insgesamt neu im Lernstapel liegen („5 von 19 neuen“)
+    const newN = (n) => `${icon('plus')} ${n > S.settings.newPerDay ? `${S.settings.newPerDay} von ${n} neuen` : `${n} neue`}`;
     const aFresh = sets.vocab ? App.activeQueue(qsObj(qs)).fresh.length : 0;
     const fresh = fq('vocab') ? btn('btn-sec', `#/ueben/karten?${and}round=new`, `${newN(fq('vocab'))}${many ? ' Vokabeln' : ''} lernen`)
       : fq('kanji') ? btn('btn-sec', `#/ueben/karten?type=kanji&dir=jp&${and}round=new`, `${newN(fq('kanji'))} Kanji lernen`)
       : fq('grammar') ? btn('btn-sec', `#/ueben/karten?type=grammar&${and}round=new`, `${newN(fq('grammar'))} Grammatik lernen`)
-      : aFresh ? btn('btn-sec', `#/ueben/karten?dir=de&${and}round=new`, `${newN(aFresh)} lernen${de}`, deTip) : '';
+      : aFresh ? btn('btn-sec', `#/ueben/karten?dir=de&${and}round=new`, `${newN(aFresh)} lernen`, deTip) : '';
     // Einstufen
     const cls = fresh ? '' : 'btn-sec';
     const next = (n) => `${icon('check')} Nächste ${Math.min(n, batch)}`;
@@ -122,7 +123,7 @@
     const act = (sets.vocab || []).filter((x) => App.activeStatus(x) === 'unchecked').length;
     const check = unch('vocab') ? btn(cls, `#/ueben/einstufen?${and}auto=1`, `${next(unch('vocab'))}${many ? ' Vokabeln' : ''} einstufen`)
       : unch('kanji') ? btn(cls, `#/ueben/einstufen?type=kanji&${and}auto=1`, `${next(unch('kanji'))} Kanji einstufen`)
-      : act ? btn(cls, `#/ueben/einstufen?dir=de&${and}auto=1`, `${next(act)} einstufen${de}`, deTip + ': Welche Wörter weißt du auch aus dem Deutschen heraus?')
+      : act ? btn(cls, `#/ueben/einstufen?dir=de&${and}auto=1`, `${next(act)} einstufen`, deTip + ': Welche Wörter weißt du auch aus dem Deutschen heraus?')
       : unch('grammar') ? btn(cls, `#/grammatik?st=unchecked${qs ? '&' + qs : ''}`, `${icon('check')} Grammatik einstufen`) : '';
     return fresh + check;
   };
