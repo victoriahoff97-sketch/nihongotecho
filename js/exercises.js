@@ -84,10 +84,21 @@
     await App.updateFile(f);
     return f;
   };
+  // Verknüpfen wie in der Mitschrift: „+ Vokabel“/„+ Grammatik“ und „Erkennen“ → Wort verknüpfen.
+  // Die Vokabel merkt sich die Aufgabe als Fundort; „Lektion“ bleibt leer (eigenes Wort, kein Buch-Eintrag).
   const openAttempt = async (fileId) => {
+    const f = App.store.files.get(fileId), ex = f && X.get(f.exerciseId);
+    const label = ex ? 'Genki I · ' + L.title(ex) : (f ? f.name : '');
+    const base = { source: 'Genki I', sourceRef: label };
+    const defaultsFor = (type) => (type === 'vocab' && f
+      ? Object.assign({}, base, { contexts: [{ exerciseId: f.exerciseId, label, date: App.today(), text: '' }] })
+      : base);
     const root = document.createElement('div');
     $('#overlay-root').appendChild(root);
-    const ctrl = await App.ink.mount(root, fileId, { embedded: false, onClose: () => { ctrl.destroy(); root.remove(); App.render(true); } });
+    const ctrl = await App.ink.mount(root, fileId, { embedded: false, extraInMenu: true, // die Leiste bleibt einzeilig
+      extraTools: ['vocab', 'grammar'].map((type) => ({ id: type, label: type === 'vocab' ? 'Neue Vokabel' : 'Neue Grammatik', icon: 'plus', onClick: () => App.newLinked(type, defaultsFor(type)) })),
+      onLinkWord: App.wordLinker(defaultsFor),
+      onClose: () => { ctrl.destroy(); root.remove(); App.render(true); } });
     if (!ctrl) root.remove();
   };
 

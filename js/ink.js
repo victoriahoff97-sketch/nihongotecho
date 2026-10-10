@@ -170,7 +170,7 @@
   };
 
   // ---------- Schreibfläche (eingebettet oder Vollbild) ----------
-  // opts: { embedded, extraTools: [{ id, label, icon, onClick }], onFullscreen, onClose, onLinkWord, onUnlinkWord }
+  // opts: { embedded, extraTools: [{ id, label, icon, onClick }], extraInMenu (extraTools ins „⋯“-Menü statt in die Leiste), onFullscreen, onClose, onLinkWord, onUnlinkWord }
   // onLinkWord(r) → Eintrag: Treffer aus dem Nachschlagen-Fenster mit dem eingekreisten Wort verknüpfen (ohne: kein „Verknüpfen“)
   // onUnlinkWord(itemId): die letzte Markierung eines Wortes wurde auf diesem Blatt gelöst
   INK.mount = async (root, fileId, opts = {}) => {
@@ -220,10 +220,11 @@
         ${kind === 'pdf' ? `<button class="btn btn-sm" data-v="vocab" title="Vokabeln aus dieser PDF importieren">${icon('vocab')} Vokabeln auslesen</button>` : ''}
         ${embedded && opts.onFullscreen ? `<button class="icon-btn" data-v="full" title="Vollbild">⛶</button>` : ''}
       </div>
-      ${(opts.extraTools || []).length ? `<div class="grp">${opts.extraTools.map((t) => `<button class="btn btn-sm" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''} ${esc(t.label)}</button>`).join('')}</div>` : ''}
+      ${(opts.extraTools || []).length && !opts.extraInMenu ? `<div class="grp">${opts.extraTools.map((t) => `<button class="btn btn-sm" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''} ${esc(t.label)}</button>`).join('')}</div>` : ''}
       <div class="grp"><button class="icon-btn" data-v="more" title="Mehr: Zoom, Nur Stift, Drucken …">${icon('more')}</button></div>
       <div class="more-pop card" hidden>
         <div class="more-title" data-title>${esc(f.name)}</div>
+        ${opts.extraInMenu ? (opts.extraTools || []).map((t) => `<button class="more-item" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''}<span>${esc(t.label)}</span></button>`).join('') : ''}
         ${embedded ? '' : `<button class="more-item" data-v="details">${icon('edit')}<span>Umbenennen / Details</span></button>`}
         <button class="more-item" data-v="penonly" title="Wenn an: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">${icon('ballpen')}<span>Nur Stift schreibt</span><b data-state>${st.penOnly ? 'an' : 'aus'}</b></button>
         ${splittable ? `<button class="more-item" data-v="swap" title="Aufgabe links oder rechts (z. B. für Linkshänder)"${st.split ? '' : ' hidden'}>${icon('shuffle')}<span>Seiten tauschen</span></button>` : ''}
@@ -1132,7 +1133,7 @@
       const c = e.target.closest('[data-color]');
       if (c) { if (st.tool === 'marker') st.mcolor = c.dataset.color; else st.color = c.dataset.color; drawColors(); return; }
       const x = e.target.closest('[data-x]');
-      if (x) { const t = (opts.extraTools || []).find((y) => y.id === x.dataset.x); if (t) t.onClick(); return; }
+      if (x) { const t = (opts.extraTools || []).find((y) => y.id === x.dataset.x); morePop.hidden = true; if (t) t.onClick(); return; }
       const v = e.target.closest('[data-v]'); if (!v) return;
       const a = v.dataset.v;
       // „Mehr“-Menü: klappt auf den Knopf auf und nach jeder Wahl wieder zu – nur beim Zoomen bleibt es offen

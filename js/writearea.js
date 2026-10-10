@@ -1,5 +1,5 @@
 /* Nihongo Techō – Gemeinsamer Schreibbereich: eingebettete Stiftfläche + getippter Text mit Vokabel-/Grammatik-Verknüpfung
-   (genutzt von Unterricht und Anwenden) */
+   (genutzt von Unterricht und Anwenden; die Wort-Verknüpfung auch vom Aufgabenblatt) */
 'use strict';
 (function (App) {
   const { esc, icon } = App;
@@ -10,6 +10,42 @@
     onSaved: async (it) => { if (onLinked) await onLinked(it, true); },
   });
 
+  // Treffer aus dem Nachschlagen-Fenster (nach „Erkennen“) verknüpfen: eigener Eintrag (Wort oder Grammatik) direkt,
+  // Wörterbuch-Treffer über den vorbelegten Vokabel-Dialog, r.create = die Eingabe als neue Vokabel/Grammatik anlegen.
+  // defaultsFor(type) → Vorgaben für neue Einträge (Vokabel: contexts[0] = Fundort).
+  // Liefert den Eintrag; bleibt offen, wenn der Dialog abgebrochen wird.
+  App.wordLinker = (defaultsFor, onLinked) => (r) => new Promise((res) => {
+    if (r.create) {
+      const type = r.create === 'grammar' ? 'grammar' : 'vocab';
+      App.editItem({
+        type, single: true, title: type === 'grammar' ? 'Neue Grammatik verknüpfen' : 'Neue Vokabel verknüpfen',
+        defaults: Object.assign({}, defaultsFor(type), App.lookupLogic.newDefaults(type, r.q)),
+        onSaved: async (it) => { if (onLinked) await onLinked(it, true); res(it); },
+      });
+      return;
+    }
+    const own = r.id && App.item(r.id);
+    if (own) {
+      (async () => {
+        // wie beim Verknüpfen im getippten Text: Fundort merken, ungeprüfte Vokabel zum Lernen vormerken
+        const ctx = own.type === 'vocab' && (defaultsFor('vocab').contexts || [])[0];
+        if (ctx) {
+          own.contexts = (own.contexts || []).filter((c) => !(c.sessionId === ctx.sessionId && c.itemId === ctx.itemId && c.exerciseId === ctx.exerciseId && c.text === ctx.text)).concat(ctx);
+          await App.saveItem(own, { silent: true });
+        }
+        if (own.type === 'vocab' && App.vocabStatus(own.id) === 'unchecked') await App.setCheck(own.id, 'learn');
+        if (onLinked) await onLinked(own, false);
+        res(own);
+      })();
+      return;
+    }
+    const d = r.entry ? App.dictVocabDefaults(r.entry, [r.jp, r.kana]) : { kanji: r.jp !== r.kana ? r.jp : '', kana: r.kana, de: r.meaning };
+    App.editItem({
+      type: 'vocab', single: true, title: 'Neue Vokabel verknüpfen', defaults: Object.assign({}, defaultsFor('vocab'), d),
+      onSaved: async (it) => { if (onLinked) await onLinked(it, true); res(it); },
+    });
+  });
+
   // ---------- Handschrift ----------
   // opts: { sheets, activeId, sheetMeta(paper, n), multiSheet, onSelect(fileId), newDefaults (Objekt oder (type) => Objekt), onLinked, onUnlinked, newPhrase }
   // newPhrase: zusätzlich „＋ Ausdruck“ in der Stiftleiste (nur wo onLinked Ausdrücke verknüpft, z. B. Unterricht)
@@ -17,40 +53,7 @@
   // Liefert { dropLinks(itemId) }: Markierungen eines Wortes vom Blatt nehmen (Verknüpfung wurde woanders entfernt)
   App.inkArea = (host, { sheets = [], activeId, sheetMeta, multiSheet = true, onSelect, newDefaults = {}, onLinked, onUnlinked, newPhrase = false } = {}) => {
     const defaultsFor = (type) => (typeof newDefaults === 'function' ? newDefaults(type) : newDefaults);
-    // Treffer aus dem Nachschlagen-Fenster (nach „Erkennen“) verknüpfen: eigener Eintrag (Wort oder Grammatik) direkt,
-    // Wörterbuch-Treffer über den vorbelegten Vokabel-Dialog, r.create = die Eingabe als neue Vokabel/Grammatik anlegen.
-    // Liefert den Eintrag; bleibt offen, wenn der Dialog abgebrochen wird.
-    const linkWord = (r) => new Promise((res) => {
-      if (r.create) {
-        const type = r.create === 'grammar' ? 'grammar' : 'vocab';
-        App.editItem({
-          type, single: true, title: type === 'grammar' ? 'Neue Grammatik verknüpfen' : 'Neue Vokabel verknüpfen',
-          defaults: Object.assign({}, defaultsFor(type), App.lookupLogic.newDefaults(type, r.q)),
-          onSaved: async (it) => { if (onLinked) await onLinked(it, true); res(it); },
-        });
-        return;
-      }
-      const own = r.id && App.item(r.id);
-      if (own) {
-        (async () => {
-          // wie beim Verknüpfen im getippten Text: Fundort merken, ungeprüfte Vokabel zum Lernen vormerken
-          const ctx = own.type === 'vocab' && (defaultsFor('vocab').contexts || [])[0];
-          if (ctx) {
-            own.contexts = (own.contexts || []).filter((c) => !(c.sessionId === ctx.sessionId && c.itemId === ctx.itemId && c.text === ctx.text)).concat(ctx);
-            await App.saveItem(own, { silent: true });
-          }
-          if (own.type === 'vocab' && App.vocabStatus(own.id) === 'unchecked') await App.setCheck(own.id, 'learn');
-          if (onLinked) await onLinked(own, false);
-          res(own);
-        })();
-        return;
-      }
-      const d = r.entry ? App.dictVocabDefaults(r.entry, [r.jp, r.kana]) : { kanji: r.jp !== r.kana ? r.jp : '', kana: r.kana, de: r.meaning };
-      App.editItem({
-        type: 'vocab', single: true, title: 'Neue Vokabel verknüpfen', defaults: Object.assign({}, defaultsFor('vocab'), d),
-        onSaved: async (it) => { if (onLinked) await onLinked(it, true); res(it); },
-      });
-    });
+    const linkWord = App.wordLinker(defaultsFor, onLinked);
     const UL = App.uLogic;
     let ctrl = null, left = false;
     const api = { dropLinks: (itemId) => (ctrl ? ctrl.dropLinks(itemId) : Promise.all(sheets.map((f) => App.ink.dropLinks(f.id, itemId)))) };
@@ -117,7 +120,7 @@
       contextInfo,
       // Bestehende Vokabel verknüpfen: Kontext anhängen (gleicher Ort + Satz wird ersetzt), ggf. zum Lernen vormerken
       onLinkItem: async (it, ctx) => {
-        it.contexts = (it.contexts || []).filter((c) => !(c.sessionId === ctx.sessionId && c.itemId === ctx.itemId && c.text === ctx.text)).concat(ctx);
+        it.contexts = (it.contexts || []).filter((c) => !(c.sessionId === ctx.sessionId && c.itemId === ctx.itemId && c.exerciseId === ctx.exerciseId && c.text === ctx.text)).concat(ctx);
         await App.saveItem(it, { silent: true });
         if (App.vocabStatus(it.id) === 'unchecked') await App.setCheck(it.id, 'learn');
         if (onLinked) await onLinked(it, false);
