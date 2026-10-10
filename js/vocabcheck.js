@@ -60,6 +60,29 @@
     items.forEach((v) => c[App.vocabStatus(v.id)]++);
     return c;
   };
+  // Gesamt-Lernstand eines Eintrags – so zählen Startseite und Vokabelliste:
+  // known = kann ich · queue = in der Lernschlange (schon gewusst, kommt von selbst wieder) · open = wartet noch (ungeprüft oder neu im Lernstapel).
+  // Eine Vokabel ist erst „kann ich“, wenn beide Richtungen sitzen: lesen (Japanisch → Deutsch) UND aktiv (Deutsch → Japanisch).
+  // Solange das Lesen noch läuft, zählt sie zur Lernschlange; kann man sie lesen, entscheidet der Aktiv-Stand.
+  // Kanji, Grammatik und Ausdrücke zählen wie bisher nach dem Lese-Stand.
+  App.wordState = (it) => {
+    const r = App.vocabStatus(it.id), s = S.srs.get(it.id);
+    if (r === 'unchecked') return 'open';
+    if (r === 'learn') return s && s.reps ? 'queue' : 'open';
+    if (it.type !== 'vocab') return 'known';
+    const W = App.writeLogic, a = W.activeStatus(S.srs, it, App.needsCheck), as = S.srs.get(W.id(it.id));
+    return a === 'known' ? 'known' : a === 'learn' && as && as.reps ? 'queue' : 'open';
+  };
+  App.WORD_STATE = {
+    known: { label: 'Kann ich', color: 'var(--matcha)', dot: '●' },
+    queue: { label: 'In der Lernschlange', color: 'var(--ai)', dot: '◐' },
+    open: { label: 'Wartet noch', color: 'var(--muted)', dot: '○' },
+  };
+  App.progressCounts = (items = App.itemsOf('vocab')) => {
+    const c = { known: 0, queue: 0, open: 0, total: items.length };
+    items.forEach((v) => c[App.wordState(S.items.get(v.id) || v)]++);
+    return c;
+  };
   // Genki-Lernstand der Startseite: „kann ich“ je Lektion und gesamt, jeweils Vokabeln + Kanji + Grammatik.
   // Eine Lektion ist abgeschlossen (done), wenn alles aus ihr „kann ich“ ist.
   App.genkiProgress = (source = 'Genki I', lessonCount = 12) => {
@@ -69,7 +92,7 @@
     const sum = (o) => { o.known = 0; o.learn = 0; o.total = 0; TYPES.forEach((t) => { o.known += o[t].known; o.learn += o[t].learn; o.total += o[t].total; }); return o; };
     const lessons = Array.from({ length: lessonCount }, (_, i) => {
       const x = { l: i + 1 };
-      TYPES.forEach((t) => { x[t] = App.vocabCounts(all[t].filter((it) => +it.lesson === x.l)); });
+      TYPES.forEach((t) => { const c = App.progressCounts(all[t].filter((it) => +it.lesson === x.l)); x[t] = { known: c.known, learn: c.queue, unchecked: c.open, total: c.total }; });
       sum(x);
       x.done = x.total > 0 && x.known >= x.total;
       x.pct = x.total ? Math.floor((x.known / x.total) * 100) : 0;
@@ -82,7 +105,12 @@
   };
   // Zeile unter dem Lernstand: „Kann ich“ hat keinen nächsten Termin mehr
   App.srsNote = (s) => `${s.check === 'known' ? 'als gelernt markiert' : s.reps + '× gewusst'} · ${App.writeLogic.isKnown(s) ? 'wird nicht mehr abgefragt' : 'nächste Wiederholung ' + App.fmtDate(s.due)}`;
-  App.statusBadge = (id) => { const st = App.STATUS[App.vocabStatus(id)]; return `<span class="badge vst" style="color:${st.color}" title="Lernstand">${st.dot} ${st.label}</span>`; };
+  // Vokabel, die man lesen kann, aber aktiv noch nicht: „Kann ich lesen“ – „Kann ich“ heißt beide Richtungen
+  App.statusBadge = (id) => {
+    const it = S.items.get(id), st = App.STATUS[App.vocabStatus(id)];
+    const half = it && it.type === 'vocab' && App.vocabStatus(id) === 'known' && App.wordState(it) !== 'known';
+    return `<span class="badge vst" style="color:${st.color}" title="${half ? 'Lesen kannst du es – Deutsch → Japanisch fehlt noch' : 'Lernstand'}">${half ? '◐ Kann ich lesen' : `${st.dot} ${st.label}`}</span>`;
+  };
 
   // ---------- Markierungen für Kanji (z. B. „Im Unterricht gelernt“) ----------
   App.MARK_CLASS = 'Im Unterricht gelernt';

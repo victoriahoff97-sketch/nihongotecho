@@ -403,7 +403,9 @@ window.App = window.App || {};
       if (g === 1) s.ease = Math.max(1.3, s.ease - 0.15);
       if (g === 3) s.ease += 0.15;
       s.reps++;
-      s.due = now + s.ivl * DAY;
+      // Gewusstes kommt frühestens morgen wieder: fällig gilt für den ganzen Tag, sonst stünde die Karte gleich wieder an
+      const tomorrow = new Date(now); tomorrow.setHours(24, 0, 0, 0);
+      s.due = Math.max(now + s.ivl * DAY, tomorrow.getTime());
     }
     s.last = now;
     S.srs.set(id, s);

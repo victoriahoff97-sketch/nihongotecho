@@ -84,6 +84,50 @@
     App.saveSettings({ homeFolded: (S.settings.homeFolded || []).filter((k) => k !== key).concat(on ? [key] : []) });
   });
 
+  // ---------- Startseite: Lernstand-Karten ----------
+  // Überall dieselben Farben: grün = kann ich · blau = in der Lernschlange (schon gewusst, kommt von selbst wieder) · leer = wartet noch.
+  // Zahlen stehen nur bei den Vokabeln; JLPT und Genki zeigen, wie weit man ist – als Balken mit Prozent.
+  // Vokabeln zählen erst als „kann ich“, wenn beide Richtungen sitzen (App.wordState); Kanji und Grammatik nach dem Lese-Stand.
+  const TYPE_INFO = { vocab: ['Vokabeln', '#/vokabeln'], kanji: ['Kanji', '#/kanji'], grammar: ['Grammatik', '#/grammatik'] };
+  const progOf = (sets) => {
+    const types = Object.keys(sets).filter((t) => sets[t].length);
+    const pc = {}; types.forEach((t) => { pc[t] = App.progressCounts(sets[t]); });
+    const sum = (k) => types.reduce((n, t) => n + pc[t][k], 0);
+    const tot = { known: sum('known'), queue: sum('queue'), open: sum('open'), total: sum('total') };
+    return { types, pc, tot, pct: tot.total ? Math.floor((tot.known / tot.total) * 100) : 0 };
+  };
+  const progBar = (c, cls = '') => { const w = (n) => (c.total ? (n / c.total) * 100 : 0); return `<div class="progress prog-bar ${cls}"><i style="width:${w(c.known)}%;background:var(--matcha)"></i><i style="width:${w(c.queue)}%;background:var(--ai)"></i></div>`; };
+  // schmale Balken je Bereich (Vokabeln · Kanji · Grammatik) – ohne Zahlen, die stehen im Tooltip
+  const miniBars = (p, qs) => `<div class="mini-bars">${p.types.map((t) => { const c = p.pc[t]; return `<a href="${TYPE_INFO[t][1]}?${qs}" title="${c.known} von ${c.total} kann ich · ${c.queue} in der Lernschlange · ${c.open} warten noch">${TYPE_INFO[t][0]}</a>${progBar(c, 'thin')}`; }).join('')}</div>`;
+  // Die zwei Knöpfe je Karte – alles, was nicht von selbst kommt:
+  // „neue lernen“ holt Neues aus dem Lernstapel in die Lernschlange (erst Lesen: Vokabeln, Kanji, Grammatik – dann Deutsch → Japanisch),
+  // „einstufen“ geht durch, was noch nicht eingestuft ist (Vokabeln lesen, Kanji, Deutsch → Japanisch, Grammatik).
+  const qsObj = (qs) => Object.fromEntries(new URLSearchParams(qs));
+  const cardBtns = (sets, qs) => {
+    const and = qs ? qs + '&' : '', batch = S.settings.checkBatch || 15, many = Object.keys(sets).length > 1;
+    const de = ' <span class="badge">DE → 日</span>', deTip = 'Deutsch → Japanisch';
+    const btn = (cls, href, label, title = '') => `<a class="btn ${cls}" href="${href}"${title ? ` title="${title}"` : ''}>${label}</a>`;
+    // Neues lernen
+    const fq = (type) => (sets[type] && (type !== 'kanji' || App.writeLogic.focus(S.settings) !== 'write') ? App.cardQueue(Object.assign({ type, dir: 'jp' }, qsObj(qs))).fresh.length : 0);
+    const newN = (n) => `${icon('plus')} ${Math.min(n, S.settings.newPerDay)} neue`;
+    const aFresh = sets.vocab ? App.activeQueue(qsObj(qs)).fresh.length : 0;
+    const fresh = fq('vocab') ? btn('btn-sec', `#/ueben/karten?${and}round=new`, `${newN(fq('vocab'))}${many ? ' Vokabeln' : ''} lernen`)
+      : fq('kanji') ? btn('btn-sec', `#/ueben/karten?type=kanji&dir=jp&${and}round=new`, `${newN(fq('kanji'))} Kanji lernen`)
+      : fq('grammar') ? btn('btn-sec', `#/ueben/karten?type=grammar&${and}round=new`, `${newN(fq('grammar'))} Grammatik lernen`)
+      : aFresh ? btn('btn-sec', `#/ueben/karten?dir=de&${and}round=new`, `${newN(aFresh)} lernen${de}`, deTip) : '';
+    // Einstufen
+    const cls = fresh ? '' : 'btn-sec';
+    const next = (n) => `${icon('check')} Nächste ${Math.min(n, batch)}`;
+    const unch = (t) => (sets[t] ? App.vocabCounts(sets[t]).unchecked : 0);
+    const act = (sets.vocab || []).filter((x) => App.activeStatus(x) === 'unchecked').length;
+    const check = unch('vocab') ? btn(cls, `#/ueben/einstufen?${and}auto=1`, `${next(unch('vocab'))}${many ? ' Vokabeln' : ''} einstufen`)
+      : unch('kanji') ? btn(cls, `#/ueben/einstufen?type=kanji&${and}auto=1`, `${next(unch('kanji'))} Kanji einstufen`)
+      : act ? btn(cls, `#/ueben/einstufen?dir=de&${and}auto=1`, `${next(act)} einstufen${de}`, deTip + ': Welche Wörter weißt du auch aus dem Deutschen heraus?')
+      : unch('grammar') ? btn(cls, `#/grammatik?st=unchecked${qs ? '&' + qs : ''}`, `${icon('check')} Grammatik einstufen`) : '';
+    return fresh + check;
+  };
+  const pctHead = (p, right, btn = '') => `<div class="row between"><span><b style="font-size:26px;color:var(--matcha)">${p.pct} %</b> <span class="muted">kann ich</span></span><span class="row"><span class="small muted">${right}</span>${btn}</span></div>`;
+
   // ---------- Startseite: JLPT-Lernstand ----------
   // Nur das aktuelle Niveau: das niedrigste freigeschaltete Level-Paket, das noch nicht komplett „kann ich“ ist.
   // Ist keins freigeschaltet, erscheint das erste verfügbare als „freischalten“.
@@ -91,9 +135,9 @@
     const levels = (window.PACKS || []).filter((p) => p.kind === 'level');
     const active = levels.filter((p) => ['installed', 'update'].includes(App.packs.status(p)));
     const countsFor = (lvl) => ({
-      vocab: App.vocabCounts(App.itemsOf('vocab').filter((v) => v.level === lvl)),
-      kanji: App.vocabCounts(App.itemsOf('kanji').filter((k) => k.level === lvl && k.char !== '々')),
-      grammar: App.vocabCounts(App.itemsOf('grammar').filter((g) => g.level === lvl)),
+      vocab: App.progressCounts(App.itemsOf('vocab').filter((v) => v.level === lvl)),
+      kanji: App.progressCounts(App.itemsOf('kanji').filter((k) => k.level === lvl && k.char !== '々')),
+      grammar: App.progressCounts(App.itemsOf('grammar').filter((g) => g.level === lvl)),
     });
     const done = (c) => Object.values(c).every((x) => x.known >= x.total);
     let cur = null, c = null;
@@ -107,28 +151,17 @@
         <a class="btn btn-primary" href="#/pakete">${icon('plus')} ${p.level} freischalten</a></div>`;
     }
     const lvl = cur.level;
-    const tot = { known: 0, learn: 0, total: 0 };
-    Object.values(c).forEach((x) => { tot.known += x.known; tot.learn += x.learn; tot.total += x.total; });
-    const pc = (n) => (tot.total ? (n / tot.total) * 100 : 0);
     const next = levels[levels.indexOf(cur) + 1];
-    const nextTxt = next ? ` · als Nächstes: ${next.level}${App.packs.status(next) === 'unavailable' ? ' (kommt später)' : ''}` : '';
-    const num = (x, label, href) => `<a href="${href}" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${x.known}</b> <span class="muted">/ ${x.total} ${label}</span></a>`;
-    // Einstufen und Lernen stehen nebeneinander: Was schon im Lernstapel liegt, lässt sich sofort lernen – auch wenn der Rest noch ungeprüft ist
-    const check = c.vocab.unchecked ? `<a class="btn" href="#/ueben/einstufen?lvl=${lvl}&auto=1">${icon('check')} ${lvl} einstufen</a>`
-      : c.kanji.unchecked ? `<a class="btn" href="#/ueben/einstufen?type=kanji&lvl=${lvl}&auto=1">${icon('check')} ${lvl}-Kanji einstufen</a>` : '';
-    const todo = ['vocab', 'kanji', 'grammar'].filter((type) => type !== 'kanji' || App.writeLogic.focus(S.settings) !== 'write').map((type) => {
-      return { n: App.roundSize(App.cardQueue({ type, lvl, dir: 'jp' })), href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}${type === 'kanji' ? 'dir=jp&' : ''}lvl=${lvl}&auto=1` };
-    }).filter((x) => x.n);
-    const learnN = todo.reduce((n, x) => n + x.n, 0);
-    const learn = learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} ${lvl} lernen <span class="badge">${learnN}</span></a>`
-      : check ? '' : `<a class="btn btn-sec" href="#/ueben/karten?lvl=${lvl}">${icon('practice')} ${lvl} üben</a>`;
-    const cta = `<div class="row">${learn}${check}</div>`;
-    return `${foldHead('jlpt', `JLPT ${lvl} – Lernstand`, `${tot.known} / ${tot.total} kann ich`)}
-      <div class="card${foldCls('jlpt')}"><div class="row between"><div class="row" style="gap:22px">
-        ${num(c.vocab, 'Vokabeln', `#/vokabeln?lvl=${lvl}`)}${num(c.kanji, 'Kanji', `#/kanji?lvl=${lvl}`)}${num(c.grammar, 'Grammatik', `#/grammatik?lvl=${lvl}`)}</div>
-        ${cta}</div>
-        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(tot.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(tot.learn)}%;background:var(--ai);border-radius:0"></i></div>
-        <div class="small muted" style="margin-top:8px">${Math.round(pc(tot.known))} % kann ich · ${tot.learn} im Lernstapel${nextTxt}</div></div>`;
+    const nextTxt = next ? `als Nächstes: ${next.level}${App.packs.status(next) === 'unavailable' ? ' (kommt später)' : ''}` : '';
+    const sets = {
+      vocab: App.itemsOf('vocab').filter((v) => v.level === lvl),
+      kanji: App.itemsOf('kanji').filter((k) => k.level === lvl && k.char !== '々'),
+      grammar: App.itemsOf('grammar').filter((g) => g.level === lvl),
+    };
+    const p = progOf(sets);
+    return `${foldHead('jlpt', `JLPT ${lvl} – Lernstand`, `${p.pct} % kann ich`)}
+      <div class="card${foldCls('jlpt')}">${pctHead(p, nextTxt, cardBtns(sets, `lvl=${lvl}`))}
+        ${progBar(p.tot)}${miniBars(p, `lvl=${lvl}`)}</div>`;
   };
 
   // ---------- Startseite: Genki-Lernstand ----------
@@ -139,29 +172,18 @@
     const p = App.genkiProgress(GENKI);
     if (!p.total) return '';
     const src = encodeURIComponent(GENKI);
-    const pc = (n) => (n / p.total) * 100;
-    const num = (x, label, href) => `<a href="${href}" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${x.known}</b> <span class="muted">/ ${x.total} ${label}</span></a>`;
-    const check = p.vocab.unchecked ? `<a class="btn" href="#/ueben/einstufen?src=${src}&auto=1">${icon('check')} Genki einstufen</a>`
-      : p.kanji.unchecked ? `<a class="btn" href="#/ueben/einstufen?type=kanji&src=${src}&auto=1">${icon('check')} Genki-Kanji einstufen</a>` : '';
-    const todo = ['vocab', 'kanji', 'grammar'].filter((type) => type !== 'kanji' || App.writeLogic.focus(S.settings) !== 'write').map((type) => {
-      return { n: App.roundSize(App.cardQueue({ type, src: GENKI, dir: 'jp' })), href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}${type === 'kanji' ? 'dir=jp&' : ''}src=${src}&auto=1` };
-    }).filter((x) => x.n);
-    const learnN = todo.reduce((n, x) => n + x.n, 0);
-    const learn = learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} Genki lernen <span class="badge">${learnN}</span></a>`
-      : check ? '' : `<a class="btn btn-sec" href="#/ueben/karten?src=${src}">${icon('practice')} Genki üben</a>`;
+    const set = (t) => App.itemsOf(t).filter((i) => i.source === GENKI && i.char !== '々' && +i.lesson >= 1 && +i.lesson <= p.lessons.length);
+    const sets = { vocab: set('vocab'), kanji: set('kanji'), grammar: set('grammar') };
+    const g = progOf(sets);
     const part = (x, label) => (x.total ? `${x.known}/${x.total} ${label}` : '');
     const tile = (x) => {
       const tip = x.total ? [part(x.vocab, 'Wörter'), part(x.kanji, 'Kanji'), part(x.grammar, 'Grammatik')].filter(Boolean).join(' · ') : 'Noch keine Einträge';
       return `<a href="#/vokabeln?src=${src}&l=${x.l}"${x.done ? ' class="done"' : ''} title="Lektion ${x.l}${x.done ? ' abgeschlossen' : ''} – kann ich: ${tip}">L${x.l}${x.done ? ` ${icon('check')}` : `<i style="width:${x.pct}%"></i>`}</a>`;
     };
-    return `${foldHead('genki', `${GENKI} – Lernstand`, `${p.known} / ${p.total} kann ich · ${p.doneLessons} von ${p.lessons.length} Lektionen`)}
-      <div class="card${foldCls('genki')}"><div class="row between"><div class="row" style="gap:22px">
-        ${num(p.vocab, 'Vokabeln', `#/vokabeln?src=${src}`)}${num(p.kanji, 'Kanji', `#/kanji?src=${src}`)}${num(p.grammar, 'Grammatik', `#/grammatik?src=${src}`)}</div>
-        <div class="row">${learn}${check}</div></div>
-        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(p.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(p.learn)}%;background:var(--ai);border-radius:0"></i></div>
-        <div class="small muted" style="margin-top:8px">${Math.floor(pc(p.known))} % kann ich · ${p.learn} im Lernstapel · ${p.doneLessons} von ${p.lessons.length} Lektionen abgeschlossen</div>
-        <div class="lesson-strip" style="margin-top:14px">${p.lessons.map(tile).join('')}</div>
-        <div class="small muted" style="margin-top:8px">Der grüne Balken zeigt, wie viel du aus der Lektion schon kannst (Vokabeln, Kanji, Grammatik). Kannst du alles, wird das Kästchen grün.</div></div>`;
+    return `${foldHead('genki', `${GENKI} – Lernstand`, `${g.pct} % kann ich · ${p.doneLessons} von ${p.lessons.length} Lektionen`)}
+      <div class="card${foldCls('genki')}">${pctHead(g, `${p.doneLessons} von ${p.lessons.length} Lektionen abgeschlossen`, cardBtns(sets, `src=${src}`))}
+        ${progBar(g.tot)}
+        <div class="lesson-strip" style="margin-top:14px">${p.lessons.map(tile).join('')}</div></div>`;
   };
 
   // =========================================================
@@ -184,8 +206,9 @@
     queues.splice(1, 0, { label: 'Vokabeln aktiv', due: aq.due.length, fresh: aq.fresh.length, href: '#/ueben/karten?dir=de&auto=1' });
     const wq = App.writeQueue();
     if (focus !== 'read') queues.splice(focus === 'write' ? 0 : 3, 0, { label: 'Kanji schreiben', due: wq.due.length, fresh: wq.fresh.length, href: '#/ueben/kanji?auto=1' });
-    const dueQ = queues.filter((x) => x.due), due = dueQ.reduce((n, x) => n + x.due, 0);
-    const next = dueQ[0] || queues.find((x) => x.fresh);
+    // Fälliges läuft über einen Knopf: eine gemischte Runde quer durch alles (auch Kanji schreiben). Fällig gilt für den ganzen Tag.
+    const dueQ = App.todayParts(), due = dueQ.reduce((n, x) => n + x.n, 0), tomorrow = App.dueTomorrow();
+    const next = queues.find((x) => x.fresh);
     // „Wiederholen“ startet nur Fälliges – ohne Fälliges ist der Knopf aus, Neues kommt nie von selbst dazu
     const repeatBtn = (ico, n, href) => (n ? `<a class="btn btn-sec" href="${href}">${icon(ico)} Wiederholen <span class="badge">${n}</span></a>` : `<button class="btn" disabled title="Gerade ist nichts fällig">${icon(ico)} Wiederholen</button>`);
     const action = (cls, attrs, ico, title, sub) => `<${attrs.startsWith('href') ? 'a' : 'button'} class="home-act ${cls}" ${attrs}><span class="i">${icon(ico)}</span><span><b>${title}</b><small>${sub}</small></span></${attrs.startsWith('href') ? 'a' : 'button'}>`;
@@ -201,8 +224,9 @@
       ${genkiCard}
       <div class="hero"><div class="big-jp">日本語</div>
         <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
-        <p>${due ? `Heute ${due === 1 ? 'wartet <b>1 Karte</b>' : `warten <b>${due} Karten</b>`} auf dich: ${dueQ.map((x) => `<a href="${x.href}">${x.due} ${x.label}</a>`).join(' · ')}` : `Heute ist nichts fällig${next ? ' – Zeit für neue Karten aus dem Lernstapel.' : '.'}`}</p>
-        <div class="row"><a class="btn solid" href="${next ? next.href : '#/ueben/karten'}">${icon(next ? 'play' : 'practice')} ${due ? 'Weiter wiederholen' : next ? 'Neue Karten lernen' : 'Karteikarten'}</a></div></div>
+        <p>${due ? `Heute: <b>${due} ${due === 1 ? 'Karte' : 'Karten'}</b> – ${dueQ.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : `Für heute ist alles wiederholt${next ? ' – wenn du magst, ist Zeit für neue Karten.' : '.'}`}</p>
+        <div class="row">${due ? `<a class="btn solid" href="#/ueben/heute?auto=1">${icon('shuffle')} Jetzt wiederholen <span class="badge">${due}</span></a>` : `<a class="btn solid" href="${next ? next.href : '#/ueben/karten'}">${icon(next ? 'play' : 'practice')} ${next ? 'Neue Karten lernen' : 'Karteikarten'}</a>`}</div>
+        <p class="small" style="margin-top:10px">${due ? 'Alles gemischt in einer Runde' : ''}${due && tomorrow ? ' · ' : ''}${tomorrow ? `morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu` : ''}</p></div>
       <div class="home-actions">
         ${action('sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze erkennen', 'Text einfügen, Vokabeln finden')}
         ${action('sec-vocab', 'data-new-vocab', 'plus', 'Neue Vokabel', 'Ein Wort schnell speichern')}
@@ -217,20 +241,16 @@
         ${stat('kanji', count('kanji'), 'Kanji')}
         ${stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')}
       </div>
-      ${(() => { // Jedes Wort zählt einmal, mit seinem Lese-Stand (Japanisch → Deutsch) wie beim JLPT- und Genki-Lernstand; der Stand Deutsch → Japanisch steht im Tooltip
-        const r = App.vocabCounts(), a = App.writeLogic.activeCounts(vocab, S.srs, App.needsCheck);
-        const c = r;
-        const total = c.unchecked + c.learn + c.known, pc = (n) => (total ? (n / total) * 100 : 0);
-        const todo = [[App.cardQueue({ dir: 'jp' }), '#/ueben/karten?auto=1'], [aq, '#/ueben/karten?dir=de&auto=1']].map(([x, href]) => ({ n: App.roundSize(x), href })).filter((x) => x.n);
-        const learnN = todo.reduce((n, x) => n + x.n, 0);
-        const tip = (k) => `Japanisch → Deutsch: ${r[k]} · Deutsch → Japanisch: ${a[k]}`;
-        return `${foldHead('vocab', 'Vokabel-Lernstand', `${c.known} / ${total} kann ich`)}
-      <div class="card sec-vocab${foldCls('vocab')}"><div class="row between"><div class="row" style="gap:22px">
-        <a href="#/vokabeln?st=learn" style="text-decoration:none" title="${tip('learn')}"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
-        <a href="#/vokabeln?st=known" style="text-decoration:none" title="${tip('known')}"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
-        ${App.checkOn() ? `<a class="small muted" href="#/vokabeln?st=unchecked" style="text-decoration:none" title="${tip('unchecked')}"><b style="font-size:16px">${c.unchecked}</b> ungeprüft</a>` : ''}</div>
-        <div class="row">${learnN ? `<a class="btn btn-sec" href="${todo[0].href}">${icon('play')} Lernen <span class="badge">${learnN}</span></a>` : ''}${c.unchecked ? `<a class="btn${learnN ? '' : ' btn-sec'}" href="#/ueben/einstufen?${r.unchecked ? '' : 'dir=de&'}auto=1">${icon('check')} Nächste ${Math.min(r.unchecked || a.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}</div></div>
-        <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div></div>`; })()}
+      ${(() => { // Jedes Wort zählt einmal: „kann ich“ erst, wenn Lesen und Deutsch → Japanisch sitzen – wie beim JLPT- und Genki-Lernstand
+        const c = progOf({ vocab }).tot;
+        const num = (n, color, label, st, title) => `<a href="#/vokabeln?st=${st}" style="text-decoration:none" title="${title}"><b style="font-size:26px;color:${color}">${n}</b> ${label}</a>`;
+        return `${foldHead('vocab', 'Vokabel-Lernstand', `${c.known} / ${c.total} kann ich`)}
+      <div class="card sec-vocab${foldCls('vocab')}"><div class="row between"><div class="row" style="gap:28px">
+        ${num(c.known, 'var(--matcha)', 'kann ich', 'known', 'Lesen und Deutsch → Japanisch sitzen – wird nicht mehr abgefragt')}
+        ${num(c.queue, 'var(--ai)', 'in der Lernschlange', 'queue', 'Schon gewusst – kommt von selbst über „Jetzt wiederholen“, bis es sitzt')}
+        ${num(c.open, 'var(--muted)', 'warten noch auf dich', 'open', 'Noch einzustufen oder neu im Lernstapel – beim Lesen oder bei Deutsch → Japanisch')}</div>
+        ${cardBtns({ vocab }, '')}</div>
+        ${progBar(c)}</div>`; })()}
       ${jlptCard()}
       ${genkiLevelCard()}
       ${(() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `${foldHead('kanji', 'Kanji-Lernstand', `${c.known} / ${c.total} kann ich`)}
@@ -263,7 +283,8 @@
     const all = App.itemsOf('vocab');
     let items = filterItems(all, q);
     if (q.pos) items = items.filter((i) => i.pos === q.pos);
-    if (q.st) items = items.filter((i) => App.vocabStatus(i.id) === q.st);
+    // Lernstand wie auf der Startseite (beide Richtungen); alte Links mit dem Lese-Stand (unchecked/learn) gehen weiter
+    if (q.st) items = items.filter((i) => (App.WORD_STATE[q.st] ? App.wordState(i) : App.vocabStatus(i.id)) === q.st);
     items.sort(byLesson);
     const mode = q.view || (App.lsGet('vocabView') || 'cards');
     const files = App.filesFor({ section: 'vocab', source: q.src || undefined, lesson: q.l || undefined });
@@ -276,7 +297,7 @@
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
         <select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
         ${App.levelSelect(q.lvl)}
-        <select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st)}</select>
+        <select class="input" data-q-select="st"><option value="">Lernstand</option>${Object.entries(App.WORD_STATE).map(([k, x]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${x.dot} ${x.label}</option>`).join('')}</select>
         <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Gemerkt</button></div></div>
       <div data-body style="margin-top:14px"></div></div>`;
     const body = view.querySelector('[data-body]');
@@ -362,7 +383,7 @@
           ${App.homophoneHint(it)}
           <dt>Quelle</dt><dd>${App.srcBadge(it) || '–'} ${it.sourceRef ? refLink(it.sourceRef) : ''}</dd>
           ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
-          <dt>Lernstand</dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
+          <dt>Lesen <small class="muted" style="font-weight:400">Japanisch → Deutsch</small></dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
             <div class="small muted" style="margin-top:4px">${srs && srs.reps ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : 'noch nicht eingestuft'}</div></dd>
           <dt>Aktiv <small class="muted" style="font-weight:400">Deutsch → Japanisch</small></dt><dd>${(() => { const ast = App.activeStatus(it), as = App.srsOf(App.writeLogic.id(it.id)); return `<div class="seg" data-ast>${App.statusChoices(it).map(([k, s]) => `<button class="${ast === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
             <div class="small muted" style="margin-top:4px">${ast === 'locked' ? 'kommt dran, sobald du das Wort lesen kannst' : as && as.reps ? App.srsNote(as) : ast === 'learn' ? 'wartet im Aktiv-Lernstapel auf die Karteikarten' : 'aktiv noch nicht eingestuft'}</div>`; })()}</dd></dl></div>

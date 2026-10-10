@@ -65,6 +65,24 @@
   W.readAsked = (it, s) => !!s && s.reps > 0 && !(it.type !== 'phrase' && W.isKnown(s));
   W.readDue = (items, srs, now) => items.filter((i) => { const s = srs.get(i.id); return W.readAsked(i, s) && s.due <= now; }).sort((a, b) => srs.get(a.id).due - srs.get(b.id).due);
 
+  // Fällig gilt für den ganzen Tag: Stichzeit ist das Ende des heutigen Tages, nicht die Minute.
+  // So stimmt „heute“ schon morgens, und im Lauf des Tages kommt nichts Unerwartetes dazu.
+  W.dayEnd = (now) => { const d = new Date(now); d.setHours(24, 0, 0, 0); return d.getTime() - 1; };
+
+  // Gemischte Runde („Jetzt wiederholen“): alles Fällige durcheinander. entries: { it, kind: 'read' | 'active' | 'write' }.
+  // Dasselbe Wort (lesen + aktiv, lesen + schreiben) kommt nie kurz hintereinander – die eine Karte verriete die andere.
+  W.mixRound = (entries, shuffle, gap = 4) => {
+    const out = shuffle(entries);
+    for (let i = 0; i < out.length; i++) {
+      const near = out.slice(Math.max(0, i - gap + 1), i).some((x) => x.it.id === out[i].it.id);
+      if (!near) continue;
+      const j = out.findIndex((x, k) => k > i && !out.slice(Math.max(0, i - gap + 1), i).some((y) => y.it.id === x.it.id));
+      if (j < 0) { out.push(out.splice(i, 1)[0]); break; } // nichts anderes mehr da: ans Ende
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  };
+
   // Fällige Karten insgesamt – der Schwerpunkt blendet bei Kanji die jeweils andere Seite aus
   W.dueCount = (srs, items, focus, now) => {
     let n = 0;

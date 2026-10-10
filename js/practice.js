@@ -7,7 +7,7 @@
 
   const W = App.writeLogic;
   const kanjiFocus = () => W.focus(S.settings);
-  App.dueCount = () => W.dueCount(S.srs, S.items, kanjiFocus(), Date.now());
+  App.dueCount = () => W.dueCount(S.srs, S.items, kanjiFocus(), W.dayEnd(Date.now()));
   const lessonNum = (it) => (it.lesson === '' || it.lesson == null || isNaN(+it.lesson)) ? null : +it.lesson;
   const maxLessonOptions = (cur) => Array.from({ length: 12 }, (_, i) => i + 1).map((l) => `<option value="${l}" ${+cur === l ? 'selected' : ''}>bis Lektion ${l}</option>`).join('');
 
@@ -126,12 +126,12 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const all = cardFilter(Object.assign({}, q, { type: 'kanji' }));
     const items = all.filter((i) => WK.inSource(source, i, ctx)).sort(WK.compare(source, ctx, learnOrder));
     const unlocked = (i) => WK.unlocked(source, i, ctx, readUnlocked);
-    return Object.assign({ items, unlocked }, W.queue(items, S.srs, Date.now(), unlocked, all));
+    return Object.assign({ items, unlocked }, W.queue(items, S.srs, W.dayEnd(Date.now()), unlocked, all));
   };
   // Vokabeln aktiv (Deutsch → Japanisch) haben ebenfalls einen eigenen Lernstand: neu ist, was im Aktiv-Lernstapel liegt
   App.activeQueue = (q = {}) => {
     const items = cardFilter(Object.assign({}, q, { type: 'vocab' })).sort(learnOrder);
-    return Object.assign({ items }, W.activeQueue(items, S.srs, Date.now(), App.needsCheck));
+    return Object.assign({ items }, W.activeQueue(items, S.srs, W.dayEnd(Date.now()), App.needsCheck));
   };
   App.activeStatus = (it) => W.activeStatus(S.srs, it, App.needsCheck);
   // Kartenrichtung: bei Kanji mit Schwerpunkt Schreiben ist „Bedeutung → schreiben“ der Standard
@@ -141,13 +141,45 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     if (type === 'kanji' && cardDir(q) === 'de') return App.writeQueue(q);
     if (type === 'vocab' && cardDir(q) === 'de') return App.activeQueue(q);
     const items = cardFilter(q);
-    const now = Date.now();
+    const now = W.dayEnd(Date.now()); // fällig gilt für den ganzen Tag
     const due = W.readDue(items, S.srs, now);
     // Vokabeln/Kanji/Ausdrücke: neu sind nur Einträge aus dem Lernstapel (ungeprüfte erst einstufen; eigene Einträge sind es ohne Einstufung). Grammatik: Lernstapel inkl. „im Unterricht behandelt“.
     const fresh = items.filter((i) => { const s = S.srs.get(i.id); return App.vocabStatus(i.id) === 'learn' && (!s || !s.reps); })
       .sort(learnOrder);
     return { items, due, fresh };
   };
+  // „Jetzt wiederholen“ (Startseite): alles, was heute fällig ist, in einer gemischten Runde – Lesen, Aktiv, Grammatik, Ausdrücke und Kanji schreiben.
+  // Der Kanji-Schwerpunkt aus den Einstellungen blendet wie überall die jeweils andere Seite aus. Neues kommt hier nie dazu.
+  App.todayParts = () => {
+    const focus = kanjiFocus();
+    const part = (label, one, kind, due, extra) => ({ label, one, n: due.length, entries: due.map((it) => Object.assign({ it, kind }, extra)) });
+    return [
+      part('Vokabeln', 'Vokabel', 'read', App.cardQueue({ dir: 'jp' }).due, { dir: 'jp' }),
+      part('Vokabeln aktiv', 'Vokabel aktiv', 'active', App.activeQueue().due, { dir: 'de' }),
+      focus === 'write' ? null : part('Kanji', 'Kanji', 'read', App.cardQueue({ type: 'kanji', dir: 'jp' }).due, { dir: 'jp' }),
+      focus === 'read' ? null : part('Kanji schreiben', 'Kanji schreiben', 'write', App.writeQueue().due, { pad: true }),
+      part('Grammatik', 'Grammatik', 'read', App.cardQueue({ type: 'grammar', dir: 'jp' }).due, { dir: 'jp' }),
+      part('Ausdrücke', 'Ausdruck', 'read', App.cardQueue({ type: 'phrase', dir: 'jp' }).due, { dir: 'jp' }),
+    ].filter((x) => x && x.n);
+  };
+  App.todayQueue = () => W.mixRound(App.todayParts().flatMap((x) => x.entries), App.shuffle);
+  // Was morgen dazukommt: fällig bis morgen Abend, abzüglich dessen, was heute schon dran ist
+  App.dueTomorrow = () => { const end = W.dayEnd(Date.now()); return W.dueCount(S.srs, S.items, kanjiFocus(), end + 864e5) - W.dueCount(S.srs, S.items, kanjiFocus(), end); };
+  App.route('/ueben/heute', (view, p, q) => {
+    const sec = App.SECTIONS.practice;
+    const parts = App.todayParts(), n = parts.reduce((a, x) => a + x.n, 0), tomorrow = App.dueTomorrow();
+    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Jetzt wiederholen</div>
+      <div class="page-head"><div class="titles"><h1>Jetzt wiederholen <span class="jp-title">復習</span></h1><p>${n ? `Heute ${n === 1 ? 'ist 1 Karte' : `sind ${n} Karten`} dran: ${parts.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : 'Für heute ist alles wiederholt.'}</p></div></div>
+      <div class="card" data-setup><div class="row between"><div class="small muted">${n ? 'Alles gemischt in einer Runde.' : 'お疲れ様！'}${tomorrow ? ` Morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu.` : ''}</div>
+        <div class="row">${n ? `<button class="btn btn-primary" data-round="due">${icon('shuffle')} Jetzt wiederholen (${n})</button>` : `<a class="btn" href="#/">Zur Startseite</a><a class="btn" href="#/ueben/karten">${icon('practice')} Karteikarten</a>`}</div></div></div>
+      <div data-stage></div></div>`;
+    const go = view.querySelector('[data-round]');
+    const auto = nextRound || q.auto;
+    nextRound = null;
+    if (!go) return;
+    go.onclick = () => { view.querySelector('[data-setup]').hidden = true; runCards(view.querySelector('[data-stage]'), App.todayQueue(), { more: () => ({ due: App.todayQueue(), fresh: [] }) }); };
+    if (auto) go.click();
+  });
   App.route('/ueben/karten', (view, p, q) => {
     const sec = App.SECTIONS.practice;
     const type = q.type || 'vocab';
@@ -208,32 +240,60 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     if (s.reps === 0) d = g === 1 ? 0.5 : g === 2 ? 1 : 4;
     else if (s.reps === 1) d = g === 1 ? 2 : g === 2 ? 3 : 6;
     else d = s.ivl * (g === 1 ? 1.2 : g === 2 ? s.ease : s.ease * 1.3);
-    return d < 1 ? '12 Std' : d < 30 ? Math.round(d) + ' T' : Math.round(d / 30) + ' Mon';
+    return d < 1 ? 'morgen' : d < 30 ? Math.round(d) + ' T' : Math.round(d / 30) + ' Mon';
   };
   // write/active: eigener Lernstand unter „w:<Id>“ (Kanji schreiben · Vokabeln Deutsch → Japanisch)
+  // Gemischte Runde: Einträge { it, kind: 'read' | 'active' | 'write', dir, pad } bringen Richtung und Lernstand selbst mit; pad = Kanji mit dem Stift schreiben
   function runCards(stage, queue, { dir, cram, write, active, more }) {
-    queue = queue.slice();
-    const total = queue.length;
-    let done = 0, right = 0, flipped = false, cur = null;
+    queue = queue.map((x) => (x.it ? x : { it: x, kind: write ? 'write' : active ? 'active' : 'read', dir }));
+    let total = queue.length; // wächst, wenn nicht Gewusstes in derselben Runde noch einmal kommt
+    let done = 0, right = 0, flipped = false, cur = null, ent = null;
+    const own = () => ent.kind !== 'read';
+    const head = () => `<div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${cram ? ' · freies Üben' : ''}</span><span>${App.srcBadge(cur)}</span></div>
+        <div class="progress" style="margin-bottom:14px"><i style="width:${(done / Math.max(1, total)) * 100}%"></i></div>`;
     const next = () => {
-      cur = queue.shift();
+      ent = queue.shift();
+      cur = ent ? ent.it : null;
       flipped = false;
       if (!cur) {
-        stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Alles erledigt für jetzt.'}</p>
+        stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>
           <div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${cram ? '<button class="btn btn-primary" data-again>Weitere Runde</button>' : roundEnd(more())}</div></div></div>`;
         if (cram) stage.querySelector('[data-again]').onclick = () => App.render();
         bindRoundEnd(stage);
         return;
       }
-      const f = cardFaces(cur, dir);
-      stage.innerHTML = `<div class="flash-stage ${App.furiClass()}"><div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${cram ? ' · freies Üben' : ''}</span><span>${App.srcBadge(cur)}</span></div>
-        <div class="progress" style="margin-bottom:14px"><i style="width:${(done / Math.max(1, total)) * 100}%"></i></div>
+      if (ent.pad) return padCard();
+      const f = cardFaces(cur, ent.dir);
+      stage.innerHTML = `<div class="flash-stage ${App.furiClass()}">${head()}
         <div class="flash" data-flip>${f.front}<div class="back" hidden>${f.back}</div><span class="tap-hint">Tippen oder Leertaste zum Umdrehen</span></div>
-        <div class="grade-row" hidden>${[['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, write || active)}</small></button>`).join('')}</div>
+        <div class="grade-row" hidden>${[['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, own())}</small></button>`).join('')}</div>
         <div class="row" style="justify-content:center;margin-top:10px"><a class="btn btn-sm btn-ghost" href="${App.link(cur)}" target="_blank">${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}</div></div>`;
     };
+    // Kanji schreiben in der gemischten Runde: mit dem Stift schreiben, auflösen, selbst bewerten – wie im Kanji-Quiz
+    const padCard = () => {
+      stage.innerHTML = `<div class="sec-kanji">${head()}<div class="card pad-lg"><div class="small muted">Schreibe das Kanji:${W.isFirst(S.srs, cur.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
+          <div class="muted" lang="ja">${esc((cur.kun || []).map(App.kanjiLogic.kunText).concat(cur.on || []).slice(0, 4).join('、'))}</div>
+          <div class="kanji-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
+          <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div></div>`;
+      const pad = App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false, quiz: true });
+      stage.querySelector('[data-show]').onclick = () => {
+        pad.then((p) => p.reveal());
+        App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
+        stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig · wieder in ${ivlLabel(cur.id, 2, true)}</button><a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
+      };
+    };
+    let busy = false;
+    const gradePad = async (g) => {
+      if (busy) return;
+      busy = true;
+      await App.gradeWrite(cur.id, g);
+      busy = false;
+      done++; if (g > 0) right++;
+      if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
+      next();
+    };
     const flip = () => {
-      if (!cur || flipped) return;
+      if (!cur || flipped || ent.pad) return;
       flipped = true;
       stage.querySelector('.back').hidden = false;
       stage.querySelector('.tap-hint').hidden = true;
@@ -241,20 +301,21 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     };
     const grade = async (g) => {
       if (!flipped) return;
-      await (write ? App.gradeWrite(cur.id, g) : App.grade(active ? W.id(cur.id) : cur.id, g));
+      await (ent.kind === 'write' ? App.gradeWrite(cur.id, g) : App.grade(ent.kind === 'active' ? W.id(cur.id) : cur.id, g));
       done++; if (g > 0) right++;
-      if (g === 0) queue.splice(Math.min(3, queue.length), 0, cur);
+      if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
       next();
     };
     stage.addEventListener('click', (e) => {
       if (e.target.closest('[data-speak]') || e.target.closest('a')) return;
       if (e.target.closest('[data-flip]')) flip();
+      const r = e.target.closest('[data-r]'); if (r && ent && ent.pad) return gradePad(+r.dataset.r);
       const b = e.target.closest('[data-g]'); if (b) grade(+b.dataset.g);
     });
     const onKey = (e) => {
       if (e.target.matches('input, textarea')) return;
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
-      if (['1', '2', '3', '4'].includes(e.key)) grade(+e.key - 1);
+      if (['1', '2', '3', '4'].includes(e.key) && ent && !ent.pad) grade(+e.key - 1);
     };
     document.addEventListener('keydown', onKey);
     App.onLeave(() => document.removeEventListener('keydown', onKey));
