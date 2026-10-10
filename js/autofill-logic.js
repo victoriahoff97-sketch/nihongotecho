@@ -44,6 +44,45 @@
     return out;
   };
 
-  const P = { rank, sure, wordForms, fill };
+  const guessClass = (kana) => {
+    if (/(する|くる)$/.test(kana)) return 'irr';
+    if (!/る$/.test(kana)) return 'u';
+    const EXC = ['かえる', 'はいる', 'しる', 'はしる', 'しゃべる', 'すべる', 'にぎる', 'へる', 'まいる', 'ける', 'かぎる', 'まじる'];
+    if (EXC.some((x) => kana.endsWith(x))) return 'u';
+    const prev = kana.slice(-2, -1);
+    return /[いきぎしじちぢにひびぴみりえけげせぜてでねへべぺめれ]/.test(prev) ? 'ru' : 'u';
+  };
+
+  // Satzbau-Angaben für die Übersetzungsübungen (cat, n, v, a, t) – ohne Eingabefelder, beim Speichern bestimmt.
+  // old = Stand vor dem Bearbeiten: bei gleicher Wortart und gleichem Deutsch bleiben seine (gepflegten) Angaben stehen.
+  // opts: nounDe (JP.nounDe), cls (Verbklasse aus dem Wörterbuch, sonst geraten)
+  const sentenceData = (it, old, opts = {}) => {
+    const keep = !!old && old.pos === it.pos && old.de === it.de;
+    const o = (k) => (keep && old[k]) || {};
+    const cat = keep ? (old.cat || []).slice() : [];
+    const first = String(it.de || '').split(/[,;(]/)[0].trim();
+    delete it.n; delete it.v; delete it.a; delete it.t;
+    if (it.pos === 'noun') {
+      const auto = opts.nounDe({ de: it.de }), n = o('n');
+      it.cat = cat;
+      it.n = { ...n, w: n.w || auto.w, g: n.g || auto.g, mass: !!n.mass };
+    } else if (it.pos === 'verb') {
+      const v = o('v');
+      const inf = v.inf || first;
+      it.v = { cls: v.cls || opts.cls || guessClass(it.kana || ''), inf, ich: v.ich || inf.replace(/(e?n)$/, 'e'), pp: v.pp || ('ge' + inf.replace(/(e?n)$/, 't')), aux: v.aux || 'habe', sep: v.sep || '', obj: v.obj || [] };
+      it.cat = cat;
+      if (it.v.obj.length && !it.cat.includes('objekt')) it.cat.push('objekt');
+    } else if (/adj/.test(it.pos || '')) {
+      const a = o('a');
+      it.cat = ['beschreibung'];
+      it.a = { de: a.de || first, subj: a.subj && a.subj.length ? a.subj : ['ding', 'ort', 'person', 'essen'] };
+    } else if (it.pos === 'time') {
+      it.cat = ['zeitpunkt'];
+      it.t = { adv: o('t').adv || first };
+    }
+    return it;
+  };
+
+  const P = { rank, sure, wordForms, fill, guessClass, sentenceData };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.autofillLogic = P;
 })(typeof window !== 'undefined' ? window : globalThis);

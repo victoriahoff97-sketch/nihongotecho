@@ -329,6 +329,10 @@ textarea.input { height: auto; min-height: 90px; padding: 10px 14px; resize: ver
 .form { display: grid; gap: 14px; }
 .form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.form-mode { justify-content: flex-end; }
+.form-mode .seg button { min-height: 30px; font-size: 13px; }
+.form-short .full-only, .form-short [data-ex="src"] { display: none; }
+.form-short .two:has(> .full-only), .form-short .three:has(> .full-only) { grid-template-columns: 1fr; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > label { font-size: 13px; font-weight: 800; color: var(--ink-2); display: flex; justify-content: space-between; gap: 8px; }
 .field > label small { font-weight: 600; color: var(--muted); }

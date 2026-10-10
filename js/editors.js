@@ -4,21 +4,13 @@
   const { $, $$, esc, icon } = App;
   const JP = App.jp;
 
-  const NOUN_CATS = [['ort', 'Ort/Gebäude'], ['land', 'Land/Stadt'], ['essen', 'Essen'], ['gericht', 'Gericht/Mahlzeit'], ['getraenk', 'Getränk'], ['person', 'Person/Beruf'], ['familie', 'Familie'], ['ding', 'Gegenstand'], ['lesestoff', 'Lesestoff'], ['medien', 'Film/Musik'], ['sport', 'Sport'], ['fach', 'Studienfach'], ['sprache', 'Sprache'], ['tier', 'Tier'], ['natur', 'Natur'], ['kleidung', 'Kleidung'], ['verkehr', 'Verkehrsmittel'], ['veranstaltung', 'Veranstaltung'], ['wetter', 'Wetter'], ['koerper', 'Körper']];
-  const VERB_CATS = [['allein', 'ohne Objekt sinnvoll'], ['bewegung', 'Bewegung (gehen/kommen)'], ['objekt', 'mit を-Objekt']];
   const lastSrc = () => { try { return localStorage.getItem('nt-lastSource') || 'Genki I'; } catch (e) { return 'Genki I'; } };
   const setLastSrc = (s) => { try { localStorage.setItem('nt-lastSource', s); } catch (e) { /* egal */ } };
+  // Vokabel-Formular: kurze oder ausführliche Fassung (je Gerät gemerkt); „full-only“-Felder fehlen in der kurzen
+  const formShort = () => { try { return localStorage.getItem('nt-vocabForm') === 'kurz'; } catch (e) { return false; } };
+  const setFormShort = (on) => { try { localStorage.setItem('nt-vocabForm', on ? 'kurz' : 'lang'); } catch (e) { /* egal */ } };
 
-  const guessClass = (kana) => {
-    if (/(する|くる)$/.test(kana)) return 'irr';
-    if (!/る$/.test(kana)) return 'u';
-    const EXC = ['かえる', 'はいる', 'しる', 'はしる', 'しゃべる', 'すべる', 'にぎる', 'へる', 'まいる', 'ける', 'かぎる', 'まじる'];
-    if (EXC.some((x) => kana.endsWith(x))) return 'u';
-    const prev = kana.slice(-2, -1);
-    return /[いきぎしじちぢにひびぴみりえけげせぜてでねへべぺめれ]/.test(prev) ? 'ru' : 'u';
-  };
   const catChips = (list, sel, name) => `<div class="chips">${list.map(([v, l]) => `<label class="chip ${sel.includes(v) ? 'on' : ''}" style="cursor:pointer"><input type="checkbox" name="${name}" value="${v}" ${sel.includes(v) ? 'checked' : ''} hidden>${l}</label>`).join('')}</div>`;
-  const bindChipToggles = (root) => root.addEventListener('change', (e) => { const c = e.target.closest('.chip input'); if (c) c.parentElement.classList.toggle('on', c.checked); });
   const val = (root, n) => { const el = root.querySelector(`[name="${n}"]`); return el ? el.value.trim() : ''; };
   const checked = (root, n) => $$(`[name="${n}"]:checked`, root).map((x) => x.value);
   const tagsOf = (s) => s.split(',').map((t) => t.trim().toLowerCase().replace(/^#/, '')).filter(Boolean);
@@ -336,9 +328,9 @@
   };
   const commonFields = (it) => `<div class="three">
       <div class="field"><label>Quelle</label><select class="input" name="source">${App.sourceOptions(it.source ?? lastSrc())}</select></div>
-      <div class="field"><label>Lektion / Kapitel</label><input class="input" name="lesson" value="${esc(it.lesson ?? '')}" placeholder="z. B. 3"></div>
-      <div class="field"><label>Fundstelle / Link</label><input class="input" name="sourceRef" value="${esc(it.sourceRef || '')}" placeholder="URL oder Seite"></div></div>
-    <div class="field"><label>Schlagwörter <small>mit Komma trennen</small></label><input class="input" name="tags" value="${esc((it.tags || []).join(', '))}" placeholder="z. B. essen, alltag"></div>`;
+      <div class="field full-only"><label>Lektion / Kapitel</label><input class="input" name="lesson" value="${esc(it.lesson ?? '')}" placeholder="z. B. 3"></div>
+      <div class="field full-only"><label>Fundstelle / Link</label><input class="input" name="sourceRef" value="${esc(it.sourceRef || '')}" placeholder="URL oder Seite"></div></div>
+    <div class="field full-only"><label>Schlagwörter <small>mit Komma trennen</small></label><input class="input" name="tags" value="${esc((it.tags || []).join(', '))}" placeholder="z. B. essen, alltag"></div>`;
   const readCommon = (root, it) => {
     it.source = val(root, 'source');
     const l = val(root, 'lesson'); it.lesson = l === '' ? '' : (isNaN(+l) ? l : +l);
@@ -351,8 +343,9 @@
   const FORMS = {};
   FORMS.vocab = {
     html: (it) => {
-      const n = it.n || {}, v = it.v || {}, a = it.a || {};
-      return `<div class="form">
+      const short = formShort();
+      return `<div class="form${short ? ' form-short' : ''}">
+      <div class="row form-mode"><div class="seg" data-form-mode>${[['kurz', 'Kurz'], ['lang', 'Ausführlich']].map(([k, l]) => `<button type="button" class="${short === (k === 'kurz') ? 'on' : ''}" data-v="${k}">${l}</button>`).join('')}</div></div>
       ${(it.contexts || []).length && !it._existing ? `<div class="ctx"><div class="small"><b>Kontext aus ${esc(it.contexts[0].label || 'deiner Mitschrift')}</b> – wird mit dem Wort gespeichert</div><div class="jp-s" lang="ja">${esc(it.contexts[0].text || '')}</div></div>` : ''}
       <div class="two"><div class="field"><label>Lesung (Kana) * <small><label><input type="checkbox" data-romaji checked> Romaji → かな</label></small></label>
         <input class="input jp-in" name="kana" value="${esc(it.kana || '')}" placeholder="z. B. taberu → たべる" autofocus></div>
@@ -361,42 +354,30 @@
         <span class="small muted">Wort eintippen – das Wörterbuch füllt die leeren Felder aus.</span></div>
       <div class="sugg" data-af hidden></div>
       <div class="two"><div class="field"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}" placeholder="z. B. essen / die Schule"></div>
-      <div class="field"><label>Wortart</label><select class="input" name="pos"><option value="">–</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${it.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
-      ${enLevelFields(it)}
-      <div class="field"><label>Pitch Accent <small>0 = flach, 1 = Abfall nach der 1. More … · leer = automatisch</small></label><input class="input" name="accent" inputmode="numeric" style="max-width:120px" value="${esc(it.accent ?? '')}" placeholder="auto"></div>
+      <div class="field full-only"><label>Wortart</label><select class="input" name="pos"><option value="">–</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${it.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+      <div class="full-only">${enLevelFields(it)}</div>
+      <div class="field full-only"><label>Pitch Accent <small>0 = flach, 1 = Abfall nach der 1. More … · leer = automatisch</small></label><input class="input" name="accent" inputmode="numeric" style="max-width:120px" value="${esc(it.accent ?? '')}" placeholder="auto"></div>
       ${exBlock(it.examples, true)}
       ${commonFields(it)}
       <div class="field"><label>Eigene Notizen</label><textarea class="input" name="notes" rows="2">${esc(it.notes || '')}</textarea></div>
       ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In den Lernstapel (neues Wort)'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}" ${(it._check || 'learn') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
-      <details class="adv"><summary>${icon('sparkle')}&nbsp; Für den Übungsgenerator (optional)</summary>
-        <div class="stack">
-        <div class="hint">Mit diesen Angaben kann die App das Wort automatisch in Übersetzungsübungen einbauen. Das meiste wird automatisch erkannt.</div>
-        <div data-p="noun" class="stack"><div class="field"><label>Kategorie</label>${catChips(NOUN_CATS, it.cat || [], 'ncat')}</div>
-          <div class="three"><div class="field"><label>Deutsches Nomen (ohne Artikel)</label><input class="input" name="nw" value="${esc(n.w || '')}"></div>
-          <div class="field"><label>Genus</label><select class="input" name="ng">${[['', 'automatisch'], ['m', 'der (m)'], ['f', 'die (f)'], ['n', 'das (n)'], ['pl', 'Plural'], ['0', 'ohne Artikel']].map(([k, l]) => `<option value="${k}" ${n.g === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-          <div class="field"><label>Unzählbar?</label><label class="chip"><input type="checkbox" name="nmass" ${n.mass ? 'checked' : ''}> z. B. Kaffee, Wasser</label></div></div></div>
-        <div data-p="verb" class="stack"><div class="field"><label>Art</label>${catChips(VERB_CATS, it.cat || [], 'vcat')}</div>
-          <div class="three"><div class="field"><label>Verbklasse</label><select class="input" name="vcls">${[['', 'automatisch'], ['u', 'う-Verb (Godan)'], ['ru', 'る-Verb (Ichidan)'], ['irr', 'unregelmäßig']].map(([k, l]) => `<option value="${k}" ${v.cls === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-          <div class="field"><label>Infinitiv</label><input class="input" name="vinf" value="${esc(v.inf || '')}" placeholder="essen"></div>
-          <div class="field"><label>„ich …“</label><input class="input" name="vich" value="${esc(v.ich || '')}" placeholder="esse"></div></div>
-          <div class="three"><div class="field"><label>Partizip II</label><input class="input" name="vpp" value="${esc(v.pp || '')}" placeholder="gegessen"></div>
-          <div class="field"><label>Hilfsverb</label><select class="input" name="vaux"><option ${v.aux !== 'bin' ? 'selected' : ''}>habe</option><option ${v.aux === 'bin' ? 'selected' : ''}>bin</option></select></div>
-          <div class="field"><label>Abtrennbares Präfix</label><input class="input" name="vsep" value="${esc(v.sep || '')}" placeholder="z. B. auf"></div></div>
-          <div class="field"><label>Typische を-Objekte</label>${catChips(NOUN_CATS, v.obj || [], 'vobj')}</div>
-          <div class="field"><label>Partikeln <small>eine Zeile je Muster: 人に会う = jemanden treffen · Partikel und Lesungen ergänzt die App beim Speichern</small></label><textarea class="input jp-in" name="vuse" rows="2">${esc((it.use || []).map((u) => `${u.jp} = ${u.de || u.en || ''}`).join('\n'))}</textarea></div></div>
-        <div data-p="adj" class="stack"><div class="field"><label>Deutsches Adjektiv</label><input class="input" name="ade" value="${esc(a.de || '')}" placeholder="groß"></div>
-          <div class="field"><label>Beschreibt typischerweise …</label>${catChips(NOUN_CATS, a.subj || [], 'asubj')}</div></div>
-        <div data-p="time" class="stack"><div class="field"><label>Im deutschen Satz</label><input class="input" name="tadv" value="${esc((it.t || {}).adv || '')}" placeholder="z. B. morgen, am Montag"></div></div>
-        </div></details></div>`;
+      <input type="hidden" name="vcls" value="${esc((it.v || {}).cls || '')}"></div>`;
     },
-    bind: (root) => {
-      bindEx(root); bindChipToggles(root);
+    bind: (root, it) => {
+      bindEx(root);
+      // Stand vor dem Bearbeiten: daran erkennt read, ob die Satzbau-Angaben bleiben dürfen
+      root._old = it._existing ? { pos: it.pos || '', de: it.de || '', cat: it.cat, n: it.n, v: it.v, a: it.a, t: it.t } : null;
+      const form = root.querySelector('.form');
+      root.querySelector('[data-form-mode]').onclick = (e) => {
+        const b = e.target.closest('button'); if (!b) return;
+        const on = b.dataset.v === 'kurz';
+        setFormShort(on); form.classList.toggle('form-short', on);
+        $$('[data-form-mode] button', root).forEach((x) => x.classList.toggle('on', x === b));
+      };
       const kana = root.querySelector('[name=kana]');
       const rj = root.querySelector('[data-romaji]');
       App.bindRomaji(kana, () => rj.checked);
       const pos = root.querySelector('[name=pos]');
-      const sync = () => $$('[data-p]', root).forEach((p) => { const v = pos.value; p.hidden = !(p.dataset.p === v || (p.dataset.p === 'adj' && /adj/.test(v))); });
-      pos.onchange = sync; sync();
       bindAutofill(root);
       // Wortart raten
       kana.addEventListener('blur', () => {
@@ -404,9 +385,8 @@
         const de = val(root, 'de');
         if (/^(der|die|das) /i.test(de)) pos.value = 'noun';
         else if (/(る|う|く|ぐ|す|つ|ぬ|ぶ|む)$/.test(kana.value) && /^[a-zäöüß]+(en|n)$/.test(de)) pos.value = 'verb';
-        sync();
       });
-      root.querySelector('[name=de]').addEventListener('blur', () => { if (!pos.value && /^(der|die|das) /i.test(val(root, 'de'))) { pos.value = 'noun'; sync(); } });
+      root.querySelector('[name=de]').addEventListener('blur', () => { if (!pos.value && /^(der|die|das) /i.test(val(root, 'de'))) pos.value = 'noun'; });
     },
     read: (root, it) => {
       it.kana = val(root, 'kana'); it.kanji = val(root, 'kanji'); it.de = val(root, 'de'); it.pos = val(root, 'pos');
@@ -422,31 +402,8 @@
       it.notes = val(root, 'notes');
       if (root.querySelector('[name=check]')) it._check = val(root, 'check');
       readCommon(root, it);
-      delete it.n; delete it.v; delete it.a; delete it.t;
-      if (it.pos === 'noun') {
-        it.cat = checked(root, 'ncat');
-        const auto = JP.nounDe({ de: it.de });
-        // weak/in/zu (schwaches Maskulinum, eigene Orts-/Richtungsangabe) haben kein Eingabefeld und bleiben erhalten
-        it.n = { ...(it.n || {}), w: val(root, 'nw') || auto.w, g: val(root, 'ng') || auto.g, mass: root.querySelector('[name=nmass]').checked };
-      } else if (it.pos === 'verb') {
-        it.cat = checked(root, 'vcat');
-        const inf = val(root, 'vinf') || it.de.split(/[,;(]/)[0].trim();
-        const ich = val(root, 'vich') || inf.replace(/(e?n)$/, 'e');
-        it.v = { cls: val(root, 'vcls') || guessClass(it.kana), inf, ich, pp: val(root, 'vpp') || ('ge' + inf.replace(/(e?n)$/, 't')), aux: val(root, 'vaux') || 'habe', sep: val(root, 'vsep'), obj: checked(root, 'vobj') };
-        if (it.v.obj.length && !it.cat.includes('objekt')) it.cat.push('objekt');
-        // Lesung eines Nomens im Muster: aus den eigenen Vokabeln, sonst die üblichen Platzhalter
-        const useLookup = (w) => { const hit = App.itemsOf('vocab').find((x) => x.kanji === w && x.kana); return hit ? hit.kana.replace(/[〜～]/g, '') : ({ 人: 'ひと', 物: 'もの', 所: 'ところ', 何: 'なに' })[w] || ''; };
-        const use = val(root, 'vuse').split('\n').map((l) => { const i = l.indexOf('='); return i < 0 ? { jp: l.trim(), de: '' } : { jp: l.slice(0, i).trim(), de: l.slice(i + 1).trim() }; }).filter((u) => u.jp)
-          .map((u) => ({ jp: JP.useParse(u.jp, it, useLookup), de: u.de }));
-        if (use.length) it.use = use; else delete it.use;
-      } else if (/adj/.test(it.pos)) {
-        it.cat = ['beschreibung'];
-        it.a = { de: val(root, 'ade') || it.de.split(/[,;(]/)[0].trim(), subj: checked(root, 'asubj') };
-        if (!it.a.subj.length) it.a.subj = ['ding', 'ort', 'person', 'essen'];
-      } else if (it.pos === 'time') {
-        it.cat = ['zeitpunkt'];
-        it.t = { adv: val(root, 'tadv') || it.de.split(/[,;(]/)[0].trim() };
-      }
+      // Satzbau-Angaben für die Übersetzungsübungen: automatisch (Verbklasse aus dem Wörterbuch, wenn ausgefüllt wurde)
+      App.autofillLogic.sentenceData(it, root._old, { nounDe: JP.nounDe, cls: val(root, 'vcls') });
     },
   };
   FORMS.grammar = {
