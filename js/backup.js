@@ -381,8 +381,10 @@
     K.renderStatus();
     if (!document.querySelector) return;
     const a = document.querySelector('[data-backup-auto]'); if (a) a.innerHTML = K.card();
-    const h = document.querySelector('[data-backup-home]'); if (h) h.innerHTML = K.homeCard({ noRestoreHint: !!(App.welcome && App.welcome.card()) });
-    const m = document.querySelector('[data-backup-manual]'); if (m) m.hidden = !K.manualHint();
+    // Willkommenskarte folgt dem Sicherungszustand (der Ordner wird beim Start erst nach dem ersten Zeichnen geladen); sie zeichnet die Startseiten-Zeile mit
+    if (App.welcome && App.welcome.refresh) App.welcome.refresh();
+    else { const h = document.querySelector('[data-backup-home]'); if (h) h.innerHTML = K.homeCard({ noRestoreHint: false }); }
+    const m =document.querySelector('[data-backup-manual]'); if (m) m.hidden = !K.manualHint();
   };
   const versionsDialog = async () => {
     const list = await K.versions();
