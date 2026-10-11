@@ -5,9 +5,9 @@
 window.PACKS = [
   {id:"n5",kind:"level",level:"N5",title:"JLPT N5",version:7,files:["n5/vocab.js","n5/kanji.js","n5/grammar.js"],counts:{vocab:722,kanji:80,grammar:91},sizeKB:286,available:true,hash:"025b8a5eeb78a8451bfca611a8083e3ba3d96066f1a45ff488e26148bf4ac623"},
   {id:"n4",kind:"level",level:"N4",title:"JLPT N4",version:7,files:["n4/vocab.js","n4/kanji.js","n4/grammar.js"],counts:{vocab:662,kanji:166,grammar:119},sizeKB:439,available:true,hash:"aec77337f15cbd30498d7be708b9d8937bf930f06fb40e62c6312161d956fd1e",strokes:"n4/strokes.js"},
-  {id:"n3",kind:"level",level:"N3",title:"JLPT N3",version:1,files:["n3/vocab.js","n3/kanji.js","n3/grammar.js"],counts:{vocab:2131,kanji:367,grammar:0},sizeKB:0,available:false,hash:null},
-  {id:"n2",kind:"level",level:"N2",title:"JLPT N2",version:1,files:["n2/vocab.js","n2/kanji.js","n2/grammar.js"],counts:{vocab:1777,kanji:367,grammar:0},sizeKB:0,available:false,hash:null},
-  {id:"n1",kind:"level",level:"N1",title:"JLPT N1",version:1,files:["n1/vocab.js","n1/kanji.js","n1/grammar.js"],counts:{vocab:2696,kanji:1232,grammar:0},sizeKB:0,available:false,hash:null},
+  {id:"n3",kind:"level",level:"N3",title:"JLPT N3",version:1,files:["n3/vocab.js","n3/kanji.js","n3/grammar.js"],counts:{vocab:2113,kanji:367,grammar:139},sizeKB:1311,available:true,hash:"01aedfc7610f348d32a0cfbf0adc418ddbd149f18994a753d5841d44184a69cf",strokes:"n3/strokes.js"},
+  {id:"n2",kind:"level",level:"N2",title:"JLPT N2",version:1,files:["n2/vocab.js","n2/kanji.js","n2/grammar.js"],counts:{vocab:1775,kanji:367,grammar:0},sizeKB:0,available:false,hash:null},
+  {id:"n1",kind:"level",level:"N1",title:"JLPT N1",version:1,files:["n1/vocab.js","n1/kanji.js","n1/grammar.js"],counts:{vocab:2695,kanji:1232,grammar:0},sizeKB:0,available:false,hash:null},
   {id:"dict-common",kind:"dict",title:"Wörterbuch (häufige Wörter)",version:1,files:["dict-common/0.js","dict-common/1.js"],entries:22639,sizeKB:3014,available:true,hash:"eeabd462a42d5bddc323b825df75a342a2788c531cacc6c7b9eaf64d58ce8f33"},
   {id:"dict-full",kind:"dict",title:"Wörterbuch (vollständig)",version:1,files:["dict-full/0.js","dict-full/1.js","dict-full/2.js","dict-full/3.js","dict-full/4.js","dict-full/5.js","dict-full/6.js","dict-full/7.js","dict-full/8.js","dict-full/9.js","dict-full/10.js","dict-full/11.js","dict-full/12.js","dict-full/13.js"],entries:218794,sizeKB:27906,available:true,hash:"30ff8b60d4e5522c3112f90c5649c063ec1e61f64440e2c7a32e8ab3d47d3da5"},
 ];

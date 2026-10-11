@@ -1,7 +1,7 @@
 Nihongo Techō – Quellen und Lizenzen der Paketdateien (packs/)
 ================================================================
 
-Diese Pakete (packs/n5/…, packs/n4/…, packs/dict-common/…, packs/dict-full/…,
+Diese Pakete (packs/n5/…, packs/n4/…, packs/n3/…, packs/dict-common/…, packs/dict-full/…,
 packs/level-index.js, packs/accent-index.js, packs/uk-index.js, packs/kanji-index.js, packs/manifest.js) wurden aus den folgenden Quellen
 erzeugt. Geprüft am 2026-09-28. Alle daraus erzeugten Paketdateien stehen
 selbst unter CC-BY-SA 4.0 (siehe Kopfkommentar jeder Datei).
@@ -49,22 +49,22 @@ KanjiVG
 
 Nur zum Abgleich verwendet, keine Inhaltsübernahme
 ---------------------------------------------------
-Die folgenden Quellen dienten ausschließlich dazu, die JLPT-Zuordnung (N5, N4) von
+Die folgenden Quellen dienten ausschließlich dazu, die JLPT-Zuordnung (N5, N4, N3) von
 Vokabeln, Kanji und Grammatikmustern gegenzuprüfen (Mehrheitsabgleich mehrerer
 Listen). Aus ihnen wurden keine Texte, Erklärungen oder Beispiele übernommen:
 
   - jlpt-vocab-api (https://jlpt-vocab-api.vercel.app) – nur als zusätzliche
     Stimme beim Level-Abgleich der Vokabeln.
-  - JLPT Sensei (N5- und N4-Grammatikliste) – nur Musternamen/Level zum Abgleich.
-  - Bunpro (JLPT5- und JLPT4-Liste) – nur Musternamen/Level zum Abgleich.
-  - japanesetest4you (N4-Grammatikliste, geprüft am 2026-10-07) – nur
-    Musternamen/Level zum Abgleich.
+  - JLPT Sensei (N5-, N4- und N3-Grammatikliste) – nur Musternamen/Level zum Abgleich.
+  - Bunpro (JLPT5-, JLPT4- und JLPT3-Liste) – nur Musternamen/Level zum Abgleich.
+  - japanesetest4you (N4-Grammatikliste, geprüft am 2026-10-07; N3-Grammatikliste,
+    geprüft am 2026-10-11) – nur Musternamen/Level zum Abgleich.
   - Lokale PDF-Listen (Vocabulary_of_JLPT_N5.pdf, kanjibookjlptn5.pdf,
     jlpt-n5-grammar-list.pdf) – nur Musternamen/Wörter/Level zum Abgleich.
 
 Die Titel, Zusammenfassungen und Beispiele der Grammatikpunkte
-(packs/n5/grammar.js, packs/n4/grammar.js) sind selbst verfasst oder stammen
-aus Tatoeba. Einzelne Bedeutungen der N4-Vokabeln sind von Hand berichtigt
+(packs/n5/grammar.js, packs/n4/grammar.js, packs/n3/grammar.js) sind selbst verfasst oder stammen
+aus Tatoeba. Einzelne Bedeutungen der N4- und N3-Vokabeln sind von Hand berichtigt
 (selbst verfasst, siehe tools/build/src/vocab-fixes.js).
 
 JMdict-Version
