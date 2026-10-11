@@ -179,6 +179,9 @@ body.sidebar-collapsed .brand-text, body.sidebar-collapsed .nav-link .lbl, body.
   position: absolute; top: 52px; left: 0; right: 0; background: var(--card); border: 1px solid var(--line);
   border-radius: 14px; box-shadow: var(--shadow-lg); max-height: 70vh; overflow: auto; padding: 8px;
 }
+#park-bar { position: sticky; top: var(--topbar-h); z-index: 15; display: flex; justify-content: center; align-items: center; gap: 4px; padding: 8px 16px; background: var(--ai-soft); border-bottom: 1px solid var(--line); }
+#park-bar[hidden] { display: none; }
+#park-bar .icon-btn { width: 36px; height: 36px; font-size: 20px; }
 #view { flex: 1; padding: 28px 32px 80px; outline: none; max-width: 1400px; width: 100%; margin: 0 auto; }
 
 /* ---------- Typografie & Bausteine ---------- */

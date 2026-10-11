@@ -33,7 +33,14 @@
     }).join('');
     $$('.foot-btn[href]').forEach((a) => a.classList.toggle('active', path === a.getAttribute('href').slice(1)));
   };
-  App.afterRender = () => { renderNav(); document.body.classList.remove('sidebar-open'); App.emit('route'); };
+  // Geparkte Kartenrunde (practice.js): Leiste unter der Kopfzeile führt von jeder anderen Seite zurück zur offenen Karte
+  const renderPark = () => {
+    const p = App.parkedRound(), bar = $('#park-bar');
+    const show = !!p && !App.parkLogic.same(p, location.hash);
+    bar.hidden = !show;
+    bar.innerHTML = show ? `<a class="btn btn-sm btn-primary" href="${esc(p.hash)}">${icon('back')} Weiter wiederholen · ${App.parkLogic.label(p)}</a><button class="icon-btn" data-park-drop title="Runde nicht fortsetzen" aria-label="Runde nicht fortsetzen">×</button>` : '';
+  };
+  App.afterRender = () => { renderNav(); renderPark(); document.body.classList.remove('sidebar-open'); App.emit('route'); };
 
   App.applyTheme = () => {
     const t = App.store.settings.theme;
@@ -44,6 +51,7 @@
   };
 
   document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-park-drop]')) { App.dropParked(); renderPark(); return; }
     const a = e.target.closest('[data-action]');
     if (!a) return;
     const act = a.dataset.action;

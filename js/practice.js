@@ -6,6 +6,7 @@
   const S = App.store;
 
   const W = App.writeLogic;
+  const P = App.parkLogic;
   const kanjiFocus = () => W.focus(S.settings);
   App.dueCount = () => W.dueCount(S.srs, S.items, kanjiFocus(), W.dayEnd(Date.now()));
   const lessonNum = (it) => (it.lesson === '' || it.lesson == null || isNaN(+it.lesson)) ? null : +it.lesson;
@@ -90,6 +91,20 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   App.roundSize = (q) => W.round(q, S.settings.newPerDay).length;
   // Neues kommt nur auf ausdrücklichen Klick: eigener Knopf vor der Runde und auf dem Abschlussbildschirm
   let nextRound = null;
+  // Geparkte Kartenrunde (nur im Speicher): über „Eintrag öffnen“ verlassen, die Leiste oben führt zurück (main.js)
+  let parked = null;
+  App.parkedRound = () => parked;
+  App.dropParked = () => { parked = null; };
+  // Auf der Seite der geparkten Runde: Herkunft wiederherstellen und den Stand zum Fortsetzen liefern
+  const takeParked = () => {
+    if (!P.same(parked, location.hash)) return null;
+    const p = parked, r = P.revive(p, App.item);
+    parked = null;
+    nextRound = null;
+    App.setOrigin(p.origin);
+    return r.entries.length ? Object.assign(r, { opts: p.opts }) : null;
+  };
+  const resumeCards = (view, r) => { view.querySelector('[data-setup]').hidden = true; runCards(view.querySelector('[data-stage]'), r.entries, r.opts, r); };
   const roundStart = (q, dueLabel) => `<button class="btn ${q.due.length || !newMax(q) ? 'btn-primary' : ''}" data-round="due" ${q.due.length ? '' : 'disabled'}>${icon('play')} ${dueLabel} (${q.due.length} fällig)</button>
           <button class="btn ${q.due.length || !newMax(q) ? '' : 'btn-primary'}" data-round="new" ${newMax(q) ? '' : 'disabled'}>${icon('plus')} Neue lernen (${newMax(q)} neu)</button>`;
   const roundEnd = (q) => `${q.due.length ? `<button class="btn btn-primary" data-round="due">${icon('play')} Weiter wiederholen (${q.due.length})</button>` : ''}${newMax(q) ? `<button class="btn ${q.due.length ? '' : 'btn-primary'}" data-round="new">${icon('plus')} Jetzt ${newMax(q)} neue lernen</button>` : ''}`;
@@ -168,12 +183,14 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   App.dueTomorrow = () => { const end = W.dayEnd(Date.now()); return W.dueCount(S.srs, S.items, kanjiFocus(), end + 864e5) - W.dueCount(S.srs, S.items, kanjiFocus(), end); };
   App.route('/ueben/heute', (view, p, q) => {
     const sec = App.SECTIONS.practice;
+    const resume = takeParked();
     const parts = App.todayParts(), n = parts.reduce((a, x) => a + x.n, 0), tomorrow = App.dueTomorrow();
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Jetzt wiederholen</div>
       <div class="page-head"><div class="titles"><h1>Jetzt wiederholen <span class="jp-title">復習</span></h1><p>${n ? `Heute ${n === 1 ? 'ist 1 Karte' : `sind ${n} Karten`} dran: ${parts.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : 'Für heute ist alles wiederholt.'}</p></div></div>
       <div class="card" data-setup><div class="row between"><div class="small muted">${n ? 'Alles gemischt in einer Runde.' : 'お疲れ様！'}${tomorrow ? ` Morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu.` : ''}</div>
         <div class="row">${n ? `<button class="btn btn-primary" data-round="due">${icon('shuffle')} Jetzt wiederholen (${n})</button>` : `<a class="btn" href="#/">Zur Startseite</a><a class="btn" href="#/ueben/karten">${icon('practice')} Karteikarten</a>`}</div></div></div>
       <div data-stage></div></div>`;
+    if (resume) return resumeCards(view, resume);
     const go = view.querySelector('[data-round]');
     const auto = nextRound || q.auto;
     nextRound = null;
@@ -184,6 +201,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   const CRAM_MAX = 100; // so viele Karten hat eine freie Runde höchstens – eine Genki-Lektion passt ganz hinein
   App.route('/ueben/karten', (view, p, q) => {
     const sec = App.SECTIONS.practice;
+    const resume = takeParked();
     const type = q.type || 'vocab';
     const cq = App.cardQueue(q), { items, due, fresh } = cq;
     const dir = cardDir(q), defDir = cardDir(Object.assign({}, q, { dir: '' }));
@@ -208,6 +226,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         ${unchecked ? `<div class="card row between" style="background:var(--yamabuki-soft);border-color:transparent;box-shadow:none"><div><b>${unchecked} ${type === 'kanji' ? 'Kanji' : type === 'grammar' ? 'Grammatikpunkte' : type === 'phrase' ? 'Ausdrücke' : 'Vokabeln'} sind ${active ? 'aktiv noch nicht eingestuft' : 'noch ungeprüft'}.</b><div class="small muted">${type === 'grammar' ? 'Neue Karten kommen nur aus deinem Lernstapel. Setze Grammatik auf „Lernstapel“ – im Unterricht behandelte landen dort automatisch.' : active ? 'Du kannst sie lesen – prüfe, welche du auch aus dem Deutschen heraus weißt. Neue Karten kommen nur aus dem Aktiv-Lernstapel.' : 'Neue Karten kommen nur aus deinem Lernstapel. Prüfe erst, was du schon kannst.'}</div></div>
           ${type === 'grammar' ? `<a class="btn btn-sm" href="#/grammatik?${new URLSearchParams(Object.fromEntries(Object.entries({ st: 'unchecked', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v)))}">${icon('check')} Einstufen</a>` : `<a class="btn btn-sm" href="#/ueben/einstufen?${new URLSearchParams(Object.fromEntries(Object.entries({ type: type === 'vocab' ? '' : type, dir: active ? 'de' : '', src: q.src, l: q.l, lvl: q.lvl, g: type === 'phrase' ? q.g : '' }).filter(([, v]) => v)))}">${icon('check')} Einstufen</a>`}</div>` : ''}</div></div>
       <div data-stage></div></div>`;
+    if (resume) return resumeCards(view, resume);
     const stage = view.querySelector('[data-stage]');
     const start = (queue, cram) => { view.querySelector('[data-setup]').hidden = true; runCards(stage, queue, { type, dir, cram, write, active, more: () => App.cardQueue(q) }); };
     view.querySelector('[data-cram]').onclick = () => start(App.shuffle(items).slice(0, CRAM_MAX), true);
@@ -248,10 +267,15 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   // write/active: eigener Lernstand unter „w:<Id>“ (Kanji schreiben · Vokabeln Deutsch → Japanisch)
   // cram = freies Üben: nichts wird bewertet, der Lernstand bleibt unberührt – nicht Gewusstes kommt nur in dieser Runde noch einmal
   // Gemischte Runde: Einträge { it, kind: 'read' | 'active' | 'write', dir, pad } bringen Richtung und Lernstand selbst mit; pad = Kanji mit dem Stift schreiben
-  function runCards(stage, queue, { dir, cram, write, active, more }) {
+  // resume = geparkte Runde (park-logic.js): Stand übernehmen, die offene Karte liegt wieder aufgedeckt da
+  function runCards(stage, queue, opts, resume) {
+    const { dir, cram, write, active, more } = opts;
+    const home = location.hash, from = App.origin();
+    parked = null;
     queue = queue.map((x) => (x.it ? x : { it: x, kind: write ? 'write' : active ? 'active' : 'read', dir }));
-    let total = queue.length; // wächst, wenn nicht Gewusstes in derselben Runde noch einmal kommt
-    let done = 0, right = 0, flipped = false, cur = null, ent = null;
+    let total = resume ? resume.total : queue.length; // wächst, wenn nicht Gewusstes in derselben Runde noch einmal kommt
+    let done = resume ? resume.done : 0, right = resume ? resume.right : 0, flipped = false, cur = null, ent = null;
+    let wantPark = false; // „Eintrag öffnen“ angetippt: beim Verlassen der Seite wird die Runde geparkt
     const own = () => ent.kind !== 'read';
     const head = () => `<div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${cram ? ' · freies Üben' : ''}</span><span>${App.srcBadge(cur)}</span></div>
         <div class="progress" style="margin-bottom:14px"><i style="width:${(done / Math.max(1, total)) * 100}%"></i></div>`;
@@ -259,6 +283,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       ent = queue.shift();
       cur = ent ? ent.it : null;
       flipped = false;
+      wantPark = false;
       if (!cur) {
         stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${cram ? 'Frei geübt – an deinem Lernstand hat sich nichts geändert.' : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>
           <div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${cram ? '<button class="btn btn-primary" data-again>Weitere Runde</button>' : roundEnd(more())}</div></div></div>`;
@@ -272,7 +297,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       stage.innerHTML = `<div class="flash-stage ${App.furiClass()}">${head()}
         <div class="flash" data-flip>${f.front}<div class="back" hidden>${f.back}</div><span class="tap-hint">Tippen oder Leertaste zum Umdrehen</span></div>
         <div class="grade-row"${cram ? ' style="grid-template-columns:repeat(2,1fr)"' : ''} hidden>${cram ? '<button class="g0" data-g="0">Nicht gewusst<small>kommt gleich noch einmal</small></button><button class="g2" data-g="2">Gewusst</button>' : [['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, own())}</small></button>`).join('')}</div>
-        <div class="row" style="justify-content:center;margin-top:10px"><a class="btn btn-sm btn-ghost" href="${App.link(cur)}" target="_blank">${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}</div></div>`;
+        <div class="row" style="justify-content:center;margin-top:10px"><a class="btn btn-sm btn-ghost" href="${App.link(cur)}" data-park>${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}</div></div>`;
     };
     // Kanji schreiben in der gemischten Runde: mit dem Stift schreiben, auflösen, selbst bewerten – wie im Kanji-Quiz
     const padCard = () => {
@@ -282,9 +307,10 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div></div>`;
       const pad = App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false, quiz: true });
       stage.querySelector('[data-show]').onclick = () => {
+        flipped = true;
         pad.then((p) => p.reveal());
         App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
-        stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · wieder in ${ivlLabel(cur.id, 0, true)}</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig · wieder in ${ivlLabel(cur.id, 2, true)}</button><a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
+        stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · wieder in ${ivlLabel(cur.id, 0, true)}</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig · wieder in ${ivlLabel(cur.id, 2, true)}</button><a class="btn btn-ghost" href="${App.link(cur)}" data-park>Kanji öffnen</a>`;
       };
     };
     let busy = false;
@@ -314,6 +340,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       next();
     };
     stage.addEventListener('click', (e) => {
+      if (e.target.closest('a[data-park]')) wantPark = true;
       if (e.target.closest('[data-speak]') || e.target.closest('a')) return;
       if (e.target.closest('[data-flip]')) flip();
       const r = e.target.closest('[data-r]'); if (r && ent && ent.pad) return gradePad(+r.dataset.r);
@@ -325,8 +352,12 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       if (['1', '2', '3', '4'].includes(e.key) && ent && !ent.pad) grade(+e.key - 1);
     };
     document.addEventListener('keydown', onKey);
-    App.onLeave(() => document.removeEventListener('keydown', onKey));
+    App.onLeave(() => {
+      document.removeEventListener('keydown', onKey);
+      if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue), done, right, total, open: flipped };
+    });
     next();
+    if (resume && resume.open && cur) { if (ent.pad) stage.querySelector('[data-show]').click(); else flip(); }
   }
 
   // =========================================================
