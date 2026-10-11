@@ -114,11 +114,21 @@
     return needsCheck(it) ? 'unchecked' : 'learn';
   };
   // Aktiv-Runde: fällige (älteste zuerst) + neue = im Aktiv-Lernstapel, aber noch nie gewusst (Reihenfolge der Liste)
+  // Vorgemerkt (pre): beim Einstufen pro Lektion nicht gelesen – liegt schon im Aktiv-Lernstapel, Karten kommen erst, wenn das Wort lesbar ist
   W.activeQueue = (items, srs, now, needsCheck) => {
     const rec = (i) => srs.get(W.id(i.id));
     const due = items.filter((i) => { const s = rec(i); return s && s.reps > 0 && !W.isKnown(s) && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
-    const fresh = items.filter((i) => { const s = rec(i); return (!s || !s.reps) && W.activeStatus(srs, i, needsCheck) === 'learn'; });
+    const fresh = items.filter((i) => { const s = rec(i); return (!s || !s.reps) && W.activeStatus(srs, i, needsCheck) === 'learn' && !(s && s.pre && !W.unlocked(srs, i.id)); });
     return { due, fresh };
+  };
+  // Einstufen pro Lektion: eine Runde mischt beide Richtungen – lesen (Japanisch → Deutsch) für Ungeprüftes und
+  // aktiv (de: Deutsch → Japanisch) für das, was schon lesbar ist. Dasselbe Wort steht nie zweimal in einer Runde:
+  // die Gegenrichtung kommt frühestens in der nächsten. Solange beides offen ist, teilen sich die Richtungen die Runde.
+  W.lessonRound = (items, srs, needsCheck, readOpen, n, shuffle) => {
+    const de = items.filter((i) => W.activeStatus(srs, i, needsCheck) === 'unchecked');
+    const jp = items.filter(readOpen);
+    const nDe = Math.min(de.length, jp.length ? Math.max(Math.ceil(n / 2), n - jp.length) : n);
+    return shuffle(de.slice(0, nDe).map((item) => ({ item, de: true })).concat(jp.slice(0, n - nDe).map((item) => ({ item, de: false }))));
   };
   W.activeCounts = (items, srs, needsCheck) => {
     const c = { locked: 0, unchecked: 0, learn: 0, known: 0, total: items.length };

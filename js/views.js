@@ -121,9 +121,9 @@
     const next = (n) => `${icon('check')} Nächste ${Math.min(n, batch)}`;
     const unch = (t) => (sets[t] ? App.vocabCounts(sets[t]).unchecked : 0);
     const act = (sets.vocab || []).filter((x) => App.activeStatus(x) === 'unchecked').length;
-    const check = unch('vocab') ? btn(cls, `#/ueben/einstufen?${and}auto=1`, `${next(unch('vocab'))}${many ? ' Vokabeln' : ''} einstufen`)
+    const check = unch('vocab') ? btn(cls, `#/ueben/einstufen${qs ? '?' + qs : ''}`, `${icon('check')} ${unch('vocab')}${many ? ' Vokabeln' : ''} einstufen`)
       : unch('kanji') ? btn(cls, `#/ueben/einstufen?type=kanji&${and}auto=1`, `${next(unch('kanji'))} Kanji einstufen`)
-      : act ? btn(cls, `#/ueben/einstufen?dir=de&${and}auto=1`, `${next(act)} einstufen`, deTip + ': Welche Wörter weißt du auch aus dem Deutschen heraus?')
+      : act ? btn(cls, `#/ueben/einstufen?dir=de${qs ? '&' + qs : ''}`, `${icon('check')} ${act} einstufen`, deTip + ': Welche Wörter weißt du auch aus dem Deutschen heraus?')
       : unch('grammar') ? btn(cls, `#/grammatik?st=unchecked${qs ? '&' + qs : ''}`, `${icon('check')} Grammatik einstufen`) : '';
     return fresh + check;
   };
