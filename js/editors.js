@@ -34,11 +34,14 @@
 
   // ---------- Beispielsätze-Block ----------
   // data-en/data-had-de: englische Übersetzung (Paket) bleibt beim Speichern erhalten
-  const exRow = (ex = {}) => `<div class="ex-row" data-en="${esc(ex.en || '')}" data-had-de="${ex.de ? '1' : ''}"><button type="button" class="icon-btn sm rm" data-rm-ex title="Entfernen">${icon('close')}</button>
-      <input class="input jp-in" data-ex="jp" placeholder="Japanisch, z. B. 毎日ご飯を食べます。" value="${esc(ex.jp && JP.hasNotation(ex.jp) ? JP.plain(ex.jp) : ex.jp || '')}">
-      <input class="input jp-in" data-ex="kana" placeholder="Lesung in Kana (optional – ergibt Furigana)" value="${esc(ex.kana || (ex.jp && JP.hasNotation(ex.jp) ? JP.kana(ex.jp) : ''))}">
-      <input class="input" data-ex="de" placeholder="Deutsche Übersetzung" value="${esc(App.exMeaning(ex))}">
-      <input class="input" data-ex="src" placeholder="Fundstelle (optional, z. B. NHK Easy 12.09.)" value="${esc(ex.src || '')}"></div>`;
+  // data-furi: genaue Furigana-Notation (gespeichert, von Tatoeba oder automatisch gelesen) – gilt, solange Satz und Lesung dazu passen
+  const micBtn = (lang, title) => (App.dictate.supported() ? `<button type="button" class="icon-btn sm mic" data-mic="${lang}" title="${title}">${icon('mic')}</button>` : '');
+  const exRow = (ex = {}) => `<div class="ex-row" data-en="${esc(ex.en || '')}" data-had-de="${ex.de ? '1' : ''}" data-furi="${esc(ex.furi || (ex.jp && JP.hasNotation(ex.jp) ? ex.jp : ''))}"><button type="button" class="icon-btn sm rm" data-rm-ex title="Entfernen">${icon('close')}</button>
+      <div class="mic-field"><input class="input jp-in" data-ex="jp" placeholder="Japanisch, z. B. 毎日ご飯を食べます。" value="${esc(ex.jp && JP.hasNotation(ex.jp) ? JP.plain(ex.jp) : ex.jp || '')}">${micBtn('ja-JP', 'Japanisch diktieren')}</div>
+      <input class="input jp-in" data-ex="kana" placeholder="Lesung in Kana (füllt sich bei Kanji von selbst – ergibt Furigana)" value="${esc(ex.kana || (ex.jp && JP.hasNotation(ex.jp) ? JP.kana(ex.jp) : ''))}">
+      <div class="mic-field"><input class="input" data-ex="de" placeholder="Deutsche Übersetzung (füllt sich von selbst)" value="${esc(App.exMeaning(ex))}">${micBtn('de-DE', 'Deutsch diktieren')}</div>
+      <input class="input" data-ex="src" placeholder="Fundstelle (optional, z. B. NHK Easy 12.09.)" value="${esc(ex.src || '')}">
+      <div class="ex-note small muted" data-ex-note hidden></div></div>`;
   // suggest: Knopf „Satz vorschlagen“ (holt kurze Sätze zum Wort von Tatoeba, braucht Internet)
   const exBlock = (exs, suggest) => `<div class="field"><label>Beispielsätze</label><div class="stack" data-exs>${(exs && exs.length ? exs : [{}]).map(exRow).join('')}</div>
       <div class="row"><button type="button" class="btn btn-sm" data-add-ex>${icon('plus')} Beispielsatz</button>
@@ -48,8 +51,80 @@
     root.addEventListener('click', (e) => {
       if (e.target.closest('[data-add-ex]')) { root.querySelector('[data-exs]').insertAdjacentHTML('beforeend', exRow()); App.hydrateIcons(root); }
       const rm = e.target.closest('[data-rm-ex]'); if (rm) rm.closest('.ex-row').remove();
+      const mic = e.target.closest('[data-mic]'); if (mic) App.dictate.toggle(mic.parentElement.querySelector('input'), mic, mic.dataset.mic);
     });
+    bindExFill(root);
     if (root.querySelector('[data-sugg]')) bindSuggest(root);
+  };
+
+  // ---------- Beispielsatz: Lesung und Übersetzung von selbst (nach dem Eintragen oder Diktieren des japanischen Satzes) ----------
+  // Lesung: aus den eigenen Vokabeln und dem Offline-Wörterbuch. Übersetzung: Google Übersetzer (Internet, einmalige Zustimmung).
+  const LV_BONUS = { N5: 6, N4: 5, N3: 4, N2: 3, N1: 2 };
+  const bindExFill = (root) => {
+    const X = App.exfillLogic;
+    let declined = false; // „Nein“ zur Übersetzung gilt für dieses Formular
+    const field = (row, k) => row.querySelector(`[data-ex="${k}"]`);
+    const note = (row, html) => { const n = row.querySelector('[data-ex-note]'); n.hidden = !html; n.innerHTML = html || ''; };
+    // frei = leer, oder es steht noch die automatische Fassung zu einem früheren Stand des Satzes drin
+    const free = (row, k) => { const v = field(row, k).value.trim(); return !v || v === row.dataset['auto' + k]; };
+    const setAuto = (row, k, v) => { field(row, k).value = v; row.dataset['auto' + k] = v; };
+    const bonus = (e, base, r) => LV_BONUS[((window.JLPT_INDEX || {}).v || {})[App.vocabKey({ kanji: base, kana: r })]] || 0;
+
+    const readKana = async (row, jp, stale) => {
+      const LL = App.lookupLogic;
+      const hasDict = App.dict.installed();
+      let res;
+      try {
+        res = await X.reading(jp, { lookup: LL.combineLookups(LL.ownIndex(App.store.items.values()), hasDict ? App.dict.lookup : null), deinflect: App.deinflect, posMatches: App.posMatches, notate: JP.notate, bonus });
+      } catch (e) { console.error(e); return ''; }
+      if (stale()) return '';
+      if (res.missing.length) {
+        setAuto(row, 'kana', '');
+        return `Keine Lesung für <span lang="ja">${esc(res.missing.join(' '))}</span> gefunden${hasDict ? '' : ' – mit dem Offline-Wörterbuch (unter „Pakete“) klappt das meistens'}.`;
+      }
+      setAuto(row, 'kana', res.kana);
+      row.dataset.furi = res.furi;
+      return 'Lesung automatisch ausgefüllt – bitte kurz prüfen.';
+    };
+    const translate = async (row, jp, stale) => {
+      if (navigator.onLine === false) return 'Keine Verbindung – die Übersetzung braucht Internet.';
+      let de = '';
+      try { de = await X.translate(jp, (u, o) => fetch(u, o)); }
+      catch (e) { console.error(e); return 'Die Übersetzung ist gerade nicht erreichbar – später noch einmal oder von Hand eintragen.'; }
+      if (stale() || !de || !free(row, 'de')) return '';
+      setAuto(row, 'de', de);
+      return 'Übersetzung von Google – bitte kurz prüfen.';
+    };
+    const ASK = `Soll die App die deutsche Übersetzung vorschlagen? Der Satz wird dafür an den Google Übersetzer geschickt.
+      <span class="row"><button type="button" class="btn btn-sm btn-sec" data-tr-yes>Einverstanden</button><button type="button" class="btn btn-sm btn-ghost" data-tr-no>Nein</button></span>`;
+
+    const fill = async (row, only) => {
+      const jp = field(row, 'jp').value.trim();
+      if (!jp || !App.lookupLogic.isJp(jp)) return;
+      const my = (row._fill = (row._fill || 0) + 1);
+      const stale = () => row._fill !== my || !row.isConnected || field(row, 'jp').value.trim() !== jp;
+      const msgs = [];
+      if (only !== 'de' && JP.hasKanji(jp) && free(row, 'kana')) msgs.push(await readKana(row, jp, stale));
+      if (stale()) return;
+      if (free(row, 'de') && !declined) {
+        if (!App.store.settings.trConsent) return note(row, msgs.filter(Boolean).concat(ASK).join(' '));
+        note(row, msgs.filter(Boolean).concat('Übersetzung wird geholt …').join(' '));
+        msgs.push(await translate(row, jp, stale));
+        if (stale()) return;
+      }
+      note(row, msgs.filter(Boolean).join(' '));
+    };
+
+    root.addEventListener('change', (e) => { if (e.target.matches('.ex-row [data-ex="jp"]')) fill(e.target.closest('.ex-row')); });
+    root.addEventListener('click', async (e) => {
+      const yes = e.target.closest('[data-tr-yes]'), no = e.target.closest('[data-tr-no]');
+      if (!yes && !no) return;
+      const row = e.target.closest('.ex-row');
+      note(row, '');
+      if (no) { declined = true; return; }
+      await App.saveSettings({ trConsent: true });
+      fill(row, 'de');
+    });
   };
 
   // ---------- Satzvorschläge (Tatoeba) ----------
@@ -104,7 +179,8 @@
     const g = (k) => r.querySelector(`[data-ex="${k}"]`).value.trim();
     const jp = g('jp'), kana = g('kana');
     if (!jp) return null;
-    const n = autoNotate(jp, kana);
+    const furi = r.dataset.furi || '';
+    const n = furi && JP.plain(furi) === jp && JP.kana(furi) === kana ? furi : autoNotate(jp, kana);
     const t = g('de'), en = r.dataset.en || '';
     // unveränderte englische Vorbelegung nicht als Deutsch speichern
     const o = { jp: n, de: en && t === en && !r.dataset.hadDe ? '' : t };
