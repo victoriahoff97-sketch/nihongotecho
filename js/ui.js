@@ -619,6 +619,22 @@
     a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(u), 4000);
   };
+  // Datei abgeben: Teilen-Dialog des Geräts (iPad: „In Dateien sichern“), sonst Download → shared | downloaded | cancelled | blocked
+  App.shareOrDownload = async (blob, name, { share = true } = {}) => {
+    const nav = typeof navigator === 'undefined' ? null : navigator;
+    if (share && nav && nav.canShare && nav.share && typeof File !== 'undefined') {
+      const file = new File([blob], name, { type: blob.type });
+      if (nav.canShare({ files: [file] })) {
+        try { await nav.share({ files: [file] }); return 'shared'; } catch (e) {
+          if (e && e.name === 'AbortError') return 'cancelled';
+          if (e && e.name === 'NotAllowedError') return 'blocked'; // keine Nutzergeste mehr (Bauen hat zu lange gedauert)
+          console.error('Teilen fehlgeschlagen', e);
+        }
+      }
+    }
+    App.downloadBlob(blob, name);
+    return 'downloaded';
+  };
   // opts.page: PDF auf dieser Seite öffnen
   App.openFile = async (id, opts = {}) => {
     const f = App.store.files.get(id);

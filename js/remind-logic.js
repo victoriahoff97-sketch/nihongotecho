@@ -1,22 +1,26 @@
-/* Nihongo Techō – Backup-Erinnerung: Logik ohne DOM (Tage mit Änderungen merken, Erinnerung ab sieben Tagen) */
+/* Nihongo Techō – Sicherung von Hand: Logik ohne DOM (ungesicherte Änderungen merken, Zeittext, Abstand der Hinweise) */
 'use strict';
 (function (App) {
   const R = App.remindLogic = {};
-  R.DAYS = 7;
-  // Tag (YYYY-MM-DD) anhängen, wenn er noch fehlt; höchstens DAYS Einträge, die ältesten fallen weg
-  R.note = (days, today) => {
-    if (!Array.isArray(days)) return [today];
-    if (days.includes(today)) return days.slice(-R.DAYS);
-    return days.concat(today).slice(-R.DAYS);
+  R.NUDGE_GAP = 10 * 60000;
+  const num = (v) => { const n = +v; return n > 0 ? n : 0; };
+  const p2 = (n) => String(n).padStart(2, '0');
+  // Merker `hand-saved` (letzte Sicherung von Hand) und `hand-dirty` (erste Änderung seitdem; 0 = alles gesichert)
+  R.read = (lsGet) => ({ saved: num(lsGet('hand-saved')), dirty: num(lsGet('hand-dirty')) });
+  // Änderung vermerken → true, wenn der Stand dadurch erst ungesichert wurde; sonst wird nichts geschrieben
+  R.touch = (lsGet, lsSet, now) => {
+    if (num(lsGet('hand-dirty'))) return false;
+    lsSet('hand-dirty', String(now));
+    return true;
   };
-  // Gemerkte Tage lesen (Merker `changed-days`); unlesbar oder kein Array = leer
-  R.readDays = (lsGet) => { try { const d = JSON.parse(lsGet('changed-days')); return Array.isArray(d) ? d : []; } catch (e) { return []; } };
-  // Heute als Tag mit Änderungen merken; steht heute schon als letzter Eintrag da, wird nichts geschrieben
-  R.noteToday = (lsGet, lsSet, today) => {
-    const d = R.readDays(lsGet);
-    if (d[d.length - 1] === today) return;
-    lsSet('changed-days', JSON.stringify(R.note(d, today)));
+  R.saved = (lsSet, now) => { lsSet('hand-saved', String(now)); lsSet('hand-dirty', ''); };
+  // „Gesichert · 14:32“ (heute) bzw. „Gesichert · 09.10.“ (früher); nie gesichert = leer
+  R.savedText = (saved, now) => {
+    if (!saved) return '';
+    const d = new Date(saved), n = new Date(now);
+    const today = d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+    return 'Gesichert · ' + (today ? `${p2(d.getHours())}:${p2(d.getMinutes())}` : `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.`);
   };
-  // Erinnern nur ohne automatische Ordner-Sicherung und nach DAYS Tagen mit Änderungen
-  R.due = ({ days, backupOn } = {}) => !backupOn && Array.isArray(days) && days.length >= R.DAYS;
+  // Hinweis an Endpunkten (Runde fertig, Schreibblatt verlassen) höchstens alle NUDGE_GAP
+  R.nudgeDue = (last, now) => !last || now - last >= R.NUDGE_GAP;
 })(window.App);

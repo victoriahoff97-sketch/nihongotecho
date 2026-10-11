@@ -50,7 +50,7 @@
     },
     backup: {
       folder: ['Sicherung einrichten', '', b('data-bk="pick"', 'Ordner wählen', 'btn-sm')],
-      manual: ['Sicherung', 'Sichern kannst du von Hand unter Einstellungen &gt; Sicherung.', ''],
+      manual: ['Sicherung', 'Auf diesem Gerät sicherst du mit einem Tipp auf das Sichern-Symbol oben.', ''],
     },
   };
   const ACCEPT = '.json,.ntpaket,.zip,application/json,application/zip';

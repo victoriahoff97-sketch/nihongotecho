@@ -19,6 +19,11 @@
   let running = null;   // laufender Durchlauf (Promise)
   let again = null;     // Auslöser während eines Durchlaufs: danach genau ein weiterer
   let restoring = false;
+  // Sicherung von Hand (kein Ordner verbunden): Merker liegen im localStorage, Logik in remind-logic.js
+  let handSaving = false;  // Backup-Datei wird gerade gebaut
+  let startDirty = false;  // beim Start der App war noch etwas ungesichert
+  let handLater = false;   // „Später“ in der Startseiten-Zeile (bis zum nächsten Start)
+  let lastNudge = 0;
 
   const emit = () => { if (App.emit) App.emit('backup'); };
   const metaGet = async (key) => { const m = await App.db.get('meta', key); return m ? m.value : undefined; };
@@ -325,7 +330,13 @@
   K.card = () => {
     const st = K.status();
     const esc = App.esc;
-    if (st.kind === 'unsupported') return '<p class="muted small">Automatische Sicherung geht in diesem Browser nicht – bitte Chrome am PC verwenden oder das Backup von Hand machen.</p>';
+    if (st.kind === 'unsupported') {
+      const h = K.hand();
+      const last = h.saved ? when(h.saved) : 'noch nie';
+      return `<p class="muted small">Auf diesem Gerät sichert die App nicht von selbst. Tippe oben auf das Sichern-Symbol und lege die Datei in einen Ordner deiner Wahl (z. B. iCloud Drive).</p>
+        <p class="small"><b>Zuletzt gesichert:</b> ${last}${h.dirty ? ' · seitdem geändert' : ''}</p>
+        <div class="stack">${btn('hand-save', 'Jetzt sichern', 'btn-primary', 'backup')}</div>`;
+    }
     if (st.kind === 'off') {
       return `<p class="muted small">Die App legt alle Daten von selbst in einen Ordner deiner Wahl. Liegt er in Google Drive, hast du zugleich eine Sicherung außer Haus.</p>
         <div class="stack">${btn('pick', 'Ordner wählen', 'btn-primary', 'backup')}${btn('restore', 'Aus Ordner wiederherstellen', 'btn-ghost btn-sm')}</div>`;
@@ -343,19 +354,63 @@
         <div class="row">${btn('pick', 'Anderen Ordner wählen', 'btn-ghost btn-sm')}${btn('disconnect', 'Sicherung trennen', 'btn-ghost btn-sm')}</div>
       </div>`;
   };
-  // Tage mit Änderungen (Merker `changed-days`); unlesbar = leer
-  const changedDays = () => App.remindLogic.readDays(App.lsGet);
-  // Öffentlich, damit auch das Üben (schreibt ohne emit) einen Tag mit Änderungen zählen kann
-  K.noteChange = () => { if (App.remindLogic) App.remindLogic.noteToday(App.lsGet, App.lsSet, App.today()); };
+  // ---------- Sicherung von Hand ----------
+  const R = () => App.remindLogic;
+  const handOn = () => !dir && !!(R() && App.lsGet && App.lsSet);
+  // Stand ohne Ordner: { dirty, saved } – solange es hier nichts Eigenes gibt, ist nichts ungesichert
+  K.hand = () => {
+    if (!handOn()) return { dirty: false, saved: 0 };
+    const h = R().read(App.lsGet);
+    return { dirty: !!h.dirty && !K.isEmptyLocal(), saved: h.saved };
+  };
+  // Öffentlich, damit auch das Üben (schreibt ohne emit) als Änderung zählt
+  K.noteChange = () => { if (handOn() && R().touch(App.lsGet, App.lsSet, Date.now())) emit(); };
+  // Zweiter Tipp, wenn das Gerät den Teilen-Dialog nicht mehr ohne Nutzergeste öffnet (großes Backup)
+  const readyDialog = (blob, name) => new Promise((res) => {
+    let out = 'cancelled';
+    const md = App.modal({
+      title: 'Sicherung ist bereit', body: '<p>Die Backup-Datei ist fertig. Lege sie jetzt in einen Ordner deiner Wahl.</p>',
+      foot: '<button class="btn btn-ghost" data-no>Abbrechen</button><button class="btn btn-primary" data-ok>In Dateien sichern</button>',
+      onClose: () => res(out),
+    });
+    md.el.querySelector('[data-no]').onclick = () => md.close();
+    md.el.querySelector('[data-ok]').onclick = async () => { const r = await App.shareOrDownload(blob, name); out = r === 'blocked' ? 'cancelled' : r; md.close(); };
+  });
+  // Komplett-Backup bauen und abgeben: Teilen-Dialog (Geräte ohne Ordnerzugriff) oder Download → shared | downloaded | cancelled | failed
+  K.saveByHand = async () => {
+    if (handSaving) return 'cancelled';
+    handSaving = true; emit();
+    let r = 'failed';
+    try {
+      const { blob, name } = await App.buildExport({ withFiles: true });
+      r = await App.shareOrDownload(blob, name, { share: !K.supported() });
+      if (r === 'blocked') r = await readyDialog(blob, name);
+      if (r === 'shared' || r === 'downloaded') {
+        if (R() && App.lsSet) R().saved(App.lsSet, Date.now());
+        App.toast(r === 'shared' ? 'Gesichert' : 'Backup gespeichert: ' + name);
+      }
+    } catch (e) {
+      console.error('Sicherung von Hand fehlgeschlagen', e);
+      App.toast('Sicherung fehlgeschlagen: ' + ((e && e.message) || e));
+    } finally { handSaving = false; emit(); }
+    return r;
+  };
+  // Hinweis an Endpunkten (Runde fertig, Schreibblatt verlassen): kurz, höchstens alle zehn Minuten
+  K.nudge = () => {
+    const now = Date.now();
+    if (!K.hand().dirty || handSaving || !R().nudgeDue(lastNudge, now)) return;
+    lastNudge = now;
+    App.toast('Noch nicht gesichert', { label: 'Sichern', fn: () => K.saveByHand() });
+  };
   // Hinweis auf der Startseite (Inhalt von [data-backup-home]); leer, wenn es nichts zu sagen gibt
   K.homeCard = (o) => {
     const st = K.status();
     if (st.kind === 'paused') {
       return `<div class="card backup-line"><span>${App.icon('alert')} Sicherung pausiert – ${HOME_WHY[st.ask] || HOME_WHY.permission}</span>${btn('resume', 'Sicherung fortsetzen', 'btn-primary btn-sm')}</div>`;
     }
-    if (App.remindLogic && App.remindLogic.due({ days: changedDays(), backupOn: st.kind !== 'off' && st.kind !== 'unsupported' })) {
-      return `<div class="card backup-line"><span>Lange nicht gesichert – jetzt Backup speichern</span>
-        <span class="row">${btn('remind-save', 'Backup speichern', 'btn-primary btn-sm', 'backup')}${btn('remind-later', 'Später', 'btn-ghost btn-sm')}</span></div>`;
+    if (startDirty && !handLater && K.hand().dirty) {
+      return `<div class="card backup-line"><span>Letztes Mal nicht gesichert</span>
+        <span class="row">${btn('hand-save', 'Sichern', 'btn-primary btn-sm', 'backup')}${btn('hand-later', 'Später', 'btn-ghost btn-sm')}</span></div>`;
     }
     if (st.kind === 'off' && !(o && o.noRestoreHint) && K.isEmptyLocal() && App.lsGet('backup-hint') !== 'off') {
       return `<div class="card backup-line"><span><b>Sicherung einrichten</b><br><span class="muted small">Wähle einen Ordner – die App sichert dort von selbst. Liegt darin schon eine Sicherung, kannst du deine Daten zurückholen.</span></span>
@@ -369,16 +424,42 @@
   K.renderStatus = () => {
     const el = document.getElementById && document.getElementById('backup-status');
     if (!el) return;
-    const st = K.status();
-    el.hidden = st.kind === 'off' || st.kind === 'unsupported';
+    let st = K.status();
+    if (st.kind === 'off' || st.kind === 'unsupported') {
+      // Von Hand: ungesichert → antippen sichert; sonst der letzte Stand; ohne beides keine Zeile
+      const h = K.hand();
+      const text = handSaving ? 'Sichert …' : h.dirty ? 'Nicht gesichert – antippen' : R() ? R().savedText(h.saved, Date.now()) : '';
+      st = { kind: text ? (h.dirty && !handSaving ? 'paused' : 'ok') : 'off', text };
+    }
+    el.hidden = st.kind === 'off';
     if (el.hidden) return;
     el.className = 'nav-link backup-status ' + (st.kind === 'paused' ? 'warn' : st.kind === 'error' ? 'bad' : '');
     el.title = st.text;
     el.innerHTML = `<span class="dot">${App.icon(st.kind === 'paused' || st.kind === 'error' ? 'alert' : 'backup')}</span><span class="lbl">${App.esc(st.text)}</span>`;
   };
+  // Sichern-Symbol in der oberen Leiste: Punkt = es gibt etwas zu tun, Pulsieren = es wird gerade gesichert
+  K.renderTop = () => {
+    const el = document.getElementById && document.getElementById('backup-top');
+    if (!el) return;
+    const st = K.status();
+    let mark = '', title = 'Sichern';
+    if (!dir) {
+      const h = K.hand();
+      if (handSaving) { mark = 'busy'; title = 'Sichert …'; }
+      else if (h.dirty) { mark = 'warn'; title = 'Noch nicht gesichert – antippen'; }
+      else if (h.saved && R()) title = R().savedText(h.saved, Date.now());
+    } else {
+      mark = st.kind === 'busy' ? 'busy' : st.kind === 'paused' ? 'warn' : st.kind === 'error' ? 'bad' : '';
+      title = st.text;
+    }
+    el.className = 'icon-btn backup-top ' + mark;
+    el.title = title;
+    el.setAttribute('aria-label', title === 'Sichern' ? title : 'Sichern – ' + title);
+  };
   // Alles, was den Zustand zeigt, an Ort und Stelle auffrischen (ohne die Ansicht neu zu zeichnen)
   const refresh = () => {
     K.renderStatus();
+    K.renderTop();
     if (!document.querySelector) return;
     const a = document.querySelector('[data-backup-auto]'); if (a) a.innerHTML = K.card();
     // Willkommenskarte folgt dem Sicherungszustand (der Ordner wird beim Start erst nach dem ersten Zeichnen geladen); sie zeichnet die Startseiten-Zeile mit
@@ -414,10 +495,23 @@
     resume: () => K.resume(),
     versions: versionsDialog,
     disconnect: async () => { if (await App.confirm('Automatische Sicherung trennen? Die Dateien im Ordner bleiben liegen.', { ok: 'Trennen', title: 'Sicherung trennen' })) K.disconnect(); },
-    'remind-save': async () => { await App.exportData({ withFiles: true }); refresh(); },
-    'remind-later': () => { App.lsSet('changed-days', '[]'); refresh(); },
+    'hand-save': () => K.saveByHand(),
+    'hand-later': () => { handLater = true; refresh(); },
     'hide-hint': () => { App.lsSet('backup-hint', 'off'); refresh(); },
-    status: () => { const k = K.status().kind; if (k === 'paused') K.resume(); else if (k === 'error') errorDialog(); else location.hash = '#/einstellungen'; },
+    status: () => {
+      const k = K.status().kind;
+      if (k === 'paused') K.resume(); else if (k === 'error') errorDialog();
+      else if (K.hand().dirty) K.saveByHand();
+      else location.hash = '#/einstellungen';
+    },
+    // Symbol oben: ohne Ordner von Hand sichern, mit Ordner sofort schreiben bzw. das Offene erledigen
+    top: () => {
+      if (!dir) return K.saveByHand();
+      const k = K.status().kind;
+      if (k === 'paused') return K.resume();
+      if (k === 'error') return errorDialog();
+      return k === 'busy' ? undefined : K.flush({ full: true });
+    },
   };
   const onClick = (e) => {
     const b = e.target.closest && e.target.closest('[data-bk], #backup-status');
@@ -438,6 +532,7 @@
       const n = +sessionStorage.getItem('nt-backup-missing');
       if (n) { sessionStorage.removeItem('nt-backup-missing'); App.toast(n === 1 ? '1 Datei fehlt im Ordner.' : `${n} Dateien fehlen im Ordner.`); }
     } catch (e) { /* egal */ }
+    startDirty = !!(R() && App.lsGet && R().read(App.lsGet).dirty);
     document.addEventListener('visibilitychange', () => {
       if (!dir || restoring) return;
       // Verbergen/Schließen: sofort sichern. Zurückkommen: Liegengebliebenes nachholen (auch Stand eines anderen Geräts prüfen).

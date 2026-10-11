@@ -1283,7 +1283,7 @@
   INK.open = async (fileId, opts = {}) => {
     const root = document.createElement('div');
     $('#overlay-root').appendChild(root);
-    const ctrl = await INK.mount(root, fileId, { ...opts, embedded: false, onClose: () => { ctrl.destroy(); root.remove(); } });
+    const ctrl = await INK.mount(root, fileId, { ...opts, embedded: false, onClose: () => { ctrl.destroy(); root.remove(); App.backup.nudge(); } });
     if (!ctrl) root.remove();
   };
 })(window.App);

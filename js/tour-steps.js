@@ -94,7 +94,7 @@
     ],
     '/einstellungen': [
       { target: '#view .card:has([data-s="name"]) h3', text: 'Name, Aussehen, Furigana und wie viele neue Karten du pro Tag möchtest.' },
-      { target: '#view .card:has([data-bk]) h3', text: 'Deine Daten liegen nur auf diesem Gerät. Hier sicherst du sie, am besten regelmäßig.' },
+      { target: '#view .card:has([data-bk]) h3', text: 'Deine Daten liegen nur auf diesem Gerät. Hier sicherst du sie – oder von jeder Seite aus mit dem Sichern-Symbol oben. Ein Punkt am Symbol heißt: noch nicht gesichert.' },
       { target: '#view [data-wk-token]', title: 'WaniKani verknüpfen', text: 'Erstelle bei WaniKani unter Settings → API Tokens einen Schlüssel (Lesezugriff genügt), trage ihn hier ein und tippe „Verbinden“.' },
       { target: '#view [data-wk-card] h3', text: 'Danach wählst du hier die Level aus. Kanji, die du bei WaniKani bis Master gelernt hast, kommen dann zum Schreiben dran.' },
       { target: EXT + ' h3', title: 'Text aus dem Browser', text: 'Mit der Erweiterung holst du japanischen Text von jeder Webseite in die App.', link: { label: 'Schritt für Schritt zeigen', tour: 'erweiterung' } },

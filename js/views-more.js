@@ -259,7 +259,8 @@
     const list = async (key) => ((await App.db.get('meta', key)) || {}).value || [];
     return { srs: Array.from(S.srs.values()), settings: S.settings, packs, deletedPackItems: await list('deletedPackItems'), deletedSeeds: await list('deletedSeeds') };
   };
-  App.exportData = async ({ withFiles = true, share = false, sections = null, sources = null } = {}) => {
+  // Backup bzw. Teilen-Paket als Datei bauen → { blob, name }
+  App.buildExport = async ({ withFiles = true, share = false, sections = null, sources = null } = {}) => {
     let items = Array.from(S.items.values()).filter((i) => !i._seed || i._edited || (!share && (S.srs.has(i.id) || S.srs.has('w:' + i.id) || i.star)));
     if (share) {
       // unberührte Paket-Einträge nicht teilen – Freunde schalten das Paket selbst frei
@@ -291,9 +292,12 @@
       if (share) data.ink = (await App.db.all('ink')).filter((k) => data.files.some((x) => x.meta.id === k.fileId));
     }
     const name = `nihongo-techo-${share ? 'paket' : 'backup'}-${App.today()}.json`;
-    App.downloadBlob(new Blob([JSON.stringify(data)], { type: 'application/json' }), name);
+    return { blob: new Blob([JSON.stringify(data)], { type: 'application/json' }), name };
+  };
+  App.exportData = async (opts) => {
+    const { blob, name } = await App.buildExport(opts);
+    App.downloadBlob(blob, name);
     App.toast('Export erstellt: ' + name);
-    if (!share) App.lsSet('changed-days', '[]');
   };
   App.importData = async (file) => {
     const data = JSON.parse(await file.text());
@@ -417,7 +421,7 @@
       const b = e.target.closest('button'); if (!b) return;
       if (b.matches('[data-sadd]')) { st.sources.push({ name: 'Neue Quelle', color: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0') }); await App.saveSettings({}); App.render(true); }
       if (b.matches('[data-sd]')) { const s = st.sources[+b.dataset.sd]; if (await App.confirm(`Quelle „${s.name}“ aus der Liste entfernen? Einträge behalten ihre Quelle.`, { ok: 'Entfernen' })) { st.sources.splice(+b.dataset.sd, 1); await App.saveSettings({}); App.render(true); } }
-      if (b.matches('[data-exp]')) App.exportData({ withFiles: true });
+      if (b.matches('[data-exp]')) App.backup.saveByHand();
       if (b.matches('[data-exp-light]')) App.exportData({ withFiles: false });
       if (b.matches('[data-wsrc]')) { await App.saveSettings({ writeSource: b.dataset.wsrc }); App.render(true); }
       if (b.matches('[data-wk-connect], [data-wk-sync]')) {

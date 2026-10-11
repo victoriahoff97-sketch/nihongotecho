@@ -263,6 +263,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${cram ? '<button class="btn btn-primary" data-again>Weitere Runde</button>' : roundEnd(more())}</div></div></div>`;
         if (cram) stage.querySelector('[data-again]').onclick = () => App.render();
         bindRoundEnd(stage);
+        App.backup.nudge();
         return;
       }
       if (ent.pad) return padCard();
