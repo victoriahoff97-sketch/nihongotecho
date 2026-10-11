@@ -481,12 +481,15 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     // Schreiben mit Lernstand: unabhängig vom Niveau-Filter, denn neu sind nur Kanji, die du schon lesen kannst
     const wq = App.writeQueue({ l: q.l });
     const wc = W.counts(wq.items, S.srs, wq.unlocked);
+    // „Meinen Stapel üben“: alles, was gerade im Schreib-Übungsstapel liegt – unabhängig von Fälligkeit und gewählter Quelle
+    const stack = all.filter((k) => (!q.l || String(k.lesson) === q.l) && W.status(S.srs, k.id) === 'learn');
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Kanji-Quiz</div>
       <div class="page-head"><div class="titles"><h1>Kanji-Quiz <span class="jp-title">書</span></h1><p>${pool.length} Kanji in der Auswahl</p></div></div>
       <div class="card" data-setup><div class="row">
         <div class="seg">${[['write', 'Bedeutung → schreiben'], ['read', 'Kanji → Bedeutung'], ['reading', 'Wort → Lesung']].map(([k, l]) => `<button class="${mode === k ? 'on' : ''}" data-q-mode="${k === defMode ? '' : k}">${l}</button>`).join('')}</div>
         <select class="input" data-q-select="max">${maxLessonOptions(maxL)}</select>${App.lessonSelect(all, q.l)}
         ${mode === 'write' ? `${roundStart(wq, 'Schreiben wiederholen')}
+        <button class="btn" data-stack ${stack.length ? '' : 'disabled'} title="Alles, was du gerade schreiben übst – auch was heute nicht fällig ist. Zählt nicht zur Lernschlange">${icon('pen')} Meinen Stapel üben (${stack.length})</button>
         <button class="btn" data-go ${pool.length >= 4 ? '' : 'disabled'} title="Zählt nicht zur Lernschlange – dein Lernstand bleibt, wie er ist">${icon('shuffle')} Zufällig üben (10)</button>`
         : `<button class="btn btn-primary" data-go ${pool.length >= 4 ? '' : 'disabled'} title="Zählt nicht zur Lernschlange – dein Lernstand bleibt, wie er ist">${icon('play')} Start (10)</button>`}</div>
         ${mode === 'write' ? '' : '<div class="small muted" style="margin-top:8px">Freie Runde mit zufälligen Kanji aus der Auswahl: zählt nicht zur Lernschlange, Lernstand und Termine bleiben, wie sie sind.</div>'}
@@ -494,24 +497,26 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <span><b style="font-size:22px;color:var(--matcha)">${wc.known}</b> kann ich schreiben</span>
           <span><b style="font-size:22px;color:var(--ai)">${wc.learn}</b> übe ich</span>
           <span><b style="font-size:22px;color:var(--muted)">${wc.new}</b> noch nie geschrieben</span></div>
-        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: Erst schreiben und auflösen, dann „Falsch“, „Richtig“ (kommt in den Übungsstapel) oder „Kann ich schon“ (gilt als gelernt und wird beim Schreiben nicht mehr abgefragt). „Zufällig üben“ zählt nicht zur Lernschlange.${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet${App.checkOn() ? ' – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>' : ''}.` : ''}</div>` : ''}</div>
+        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: Erst schreiben und auflösen, dann „Falsch“, „Richtig“ (kommt in den Übungsstapel) oder „Kann ich schon“ (gilt als gelernt und wird beim Schreiben nicht mehr abgefragt). „Meinen Stapel üben“ geht alles durch, was du gerade übst – auch was heute nicht fällig ist; „Zufällig üben“ zieht 10 aus allen Kanji der Auswahl. Beides zählt nicht zur Lernschlange.${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet${App.checkOn() ? ' – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>' : ''}.` : ''}</div>` : ''}</div>
       <div data-stage style="margin-top:16px"></div></div>`;
-    const run = (queue) => { view.querySelector('[data-setup]').hidden = true; runKanjiQuiz(view.querySelector('[data-stage]'), pool, mode, queue, () => App.writeQueue({ l: q.l })); };
+    const run = (queue, free) => { view.querySelector('[data-setup]').hidden = true; runKanjiQuiz(view.querySelector('[data-stage]'), pool, mode, queue, () => App.writeQueue({ l: q.l }), free); };
     view.querySelector('[data-go]').onclick = () => run();
+    if (mode === 'write') view.querySelector('[data-stack]').onclick = () => run(null, stack);
     if (mode === 'write') bindRoundStart(view, wq, q.round || q.auto, run); else nextRound = null;
   });
 
   // queue (nur „schreiben“): Lernrunde nach Schreib-Plan – falsch Geschriebenes kommt in derselben Runde noch einmal
   // ohne queue = freie Zufallsrunde (alle drei Arten): nichts wird bewertet, der Lernstand bleibt unberührt – wie „Frei üben“ bei den Karteikarten
-  function runKanjiQuiz(stage, pool, mode, queue, more) {
+  // free (nur „schreiben“): feste Liste statt 10 zufälliger – „Meinen Stapel üben“; ebenfalls ohne Bewertung, Falsches kommt noch einmal
+  function runKanjiQuiz(stage, pool, mode, queue, more, free) {
     // für „Wort → Lesung“ die Beispielwörter sammeln
     const words = [];
     pool.forEach((k) => (k.words || []).forEach((w) => words.push({ k, w })));
-    const qs = queue ? queue.slice() : mode === 'reading' ? App.shuffle(words).slice(0, 10) : App.shuffle(pool).slice(0, 10);
+    const qs = queue ? queue.slice() : free ? App.shuffle(free) : mode === 'reading' ? App.shuffle(words).slice(0, 10) : App.shuffle(pool).slice(0, 10);
     let i = 0, score = 0;
     const next = () => {
       if (i >= qs.length) {
-        stage.innerHTML = `<div class="card pad-lg" style="text-align:center;max-width:640px;margin:0 auto"><div class="score-ring">${score} / ${qs.length}</div><h2>${score >= qs.length * 0.8 ? 'すごい！' : 'がんばって！'}</h2>${queue ? `<p class="muted">${qs.length > queue.length ? 'Falsch Geschriebenes kam in dieser Runde gleich noch einmal dran.' : 'Alles auf Anhieb richtig geschrieben.'}</p>` : ''}<div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${queue ? roundEnd(more()) : '<button class="btn btn-primary" data-again>Nochmal</button>'}</div></div>`;
+        stage.innerHTML = `<div class="card pad-lg" style="text-align:center;max-width:640px;margin:0 auto"><div class="score-ring">${score} / ${qs.length}</div><h2>${score >= qs.length * 0.8 ? 'すごい！' : 'がんばって！'}</h2>${queue || free ? `<p class="muted">${qs.length > (queue || free).length ? 'Falsch Geschriebenes kam in dieser Runde gleich noch einmal dran.' : 'Alles auf Anhieb richtig geschrieben.'}</p>` : ''}<div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${queue ? roundEnd(more()) : '<button class="btn btn-primary" data-again>Nochmal</button>'}</div></div>`;
         if (!queue) stage.querySelector('[data-again]').onclick = () => App.render();
         bindRoundEnd(stage);
         return;
@@ -552,7 +557,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         const known = b.dataset.r === 'known'; // Einstufung beim ersten Versuch: gilt als gelernt
         const g = known ? 2 : +b.dataset.r; if (g) score++;
         if (queue) await (known ? App.markWriteKnown(cur.id) : App.gradeWrite(cur.id, g));
-        if (queue && !g) qs.splice(Math.min(i + 4, qs.length), 0, cur);
+        if ((queue || free) && !g) qs.splice(Math.min(i + 4, qs.length), 0, cur);
         i++; next();
       });
     };
