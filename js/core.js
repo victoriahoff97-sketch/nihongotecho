@@ -262,6 +262,7 @@ window.App = window.App || {};
     kanjiFocus: 'both', // Kanji-Schwerpunkt: both | read | write
     writeSource: 'all', // woher neue Schreib-Kanji kommen: all | genki | n5 | wk
     wkLevels: [],       // freigeschaltete WaniKani-Level
+    wkVocabLevels: [],  // WaniKani-Vokabeln Deutsch → Japanisch: freigeschaltete Level
     furiKnown: 'hide', // Furigana in der Abfrage über Kanji, die man lesen kann: hide | show
     formsKnown: [], // Lernlandkarte: abgehakte Formen (Kennungen aus js/formmap-logic.js)
   };

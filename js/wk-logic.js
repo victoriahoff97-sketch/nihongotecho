@@ -6,7 +6,7 @@
   K.MASTER = 7; // zum Schreiben kommt ein Kanji ab Master (7), Enlightened (8), Burned (9) – Guru (5/6) reicht nicht
   const STAGES = ['in den Lektionen', 'Apprentice 1', 'Apprentice 2', 'Apprentice 3', 'Apprentice 4', 'Guru 1', 'Guru 2', 'Master', 'Enlightened', 'Burned'];
   K.stageName = (n) => STAGES[n] || 'noch nicht begonnen';
-  K.empty = () => ({ kanji: {}, stage: {} });
+  K.empty = () => ({ kanji: {}, stage: {}, vocab: {}, vstage: {} });
 
   // Eine Seite von /v2/subjects?types=kanji einarbeiten (auch Nachträge über updated_after)
   K.mergeSubjects = (state, page) => {
@@ -84,5 +84,119 @@
       total: cs.length, ready: cs.filter((c) => (state.stage[c] || 0) >= K.MASTER).length,
       fresh: cs.filter((c) => !hasChar(c)).length, written: cs.filter((c) => wrote(c)).length,
     };
+  };
+
+  // ---------- Vokabeln Deutsch → Japanisch ----------
+  // Zustand: vocab = WaniKani-Nummer → { c, level, pos, en, kana, p } · vstage = WaniKani-Nummer → Stufe.
+  // Eine Vokabel kommt in die App, sobald ihr Level eingeschaltet und sie bei WaniKani Guru (5) oder höher ist –
+  // lesen lernt man sie dort, hier wird sie nur aus dem Deutschen heraus abgefragt (Aktiv-Lernstand, js/write-logic.js).
+  K.GURU = 5;
+  const VOCAB = ['vocabulary', 'kana_vocabulary'];
+  // Eine Seite von /v2/subjects?types=vocabulary,kana_vocabulary einarbeiten
+  K.mergeVocab = (state, page) => {
+    ((page && page.data) || []).forEach((d) => {
+      const x = d && d.data;
+      if (!x || !VOCAB.includes(d.object) || !x.characters) return;
+      if (x.hidden_at) { delete state.vocab[d.id]; delete state.vstage[d.id]; return; }
+      const first = (list) => list.slice().sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0));
+      state.vocab[d.id] = {
+        c: x.characters, level: x.level, pos: x.lesson_position || 0,
+        en: first((x.meanings || []).filter((m) => m.accepted_answer !== false)).map((m) => m.meaning),
+        kana: first((x.readings || []).filter((r) => r.accepted_answer !== false)).map((r) => r.reading),
+        p: x.parts_of_speech || [],
+      };
+    });
+    return state;
+  };
+  // Eine Seite von /v2/assignments?subject_types=vocabulary,kana_vocabulary einarbeiten; Subjects müssen vorher da sein
+  K.mergeVocabAssignments = (state, page) => {
+    ((page && page.data) || []).forEach((d) => {
+      const id = d && d.data && d.data.subject_id;
+      if (state.vocab[id]) state.vstage[id] = d.data.srs_stage;
+    });
+    return state;
+  };
+  // Level → WaniKani-Nummern in WaniKani-Reihenfolge
+  K.vLevels = (state) => {
+    const m = new Map();
+    Object.entries(state.vocab).sort(([ia, a], [ib, b]) => a.level - b.level || a.pos - b.pos || ia - ib)
+      .forEach(([id, v]) => { if (!m.has(v.level)) m.set(v.level, []); m.get(v.level).push(id); });
+    return m;
+  };
+  K.vReady = (state, id) => !!state.vocab[id] && (state.vstage[id] || 0) >= K.GURU;
+
+  // WaniKani-Wortarten → Wortart der App (wie App.mapPos); „する verb“ ist nur als „…する“ ein Verb
+  K.vPos = (parts, chars) => {
+    const t = parts || [], has = (x) => t.includes(x);
+    if (has('godan verb')) return { pos: 'verb', cls: 'u' };
+    if (has('ichidan verb')) return { pos: 'verb', cls: 'ru' };
+    if (has('する verb') && /する$/.test(chars || '')) return { pos: 'verb', cls: 'irr' };
+    if (has('い adjective')) return { pos: 'i-adj' };
+    if (has('な adjective')) return { pos: 'na-adj' };
+    if (has('pronoun')) return { pos: 'pronoun' };
+    if (has('counter')) return { pos: 'counter' };
+    if (has('conjunction')) return { pos: 'conjunction' };
+    if (has('adverb') && !has('noun')) return { pos: 'adverb' };
+    if (has('noun') || has('numeral')) return { pos: 'noun' };
+    if (has('expression') || has('interjection')) return { pos: 'expression' };
+    if (has('prefix') || has('suffix')) return { pos: 'prefix-suffix' };
+    return { pos: 'noun' };
+  };
+  const vId = (id) => 'v-wk' + id;
+  const vEntry = (id, v) => {
+    const kana = v.kana[0] || v.c, mp = K.vPos(v.p, v.c);
+    const it = { id: vId(id), type: 'vocab', source: 'WaniKani', lesson: v.level, kanji: v.kana.length ? v.c : '', kana, de: '', en: v.en.join('; '), pos: mp.pos };
+    if (mp.cls) it.v = { cls: mp.cls };
+    return Object.assign(it, { examples: [], tags: [], _wk: true });
+  };
+  // Vokabeln eines Levels ab Guru, die es in der App noch nicht gibt. Steht das Wort schon da (gleiche Schreibung und
+  // Lesung, z. B. aus Genki oder JLPT), wird es übersprungen – es bleibt dann ganz bei seiner Quelle.
+  // hasKey(App.vocabKey) = Wort vorhanden · hasId(Kennung) = schon aus WaniKani angelegt
+  const vFresh = (state, level, { hasKey, hasId }) => {
+    const seen = new Set();
+    return (K.vLevels(state).get(level) || []).filter((id) => K.vReady(state, id)).map((id) => vEntry(id, state.vocab[id])).filter((it) => {
+      const key = App.vocabKey(it);
+      if (hasId(it.id) || hasKey(key) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  K.vMissing = vFresh;
+  // Automatisch angelegte Vokabeln eines Levels (level null = alle), die niemand angefasst hat – wie K.removable
+  K.vRemovable = (level, items, { srs, refs }) => items.filter((it) => {
+    if (!it._wk || it.type !== 'vocab' || (level != null && +it.lesson !== level)) return false;
+    if (it._edited || it.star || (Array.isArray(it.marks) && it.marks.length)) return false;
+    return !srs.has(it.id) && !srs.has('w:' + it.id) && !(refs && refs.has(it.id));
+  }).map((it) => it.id);
+  // Zahlen einer Level-Zeile: ready = ab Guru · fresh = käme beim Einschalten neu dazu · known = kann ich aktiv
+  K.vLevelStats = (state, level, ctx) => {
+    const ids = K.vLevels(state).get(level) || [];
+    return {
+      total: ids.length, ready: ids.filter((id) => K.vReady(state, id)).length,
+      fresh: vFresh(state, level, ctx).length, known: ids.filter((id) => ctx.known(vId(id))).length,
+    };
+  };
+
+  // Wörterbucheintrag zu einer Vokabel: gleiche Schreibung und Lesung, zur Not nur die Schreibung; ohne Deutsch keiner
+  const norm = (s) => String(s || '').replace(/[\s〜～~]/g, '');
+  K.form = (it) => norm(it.kanji || it.kana); // Suchform fürs Wörterbuch
+  K.pickDict = (entries, it) => {
+    const w = norm(it.kanji), r = App.jp.toHira(norm(it.kana));
+    const list = (entries || []).filter((e) => e && e.de);
+    const reads = (e) => (e.r || []).some((x) => App.jp.toHira(x) === r);
+    const writes = (e) => (e.k || []).includes(w);
+    return (w ? list.find((e) => writes(e) && reads(e)) || list.find(writes) : list.find(reads)) || null;
+  };
+  // Stichwort für die Abfrage: die ersten n Bedeutungen („;“ innerhalb von Klammern trennt nicht)
+  K.gloss = (de, n = 2) => {
+    const out = [];
+    let depth = 0, cur = '';
+    for (const c of String(de || '')) {
+      if (c === '(' || c === '（') depth++;
+      else if ((c === ')' || c === '）') && depth > 0) depth--;
+      if (c === ';' && depth === 0) { out.push(cur.trim()); cur = ''; } else cur += c;
+    }
+    out.push(cur.trim());
+    return out.filter(Boolean).slice(0, n).join('; ');
   };
 })(window.App);

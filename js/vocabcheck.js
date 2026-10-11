@@ -15,15 +15,17 @@
   // Eigene Einträge (selbst angelegt, aus Satzerkennung/Suche übernommen) sind nie „ungeprüft“ – sie sind direkt im Lernstapel.
   // Einstufen lässt sich in den Einstellungen abschalten (check: 'off'): dann liegt auch das direkt im Lernstapel.
   // Am Speicher ändert das nichts – wieder eingeschaltet, ist Unberührtes wieder „ungeprüft“. Grammatik bleibt davon unberührt.
+  // Aus WaniKani angelegte Vokabeln: lesen lernt man dort – hier gelten sie als lesbar und werden nur aktiv (Deutsch → Japanisch) eingestuft
+  const wkVocab = (it) => !!it && it.type === 'vocab' && !!it._wk;
   App.checkOn = () => S.settings.check !== 'off';
-  App.needsCheck = (it) => !!it && !((it.type === 'vocab' || it.type === 'kanji' || it.type === 'phrase') && (!App.checkOn() || (!it._seed && !it._pack && !it.imported)));
+  App.needsCheck = (it) => !!it && !((it.type === 'vocab' || it.type === 'kanji' || it.type === 'phrase') && (!App.checkOn() || (!it._seed && !it._pack && !it.imported && !wkVocab(it))));
   // Lernstand-Filter der Vokabel- und Kanji-Liste: ohne Einstufen gibt es „Ungeprüft“ nicht
   App.statusFilter = (cur) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.checkOn()).map(([k, s]) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('');
   const ownWord = (id) => { const it = S.items.get(id); return !!it && !App.needsCheck(it); };
   App.statusChoices = (it) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.needsCheck(it));
   App.vocabStatus = (id) => {
     const s = S.srs.get(id);
-    if (!s) return autoLearn(id) || ownWord(id) ? 'learn' : 'unchecked';
+    if (!s) return wkVocab(S.items.get(id)) ? 'known' : autoLearn(id) || ownWord(id) ? 'learn' : 'unchecked';
     if (s.check === 'unchecked') return ownWord(id) ? 'learn' : 'unchecked';
     return App.furiLogic.readKnown(S.srs, id) ? 'known' : 'learn';
   };

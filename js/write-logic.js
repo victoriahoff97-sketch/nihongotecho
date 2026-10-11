@@ -107,10 +107,12 @@
   // erst einstufen („Kann ich“ wird nicht mehr abgefragt, „Lernen“ geht in den Aktiv-Lernstapel), dann Karten.
   // locked = kann ich noch nicht lesen · unchecked = aktiv noch nicht eingestuft · learn = Aktiv-Lernstapel · known = kann ich aktiv
   // needsCheck(it): wird der Eintrag überhaupt eingestuft? Eigene Wörter gehen wie beim Lesen direkt in den Lernstapel.
+  // Lesbar ist auch jede aus WaniKani angelegte Vokabel (_wk): sie kommt erst in die App, wenn sie dort ab Guru sitzt
+  W.readable = (srs, it) => (it.type === 'vocab' && !!it._wk) || W.unlocked(srs, it.id);
   W.activeStatus = (srs, it, needsCheck) => {
     const s = srs.get(W.id(it.id));
     if (s) return W.isKnown(s) ? 'known' : 'learn';
-    if (!W.unlocked(srs, it.id)) return 'locked';
+    if (!W.readable(srs, it)) return 'locked';
     return needsCheck(it) ? 'unchecked' : 'learn';
   };
   // Aktiv-Runde: fällige (älteste zuerst) + neue = im Aktiv-Lernstapel, aber noch nie gewusst (Reihenfolge der Liste)
@@ -118,7 +120,7 @@
   W.activeQueue = (items, srs, now, needsCheck) => {
     const rec = (i) => srs.get(W.id(i.id));
     const due = items.filter((i) => { const s = rec(i); return s && s.reps > 0 && !W.isKnown(s) && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
-    const fresh = items.filter((i) => { const s = rec(i); return (!s || !s.reps) && W.activeStatus(srs, i, needsCheck) === 'learn' && !(s && s.pre && !W.unlocked(srs, i.id)); });
+    const fresh = items.filter((i) => { const s = rec(i); return (!s || !s.reps) && W.activeStatus(srs, i, needsCheck) === 'learn' && !(s && s.pre && !W.readable(srs, i)); });
     return { due, fresh };
   };
   // Einstufen pro Lektion: eine Runde mischt beide Richtungen – lesen (Japanisch → Deutsch) für Ungeprüftes und
