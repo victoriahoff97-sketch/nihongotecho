@@ -281,8 +281,9 @@
       return true;
     });
   };
-  JP.fill = (pattern, pool) => { for (let t = 0; t < 12; t++) { const r = fillOnce(pattern, pool); if (r) return r; } return null; };
-  const fillOnce = (pattern, pool) => {
+  // prefer(it): passt so ein Wort in eine Lücke, kommt nur eines davon hinein (Lernschlange vor Füllwörtern)
+  JP.fill = (pattern, pool, prefer) => { for (let t = 0; t < 12; t++) { const r = fillOnce(pattern, pool, prefer); if (r) return r; } return null; };
+  const fillOnce = (pattern, pool, prefer) => {
     const slots = pattern.slots || {};
     const names = Object.keys(slots).sort((a, b) => ((slots[a].objOf || slots[a].subjOf) ? 1 : 0) - ((slots[b].objOf || slots[b].subjOf) ? 1 : 0));
     const chosen = {};
@@ -290,7 +291,8 @@
       const slot = pattern.not ? Object.assign({}, slots[n], { not: (slots[n].not || []).concat(pattern.not) }) : slots[n];
       const c = JP.candidates(slot, chosen, pool);
       if (!c.length) return null;
-      chosen[n] = App.pick(c);
+      const first = prefer ? c.filter(prefer) : [];
+      chosen[n] = App.pick(first.length ? first : c);
     }
     const jpForm = (name, form) => {
       const it = chosen[name];

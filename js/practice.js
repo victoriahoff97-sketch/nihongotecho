@@ -52,9 +52,11 @@
     view.querySelector('[data-ai-prompt]').onclick = () => aiPromptDialog(S.settings.level || 12);
   });
 
-  const aiPrompt = (maxL, grammarIds) => {
+  // words: fester Wortvorrat (Lernschlange) statt aller Wörter bis zum Niveau
+  const aiPrompt = (maxL, grammarIds, words) => {
     const gs = grammarIds ? grammarIds.map(App.item).filter(Boolean) : App.itemsOf('grammar').filter((g) => (lessonNum(g) || 0) <= maxL);
-    const vs = App.itemsOf('vocab').filter((v) => { if (!v.de) return false; const l = lessonNum(v); return v.source !== 'Genki I' || (l !== null && l <= maxL); }); // nur Wörter mit deutscher Bedeutung
+    const vs = words ? words.filter((v) => v.de && v.kana)
+      : App.itemsOf('vocab').filter((v) => { if (!v.de) return false; const l = lessonNum(v); return v.source !== 'Genki I' || (l !== null && l <= maxL); }); // nur Wörter mit deutscher Bedeutung
     const vlist = App.shuffle(vs).slice(0, 220);
     return `Ich lerne Japanisch auf Niveau JLPT N5 (Genki I bis Lektion ${maxL}). Erstelle mir 10 Übersetzungsübungen Deutsch → Japanisch.
 Regeln: Verwende AUSSCHLIESSLICH die unten stehende Grammatik und möglichst nur diese Vokabeln (höchstens 1 unbekanntes Wort pro Satz, dann mit Übersetzung in Klammern). Höfliche です/ます-Form, außer die Grammatik verlangt Kurzform. Kurze, alltagsnahe Sätze. Gib zuerst nur die deutschen Sätze aus; Lösungen (Kanji mit Furigana in Klammern + Kana + kurzer Grammatikhinweis) erst am Ende unter „Lösungen“.
@@ -65,9 +67,9 @@ ${gs.map((g) => `- ${g.title}${g.jp ? ' (' + JP.plain(g.jp) + ')' : ''}`).join('
 Vokabeln:
 ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''} = ${v.de}`).join('; ')}`;
   };
-  const aiPromptDialog = (maxL, grammarIds) => {
-    const txt = aiPrompt(maxL, grammarIds);
-    const md = App.modal({ title: 'KI-Prompt für Übungen', body: `<p class="muted small">Kopiere den Text in Claude (oder eine andere KI). Er enthält nur Grammatik & Wörter bis zu deinem Niveau.</p><div class="prompt-box">${esc(txt)}</div>`, foot: `<button class="btn btn-primary" data-copy>${icon('copy')} Kopieren</button>` });
+  const aiPromptDialog = (maxL, grammarIds, words) => {
+    const txt = aiPrompt(maxL, grammarIds, words);
+    const md = App.modal({ title: 'KI-Prompt für Übungen', body: `<p class="muted small">Kopiere den Text in Claude (oder eine andere KI). Er enthält nur Grammatik & Wörter ${words ? 'aus deiner Lernschlange und was du schon kannst' : 'bis zu deinem Niveau'}.</p><div class="prompt-box">${esc(txt)}</div>`, foot: `<button class="btn btn-primary" data-copy>${icon('copy')} Kopieren</button>` });
     md.el.querySelector('[data-copy]').onclick = () => navigator.clipboard.writeText(txt).then(() => { App.toast('Kopiert!'); md.close(); });
   };
 
@@ -363,80 +365,87 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   // =========================================================
   // Übersetzungsübungen
   // =========================================================
+  const T = App.translateLogic;
+  // Wortvorrat des Satzgenerators: Vokabeln plus Ausdrücke. Zeitwörter und Farben stehen nur bei den Ausdrücken;
+  // ihre Angaben für den Satzgenerator liegen in gen
+  const genWords = () => App.itemsOf('vocab').concat(App.itemsOf('phrase').map((p) => (p.gen ? Object.assign({}, p, p.gen) : p)));
+  // Füllwort neben der Lernschlange: was du schon lesen kannst
+  const canRead = (it) => App.vocabStatus(it.id) === 'known';
+  const BUILD = { fill: JP.fill, plain: JP.plain, pick: App.pick, shuffle: App.shuffle, meaning: App.exMeaning };
+
   App.route('/ueben/saetze', (view, p, q) => {
     const sec = App.SECTIONS.grammar;
     const session = q.s ? App.item(q.s) : null;
     let maxL = +(q.max || (session && +session.bookLesson) || S.settings.level || 12);
     if (!maxL || isNaN(maxL)) maxL = 12;
-    const allG = App.itemsOf('grammar').sort((a, b) => (lessonNum(a) || 0) - (lessonNum(b) || 0));
+    const byLesson = (a, b) => (lessonNum(a) || 0) - (lessonNum(b) || 0);
+    const allG = App.itemsOf('grammar').sort(byLesson);
     let preset = q.g ? [q.g] : session ? (session.grammarIds || []) : null;
-    const inLevel = allG.filter((g) => g.source !== 'Genki I' || (lessonNum(g) || 0) <= maxL);
-    const selected = new Set(preset && preset.length ? preset : inLevel.map((g) => g.id));
+    // Ohne Thema und ohne Stunde kommt die Übung aus der Lernschlange; „Niveau“ = alles bis zur gewählten Lektion
+    const fixed = !!(q.g || session);
+    const byQueue = !fixed && q.src !== 'niveau';
+    const words = genWords();
+    const pot = byQueue ? T.queuePot(words, allG, App.wordState, canRead) : null;
+    const listG = byQueue ? pot.grammar.concat(pot.grammarKnown).sort(byLesson) : allG.filter((g) => g.source !== 'Genki I' || (lessonNum(g) || 0) <= maxL);
+    const selected = new Set(byQueue ? (pot.grammar.length ? pot.grammar : pot.grammarKnown).map((g) => g.id) : preset && preset.length ? preset : listG.map((g) => g.id));
     const dir = q.dir || 'de';
-    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Übersetzungsübungen</div>
-      <div class="page-head"><div class="titles"><h1>Übersetzen <span class="jp-title">翻訳</span></h1><p>${session ? `Zur Stunde „${esc(session.title || session.number)}“ – ` : ''}Sätze nur aus Grammatik & Vokabeln bis zu deinem Niveau.</p></div></div>
+    const srcSeg = fixed ? '' : `<div class="seg">${[['', 'Lernschlange'], ['niveau', 'Niveau']].map(([k, l]) => `<button class="${(byQueue ? '' : 'niveau') === k ? 'on' : ''}" data-q-src="${k}">${l}</button>`).join('')}</div>`;
+    const head = `<div class="crumbs">${App.backCrumb()} › Übersetzungsübungen</div>
+      <div class="page-head"><div class="titles"><h1>Übersetzen <span class="jp-title">翻訳</span></h1><p>${session ? `Zur Stunde „${esc(session.title || session.number)}“ – ` : ''}${byQueue ? 'Sätze aus dem, was gerade in deiner Lernschlange ist.' : 'Sätze nur aus Grammatik & Vokabeln bis zu deinem Niveau.'}</p></div></div>`;
+    if (byQueue && !pot.queue.size) {
+      view.innerHTML = `<div class="${sec.cls}">${head}
+        <div class="card" data-setup><div class="stack"><div class="row">${srcSeg}</div>
+          <p data-queue-empty>In deiner Lernschlange ist noch nichts. Dorthin kommt alles, was du bei den Karteikarten schon einmal gewusst hast – es bleibt dort, bis es sitzt.</p>
+          <div class="row"><a class="btn btn-primary" href="#/ueben/karten">${icon('practice')} Zu den Karteikarten</a><button class="btn" data-q-src="niveau">Nach Niveau üben</button></div></div></div></div>`;
+      return;
+    }
+    const nQ = byQueue ? { g: pot.grammar.length, w: pot.queue.size - pot.grammar.length } : null;
+    view.innerHTML = `<div class="${sec.cls}">${head}
       <div class="card" data-setup><div class="stack">
-        <div class="row"><label class="small"><b>Niveau</b></label><select class="input" data-max>${maxLessonOptions(maxL)}</select>
+        <div class="row">${srcSeg}${byQueue ? '' : `<label class="small"><b>Niveau</b></label><select class="input" data-max>${maxLessonOptions(maxL)}</select>`}
           <div class="seg">${[['de', 'Deutsch → Japanisch'], ['jp', 'Japanisch → Deutsch'], ['mix', 'Gemischt']].map(([k, l]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k === 'de' ? '' : k}">${l}</button>`).join('')}</div>
           <select class="input" data-n>${[5, 10, 15, 20].map((n) => `<option ${n === 10 ? 'selected' : ''}>${n}</option>`).join('')}</select><span class="small muted">Sätze</span></div>
+        ${byQueue ? `<div class="small muted" data-queue-info>In der Lernschlange: ${nQ.w} ${nQ.w === 1 ? 'Wort' : 'Wörter'} und ${nQ.g} ${nQ.g === 1 ? 'Grammatikpunkt' : 'Grammatikpunkte'}. Fehlt für einen Satz ein passendes Wort, füllt eines auf, das du schon kannst.</div>` : ''}
         <details class="adv" ${preset ? 'open' : ''}><summary>Grammatik auswählen (${selected.size} gewählt)</summary>
-          <div class="row" style="margin-bottom:8px"><button class="btn btn-sm" data-all>Alle bis Lektion ${maxL}</button><button class="btn btn-sm" data-none>Keine</button></div>
-          <div class="grid cols-2" style="gap:4px">${inLevel.map((g) => `<label class="picker-row"><input type="checkbox" value="${g.id}" ${selected.has(g.id) ? 'checked' : ''}><span class="badge src" style="--c:${App.sourceColor(g.source)}">L${esc(g.lesson)}</span><span>${esc(g.title)}</span><span class="muted small">${(g.patterns || []).length ? '✦' : ''}</span></label>`).join('')}</div>
-          <div class="small muted" style="margin-top:6px">✦ = mit Satzmustern (erzeugt immer neue Sätze). Ohne ✦ werden die Beispielsätze genutzt.</div></details>
+          <div class="row" style="margin-bottom:8px"><button class="btn btn-sm" data-all>${byQueue ? 'Alle' : `Alle bis Lektion ${maxL}`}</button><button class="btn btn-sm" data-none>Keine</button></div>
+          <div class="grid cols-2" style="gap:4px">${listG.map((g) => `<label class="picker-row"><input type="checkbox" value="${g.id}" ${selected.has(g.id) ? 'checked' : ''}><span class="badge src" style="--c:${App.sourceColor(g.source)}">L${esc(g.lesson)}</span><span>${esc(g.title)}</span><span class="muted small">${(g.patterns || []).length ? '✦' : ''}${byQueue && !pot.queue.has(g.id) ? ' ● kann ich' : ''}</span></label>`).join('')}</div>
+          <div class="small muted" style="margin-top:6px">✦ = mit Satzmustern (erzeugt immer neue Sätze). Ohne ✦ werden die Beispielsätze genutzt.${byQueue ? ' Zur Auswahl steht die Grammatik aus der Lernschlange und die, die du schon kannst.' : ''}</div></details>
         <div class="row"><button class="btn btn-primary" data-go>${icon('sparkle')} Übung starten</button><button class="btn" data-ai>${icon('copy')} Als KI-Prompt kopieren</button></div></div></div>
       <div data-stage></div></div>`;
     const setup = view.querySelector('[data-setup]');
-    setup.querySelector('[data-max]').onchange = (e) => App.setQuery({ max: e.target.value });
+    if (!byQueue) setup.querySelector('[data-max]').onchange = (e) => App.setQuery({ max: e.target.value });
     setup.querySelector('[data-all]').onclick = () => $$('input[type=checkbox]', setup).forEach((c) => (c.checked = true));
     setup.querySelector('[data-none]').onclick = () => $$('input[type=checkbox]', setup).forEach((c) => (c.checked = false));
     const chosen = () => $$('details input[type=checkbox]:checked', setup).map((c) => c.value);
-    setup.querySelector('[data-ai]').onclick = () => aiPromptDialog(maxL, chosen());
+    setup.querySelector('[data-ai]').onclick = () => aiPromptDialog(maxL, chosen(), byQueue ? words.filter((w) => pot.queue.has(w.id) || canRead(w)) : undefined);
     setup.querySelector('[data-go]').onclick = () => {
       const gids = chosen();
-      if (!gids.length) return App.toast('Bitte mindestens einen Grammatikpunkt wählen');
+      // Wörter der Lernschlange mit eigenem Satz ergeben auch ohne Grammatik eine Runde
+      if (!gids.length && !(byQueue && pot.sentences.length)) return App.toast('Bitte mindestens einen Grammatikpunkt wählen');
       const n = +setup.querySelector('[data-n]').value;
-      // Zeitwörter und Farben stehen nur bei den Ausdrücken; ihre Angaben für den Satzgenerator liegen in gen
-      const words = App.itemsOf('vocab').concat(App.itemsOf('phrase').filter((p) => p.gen).map((p) => Object.assign({}, p, p.gen)));
-      const pool = words.filter((v) => {
-        // Satzgenerator braucht die deutschen Satzbau-Angaben (n, v, a, t) – unbearbeitete Paket-Wörter haben sie nicht
-        if (!v.de || (v._pack && !v._edited)) return false;
-        if (session && (session.vocabIds || []).includes(v.id)) return true;
-        const l = lessonNum(v);
-        if (v.source === 'Genki I') return l !== null && l <= maxL;
-        return true; // eigene Wörter (NHK, VHS …) sind immer erlaubt
-      });
-      const exs = buildExercises(gids.map(App.item).filter(Boolean), pool, n, maxL);
-      if (!exs.length) return App.toast('Dazu konnten keine Sätze erzeugt werden – wähle mehr Grammatik aus.');
+      const grammar = gids.map(App.item).filter(Boolean);
+      let exs;
+      if (byQueue) exs = T.build({ grammar, pool: pot.pool, sentences: pot.sentences, queue: pot.queue, n }, BUILD);
+      else {
+        const pool = words.filter((v) => {
+          if (!T.patternWord(v)) return false;
+          if (session && (session.vocabIds || []).includes(v.id)) return true;
+          const l = lessonNum(v);
+          if (v.source === 'Genki I') return l !== null && l <= maxL;
+          return true; // eigene Wörter (NHK, VHS …) sind immer erlaubt
+        });
+        exs = T.build({ grammar, pool, n }, BUILD);
+      }
+      if (!exs.length) return App.toast(byQueue ? 'Aus der Lernschlange ließen sich dazu keine Sätze bauen – wähle mehr Grammatik aus oder übe nach Niveau.' : 'Dazu konnten keine Sätze erzeugt werden – wähle mehr Grammatik aus.');
       setup.hidden = true;
       runExercises(view.querySelector('[data-stage]'), exs, dir);
     };
   });
 
-  function buildExercises(grammar, pool, n, maxL) {
-    const out = [];
-    const seen = new Set();
-    const exPool = [];
-    grammar.forEach((g) => (g.examples || []).forEach((e) => exPool.push({ g, jp: e.jp, de: App.exMeaning(e), kana: e.kana })));
-    const withPat = grammar.filter((g) => (g.patterns || []).length);
-    let guard = 0;
-    while (out.length < n && guard++ < n * 30) {
-      const useGen = withPat.length && (Math.random() < 0.72 || !exPool.length);
-      if (useGen) {
-        const g = App.pick(withPat);
-        const r = JP.fill(App.pick(g.patterns), pool);
-        if (!r) continue;
-        const key = JP.plain(r.jp);
-        if (seen.has(key)) continue;
-        seen.add(key); out.push({ g, jp: r.jp, de: r.de, words: r.words, gen: true });
-      } else if (exPool.length) {
-        const e = App.pick(exPool);
-        const key = JP.plain(e.jp);
-        if (seen.has(key)) { if (seen.size >= exPool.length + 50) break; continue; }
-        seen.add(key); out.push({ g: e.g, jp: e.jp, de: e.de, kana: e.kana, words: [] });
-      } else break;
-    }
-    return App.shuffle(out);
-  }
+  // Woher ein Satz kommt: ein Grammatikpunkt oder ein Wort der Lernschlange (dann mit dessen eigenem Beispielsatz).
+  // Vor der Lösung verrät die Marke das Wort nicht; hinterher steht es bei der Lösung.
+  const wordOf = (it) => it.kanji || it.kana || JP.plain(it.jp || '');
+  const exBadge = (it) => `<a class="badge sec ${App.SECTIONS[it.type].cls}" href="${App.link(it)}" target="_blank" style="text-decoration:none">${it.type === 'grammar' ? '文 ' + esc(it.title) : it.type === 'phrase' ? '表 Ausdruck aus der Lernschlange' : '単 Wort aus der Lernschlange'}</a>`;
 
   function runExercises(stage, exs, dirMode) {
     let i = 0, score = 0;
@@ -444,7 +453,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const show = () => {
       if (i >= exs.length) {
         stage.innerHTML = `<div class="ex-card"><div class="card pad-lg" style="text-align:center"><div class="score-ring">${score} / ${exs.length}</div><h2>${score === exs.length ? '完璧！ Perfekt!' : score > exs.length / 2 ? 'よくできました！' : 'がんばって！ Dranbleiben!'}</h2>
-          ${wrong.length ? `<div class="section-title">Zum Wiederholen</div><div class="stack" style="text-align:left">${wrong.map((e) => `<div class="example"><div class="grow"><div class="jp-s" lang="ja">${JP.ruby(e.jp)}</div><div class="de-s">${esc(e.de)}</div><a class="small" href="${App.link(e.g)}">${esc(e.g.title)}</a></div></div>`).join('')}</div>` : ''}
+          ${wrong.length ? `<div class="section-title">Zum Wiederholen</div><div class="stack" style="text-align:left">${wrong.map((e) => `<div class="example"><div class="grow"><div class="jp-s" lang="ja">${JP.ruby(e.jp)}</div><div class="de-s">${esc(e.de)}</div><a class="small" href="${App.link(e.g)}">${esc(e.g.title || wordOf(e.g))}</a></div></div>`).join('')}</div>` : ''}
           <div class="row" style="justify-content:center;margin-top:16px">${App.backBtn('Übersicht')}<button class="btn btn-primary" data-again>Neue Runde</button></div></div></div>`;
         stage.querySelector('[data-again]').onclick = () => App.render();
         return;
@@ -452,7 +461,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       const e = exs[i];
       const dir = dirMode === 'mix' ? (Math.random() < 0.5 ? 'de' : 'jp') : dirMode;
       const kanaSol = e.kana || JP.kana(e.jp);
-      stage.innerHTML = `<div class="ex-card ${App.furiClass()}"><div class="row between small muted" style="margin-bottom:8px"><span>Satz ${i + 1} / ${exs.length}</span><a class="badge sec sec-grammar" href="${App.link(e.g)}" target="_blank" style="text-decoration:none">文 ${esc(e.g.title)}</a></div>
+      stage.innerHTML = `<div class="ex-card ${App.furiClass()}"><div class="row between small muted" style="margin-bottom:8px"><span>Satz ${i + 1} / ${exs.length}</span>${exBadge(e.g)}</div>
         <div class="progress" style="margin-bottom:14px"><i style="width:${(i / exs.length) * 100}%"></i></div>
         <div class="card pad-lg">
           <div class="small muted">${dir === 'de' ? 'Übersetze ins Japanische:' : 'Übersetze ins Deutsche:'}</div>
@@ -484,7 +493,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           ${auto === true ? '<div class="verdict ok">✓ Richtig!</div>' : auto === false ? '<div class="verdict no">Nicht ganz – vergleiche:</div>' : ''}
           <div class="small muted" style="margin-top:8px">Lösung</div>
           ${dir === 'de' ? `<div class="sol-jp" lang="ja">${JP.ruby(e.jp)} ${App.speakBtn(e.jp)}</div><div class="small muted" lang="ja">${esc(kanaSol)}</div>` : `<div style="font-size:21px;font-weight:800">${esc(e.de)}</div><div class="small muted" lang="ja">${esc(kanaSol)}</div>`}
-          ${words.length ? `<div class="row" style="margin-top:10px;gap:6px">${words.map((w) => `<a class="badge" style="background:var(--fuji-soft);color:var(--fuji);text-decoration:none" href="${App.link(w)}" target="_blank" lang="ja">${esc(w.kanji || w.kana)} = ${esc(w.de)}</a>`).join('')}</div>` : ''}
+          ${words.length ? `<div class="row" style="margin-top:10px;gap:6px">${words.map((w) => `<a class="badge" style="background:var(--fuji-soft);color:var(--fuji);text-decoration:none" href="${App.link(w)}" target="_blank" lang="ja">${esc(wordOf(w))} = ${esc(w.de)}</a>`).join('')}</div>` : ''}
           <div class="row" style="margin-top:14px">${auto === true ? `<button class="btn btn-primary" data-res="1">Weiter ${icon('next')}</button>` : `<button class="btn" style="background:var(--shu-soft)" data-res="0">✗ Hatte ich falsch</button><button class="btn" style="background:var(--matcha-soft)" data-res="1">✓ Hatte ich richtig</button>`}</div></div>`;
         stage.querySelector('[data-check]').hidden = true;
       };
