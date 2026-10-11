@@ -170,7 +170,7 @@
   };
 
   // ---------- Schreibfläche (eingebettet oder Vollbild) ----------
-  // opts: { embedded, extraTools: [{ id, label, icon, onClick }], extraInMenu (extraTools ins „⋯“-Menü statt in die Leiste), onFullscreen, onClose, onLinkWord, onUnlinkWord }
+  // opts: { embedded, extraTools: [{ id, label, menuLabel, icon, onClick }], extraInMenu (extraTools ins „⋯“-Menü statt in die Leiste), onFullscreen, onClose, onLinkWord, onUnlinkWord }
   // onLinkWord(r) → Eintrag: Treffer aus dem Nachschlagen-Fenster mit dem eingekreisten Wort verknüpfen (ohne: kein „Verknüpfen“)
   // onUnlinkWord(itemId): die letzte Markierung eines Wortes wurde auf diesem Blatt gelöst
   INK.mount = async (root, fileId, opts = {}) => {
@@ -224,7 +224,7 @@
       <div class="grp"><button class="icon-btn" data-v="more" title="Mehr: Zoom, Nur Stift, Drucken …">${icon('more')}</button></div>
       <div class="more-pop card" hidden>
         <div class="more-title" data-title>${esc(f.name)}</div>
-        ${opts.extraInMenu ? (opts.extraTools || []).map((t) => `<button class="more-item" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''}<span>${esc(t.label)}</span></button>`).join('') : ''}
+        ${opts.extraInMenu ? (opts.extraTools || []).map((t) => `<button class="more-item" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''}<span>${esc(t.menuLabel || t.label)}</span></button>`).join('') : ''}
         ${embedded ? '' : `<button class="more-item" data-v="details">${icon('edit')}<span>Umbenennen / Details</span></button>`}
         <button class="more-item" data-v="penonly" title="Wenn an: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">${icon('ballpen')}<span>Nur Stift schreibt</span><b data-state>${st.penOnly ? 'an' : 'aus'}</b></button>
         ${splittable ? `<button class="more-item" data-v="swap" title="Aufgabe links oder rechts (z. B. für Linkshänder)"${st.split ? '' : ' hidden'}>${icon('shuffle')}<span>Seiten tauschen</span></button>` : ''}

@@ -95,15 +95,18 @@
     App.onLeave(() => window.removeEventListener('resize', fit));
     // Werkzeug-Zustand übernehmen, wenn man gerade aus dem Vollbild dieses Blatts kommt
     const last = App.ink.lastState && App.ink.lastState.fileId === active.id ? App.ink.lastState : {};
+    // menuLabel: Beschriftung im „⋯“-Menü (Vollbild) – dort steht kein „+“ davor
+    const extraTools = [
+      { id: 'vocab', label: 'Vokabel', menuLabel: 'Neue Vokabel', icon: 'plus', onClick: () => App.newLinked('vocab', defaultsFor('vocab'), onLinked) },
+      { id: 'grammar', label: 'Grammatik', menuLabel: 'Neue Grammatik', icon: 'plus', onClick: () => App.newLinked('grammar', defaultsFor('grammar'), onLinked) },
+    ].concat(newPhrase ? [{ id: 'phrase', label: 'Ausdruck', menuLabel: 'Neuer Ausdruck', icon: 'plus', onClick: () => App.newLinked('phrase', defaultsFor('phrase'), onLinked) }] : []);
     App.ink.mount(inkEl, active.id, {
       embedded: true, defaultTool: 'fountain', ...last,
-      extraTools: [
-        { id: 'vocab', label: 'Vokabel', icon: 'plus', onClick: () => App.newLinked('vocab', defaultsFor('vocab'), onLinked) },
-        { id: 'grammar', label: 'Grammatik', icon: 'plus', onClick: () => App.newLinked('grammar', defaultsFor('grammar'), onLinked) },
-      ].concat(newPhrase ? [{ id: 'phrase', label: 'Ausdruck', icon: 'plus', onClick: () => App.newLinked('phrase', defaultsFor('phrase'), onLinked) }] : []),
+      extraTools,
       onLinkWord: linkWord, onUnlinkWord: onUnlinked,
-      // Vollbild: eingebettete Fläche abbauen, damit sie nach dem Schließen frisch geladen wird
-      onFullscreen: () => { const tools = ctrl ? ctrl.state() : {}; if (ctrl) ctrl.destroy(); App.ink.open(active.id, { ...tools, onLinkWord: linkWord, onUnlinkWord: onUnlinked }); },
+      // Vollbild: eingebettete Fläche abbauen, damit sie nach dem Schließen frisch geladen wird.
+      // Die „+“-Knöpfe gehen mit – im „⋯“-Menü, damit die Leiste dort einzeilig bleibt (wie bei den Buchaufgaben)
+      onFullscreen: () => { const tools = ctrl ? ctrl.state() : {}; if (ctrl) ctrl.destroy(); App.ink.open(active.id, { ...tools, extraTools, extraInMenu: true, onLinkWord: linkWord, onUnlinkWord: onUnlinked }); },
     }).then((c) => { ctrl = c; if (left && c) c.destroy(); });
     return api;
   };

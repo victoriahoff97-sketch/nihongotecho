@@ -663,7 +663,10 @@
     if (ap) ap.onclick = () => { md.close(); App.uploadDialog({ source: f.source, lesson: f.lesson, section: f.section, sessionId: f.sessionId, role: f.role, accept: 'application/pdf' }); };
   };
 
+  // Blätter aus Anwenden und Buchaufgaben behalten ihren Bereich (er wird nur für sie selbst angeboten)
+  const OWN_SECTIONS = { apply: 'Anwenden', exercise: 'Buchaufgaben' };
   const sectionOptions = (cur) => [['library', 'Allgemein / Bibliothek'], ['grammar', 'Grammatik'], ['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke'], ['session', 'Unterricht']]
+    .concat(OWN_SECTIONS[cur] ? [[cur, OWN_SECTIONS[cur]]] : [])
     .map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('');
   // Eine aktuelle Quelle, die nicht in den Einstellungen steht (z. B. „JLPT N5“ aus einem Paket), bleibt als gewählte Option erhalten
   App.sourceOptions = (cur, empty = true) => {

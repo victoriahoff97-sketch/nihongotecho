@@ -177,7 +177,7 @@
   // Bibliothek
   // =========================================================
   const KIND_LABEL = { pdf: 'PDF', image: 'Bilder', slides: 'Präsentationen', notebook: 'Notizblätter', video: 'Videos', audio: 'Audio', doc: 'Dokumente', deck: 'Anki/Tabellen', other: 'Sonstige' };
-  const SEC_LABEL = { library: 'Allgemein', grammar: 'Grammatik', vocab: 'Vokabeln', kanji: 'Kanji', phrase: 'Ausdrücke', session: 'Unterricht', exercise: 'Buchaufgaben' };
+  const SEC_LABEL = { library: 'Allgemein', grammar: 'Grammatik', vocab: 'Vokabeln', kanji: 'Kanji', phrase: 'Ausdrücke', session: 'Unterricht', apply: 'Anwenden', exercise: 'Buchaufgaben' };
   // Auswahl-Modus: mehrere Dateien markieren und zusammen löschen. null = aus, sonst die markierten Datei-IDs
   let pick = null;
   App.onChange((w) => { if (w === 'route' && pick && App.parseHash().path !== '/bibliothek') pick = null; });
