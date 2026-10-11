@@ -283,7 +283,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       stage.querySelector('[data-show]').onclick = () => {
         pad.then((p) => p.reveal());
         App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
-        stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig · wieder in ${ivlLabel(cur.id, 2, true)}</button><a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
+        stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · wieder in ${ivlLabel(cur.id, 0, true)}</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig · wieder in ${ivlLabel(cur.id, 2, true)}</button><a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
       };
     };
     let busy = false;

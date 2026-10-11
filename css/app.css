@@ -100,6 +100,7 @@ a { color: inherit; }
 button, input, select, textarea { font: inherit; color: inherit; }
 .jp, [lang="ja"] { font-family: var(--font-jp); }
 ruby rt { font-size: .5em; color: var(--muted); font-weight: 500; }
+.na-suffix { font-size: .6em; color: var(--muted); font-weight: 500; margin-left: .1em; }
 .hide-furigana ruby rt { visibility: hidden; }
 .hide-furigana ruby:hover rt, .hide-furigana ruby:active rt { visibility: visible; }
 mark { background: var(--hl); color: inherit; padding: 0 2px; border-radius: 3px; }
@@ -664,7 +665,12 @@ button.more-item:hover { background: var(--paper-2); }
 .viewer-bar .grp { display: flex; gap: 3px; align-items: center; padding: 0 5px; border-left: 1px solid var(--line); }
 .viewer-bar .color { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--card); box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; }
 .viewer-bar .color.on { box-shadow: 0 0 0 2px var(--ink); }
-.viewer-scroll { flex: 1; overflow: auto; position: relative; touch-action: none; }
+/* Platz für den senkrechten Scrollbalken von Anfang an freihalten: sonst wird das Blatt ohne ihn eingepasst und ist danach um
+   seine Breite zu breit (waagerechter Scrollbalken). Geräte mit eingeblendeten Scrollbalken (Touch) merken davon nichts. */
+.viewer-scroll { flex: 1; overflow: auto; position: relative; touch-action: none; scrollbar-gutter: stable; }
+.viewer-book .viewer-scroll { scrollbar-gutter: auto; }
+/* Eingebettete Schreibfläche füllt den Bildschirm bis unten (writearea.js): kein Seitenrand darunter */
+body.ink-fit #view { padding-bottom: 16px; }
 /* wächst mit den Seiten: sonst ragt eine gezoomte, mittig stehende Seite links aus dem Scrollbereich und ist dort nicht erreichbar */
 .viewer-pages { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 22px; transform-origin: 0 0; box-sizing: border-box; width: max-content; min-width: 100%; }
 .vpage { position: relative; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.35); flex: none; }
@@ -831,7 +837,9 @@ button.more-item:hover { background: var(--paper-2); }
 /* Unterricht: Papierwahl & Blattwechsel */
 .paper-pick { display: flex; flex-wrap: wrap; gap: 16px; }
 .paper-tile { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border: 2px solid var(--line); border-radius: 14px; background: var(--card); cursor: pointer; font-weight: 700; color: var(--ink); }
-.paper-tile:hover, .paper-tile:focus-visible { border-color: var(--sec, var(--shu)); }
+.paper-tile:hover, .paper-tile:focus-visible, .paper-tile.on { border-color: var(--sec, var(--shu)); }
+.modal.paper-modal { width: min(860px, 100%); }
+.modal .paper-pick { justify-content: center; }
 .paper-tile canvas { width: 120px; height: 170px; box-shadow: 0 2px 8px rgba(0,0,0,.15); border-radius: 4px; }
 .nb-switch { margin-bottom: 12px; }
 /* Stift-Werkzeuge: Symbol · Farbstreifen · Beschriftung */

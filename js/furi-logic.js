@@ -19,7 +19,7 @@
   // Die Lesung liegt je Kanji-Gruppe vor (午前 → ごぜん), deshalb fällt sie erst weg, wenn alle Kanji der Gruppe bekannt sind.
   F.wordHtml = (it, known) => {
     const s = it.type === 'vocab' ? (it.kanji ? JP.notate(it.kanji, it.kana) : it.kana || '') : it.jp;
-    return JP.ruby(s, known && ((base) => Array.from(base).every((c) => c === '々' || !JP.hasKanji(c) || known(c))));
+    return JP.ruby(s, known && ((base) => Array.from(base).every((c) => c === '々' || !JP.hasKanji(c) || known(c)))) + JP.naSuffix(it);
   };
 
   // Einstellung furiKnown: hide = bei gelernten Kanji ausblenden (Standard) · show = trotzdem anzeigen

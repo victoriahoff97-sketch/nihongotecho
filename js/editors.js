@@ -201,6 +201,23 @@
     return o;
   }).filter(Boolean);
 
+  // Beispielsatz ins leere Satzfeld: der geprüfte aus dem Satz-Index der Pakete, sonst der kürzeste von Tatoeba
+  // (braucht Internet; ohne bleibt das Feld leer). w = {kana, kanji, de}; status(html) zeigt die Suche an
+  const autoExample = async (root, w, { status = () => {}, alive = () => root.isConnected } = {}) => {
+    const noExample = () => !$$('.ex-row [data-ex="jp"]', root).some((i) => i.value.trim());
+    if (!noExample() || !(w.kanji || w.kana)) return;
+    let ex = await App.exampleFor({ type: 'vocab', kana: w.kana, kanji: w.kanji, de: w.de });
+    if (!alive()) return;
+    if (!ex && navigator.onLine !== false) {
+      status('<span class="small muted">Suche einen Beispielsatz …</span>');
+      try { ex = (await App.tatoeba.search(w.kanji || w.kana, (u, o) => fetch(u, o)).more(1)).list[0]; }
+      catch (er) { console.error(er); }
+      if (!alive()) return;
+    }
+    const empty = root.querySelector('[data-exs] .ex-row');
+    if (ex && empty && noExample()) { empty.outerHTML = exRow(ex); App.hydrateIcons(root.querySelector('[data-exs]')); }
+  };
+
   // ---------- Automatisch ausfüllen (Vokabel-Formular, aus dem Offline-Wörterbuch) ----------
   // Wörter, die üblicherweise in Kana geschrieben werden (packs/uk-index.js, erst bei Bedarf geladen)
   let ukIds = null;
@@ -222,7 +239,6 @@
     const show = (html) => { box.hidden = false; box.innerHTML = html; App.hydrateIcons(box); };
     const hide = () => { box.hidden = true; box.innerHTML = ''; };
     const set = (name, v) => { const el = root.querySelector(`[name="${name}"]`); if (el) el.value = v; };
-    const noExample = () => !$$('.ex-row [data-ex="jp"]', root).some((i) => i.value.trim());
 
     const apply = async (e) => {
       const my = ++run;
@@ -240,16 +256,10 @@
       const lv = App.levelFor({ type: 'vocab', kana: w.kana, kanji: w.kanji });
       if (auto) auto.textContent = 'automatisch' + (lv ? ' (' + lv + ')' : '');
       App.toast(val(root, 'de') ? 'Aus dem Wörterbuch ausgefüllt' : 'Ausgefüllt – das Wörterbuch kennt hier nur die englische Bedeutung');
-      // Beispielsatz: der kürzeste von Tatoeba, wenn noch keiner dasteht (braucht Internet; ohne bleibt das Feld leer)
-      if (!noExample() || navigator.onLine === false) return hide();
-      show('<span class="small muted">Suche einen Beispielsatz …</span>');
-      let ex = null;
-      try { ex = (await App.tatoeba.search(w.kanji || w.kana, (u, o) => fetch(u, o)).more(1)).list[0]; }
-      catch (er) { console.error(er); }
-      if (my !== run || !root.isConnected) return;
       hide();
-      const empty = root.querySelector('[data-exs] .ex-row');
-      if (ex && empty && noExample()) { empty.outerHTML = exRow(ex); App.hydrateIcons(root.querySelector('[data-exs]')); }
+      const alive = () => my === run && root.isConnected;
+      await autoExample(root, { kana: w.kana, kanji: w.kanji, de: val(root, 'de') }, { status: show, alive });
+      if (alive()) hide();
     };
 
     const hitRow = (e, i, uk) => {
@@ -466,6 +476,8 @@
       App.bindRomaji(kana, () => rj.checked);
       const pos = root.querySelector('[name=pos]');
       bindAutofill(root);
+      // neu und mit vorbelegtem Wort geöffnet (Wörterbuch, Eingang, Mitschrift): gleich einen Beispielsatz vorschlagen
+      if (!it._existing) autoExample(root, it).catch((e) => console.error(e));
       // Wortart raten
       kana.addEventListener('blur', () => {
         if (pos.value) return;
@@ -658,6 +670,8 @@
         if (type === 'kanji' && isNew) it.id = 'k-' + it.char.codePointAt(0).toString(16);
         const saved = await App.saveItem(it);
         if ((type === 'vocab' || type === 'kanji') && isNew && chk && chk !== 'unchecked') await App.setCheck(saved.id, chk);
+        // von Hand eingetippt, in keinem Paket: den Satz im Hintergrund von Tatoeba nachtragen
+        if (type === 'vocab' && isNew && App.exampleLater) App.exampleLater(saved.id).catch((e) => console.error(e));
         App.toast(isNew ? `${sec.one} gespeichert` : 'Änderungen gespeichert');
         onSaved && onSaved(saved);
         md.close();

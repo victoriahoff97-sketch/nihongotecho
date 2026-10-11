@@ -4,7 +4,7 @@
  *    https://github.com/jamsinclair/open-anki-jlpt-decks
  *  - JMdict und KANJIDIC2 © Electronic Dictionary Research and Development Group (EDRDG), CC-BY-SA 4.0,
  *    ueber jmdict-simplified https://github.com/scriptin/jmdict-simplified
- *  - Beispielsaetze und Furigana: Tatoeba (https://tatoeba.org), CC-BY 2.0 FR
+ *  - Beispielsaetze und Furigana: Tatoeba (https://tatoeba.org), CC-BY 2.0 FR; einzelne Saetze selbst verfasst
  *  - kanji-data (MIT), nur das Feld jlpt_new verwendet  https://github.com/davidluzgouveia/kanji-data
  * Diese Datei steht unter CC-BY-SA 4.0.
  */

@@ -286,6 +286,8 @@ window.App = window.App || {};
   App.itemsOf = (type) => { const out = []; S.items.forEach((it) => { if (it.type === type) out.push(it); }); return out; };
   App.saveItem = async (it, { silent } = {}) => {
     const now = Date.now();
+    // neue eigene Vokabel ohne Beispielsatz: den geprüften aus dem Satz-Index der Pakete eintragen (js/examples.js)
+    if (!it.created && it.type === 'vocab' && App.exampleFill) await App.exampleFill(it);
     if (!it.id) it.id = uid(it.type[0]);
     if (!it.created) it.created = now;
     it.updated = now;

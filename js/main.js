@@ -120,6 +120,8 @@
     // Teilen-Menü (?text=…&url=…) in die Eingangs-Adresse umsetzen – synchron, wirft nie
     if (App.inbox) App.inbox.bootShare();
     App.render();
+    // eigene Vokabeln ohne Beispielsatz aus dem Satz-Index der Pakete auffüllen (einmal je Index-Version)
+    if (App.exampleBackfill) App.exampleBackfill().catch((e) => console.error(e));
     // Kleines Wörterbuch beim ersten Web-Start von selbst laden (nicht abgewartet)
     if (App.welcome) App.welcome.autoDict();
     // Ordner-Sicherung anschließen – ein Fehler hier darf den Start nie verhindern

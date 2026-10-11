@@ -41,8 +41,11 @@
       return reKanji.test(sg) ? `${sg}[${part}]` : sg;
     }).join('');
   };
+  // な-Adjektive zeigen ihr な in Klammern (きれい(な), 元気(な)), damit man es mitlernt – nur in der Anzeige: gespeichert
+  // bleibt die Grundform ohne な, so finden Wörterbuch, Niveau und Akzent das Wort weiter
+  JP.naSuffix = (it) => (it && it.type === 'vocab' && it.pos === 'na-adj' && !/な[)）]?$/.test(it.kanji || it.kana || '') ? '<span class="na-suffix">(な)</span>' : '');
   // Anzeige eines Vokabel-Eintrags als Ruby
-  JP.wordRuby = (it) => it.kanji ? JP.ruby(JP.notate(it.kanji, it.kana)) : esc(it.kana || '');
+  JP.wordRuby = (it) => (it.kanji ? JP.ruby(JP.notate(it.kanji, it.kana)) : esc(it.kana || '')) + JP.naSuffix(it);
 
   // ---------- Kana ----------
   JP.toHira = (s) => String(s ?? '').replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));

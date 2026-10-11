@@ -151,7 +151,11 @@
           <div class="row"><button class="btn btn-sec btn-sm" data-open-file="${f.id}">${icon('pen')} Mit Stift bearbeiten</button></div></div>`).join('')}</div>`
         : '<div class="empty-state"><div class="big">宿</div><h3>Keine Hausaufgaben</h3><p>Lade das Aufgabenblatt als PDF hoch – dann kannst du es mit dem Surface-Stift direkt ausfüllen und als PDF wieder ausdrucken/abgeben.</p></div>'}`;
       body.querySelector('[data-up]').onclick = () => App.uploadDialog({ sessionId: s.id, role: 'homework', section: 'session', source: UL.CLASS_SOURCE, accept: 'application/pdf,image/*' });
-      body.querySelector('[data-blank]').onclick = () => App.newNotebook({ sessionId: s.id, role: 'homework', section: 'session', source: UL.CLASS_SOURCE, name: `Hausaufgabe Stunde ${s.number || ''}` });
+      // Ohne Titel-Abfrage: das Blatt heißt nach der Stunde (umbenennen geht im Blatt über „⋯“)
+      body.querySelector('[data-blank]').onclick = () => {
+        const n = hw.filter((f) => App.fileKind(f) === 'notebook').length + 1;
+        App.newNotebook({ sessionId: s.id, role: 'homework', section: 'session', source: UL.CLASS_SOURCE, askName: false, name: 'Hausaufgabe ' + sessionTitle(s) + (n > 1 ? ` (${n})` : '') });
+      };
       body.addEventListener('change', async (e) => { const c = e.target.closest('[data-done]'); if (c) { const f = S.files.get(c.dataset.done); f.done = c.checked; await App.updateFile(f); App.render(true); } });
     }
     if (tab === 'learned') {

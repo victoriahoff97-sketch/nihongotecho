@@ -81,8 +81,8 @@
     const api = { dropLinks: (itemId) => (ctrl ? ctrl.dropLinks(itemId) : Promise.all(sheets.map((f) => App.ink.dropLinks(f.id, itemId)))) };
     if (!sheets.length) {
       host.innerHTML = `<div class="card pad-lg"><h3 style="margin-top:0">Auf welchem Papier schreibst du?</h3>
-        <div class="paper-pick">${UL.PAPERS.map(([k, l]) => `<button class="paper-tile" data-paper="${k}"><canvas width="120" height="170"></canvas><span>${l}</span></button>`).join('')}</div></div>`;
-      host.querySelectorAll('.paper-tile canvas').forEach((cv) => App.ink.drawPaper(cv.getContext('2d'), cv.width, cv.height, cv.parentElement.dataset.paper));
+        ${App.ink.paperTiles()}</div>`;
+      App.ink.drawPaperTiles(host);
       let busy = false; // Doppeltipp darf kein zweites Blatt anlegen
       host.addEventListener('click', async (e) => {
         const b = e.target.closest('[data-paper]'); if (!b || busy) return;
@@ -110,6 +110,9 @@
     // Schreibfläche einbetten; beim Verlassen/Neuzeichnen sauber abbauen
     App.onLeave(() => { left = true; if (ctrl) ctrl.destroy(); });
     // Schreibfläche füllt genau den restlichen Bildschirm (nicht darüber hinaus)
+    // Dazu entfällt der untere Seitenrand (body.ink-fit) – sonst ließe sich die ganze Seite unter der Fläche weiterscrollen
+    document.body.classList.add('ink-fit');
+    App.onLeave(() => document.body.classList.remove('ink-fit'));
     const inkEl = host.querySelector('[data-ink]');
     const fit = () => { const top = inkEl.getBoundingClientRect().top + window.scrollY; inkEl.style.minHeight = '0'; inkEl.style.height = Math.max(360, window.innerHeight - top - 16) + 'px'; };
     fit();

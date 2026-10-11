@@ -57,9 +57,13 @@
   };
 
   // ---------- Papierwahl ----------
+  // Kacheln mit Papier-Vorschau – überall dieselben (neues Blatt in Mitschrift/Anwenden, Popup für Notizblatt, Seite anhängen, Papier ändern)
+  INK.paperTiles = (current) => `<div class="paper-pick">${UL.PAPERS.map(([k, l]) => `<button class="paper-tile ${k === current ? 'on' : ''}" data-paper="${k}"><canvas width="120" height="170"></canvas><span>${l}</span></button>`).join('')}</div>`;
+  INK.drawPaperTiles = (root) => root.querySelectorAll('.paper-tile canvas').forEach((cv) => INK.drawPaper(cv.getContext('2d'), cv.width, cv.height, cv.parentElement.dataset.paper));
   INK.pickPaper = ({ title, current } = {}) => new Promise((res) => {
     let done = false;
-    const md = App.modal({ title, body: `<p class="muted">Welches Papier?</p><div class="chips">${UL.PAPERS.map(([k, l]) => `<button class="chip ${k === current ? 'on' : ''}" data-paper="${k}">${l}</button>`).join('')}</div>`, foot: false, onClose: () => { if (!done) res(null); } });
+    const md = App.modal({ title, cls: 'paper-modal', body: `<p class="muted">Welches Papier?</p>${INK.paperTiles(current)}`, foot: false, onClose: () => { if (!done) res(null); } });
+    INK.drawPaperTiles(md.el);
     md.el.addEventListener('click', (ev) => { const b = ev.target.closest('[data-paper]'); if (b) { done = true; res(b.dataset.paper); md.close(); } });
   });
 
