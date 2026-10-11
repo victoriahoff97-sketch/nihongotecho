@@ -52,6 +52,7 @@
     if (act === 'toggle-sidebar') { document.body.classList.toggle('sidebar-collapsed'); App.saveSettings({ sidebarCollapsed: document.body.classList.contains('sidebar-collapsed') }); }
     if (act === 'open-sidebar') document.body.classList.toggle('sidebar-open');
     if (act === 'help') App.tour.startForPage();
+    if (act === 'back') history.back();
   });
   document.addEventListener('keydown', (e) => {
     const typing = e.target.matches('input, textarea, select, [contenteditable="true"]');
@@ -79,6 +80,15 @@
       App.render(true);
     }, 60);
   });
+  // Zurück-Taste oben: jede Seite trägt ihre Schrittnummer im Verlaufseintrag, auf der ersten Seite ist der Knopf grau
+  let navIdx = App.navLogic.boot(history.state);
+  const markNav = () => {
+    try { if (App.navLogic.read(history.state) !== navIdx) history.replaceState(App.navLogic.stamp(history.state, navIdx), ''); } catch (e) { /* egal */ }
+    const b = $('[data-action="back"]');
+    if (b) b.disabled = !App.navLogic.canBack(navIdx);
+  };
+  markNav();
+  window.addEventListener('hashchange', () => { navIdx = App.navLogic.step(history.state, navIdx); markNav(); });
   // Einladungslink in eine schon offene Seite eingefügt: erst verarbeiten (Code aus der Adresse nehmen), dann zeichnen
   window.addEventListener('hashchange', async (ev) => {
     // Herkunft einer Lernrunde merken (vor dem Zeichnen: die Scroll-Position der alten Seite steht noch)

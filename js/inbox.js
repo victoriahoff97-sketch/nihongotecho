@@ -25,13 +25,13 @@
 
   // Adresse ersetzen (Neuladen/„Zurück“ holt nichts ein zweites Mal herein) und die Zielseite zeichnen
   const land = (hash, then) => {
-    history.replaceState(null, '', hash);
+    history.replaceState(history.state, '', hash);
     queueMicrotask(() => { App.render(); then && then(); });
   };
 
   const toSentences = async (p, notated) => {
     // #/saetze zeigt die laufende Zuordnung; ersetzt wird sie nur nach Rückfrage
-    history.replaceState(null, '', '#/saetze');
+    history.replaceState(history.state, '', '#/saetze');
     if (App.sentencesBusy() && !(await App.confirm('In „Sätze zuordnen“ liegen noch erkannte Sätze. Durch den neuen Text ersetzen?', { ok: 'Ersetzen', title: 'Neuer Text übergeben' }))) return land('#/saetze');
     const readings = new Map(L.sentences(notated).filter((s) => s.kana).map((s) => [s.jp, s.kana]));
     App.sentencesPreset({ text: JP.plain(notated), src: p.quelle, ref: p.ref, readings });
@@ -58,7 +58,7 @@
   };
 
   const toVocab = async (p) => {
-    history.replaceState(null, '', '#/vokabeln');   // sofort: ein Neuzeichnen während des Nachschlagens darf nichts doppelt öffnen
+    history.replaceState(history.state, '', '#/vokabeln');   // sofort: ein Neuzeichnen während des Nachschlagens darf nichts doppelt öffnen
     const word = JP.plain(p.text).replace(/\s+/g, '');
     const forms = baseForms(word);
     const items = [...App.store.items.values()];
@@ -103,7 +103,7 @@
     const give = (text, emptyMsg) => {
       const c = L.checkPaste(text);
       if (c !== 'ok') { hint.textContent = c === 'leer' ? emptyMsg : 'Kein japanischer Text gefunden.'; area.focus(); return; }
-      history.replaceState(null, '', location.pathname + location.search + '#/eingang?' + new URLSearchParams({ text: String(text).trim().slice(0, L.LIMIT + 1) }));
+      history.replaceState(history.state, '', location.pathname + location.search + '#/eingang?' + new URLSearchParams({ text: String(text).trim().slice(0, L.LIMIT + 1) }));
       App.render();
     };
     if (p.gekuerzt) App.toast('Text war zu lang und wurde gekürzt');
@@ -133,7 +133,7 @@
         const s = L.fromShare(location.search);
         if (!s) return;
         const hash = s.text || s.ref ? '#/eingang?' + new URLSearchParams({ text: s.text, ref: s.ref }) : '#/';
-        history.replaceState(null, '', location.pathname + hash);
+        history.replaceState(history.state, '', location.pathname + hash);
       } catch (e) { console.error('Teilen: Übernahme fehlgeschlagen', e); }
     },
   };

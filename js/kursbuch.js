@@ -113,7 +113,7 @@
       const first = pages[Math.max(0, l - 2 * toc)];
       jump.value = spread >= toc && first ? first.sessionId : '';
       // gemerkt in der Adresse: nach dem Abstecher in eine Stunde landet „Zurück“ wieder auf dieser Doppelseite
-      history.replaceState(null, '', `#/unterricht/buch?c=${encodeURIComponent(course)}${spread ? '&p=' + spread : ''}`);
+      history.replaceState(history.state, '', `#/unterricht/buch?c=${encodeURIComponent(course)}${spread ? '&p=' + spread : ''}`);
     };
     const goTo = (s, mark = null) => { const d = Math.sign(s - spread); hl = mark; spread = Math.min(Math.max(0, s), nSpreads - 1); show(d); };
     const turn = (d) => { const s = spread + d; if (s >= 0 && s < nSpreads) goTo(s); };

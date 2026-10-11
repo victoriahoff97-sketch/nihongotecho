@@ -239,6 +239,7 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 .btn-danger { color: #b3261e; }
 .btn-sm { min-height: 36px; padding: 0 12px; font-size: 14px; border-radius: 9px; }
 .btn[disabled] { opacity: .5; pointer-events: none; }
+.icon-btn[disabled] { opacity: .35; pointer-events: none; }
 .icon-btn {
   width: 44px; height: 44px; display: inline-grid; place-items: center; border-radius: 11px;
   border: 1px solid transparent; background: transparent; cursor: pointer; color: var(--ink-2); flex: none;
@@ -748,7 +749,8 @@ button.more-item:hover { background: var(--paper-2); }
   body.sidebar-collapsed .foot-row .grow { display: block; }
   .only-mobile { display: inline-grid; }
   .hide-mobile { display: none !important; }
-  #topbar { padding: 0 12px; gap: 8px; }
+  #topbar { padding: 0 8px; gap: 4px; }
+  #topbar .search-wrap, #topbar .search-wrap input { min-width: 0; }
   #view { padding: 20px 16px 80px; }
   .form .two, .form .three { grid-template-columns: 1fr; }
   .list-row { grid-template-columns: 1fr 1fr; }

@@ -581,7 +581,7 @@ window.App = window.App || {};
     Object.entries(patch).forEach(([k, v]) => { if (v === '' || v == null || v === false) delete query[k]; else query[k] = v; });
     const qs = new URLSearchParams(query).toString();
     const h = '#' + path + (qs ? '?' + qs : '');
-    if (replace) { history.replaceState(null, '', h); App.render(true); } else location.hash = h;
+    if (replace) { history.replaceState(history.state, '', h); App.render(true); } else location.hash = h;
   };
   // Herkunft einer Lernrunde (Seite, von der man in den Lernbereich kam) – gilt für diesen Tab, übersteht Neuladen
   App.origin = () => App.originLogic.read((k) => sessionStorage.getItem(k));

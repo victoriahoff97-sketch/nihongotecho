@@ -128,7 +128,7 @@
     try {
       const r = App.inviteLogic.read(location.hash);
       if (r) {
-        try { history.replaceState(null, '', location.pathname + location.search + '#/'); } catch (e) { try { location.hash = '#/'; } catch (e2) { /* nichts weiter möglich */ } }
+        try { history.replaceState(history.state, '', location.pathname + location.search + '#/'); } catch (e) { try { location.hash = '#/'; } catch (e2) { /* nichts weiter möglich */ } }
       }
       return r;
     } catch (e) { return null; }
