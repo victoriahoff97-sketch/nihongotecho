@@ -22,11 +22,20 @@
     return before + (before && !/^ja/.test(lang) && !/\s$/.test(before) ? ' ' : '') + t;
   };
 
+  // navigator.standalone gibt es nur bei Apple: true = vom Home-Bildschirm gestartet
+  const homeScreenIos = () => !!window.navigator && window.navigator.standalone === true;
+
   App.dictate = {
     joined,
     supported: () => !!SR(),
     // Startet das Diktat ins Feld; ein zweiter Aufruf fürs selbe Feld beendet es. btn bekommt solange die Klasse „active“.
     toggle: (input, btn, lang) => {
+      // iPad/iPhone, App vom Home-Bildschirm: die Spracherkennung startet dort, hört aber nichts und hält das Mikrofon besetzt –
+      // stattdessen das Feld öffnen und aufs Mikrofon der Tastatur verweisen
+      if (homeScreenIos()) {
+        input.focus();
+        return App.toast('In der App vom Home-Bildschirm diktiert das iPad nur über das Mikrofon auf der Tastatur' + (/^ja/.test(lang) ? ' (für Japanisch die japanische Tastatur wählen).' : '.'));
+      }
       const was = active;
       if (was) { was.stop(); if (was.input === input) return; }
       const rec = new (SR())();
