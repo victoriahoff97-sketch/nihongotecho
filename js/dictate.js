@@ -10,7 +10,10 @@
     network: 'Diktieren braucht Internet.',
     'language-not-supported': 'Diese Sprache kann der Browser hier nicht erkennen.',
   };
-  let active = null; // { rec, input }
+  let active = null; // { rec, input, stop }
+  const NO_SPEECH = 8000; // so lange darf nach dem Antippen nichts kommen
+  const PAUSE = 2500;     // Sprechpause, nach der das Diktat endet
+  const END_WAIT = 1200;  // so lange aufs Ende warten, dann abbrechen
 
   // Erkannter Text hinter dem, was schon im Feld steht; Japanisch ohne Leerzeichen (Safari trennt die Wörter)
   const joined = (before, text, lang) => {
@@ -25,27 +28,45 @@
     // Startet das Diktat ins Feld; ein zweiter Aufruf fürs selbe Feld beendet es. btn bekommt solange die Klasse „active“.
     toggle: (input, btn, lang) => {
       const was = active;
-      if (was) { was.rec.stop(); if (was.input === input) return; }
+      if (was) { was.stop(); if (was.input === input) return; }
       const rec = new (SR())();
       const before = input.value;
-      let got = false;
-      rec.lang = lang;
-      rec.interimResults = true;
-      rec.continuous = false;
-      rec.onresult = (e) => {
-        input.value = joined(before, Array.from(e.results).map((r) => r[0].transcript).join(''), lang);
-        got = input.value !== before;
-      };
-      rec.onerror = (e) => { if (e.error !== 'aborted') App.toast(MSG[e.error] || 'Diktieren hat nicht geklappt (' + e.error + ').'); };
-      rec.onend = () => {
+      let got = false, done = false, timer = 0;
+      // Abschluss genau einmal – auch wenn der Browser das Ende nie meldet
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
         btn.classList.remove('active');
         if (active && active.rec === rec) active = null;
         // wie getippt: Folgeschritte (Lesung, Übersetzung) hängen am change-Ereignis
         if (got && input.isConnected) input.dispatchEvent(new Event('change', { bubbles: true }));
       };
+      // Safari (iPad, iPhone) hört nach einer Sprechpause nicht von selbst auf und meldet das Ende oft gar nicht:
+      // nach Stille selbst beenden, und bleibt die Meldung aus, abbrechen und aufräumen
+      const stop = () => {
+        if (done) return;
+        clearTimeout(timer);
+        try { rec.stop(); } catch (e) { /* schon beendet */ }
+        if (done) return;
+        timer = setTimeout(() => { try { rec.abort(); } catch (e) { /* egal */ } finish(); }, END_WAIT);
+      };
+      const quiet = (ms) => { clearTimeout(timer); timer = setTimeout(stop, ms); };
+      rec.lang = lang;
+      rec.interimResults = true;
+      rec.continuous = false;
+      rec.onresult = (e) => {
+        if (done) return;
+        input.value = joined(before, Array.from(e.results).map((r) => r[0].transcript).join(''), lang);
+        got = input.value !== before;
+        quiet(PAUSE);
+      };
+      rec.onerror = (e) => { if (!done && e.error !== 'aborted') App.toast(MSG[e.error] || 'Diktieren hat nicht geklappt (' + e.error + ').'); };
+      rec.onend = finish;
       try { rec.start(); } catch (e) { console.error(e); return App.toast('Diktieren ließ sich nicht starten.'); }
-      active = { rec, input };
+      active = { rec, input, stop };
       btn.classList.add('active');
+      timer = setTimeout(() => { App.toast(MSG['no-speech']); stop(); }, NO_SPEECH);
     },
   };
 })(window.App);
