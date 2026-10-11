@@ -70,15 +70,31 @@
     '/unterricht': [
       { target: '#view [data-action="new-session"]', text: 'Lege für jede Unterrichtsstunde eine Mitschrift an.' },
       { target: '#view .fold-btn[data-fold-course]', text: 'Die Stunden sind nach Kurs geordnet. Ein Tipp auf eine Stunde öffnet ihr Blatt.' },
-      { target: '#view .kb-open', text: 'Das Notizbuch zeigt alle Mitschriften eines Kurses hintereinander zum Blättern.' },
+      { target: '#view .kb-open', text: 'Das Notizbuch zeigt alle Mitschriften eines Kurses als Buch zum Blättern, mit Inhaltsverzeichnis für Stunden und Grammatik.' },
     ],
     // Schreibblatt: „?“ auf einer Unterrichtsstunde und „⋯ > Hilfe“ in jedem Blatt
     blatt: [
       { target: '.viewer-bar [data-tool="pen"]', until: '.viewer-bar [data-tool="marker"]', text: 'Wähle, womit du schreibst. Farbe und Strichstärke stellst du rechts daneben ein.' },
+      { target: '.viewer-bar [data-tool="lasso"]', title: 'Erkennen', text: 'Kreise ein handgeschriebenes Wort ein. Die App schlägt vor, was dort steht – tippe den passenden Vorschlag an.' },
+      { target: '.viewer-bar [data-tool="lasso"]', title: 'Verknüpfen', text: 'Im Nachschlagen-Fenster tippst du „Mit dem Wort verknüpfen“. Gibt es die Vokabel oder Grammatik noch nicht, legst du sie dort gleich an.' },
+      { target: '.viewer-bar [data-tool="lasso"]', title: 'Wiederfinden', text: 'Verknüpfte Stellen sind farbig markiert: Vokabeln lila, Grammatik orange. Ein Tipp darauf zeigt den Eintrag.' },
+      { target: '.viewer-bar [data-v="paper"]', title: 'Papier', text: 'Liniert, kariert, Kanji-Raster, Punkte oder blanko, für jede Seite einzeln.', link: { label: 'Sticker, Buch und Aufgaben zeigen', tour: 'blattMehr' } },
+    ],
+    // zweiter Teil, erreichbar über den letzten Schritt von „blatt“; „Buch“ gibt es nur im Notizblatt, „Nebeneinander“ nur bei Buchaufgaben
+    blattMehr: [
+      { target: '.viewer-bar [data-v="sticker"]', title: 'Sticker', text: 'Wähle einen Sticker, Merkzettel oder ein Kanji-Feld und tippe auf die Stelle im Blatt. Mit „Auswahl“ verschiebst, drehst und skalierst du ihn danach.' },
+      { target: '.viewer-bar [data-v="book"]', text: 'Zeigt zwei Seiten nebeneinander wie in einem aufgeschlagenen Heft.' },
+      { target: '.viewer-bar [data-v="split"]', title: 'Genki-Aufgaben', text: 'Aufgabe und Schreibblatt stehen nebeneinander statt untereinander. Geht im Querformat.' },
+      { target: '.viewer-bar [data-v="more"]', text: 'Zoom, Drucken und „Nur Stift schreibt“ liegen hier. Bei Genki-Aufgaben auch „Seiten tauschen“: Die Aufgabe wandert nach rechts oder links.' },
       { target: '.viewer-bar [data-tool="eraser"]', until: '.viewer-bar [data-tool="cut"]', text: 'Zwei Radierer: Der eine löscht ganze Striche, der andere nur genau unter der Spitze.' },
-      { target: '.viewer-bar [data-tool="lasso"]', text: 'Kreise ein handgeschriebenes Wort ein, um es nachzuschlagen und mit einer Vokabel zu verknüpfen.' },
-      { target: '.viewer-bar [data-v="paper"]', text: 'Liniert, kariert oder Kanji-Raster, für jede Seite einzeln.' },
-      { target: '.viewer-bar [data-v="more"]', text: 'Zoom, Drucken und „Nur Stift schreibt“ liegen hier. Diese Hilfe auch.' },
+    ],
+    // Kurs-Notizbuch (#/unterricht/buch)
+    notizbuch: [
+      { target: '#view [data-kb-book]', text: 'Alle Mitschriften des Kurses als ein Buch. Hier wird nur gelesen, nicht geschrieben.' },
+      { target: '#view [data-kb-toc]', title: 'Inhaltsverzeichnis', text: 'Die erste Doppelseite: links die Stunden, rechts die Grammatik des Kurses. Ein Tipp auf eine Zeile blättert dorthin.' },
+      { target: '#view [data-kb-toc]', text: 'Grammatik, die du auf dem Blatt verknüpft hast, springt genau zu der Stelle und ist dort hervorgehoben.' },
+      { title: 'Weiterschreiben', text: 'Zum Schreiben öffnest du die Stunde über den Reiter oben an ihrer Seite („öffnen“).' },
+      { target: '#view .kb-zoom', text: 'Blättern mit den Pfeilen oder Wischen. Vergrößern mit +, zwei Fingern oder Doppeltipp.' },
     ],
     '/bibliothek': [
       { target: '#view [data-upload="library"]', text: 'Lege Arbeitsblätter, PDFs und Bilder aus dem Kurs hier ab.' },

@@ -14,6 +14,7 @@
     if (!parts.length) return '/';
     const base = '/' + parts[0];
     if (ALIAS[base]) return ALIAS[base];
+    if (base === '/unterricht' && parts[1] === 'buch') return 'notizbuch';
     // eine einzelne Unterrichtsstunde ist vor allem ihr Schreibblatt
     if (base === '/unterricht' && parts.length > 1) return 'blatt';
     return PAGES.includes(base) ? base : 'rundgang';
