@@ -56,7 +56,7 @@
       { text: 'Die Seite füllt sich von selbst, sobald du gleich klingende Wörter lernst. Du musst nichts anlegen.' },
     ],
     '/ueben': [
-      { target: '#view a.mode-card[href="#/ueben/karten"]', text: 'Der Kern: Karten kommen wieder, kurz bevor du sie vergessen würdest.' },
+      { target: '#view a.mode-card[href^="#/ueben/heute"]', text: 'Der Kern: Karten kommen wieder, kurz bevor du sie vergessen würdest – hier alles Fällige gemischt. Daneben „Karteikarten“: einzeln nach Art oder Lektion üben und Neues lernen.' },
       { target: '#view a.mode-card[href="#/ueben/einstufen"]', text: 'Neues erst einstufen, damit du nichts wiederholst, was du schon kannst.' },
       { target: '#view a.mode-card[href="#/ueben/kanji"]', text: 'Kanji mit dem Stift schreiben oder Lesungen erkennen.' },
       { target: '#view a.mode-card[href="#/ueben/saetze"]', text: 'Ganze Sätze, gebaut nur aus Wörtern und Grammatik, die du schon hast.' },
