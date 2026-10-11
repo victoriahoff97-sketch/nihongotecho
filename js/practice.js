@@ -180,6 +180,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     go.onclick = () => { view.querySelector('[data-setup]').hidden = true; runCards(view.querySelector('[data-stage]'), App.todayQueue(), { more: () => ({ due: App.todayQueue(), fresh: [] }) }); };
     if (auto) go.click();
   });
+  const CRAM_MAX = 100; // so viele Karten hat eine freie Runde höchstens – eine Genki-Lektion passt ganz hinein
   App.route('/ueben/karten', (view, p, q) => {
     const sec = App.SECTIONS.practice;
     const type = q.type || 'vocab';
@@ -199,7 +200,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           ${groups.length ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${groups.map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}
           <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Nur gemerkte</button></div>
         <div class="row">${roundStart(cq, 'Wiederholen')}
-          <button class="btn" data-cram ${items.length ? '' : 'disabled'}>${icon('shuffle')} Zufällig üben (aus allen ${items.length})</button></div>
+          <button class="btn" data-cram ${items.length ? '' : 'disabled'} title="Zählt nicht zur Lernschlange – dein Lernstand bleibt, wie er ist">${icon('shuffle')} Frei üben (${items.length > CRAM_MAX ? CRAM_MAX + ' von ' + items.length : items.length})</button></div>
+        <div class="small muted">Frei üben geht die Auswahl oben gemischt durch und zählt nicht zur Lernschlange: Lernstand und Termine bleiben, wie sie sind.</div>
         ${write ? `<div class="small muted">Schreiben hat einen eigenen Lernstand: Neu sind Kanji, die du lesen kannst, aber noch nie geschrieben hast. Hier schreibst du auf Papier und drehst die Karte um – <a href="#/ueben/kanji">mit dem Stift in der App schreiben</a>.</div>` : ''}
         ${active ? `<div class="small muted">Deutsch → Japanisch hat einen eigenen Lernstand, getrennt vom Lesen. Dazu kommen Wörter, sobald du sie lesen kannst – nach der Aktiv-Einstufung landet im Stapel nur, was du aus dem Deutschen heraus noch nicht weißt.</div>` : ''}
         ${unchecked ? `<div class="card row between" style="background:var(--yamabuki-soft);border-color:transparent;box-shadow:none"><div><b>${unchecked} ${type === 'kanji' ? 'Kanji' : type === 'grammar' ? 'Grammatikpunkte' : type === 'phrase' ? 'Ausdrücke' : 'Vokabeln'} sind ${active ? 'aktiv noch nicht eingestuft' : 'noch ungeprüft'}.</b><div class="small muted">${type === 'grammar' ? 'Neue Karten kommen nur aus deinem Lernstapel. Setze Grammatik auf „Lernstapel“ – im Unterricht behandelte landen dort automatisch.' : active ? 'Du kannst sie lesen – prüfe, welche du auch aus dem Deutschen heraus weißt. Neue Karten kommen nur aus dem Aktiv-Lernstapel.' : 'Neue Karten kommen nur aus deinem Lernstapel. Prüfe erst, was du schon kannst.'}</div></div>
@@ -207,7 +209,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       <div data-stage></div></div>`;
     const stage = view.querySelector('[data-stage]');
     const start = (queue, cram) => { view.querySelector('[data-setup]').hidden = true; runCards(stage, queue, { type, dir, cram, write, active, more: () => App.cardQueue(q) }); };
-    view.querySelector('[data-cram]').onclick = () => start(App.shuffle(items).slice(0, 60), true);
+    view.querySelector('[data-cram]').onclick = () => start(App.shuffle(items).slice(0, CRAM_MAX), true);
     bindRoundStart(view, cq, q.round || q.auto, (queue) => start(queue, false));
   });
 
@@ -243,6 +245,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     return d < 1 ? 'morgen' : d < 30 ? Math.round(d) + ' T' : Math.round(d / 30) + ' Mon';
   };
   // write/active: eigener Lernstand unter „w:<Id>“ (Kanji schreiben · Vokabeln Deutsch → Japanisch)
+  // cram = freies Üben: nichts wird bewertet, der Lernstand bleibt unberührt – nicht Gewusstes kommt nur in dieser Runde noch einmal
   // Gemischte Runde: Einträge { it, kind: 'read' | 'active' | 'write', dir, pad } bringen Richtung und Lernstand selbst mit; pad = Kanji mit dem Stift schreiben
   function runCards(stage, queue, { dir, cram, write, active, more }) {
     queue = queue.map((x) => (x.it ? x : { it: x, kind: write ? 'write' : active ? 'active' : 'read', dir }));
@@ -256,7 +259,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       cur = ent ? ent.it : null;
       flipped = false;
       if (!cur) {
-        stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>
+        stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${cram ? 'Frei geübt – an deinem Lernstand hat sich nichts geändert.' : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>
           <div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${cram ? '<button class="btn btn-primary" data-again>Weitere Runde</button>' : roundEnd(more())}</div></div></div>`;
         if (cram) stage.querySelector('[data-again]').onclick = () => App.render();
         bindRoundEnd(stage);
@@ -266,7 +269,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       const f = cardFaces(cur, ent.dir);
       stage.innerHTML = `<div class="flash-stage ${App.furiClass()}">${head()}
         <div class="flash" data-flip>${f.front}<div class="back" hidden>${f.back}</div><span class="tap-hint">Tippen oder Leertaste zum Umdrehen</span></div>
-        <div class="grade-row" hidden>${[['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, own())}</small></button>`).join('')}</div>
+        <div class="grade-row"${cram ? ' style="grid-template-columns:repeat(2,1fr)"' : ''} hidden>${cram ? '<button class="g0" data-g="0">Nicht gewusst<small>kommt gleich noch einmal</small></button><button class="g2" data-g="2">Gewusst</button>' : [['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, own())}</small></button>`).join('')}</div>
         <div class="row" style="justify-content:center;margin-top:10px"><a class="btn btn-sm btn-ghost" href="${App.link(cur)}" target="_blank">${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}</div></div>`;
     };
     // Kanji schreiben in der gemischten Runde: mit dem Stift schreiben, auflösen, selbst bewerten – wie im Kanji-Quiz
@@ -301,7 +304,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     };
     const grade = async (g) => {
       if (!flipped) return;
-      await (ent.kind === 'write' ? App.gradeWrite(cur.id, g) : App.grade(ent.kind === 'active' ? W.id(cur.id) : cur.id, g));
+      if (!cram) await (ent.kind === 'write' ? App.gradeWrite(cur.id, g) : App.grade(ent.kind === 'active' ? W.id(cur.id) : cur.id, g));
       done++; if (g > 0) right++;
       if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
       next();
