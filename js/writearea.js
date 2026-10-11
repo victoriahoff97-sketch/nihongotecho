@@ -46,6 +46,28 @@
     });
   });
 
+  // „＋ Vokabel / Grammatik (/ Ausdruck)“ einer Schreibfläche; menuLabel: Beschriftung im „⋯“-Menü (Vollbild) – dort steht kein „+“ davor
+  const linkTools = (defaultsFor, onLinked, newPhrase) => [
+    { id: 'vocab', label: 'Vokabel', menuLabel: 'Neue Vokabel', icon: 'plus', onClick: () => App.newLinked('vocab', defaultsFor('vocab'), onLinked) },
+    { id: 'grammar', label: 'Grammatik', menuLabel: 'Neue Grammatik', icon: 'plus', onClick: () => App.newLinked('grammar', defaultsFor('grammar'), onLinked) },
+  ].concat(newPhrase ? [{ id: 'phrase', label: 'Ausdruck', menuLabel: 'Neuer Ausdruck', icon: 'plus', onClick: () => App.newLinked('phrase', defaultsFor('phrase'), onLinked) }] : []);
+
+  // ---------- Wohin ein Blatt gehört ----------
+  // Ein Blatt, das zu einer Stunde, einer Antwort/einem Tagebucheintrag oder einer Buchaufgabe gehört, bringt seine
+  // Verknüpfungen überall mit – egal ob es aus der Stunde, der Bibliothek oder der Suche geöffnet wird (ink.js, INK.open).
+  // App.sheetHome(fn): fn(file) → { newDefaults (Objekt oder (type) => Objekt), onLinked, onUnlinked, newPhrase } oder nichts
+  const homes = [];
+  App.sheetHome = (fn) => { homes.push(fn); };
+  App.sheetLinkOpts = (f) => {
+    for (const fn of homes) {
+      const h = f && fn(f);
+      if (!h) continue;
+      const defaultsFor = (type) => (typeof h.newDefaults === 'function' ? h.newDefaults(type) : h.newDefaults || {});
+      return { extraTools: linkTools(defaultsFor, h.onLinked, h.newPhrase), extraInMenu: true, onLinkWord: App.wordLinker(defaultsFor, h.onLinked), onUnlinkWord: h.onUnlinked };
+    }
+    return null;
+  };
+
   // ---------- Handschrift ----------
   // opts: { sheets, activeId, sheetMeta(paper, n), multiSheet, onSelect(fileId), newDefaults (Objekt oder (type) => Objekt), onLinked, onUnlinked, newPhrase }
   // newPhrase: zusätzlich „＋ Ausdruck“ in der Stiftleiste (nur wo onLinked Ausdrücke verknüpft, z. B. Unterricht)
@@ -95,11 +117,7 @@
     App.onLeave(() => window.removeEventListener('resize', fit));
     // Werkzeug-Zustand übernehmen, wenn man gerade aus dem Vollbild dieses Blatts kommt
     const last = App.ink.lastState && App.ink.lastState.fileId === active.id ? App.ink.lastState : {};
-    // menuLabel: Beschriftung im „⋯“-Menü (Vollbild) – dort steht kein „+“ davor
-    const extraTools = [
-      { id: 'vocab', label: 'Vokabel', menuLabel: 'Neue Vokabel', icon: 'plus', onClick: () => App.newLinked('vocab', defaultsFor('vocab'), onLinked) },
-      { id: 'grammar', label: 'Grammatik', menuLabel: 'Neue Grammatik', icon: 'plus', onClick: () => App.newLinked('grammar', defaultsFor('grammar'), onLinked) },
-    ].concat(newPhrase ? [{ id: 'phrase', label: 'Ausdruck', menuLabel: 'Neuer Ausdruck', icon: 'plus', onClick: () => App.newLinked('phrase', defaultsFor('phrase'), onLinked) }] : []);
+    const extraTools = linkTools(defaultsFor, onLinked, newPhrase);
     App.ink.mount(inkEl, active.id, {
       embedded: true, defaultTool: 'fountain', ...last,
       extraTools,
@@ -112,12 +130,13 @@
   };
 
   // ---------- Getippt ----------
-  // opts: { html, onSave(html), newDefaults, onLinked, contextInfo() → ctx, placeholder, hint, linkLabel, linkRefs }
+  // opts: { html, onSave(html), newDefaults, onLinked, contextInfo() → ctx, placeholder, hint, linkLabel, linkRefs, newPhrase, markTitle }
   // linkRefs: per „Verlinken“ eingefügte Verweise zählen als verknüpft (onLinked(it, false)); Unterricht lässt es aus.
-  App.typedArea = (host, { html = '', onSave, newDefaults = {}, onLinked, contextInfo, placeholder, hint = '', linkLabel, linkRefs = false } = {}) => {
+  // newPhrase / markTitle: wie bei der Handschrift „＋ Ausdruck“ · Hinweis am Markieren-Knopf (siehe App.rte)
+  App.typedArea = (host, { html = '', onSave, newDefaults = {}, onLinked, contextInfo, placeholder, hint = '', linkLabel, linkRefs = false, newPhrase = false, markTitle } = {}) => {
     host.innerHTML = `<div data-rte></div>${hint ? `<p class="small muted">${hint}</p>` : ''}`;
     return App.rte(host.querySelector('[data-rte]'), html, onSave, {
-      placeholder, linkLabel,
+      placeholder, linkLabel, newPhrase, markTitle,
       onRefItem: linkRefs && onLinked ? (it) => onLinked(it, false) : undefined,
       onNewItem: (t, d, cb) => App.newLinked(t, Object.assign({}, newDefaults, d), async (it) => { cb && cb(it); if (onLinked) await onLinked(it, true); }),
       contextInfo,

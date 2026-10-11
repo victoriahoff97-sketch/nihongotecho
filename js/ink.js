@@ -1280,10 +1280,13 @@
 
   // ---------- Vollbild-Viewer ----------
   // opts: Werkzeug-Zustand übernehmen (defaultTool, eraser, color, mcolor, wIdx)
+  // Gehört das Blatt zu einer Stunde, einer Antwort/einem Tagebucheintrag oder einer Buchaufgabe, kommen „Neue Vokabel …“ und
+  // „Erkennen → verknüpfen“ von selbst mit (App.sheetLinkOpts, writearea.js) – außer der Aufrufer bringt sie schon mit
   INK.open = async (fileId, opts = {}) => {
     const root = document.createElement('div');
     $('#overlay-root').appendChild(root);
-    const ctrl = await INK.mount(root, fileId, { ...opts, embedded: false, onClose: () => { ctrl.destroy(); root.remove(); App.backup.nudge(); } });
+    const home = (!opts.onLinkWord && App.sheetLinkOpts && App.sheetLinkOpts(App.store.files.get(fileId))) || {};
+    const ctrl = await INK.mount(root, fileId, { ...home, ...opts, embedded: false, onClose: () => { ctrl.destroy(); root.remove(); App.backup.nudge(); } });
     if (!ctrl) root.remove();
   };
 })(window.App);

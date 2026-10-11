@@ -86,13 +86,19 @@
   };
   // Verknüpfen wie in der Mitschrift: „+ Vokabel“/„+ Grammatik“ und „Erkennen“ → Wort verknüpfen.
   // Die Vokabel merkt sich die Aufgabe als Fundort; „Lektion“ bleibt leer (eigenes Wort, kein Buch-Eintrag).
-  const openAttempt = async (fileId) => {
-    const f = App.store.files.get(fileId), ex = f && X.get(f.exerciseId);
+  const attemptDefaults = (f) => {
+    const ex = f && X.get(f.exerciseId);
     const label = ex ? 'Genki I · ' + L.title(ex) : (f ? f.name : '');
     const base = { source: 'Genki I', sourceRef: label };
-    const defaultsFor = (type) => (type === 'vocab' && f
+    return (type) => (type === 'vocab' && f
       ? Object.assign({}, base, { contexts: [{ exerciseId: f.exerciseId, label, date: App.today(), text: '' }] })
       : base);
+  };
+  // auch wenn ein Versuch als Datei geöffnet wird (Bibliothek, Suche)
+  App.sheetHome((f) => (f.exerciseId ? { newDefaults: attemptDefaults(f) } : null));
+  const openAttempt = async (fileId) => {
+    const f = App.store.files.get(fileId);
+    const defaultsFor = attemptDefaults(f);
     const root = document.createElement('div');
     $('#overlay-root').appendChild(root);
     const ctrl = await App.ink.mount(root, fileId, { embedded: false, extraInMenu: true, // die Leiste bleibt einzeilig

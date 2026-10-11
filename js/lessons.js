@@ -11,6 +11,15 @@
   const sessionTitle = (s) => s.title || UL.jpDate(s.date) || 'Ohne Datum';
   const bookRef = (s) => s.bookSource ? `${s.bookSource}${s.bookLesson !== '' && s.bookLesson != null ? ' L' + s.bookLesson : ''}` : '';
 
+  // Neu angelegte/verknüpfte Einträge landen in der passenden Liste der Stunde. „Lektion“ bleibt leer:
+  // die laufende Nummer der Stunde ist keine Lehrbuch-Lektion.
+  const sessionLinks = (s) => ({
+    newDefaults: { source: UL.CLASS_SOURCE, tags: ['vhs'] },
+    onLinked: async (it) => { const k = KEYS[it.type]; if (!k) return; s[k] = Array.from(new Set((s[k] || []).concat(it.id))); await App.saveItem(s, { silent: true }); },
+  });
+  // Mitschrift, Hausaufgaben und Material der Stunde verknüpfen auch dann mit ihr, wenn sie als ganzes Blatt geöffnet werden
+  App.sheetHome((f) => { const s = f.sessionId && App.item(f.sessionId); return s && s.type === 'session' ? Object.assign(sessionLinks(s), { newPhrase: true }) : null; });
+
   // ---------- Stunde anlegen / bearbeiten ----------
   App.editSession = (s) => {
     const isNew = !s;
@@ -107,10 +116,7 @@
     view.querySelector('[data-edit-session]').onclick = () => App.editSession(s);
     const body = view.querySelector('[data-body]');
     const save = async (patch) => { Object.assign(s, patch); await App.saveItem(s, { silent: true }); };
-    // Neu angelegte/verknüpfte Einträge landen in der passenden Liste der Stunde. „Lektion“ bleibt leer:
-    // die laufende Nummer der Stunde ist keine Lehrbuch-Lektion.
-    const newDefaults = { source: UL.CLASS_SOURCE, tags: ['vhs'] };
-    const onLinked = (it) => { const k = KEYS[it.type]; s[k] = Array.from(new Set((s[k] || []).concat(it.id))); return save({}); };
+    const { newDefaults, onLinked } = sessionLinks(s);
     const newLinked = (type, defaults, after) => App.newLinked(type, Object.assign({}, newDefaults, defaults), async (it) => { after && after(it); await onLinked(it); });
 
     if (tab === 'hand') {
@@ -125,7 +131,8 @@
     }
     if (tab === 'typed') {
       App.typedArea(body, {
-        html: s.notesHtml, onSave: (html) => save({ notesHtml: html }), newDefaults, onLinked,
+        html: s.notesHtml, onSave: (html) => save({ notesHtml: html }), newDefaults, onLinked, newPhrase: true,
+        markTitle: 'Markieren – landet in der Zusammenfassung',
         contextInfo: () => ({ sessionId: s.id, label: sessionTitle(s) + (s.topic ? ' · ' + s.topic : ''), date: s.date || App.today() }),
         placeholder: 'Hier tippen … (Überschriften, Listen, Furigana, Markierungen) – neues Wort markieren → „＋ Vokabel“',
         hint: 'Tipp: Wichtiges <mark>markieren</mark> – es erscheint automatisch in der Zusammenfassung. Mit „+ Vokabel“ wird markierter Text direkt als Vokabel gespeichert und mit dieser Stunde verknüpft.',

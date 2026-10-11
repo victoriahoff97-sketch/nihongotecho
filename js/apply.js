@@ -455,6 +455,23 @@
     await App.saveItem(item, { silent: true });
   };
 
+  // Vorgaben für hier angelegte Einträge. Handschriftliche Vokabel: Fundort als Kontext (ohne Satz – der steht nur auf dem Blatt)
+  const sourceOf = (item) => (item.type === 'answer' ? 'Smalltalk' : 'Tagebuch');
+  const baseDefaults = (item) => ({ source: sourceOf(item), tags: ['anwenden'] });
+  const sheetDefaults = (item) => (type) => (type === 'vocab'
+    ? Object.assign(baseDefaults(item), { contexts: [{ itemId: item.id, label: sourceOf(item) + ' · ' + App.fmtDate(item.date), date: item.date, text: '' }] })
+    : baseDefaults(item));
+  const unlinkFrom = async (item, id) => {
+    ['vocabIds', 'grammarIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => v !== id); });
+    await App.saveItem(item, { silent: true });
+  };
+  // Das Blatt einer Antwort/eines Eintrags verknüpft auch dann mit ihm, wenn es als ganzes Blatt geöffnet wird (z. B. aus der Bibliothek)
+  App.sheetHome((f) => {
+    const item = f.itemId && App.item(f.itemId);
+    if (!item || !['answer', 'journal'].includes(item.type)) return null;
+    return { newDefaults: sheetDefaults(item), onLinked: (it, isNew) => linkInto(item, it, isNew), onUnlinked: (id) => unlinkFrom(item, id) };
+  });
+
   const renderWrite = (view, item, q) => {
     const isAnswer = item.type === 'answer';
     const prompt = isAnswer ? App.item(item.promptId) : null;
@@ -509,8 +526,7 @@
     const sheetIds = () => App.filesFor({ itemId: item.id }).filter((f) => App.fileKind(f) === 'notebook').map((f) => f.id);
     const dropMarks = (id) => (inkApi ? inkApi.dropLinks(id) : Promise.all(sheetIds().map((fid) => App.ink.dropLinks(fid, id))));
     const unlink = async (id, fromSheet) => {
-      ['vocabIds', 'grammarIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => v !== id); });
-      await App.saveItem(item, { silent: true });
+      await unlinkFrom(item, id);
       if (!fromSheet) await dropMarks(id);
       drawSide();
     };
@@ -575,8 +591,8 @@
 
     // Schreibfläche
     const body = view.querySelector('[data-body]');
-    const source = isAnswer ? 'Smalltalk' : 'Tagebuch';
-    const newDefaults = { source, tags: ['anwenden'] };
+    const source = sourceOf(item);
+    const newDefaults = baseDefaults(item);
     // Lernstand neuer Vokabeln kommt aus dem Vokabel-Dialog (Standard „In den Lernstapel“, wie im Unterricht)
     const onLinked = async (it, isNew) => {
       await linkInto(item, it, isNew);
@@ -590,10 +606,7 @@
         multiSheet: false,
         sheetMeta: (paper) => ({ itemId: item.id, role: item.type, section: 'apply', paper, name: (isAnswer ? 'Antwort ' : 'Tagebuch ') + App.uLogic.jpDate(item.date) }),
         onSelect: () => App.render(true),
-        // Handschriftliche Vokabel: Fundort als Kontext (ohne Satz – der steht nur auf dem Blatt)
-        newDefaults: (type) => (type === 'vocab'
-          ? Object.assign({}, newDefaults, { contexts: [{ itemId: item.id, label: source + ' · ' + App.fmtDate(item.date), date: item.date, text: '' }] })
-          : newDefaults),
+        newDefaults: sheetDefaults(item),
         onLinked, onUnlinked: (id) => unlink(id, true),
       });
     } else {
@@ -601,7 +614,7 @@
         html: item.html, onSave: async (h) => { if (!App.item(item.id)) return; /* inzwischen gelöscht: nicht wiederbeleben */ item.html = h; await App.saveItem(item, { silent: true }); },
         newDefaults, onLinked, linkLabel, linkRefs: true,
         contextInfo: () => ({ itemId: item.id, label: source + ' · ' + App.fmtDate(item.date), date: item.date }),
-        placeholder: 'Auf Japanisch antworten … neues Wort markieren → „＋ Vokabel“',
+        placeholder: `Auf Japanisch ${isAnswer ? 'antworten' : 'schreiben'} … neues Wort markieren → „＋ Vokabel“`,
       });
     }
   };

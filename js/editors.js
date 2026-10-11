@@ -737,13 +737,15 @@
   // ---------- Mitschrift-Editor (Rich Text) ----------
   // linkLabel (optional, z. B. 'mit dieser Antwort') ersetzt im Dialog „Wort gibt es schon“ die Stunden-Formulierung
   // onRefItem(it) (optional): nach dem Einfügen eines Verweis-Chips („Verlinken“) aufgerufen
-  App.rte = (host, html, onSave, { placeholder = 'Hier mitschreiben …', onNewItem, onLinkItem, onRefItem, contextInfo, linkLabel } = {}) => {
+  // newPhrase: zusätzlich „＋ Ausdruck“ (wo auch Ausdrücke verknüpft werden, z. B. Unterricht)
+  // markTitle: Hinweis am Markieren-Knopf (im Unterricht: landet in der Zusammenfassung)
+  App.rte = (host, html, onSave, { placeholder = 'Hier mitschreiben …', onNewItem, onLinkItem, onRefItem, contextInfo, linkLabel, newPhrase = false, markTitle = 'Markieren' } = {}) => {
     host.innerHTML = `<div class="editor-toolbar">
       <button class="icon-btn sm" data-cmd="h2" title="Überschrift">${icon('h')}</button>
       <button class="icon-btn sm" data-cmd="bold" title="Fett (Strg+B)">${icon('bold')}</button>
       <button class="icon-btn sm" data-cmd="italic" title="Kursiv">${icon('italic')}</button>
       <button class="icon-btn sm" data-cmd="underline" title="Unterstreichen">${icon('underline')}</button>
-      <button class="icon-btn sm" data-cmd="mark" title="Markieren – landet in der Zusammenfassung">${icon('highlight')}</button>
+      <button class="icon-btn sm" data-cmd="mark" title="${esc(markTitle)}">${icon('highlight')}</button>
       <span class="sep"></span>
       <button class="icon-btn sm" data-cmd="ul" title="Liste">${icon('ul')}</button>
       <button class="icon-btn sm" data-cmd="ol" title="Nummerierte Liste">${icon('ol')}</button>
@@ -751,7 +753,7 @@
       <span class="sep"></span>
       <button class="icon-btn sm" data-cmd="ruby" title="Furigana über markiertes Kanji">${icon('ruby')}</button>
       <button class="icon-btn sm" data-cmd="ref" title="Eintrag verlinken (Grammatik, Vokabel …)">${icon('link')}</button>
-      ${onNewItem ? `<button class="btn btn-sm" data-cmd="newvocab" title="Markierten Text als neue Vokabel speichern">${icon('plus')} Vokabel</button><button class="btn btn-sm" data-cmd="newgrammar">${icon('plus')} Grammatik</button>` : ''}
+      ${onNewItem ? `<button class="btn btn-sm" data-cmd="newvocab" title="Markierten Text als neue Vokabel speichern">${icon('plus')} Vokabel</button><button class="btn btn-sm" data-cmd="newgrammar">${icon('plus')} Grammatik</button>${newPhrase ? `<button class="btn btn-sm" data-cmd="newphrase" title="Markierten Text als neuen Ausdruck speichern">${icon('plus')} Ausdruck</button>` : ''}` : ''}
       <span class="grow"></span><span class="small muted" data-status></span></div>
       <div class="rte" contenteditable="true" spellcheck="false" data-placeholder="${esc(placeholder)}"></div>`;
     const ed = host.querySelector('.rte');
@@ -795,6 +797,10 @@
       } else if (c === 'newvocab') newVocab();
       else if (c === 'newgrammar') {
         onNewItem('grammar', { title: selText.trim() }, (it) => {
+          if (selText) insertHtml(`<a class="ref" href="${App.link(it)}" data-ref="${it.id}" contenteditable="false">${esc(App.itemPlain(it))}</a>&nbsp;`);
+        });
+      } else if (c === 'newphrase') {
+        onNewItem('phrase', { jp: selText.trim() }, (it) => {
           if (selText) insertHtml(`<a class="ref" href="${App.link(it)}" data-ref="${it.id}" contenteditable="false">${esc(App.itemPlain(it))}</a>&nbsp;`);
         });
       }
