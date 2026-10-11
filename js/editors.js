@@ -36,11 +36,13 @@
   // data-en/data-had-de: englische Übersetzung (Paket) bleibt beim Speichern erhalten
   // data-furi: genaue Furigana-Notation (gespeichert, von Tatoeba oder automatisch gelesen) – gilt, solange Satz und Lesung dazu passen
   const micBtn = (lang, title) => (App.dictate.supported() ? `<button type="button" class="icon-btn sm mic" data-mic="${lang}" title="${title}">${icon('mic')}</button>` : '');
+  // Feld mit Knöpfen am rechten Rand: Mikrofon (wo vorhanden), dann „Zeile leeren“ (nur sichtbar, wenn etwas drinsteht)
+  const exField = (input, mic = '') => `<div class="mic-field${mic ? '' : ' one'}">${input}<span class="field-btns">${mic}<button type="button" class="icon-btn sm clr" data-clr title="Zeile leeren">${icon('eraser')}</button></span></div>`;
   const exRow = (ex = {}) => `<div class="ex-row" data-en="${esc(ex.en || '')}" data-had-de="${ex.de ? '1' : ''}" data-furi="${esc(ex.furi || (ex.jp && JP.hasNotation(ex.jp) ? ex.jp : ''))}"><button type="button" class="icon-btn sm rm" data-rm-ex title="Entfernen">${icon('close')}</button>
-      <div class="mic-field"><input class="input jp-in" data-ex="jp" placeholder="Japanisch, z. B. 毎日ご飯を食べます。" value="${esc(ex.jp && JP.hasNotation(ex.jp) ? JP.plain(ex.jp) : ex.jp || '')}">${micBtn('ja-JP', 'Japanisch diktieren')}</div>
-      <input class="input jp-in" data-ex="kana" placeholder="Lesung in Kana (füllt sich bei Kanji von selbst – ergibt Furigana)" value="${esc(ex.kana || (ex.jp && JP.hasNotation(ex.jp) ? JP.kana(ex.jp) : ''))}">
-      <div class="mic-field"><input class="input" data-ex="de" placeholder="Deutsche Übersetzung (füllt sich von selbst)" value="${esc(App.exMeaning(ex))}">${micBtn('de-DE', 'Deutsch diktieren')}</div>
-      <input class="input" data-ex="src" placeholder="Fundstelle (optional, z. B. NHK Easy 12.09.)" value="${esc(ex.src || '')}">
+      ${exField(`<input class="input jp-in" data-ex="jp" placeholder="Japanisch, z. B. 毎日ご飯を食べます。" value="${esc(ex.jp && JP.hasNotation(ex.jp) ? JP.plain(ex.jp) : ex.jp || '')}">`, micBtn('ja-JP', 'Japanisch diktieren'))}
+      ${exField(`<input class="input jp-in" data-ex="kana" placeholder="Lesung in Kana (füllt sich bei Kanji von selbst – ergibt Furigana)" value="${esc(ex.kana || (ex.jp && JP.hasNotation(ex.jp) ? JP.kana(ex.jp) : ''))}">`)}
+      ${exField(`<input class="input" data-ex="de" placeholder="Deutsche Übersetzung (füllt sich von selbst)" value="${esc(App.exMeaning(ex))}">`, micBtn('de-DE', 'Deutsch diktieren'))}
+      ${exField(`<input class="input" data-ex="src" placeholder="Fundstelle (optional, z. B. NHK Easy 12.09.)" value="${esc(ex.src || '')}">`)}
       <div class="ex-note small muted" data-ex-note hidden></div></div>`;
   // suggest: Knopf „Satz vorschlagen“ (holt kurze Sätze zum Wort von Tatoeba, braucht Internet)
   const exBlock = (exs, suggest) => `<div class="field"><label>Beispielsätze</label><div class="stack" data-exs>${(exs && exs.length ? exs : [{}]).map(exRow).join('')}</div>
@@ -51,7 +53,7 @@
     root.addEventListener('click', (e) => {
       if (e.target.closest('[data-add-ex]')) { root.querySelector('[data-exs]').insertAdjacentHTML('beforeend', exRow()); App.hydrateIcons(root); }
       const rm = e.target.closest('[data-rm-ex]'); if (rm) rm.closest('.ex-row').remove();
-      const mic = e.target.closest('[data-mic]'); if (mic) App.dictate.toggle(mic.parentElement.querySelector('input'), mic, mic.dataset.mic);
+      const mic = e.target.closest('[data-mic]'); if (mic) App.dictate.toggle(mic.closest('.mic-field').querySelector('input'), mic, mic.dataset.mic);
     });
     bindExFill(root);
     if (root.querySelector('[data-sugg]')) bindSuggest(root);
@@ -116,7 +118,16 @@
     };
 
     root.addEventListener('change', (e) => { if (e.target.matches('.ex-row [data-ex="jp"]')) fill(e.target.closest('.ex-row')); });
+    // „Zeile leeren“: mit dem japanischen Satz verschwinden auch Lesung und Übersetzung, soweit sie noch die automatischen sind
+    const clear = (row, k) => {
+      row._fill = (row._fill || 0) + 1; // laufendes Ausfüllen verwerfen
+      if (k === 'jp') ['kana', 'de'].forEach((n) => { if (free(row, n)) field(row, n).value = ''; });
+      field(row, k).value = '';
+      note(row, '');
+    };
     root.addEventListener('click', async (e) => {
+      const clr = e.target.closest('.ex-row [data-clr]');
+      if (clr) return clear(clr.closest('.ex-row'), clr.closest('.mic-field').querySelector('input').dataset.ex);
       const yes = e.target.closest('[data-tr-yes]'), no = e.target.closest('[data-tr-no]');
       if (!yes && !no) return;
       const row = e.target.closest('.ex-row');
