@@ -1,4 +1,4 @@
-/* Nihongo Techō – Buchaufgaben: Paket einlesen, Aufgaben an der Grammatik zeigen, Versuche mit dem Stift */
+/* Nihongo Techō – Buchaufgaben: Paket einlesen, Aufgaben an der Grammatik zeigen, Versuche mit Stift oder Tastatur */
 'use strict';
 (function (App) {
   const { $, esc, icon } = App;
@@ -96,12 +96,13 @@
   };
   // auch wenn ein Versuch als Datei geöffnet wird (Bibliothek, Suche)
   App.sheetHome((f) => (f.exerciseId ? { newDefaults: attemptDefaults(f) } : null));
-  const openAttempt = async (fileId) => {
+  // typed: true = mit dem Antwortfeld öffnen (Knopf „Tippen“); sonst so, wie der Versuch geschrieben wurde bzw. wie zuletzt
+  const openAttempt = async (fileId, typed) => {
     const f = App.store.files.get(fileId);
     const defaultsFor = attemptDefaults(f);
     const root = document.createElement('div');
     $('#overlay-root').appendChild(root);
-    const ctrl = await App.ink.mount(root, fileId, { embedded: false, extraInMenu: true, // die Leiste bleibt einzeilig
+    const ctrl = await App.ink.mount(root, fileId, { embedded: false, extraInMenu: true, typed, // die Leiste bleibt einzeilig
       extraTools: ['vocab', 'grammar'].map((type) => ({ id: type, label: type === 'vocab' ? 'Neue Vokabel' : 'Neue Grammatik', icon: 'plus', onClick: () => App.newLinked(type, defaultsFor(type)) })),
       onLinkWord: App.wordLinker(defaultsFor),
       onClose: () => { ctrl.destroy(); root.remove(); App.render(true); } });
@@ -115,7 +116,7 @@
       <div class="row between"><h3>${esc(TITLE)}</h3>${dir ? '<span class="pack-status ok">Geladen</span>' : ''}</div>
       <p class="small muted">${dir
     ? `${n} Aufgaben${X.pages().length ? ` · ${X.pages().length} Buchseiten-PDFs` : ''} · Stand ${esc(App.fmtDate(dir.stand))}. Die Aufgaben stehen bei den Grammatik-Einträgen unter „Üben“${X.pages().length ? ', die Vokabelseiten und „Useful Expressions“ bei den <a href="#/vokabeln?tab=files">Vokabeln unter „Dateien“</a>' : ''}.`
-    : 'Übungsaufgaben aus dem Lehrbuch als Bildausschnitte, zum Lösen mit dem Stift. Die Paket-Datei (.ntpaket) wird einmal pro Gerät eingelesen und bleibt dann in diesem Browser.'}</p>
+    : 'Übungsaufgaben aus dem Lehrbuch als Bildausschnitte, zum Lösen mit dem Stift oder der Tastatur. Die Paket-Datei (.ntpaket) wird einmal pro Gerät eingelesen und bleibt dann in diesem Browser.'}</p>
       ${L.packOutdated(dir) ? '<p class="small" data-ex-old style="color:var(--shu)">Es gibt eine neuere Paket-Datei mit den Vokabelseiten und „Useful Expressions“ als PDF. Bitte die neue Datei über „Neu einlesen“ laden – deine Versuche bleiben erhalten.</p>' : ''}
       <div class="row"><button class="btn ${dir ? '' : 'btn-primary'}" data-ex-pick>${icon('upload')} ${dir ? 'Neu einlesen' : 'Paket-Datei wählen'}</button>
       ${dir ? `<button class="btn" data-ex-remove>${icon('trash')} Entfernen</button>` : ''}</div>
@@ -169,19 +170,19 @@
     view.innerHTML = `<div class="sec-grammar"><div class="crumbs"><a href="#/bibliothek">Bibliothek</a> › <a href="${X.libHref()}">Buchaufgaben</a> › <a href="${X.libHref(lesson)}">Genki I · Lektion ${esc(lesson)}</a></div>
       <div class="card pad-lg"><div class="row between" style="align-items:flex-start"><div><h1 style="font-size:24px">Buchaufgabe ${esc(ex ? L.title(ex) : '')}</h1>
         ${gram.length ? `<div class="row small" style="margin-top:6px">${gram.map((g) => `<a class="badge" style="text-decoration:none" href="${App.link(g)}">${esc(g.title)}</a>`).join('')}</div>` : ''}</div>
-        ${ex ? `<button class="btn btn-primary" data-ex-new="${esc(ex.id)}">${icon('plus')} Neuer Versuch</button>` : ''}</div>
+        ${ex ? `<div class="row" style="flex-wrap:wrap;justify-content:flex-end"><button class="btn" data-ex-new="${esc(ex.id)}" data-ex-typed-new title="Neuer Versuch mit der Tastatur: Antwort tippen statt mit dem Stift schreiben">⌨ Tippen</button><button class="btn btn-primary" data-ex-new="${esc(ex.id)}">${icon('plus')} Neuer Versuch</button></div>` : ''}</div>
         ${ex ? `<img class="ex-full" data-ex-img="${esc(ex.id)}" alt="Aufgabe aus dem Lehrbuch">` : `<p class="muted">${dir ? 'Diese Aufgabe ist im geladenen Paket nicht enthalten.' : 'Das Buchaufgaben-Paket ist auf diesem Gerät nicht geladen (<a href="#/pakete">Pakete</a>).'} Deine Versuche bleiben erhalten.</p>`}</div>
       <div class="section-title">Deine Versuche</div>
       ${atts.length ? `<div class="ex-grid wide">${atts.map((f, i) => `<div class="card ex-attempt" data-ex-open="${esc(f.id)}"><div class="row between"><b>Versuch ${atts.length - i}</b><span class="row" style="gap:4px"><span class="small muted">${esc(when(f.created))}</span>
-        <button class="icon-btn" data-ex-del="${esc(f.id)}" title="Versuch löschen">${icon('trash')}</button></span></div><canvas data-ex-prev="${esc(f.id)}"></canvas><div class="small muted" data-ex-empty hidden>noch leer</div></div>`).join('')}</div>`
-    : '<p class="muted">Noch kein Versuch. „Neuer Versuch“ öffnet ein Blatt mit der Aufgabe und einem Schreibblatt. Das Papier (liniert, kariert, Kanji-Raster …) stellst du im Blatt oben in der Leiste um; der nächste Versuch übernimmt es.</p>'}</div>`;
+        <button class="icon-btn" data-ex-del="${esc(f.id)}" title="Versuch löschen">${icon('trash')}</button></span></div>${L.typedPreview(f.typed) ? `<div class="ex-typed-prev" lang="ja" data-ex-typed>${esc(L.typedPreview(f.typed))}</div>` : ''}<canvas data-ex-prev="${esc(f.id)}"></canvas><div class="small muted" data-ex-empty hidden>noch leer</div></div>`).join('')}</div>`
+    : '<p class="muted">Noch kein Versuch. „Neuer Versuch“ öffnet ein Blatt mit der Aufgabe und einem Schreibblatt. Das Papier (liniert, kariert, Kanji-Raster …) stellst du im Blatt oben in der Leiste um; der nächste Versuch übernimmt es. Mit „Tippen“ beantwortest du die Aufgabe mit der Tastatur statt mit dem Stift; im Blatt wechselst du über „⋯“.</p>'}</div>`;
     X.hydrate(view);
     view.querySelectorAll('canvas[data-ex-prev]').forEach(async (cv) => {
       const id = cv.dataset.exPrev;
       // Geschrieben wird meist auf dem Schreibblatt (Seite 2); sonst die Notizen direkt an der Aufgabe zeigen
       if (await App.ink.preview(cv, id, { page: 1, maxH: 180 }) || await App.ink.preview(cv, id, { page: 0, maxH: 180 })) return;
       cv.hidden = true;
-      cv.parentElement.querySelector('[data-ex-empty]').hidden = false;
+      if (!cv.parentElement.querySelector('[data-ex-typed]')) cv.parentElement.querySelector('[data-ex-empty]').hidden = false;
     });
   });
 
@@ -207,7 +208,7 @@
       return;
     }
     const nw = e.target.closest('[data-ex-new]');
-    if (nw) { const f = await X.newAttempt(nw.dataset.exNew); if (f) openAttempt(f.id); return; }
+    if (nw) { const typed = nw.hasAttribute('data-ex-typed-new'); const f = await X.newAttempt(nw.dataset.exNew); if (f) { if (typed) App.saveSettings({ exTyped: true }); openAttempt(f.id, typed || undefined); } return; }
     const del = e.target.closest('[data-ex-del]');
     if (del) {
       if (await App.confirm('Diesen Versuch mit allem, was du darauf geschrieben hast, löschen?')) await App.deleteFile(del.dataset.exDel);

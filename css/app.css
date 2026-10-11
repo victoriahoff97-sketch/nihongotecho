@@ -674,6 +674,14 @@ button.more-item:hover { background: var(--paper-2); }
 .viewer-pages.split > .vpage.ex-page { grid-column: 1; position: sticky; }
 .viewer-pages.split.split-r > .vpage { grid-column: 1; }
 .viewer-pages.split.split-r > .vpage.ex-page { grid-column: 2; }
+/* Buchaufgabe mit der Tastatur: Antwortfeld an der Stelle der Schreibblätter */
+.ex-typed { display: flex; flex-direction: column; gap: 8px; flex: none; box-sizing: border-box; max-width: 100%; padding: 16px 18px 18px; background: var(--card); color: var(--ink); border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+.ex-typed[hidden] { display: none; }
+.ex-typed label { font-size: 13px; font-weight: 800; color: var(--muted); }
+.ex-typed textarea { flex: 1 0 auto; box-sizing: border-box; width: 100%; min-height: 220px; resize: none; overflow: hidden; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg); color: var(--ink); font-family: var(--font-jp); font-size: 22px; line-height: 1.7; touch-action: manipulation; }
+.ex-typed textarea:focus { outline: 2px solid var(--sec); outline-offset: 1px; }
+.viewer-pages.split > .ex-typed { grid-column: 2; grid-row: 1; }
+.viewer-pages.split.split-r > .ex-typed { grid-column: 1; }
 .vpage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .vpage .pno { position: absolute; bottom: -18px; right: 0; font-size: 11px; color: #ddd; font-weight: 700; }
 .vpage .loading { position: absolute; inset: 0; display: grid; place-items: center; color: #999; font-weight: 700; }
@@ -1213,6 +1221,7 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .ex-cap { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; font-weight: 800; border-top: 3px solid var(--sec); }
 .ex-full { display: block; width: 100%; max-width: 860px; margin-top: 14px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
 .ex-attempt { cursor: pointer; }
+.ex-typed-prev { margin-top: 8px; padding: 8px 10px; background: var(--bg); border-radius: 8px; font-family: var(--font-jp); font-size: 15px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
 .ex-attempt canvas { display: block; width: 100%; margin-top: 8px; background: #fff; border-radius: 8px; }
 
 /* ---------- Willkommenskarte (Web-Version, Startseite) ---------- */

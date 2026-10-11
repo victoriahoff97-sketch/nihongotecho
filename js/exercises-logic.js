@@ -134,5 +134,20 @@
   // off ≤ 0 = so weit ist sie nach oben geschoben, höchstens bis ihr unteres Ende zu sehen ist
   const splitOffset = (off, exH, ch) => Math.min(0, Math.max(ch - 2 * SPLIT.PAD - exH, off || 0));
 
-  App.exercisesLogic = { MAGIC, PACK, buildPack, parsePack, forGrammar, forLesson, title, attemptName, cutParts, checkCuts, packOutdated, readyPages, pageFileId, pageFile, planPages, checkPages, SPLIT, splitLayout, splitOffset };
+  // ---------- Tastatur: getippte Antwort am Versuch (f.typed) ----------
+  // Ein Versuch, der nur Getipptes (oder nur Stiftschrift) hat, öffnet so, wie er geschrieben wurde; sonst gilt die zuletzt benutzte Art
+  const startTyped = (f, hasInk, last) => {
+    const text = !!String(f.typed || '').trim();
+    return text !== !!hasInk ? text : !!last;
+  };
+  // Die ersten Zeilen für die Liste „Deine Versuche“
+  const typedPreview = (text, maxLines = 4, maxChars = 160) => {
+    const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
+    let out = lines.slice(0, maxLines).join('\n');
+    const cut = out.length > maxChars;
+    if (cut) out = out.slice(0, maxChars);
+    return out + (cut || lines.length > maxLines ? ' …' : '');
+  };
+
+  App.exercisesLogic = { MAGIC, PACK, buildPack, parsePack, forGrammar, forLesson, title, attemptName, cutParts, checkCuts, packOutdated, readyPages, pageFileId, pageFile, planPages, checkPages, SPLIT, splitLayout, splitOffset, startTyped, typedPreview };
 })(window.App);

@@ -170,6 +170,7 @@
   };
 
   // ---------- Schreibfläche (eingebettet oder Vollbild) ----------
+  // opts.typed: Buchaufgabe mit dem Antwortfeld (true) oder dem Schreibblatt (false) öffnen; ohne Angabe wie zuletzt
   // opts: { embedded, extraTools: [{ id, label, menuLabel, icon, onClick }], extraInMenu (extraTools ins „⋯“-Menü statt in die Leiste), onFullscreen, onClose, onLinkWord, onUnlinkWord }
   // onLinkWord(r) → Eintrag: Treffer aus dem Nachschlagen-Fenster mit dem eingekreisten Wort verknüpfen (ohne: kein „Verknüpfen“)
   // onUnlinkWord(itemId): die letzte Markierung eines Wortes wurde auf diesem Blatt gelöst
@@ -227,6 +228,7 @@
         ${opts.extraInMenu ? (opts.extraTools || []).map((t) => `<button class="more-item" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''}<span>${esc(t.menuLabel || t.label)}</span></button>`).join('') : ''}
         ${embedded ? '' : `<button class="more-item" data-v="details">${icon('edit')}<span>Umbenennen / Details</span></button>`}
         <button class="more-item" data-v="penonly" title="Wenn an: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">${icon('ballpen')}<span>Nur Stift schreibt</span><b data-state>${st.penOnly ? 'an' : 'aus'}</b></button>
+        ${splittable ? `<button class="more-item" data-v="typed" title="Antwort tippen statt mit dem Stift schreiben – beides bleibt am Versuch">${icon('edit')}<span>Mit der Tastatur antworten</span><b data-state>aus</b></button>` : ''}
         ${splittable ? `<button class="more-item" data-v="swap" title="Aufgabe links oder rechts (z. B. für Linkshänder)"${st.split ? '' : ' hidden'}>${icon('shuffle')}<span>Seiten tauschen</span></button>` : ''}
         <div class="more-item more-zoom">${icon('zoomIn')}<span>Zoom</span><button class="icon-btn sm" data-v="zout" title="Verkleinern">${icon('zoomOut')}</button><button class="btn btn-sm btn-ghost" data-v="fit" title="Einpassen">100%</button><button class="icon-btn sm" data-v="zin" title="Vergrößern">${icon('zoomIn')}</button></div>
         <button class="more-item" data-v="print">${icon('print')}<span>Drucken / als PDF</span></button>
@@ -324,7 +326,7 @@
     };
     const saveInk = App.debounce(flushAll, 500);
     // Fenster/Tab wird geschlossen oder in den Hintergrund geschickt → sofort sichern
-    const onHide = () => { if (document.visibilityState !== 'visible') flushAll(); };
+    const onHide = () => { if (document.visibilityState !== 'visible') { flushAll(); if (ty.flush) ty.flush(); } };
     window.addEventListener('pagehide', flushAll);
     document.addEventListener('visibilitychange', onHide);
 
@@ -354,6 +356,34 @@
     };
     pageDefs.forEach(buildPage);
     if (splittable && st.pages[0]) st.pages[0].el.classList.add('ex-page');
+    // ---------- Buchaufgabe mit der Tastatur: ein Antwortfeld steht an der Stelle der Schreibblätter ----------
+    // Der Text liegt am Versuch (f.typed); die Stiftschrift auf den Blättern bleibt, sie ist nur ausgeblendet
+    const ty = {};
+    if (splittable && st.pages.length > 1) {
+      ty.el = document.createElement('div');
+      ty.el.className = 'ex-typed'; ty.el.hidden = true;
+      ty.el.innerHTML = '<div class="row between"><label for="ex-typed-ta">Deine Antwort</label><button class="btn btn-sm btn-ghost" data-ty-pen title="Zurück zum Schreibblatt – der Text bleibt am Versuch">✎ Mit dem Stift schreiben</button></div><textarea id="ex-typed-ta" lang="ja" spellcheck="false" autocapitalize="off" placeholder="Hier tippen …"></textarea>';
+      pagesEl.appendChild(ty.el);
+      ty.ta = ty.el.querySelector('textarea');
+      ty.ta.value = f.typed || '';
+      ty.flush = () => { if (!ty.dirty) return; ty.dirty = false; App.db.put('files', f).catch((e) => { console.error(e); App.toast('Antwort konnte nicht gespeichert werden'); }); };
+      ty.save = App.debounce(ty.flush, 600);
+      // das Feld wächst mit dem Text, gescrollt wird das ganze Blatt
+      ty.grow = () => { ty.ta.style.height = 'auto'; ty.ta.style.height = ty.ta.scrollHeight + 'px'; };
+      ty.ta.addEventListener('input', () => { f.typed = ty.ta.value; ty.dirty = true; ty.save(); ty.grow(); });
+      st.typed = typeof opts.typed === 'boolean' ? opts.typed : XL.startTyped(f, Array.from(inkMap.values()).some((r) => App.inkImages.hasInk(r)), S.exTyped);
+      ty.el.querySelector('[data-ty-pen]').addEventListener('click', () => setTyped(false));
+    }
+    const applyTyped = () => {
+      if (!ty.el) { const b = root.querySelector('[data-v=typed]'); if (b) b.hidden = true; return; }
+      st.pages.forEach((p) => { if (p.i) { p.el.hidden = st.typed; if (st.typed) p.visible = false; } });
+      ty.el.hidden = !st.typed;
+      root.querySelector('[data-v=typed] [data-state]').textContent = st.typed ? 'an' : 'aus';
+      // Papier und neue Seiten gehören zu den Schreibblättern
+      $$('[data-v=paper], [data-v=addpage]', root).forEach((b) => { b.hidden = st.typed; });
+    };
+    applyTyped();
+    if (st.typed && opts.typed) ty.ta.focus(); // „Tippen“ gewählt: gleich losschreiben
     // ---------- Buchlayout: immer eine Doppelseite, blättern statt scrollen ----------
     let ready = false; // erst nach dem Aufbau gibt es Schildchen/Auswahl zum Aufräumen
     const bk = {};
@@ -410,7 +440,7 @@
       const ex = st.pages[0];
       if (!splittable || !ex) return;
       if (st.cols) st.exOff = XL.splitOffset(st.exOff, ex.el.offsetHeight, scroller.clientHeight);
-      ex.el.style.gridRow = st.cols ? `1 / span ${st.pages.length - 1}` : '';
+      ex.el.style.gridRow = st.cols ? `1 / span ${st.typed ? 1 : st.pages.length - 1}` : '';
       ex.el.style.top = st.cols ? XL.SPLIT.PAD + st.exOff + 'px' : '';
       ex.el.style.marginTop = st.cols ? st.exOff + 'px' : '';
       // die Aufgabe zählt nicht zur Höhe: wie weit gescrollt wird, bestimmen allein die Schreibblätter
@@ -424,6 +454,12 @@
       const W = baseWidth() * st.zoom;
       if (W > 0) {
         st.pages.forEach((p) => { const w = st.cols ? (p.i ? st.cols.sheetW : st.cols.exW) * st.zoom : W; p.el.style.width = w + 'px'; p.el.style.height = w * p.def.ratio + 'px'; });
+        if (ty.el) {
+          // die Schrift im Feld zoomt nicht mit; nebeneinander füllt es die Höhe neben der Aufgabe
+          ty.el.style.width = (st.cols ? st.cols.sheetW : baseWidth()) + 'px';
+          ty.el.style.minHeight = st.cols ? scroller.clientHeight - 2 * XL.SPLIT.PAD + 'px' : '';
+          if (st.typed) ty.grow();
+        }
         placeEx();
         // Einband, Falz und Ecken sind in em bemessen: 1em = 1/30 Seitenbreite
         if (st.book) { pagesEl.style.fontSize = W / 30 + 'px'; bk.ghost.style.width = W + 'px'; bk.ghost.style.height = W * A4 + 'px'; }
@@ -436,6 +472,7 @@
 
     const renderPage = async (p) => {
       const W = p.el.clientWidth, H = p.el.clientHeight;
+      if (!W || !H) return; // ausgeblendet (Buch, Antwortfeld): nichts zu zeichnen
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const tw = Math.round(W * dpr);
       if (p.renderedW === tw || p.busy) { drawInk(p); return; }
@@ -523,6 +560,8 @@
     scroller.addEventListener('pointerdown', (e) => {
       if (e.target.closest && e.target.closest('[data-del]')) { e.preventDefault(); deleteSel(); return; }
       if (e.target.closest && e.target.closest('.bk-turn, .bk-ghost')) return;
+      // Antwortfeld: Maus und Stift setzen die Schreibmarke und markieren Text; der Finger scrollt weiter das Blatt
+      if (e.target.closest && e.target.closest('.ex-typed') && (e.pointerType !== 'touch' || e.target.closest('button'))) return;
       // laufende Blätter-Animation beenden: sie verzerrt die Seite und damit die Stiftposition
       if (st.book) $$('.flip-next, .flip-prev', pagesEl).forEach((el) => el.classList.remove('flip-next', 'flip-prev'));
       hideTip();
@@ -639,6 +678,8 @@
         if (tap && tap.id === e.pointerId && e.type === 'pointerup' && e.timeStamp - tap.t < 500 && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10) {
           const p = pageAt(e.clientX, e.clientY), l = p && liveLinkAt(p, e, 0.006);
           if (l) showTip(p, l);
+          // der Finger scrollt das Blatt (Zeiger ist eingefangen) – ein Tipp ins Antwortfeld soll trotzdem die Tastatur öffnen
+          if (ty.ta && e.target.closest && document.elementFromPoint(e.clientX, e.clientY) === ty.ta) ty.ta.focus();
         }
         // Buch: mit dem Finger wischen blättert (nur uneingezoomt, sonst verschiebt der Finger den Ausschnitt)
         else if (tap && tap.id === e.pointerId && e.type === 'pointerup' && st.book && st.zoom <= 1.02) {
@@ -1085,7 +1126,7 @@
       if (destroyed) return;
       destroyed = true;
       INK.lastState = { fileId: f.id, defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx };
-      flushAll(); io.disconnect(); ro.disconnect();
+      flushAll(); if (ty.flush) ty.flush(); io.disconnect(); ro.disconnect();
       // Bild-Cache dieser Datei freigeben (sonst wächst er mit jedem geöffneten Blatt)
       st.pages.forEach((p) => (p.images || []).forEach((im) => imgCache.delete(im.id)));
       document.removeEventListener('keydown', onKey);
@@ -1125,6 +1166,14 @@
       if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); doUndo(st.redo, st.undo); }
     };
     document.addEventListener('keydown', onKey);
+    const setTyped = (on) => {
+      st.typed = on; App.saveSettings({ exTyped: on });
+      clearSel(); closeHw(); hideTip();
+      applyTyped(); st.exOff = 0; scroller.scrollTop = 0; layout();
+      // die Blätter waren ausgeblendet und sind vielleicht noch nie gezeichnet worden
+      st.pages.forEach((p) => { if (!p.el.hidden) renderPage(p); });
+      if (on) ty.ta.focus();
+    };
     const morePop = root.querySelector('.more-pop');
     root.addEventListener('pointerdown', (e) => { if (!morePop.hidden && !e.target.closest('.more-pop, [data-v=more]')) morePop.hidden = true; }, true);
     root.querySelector('.viewer-bar').addEventListener('click', async (e) => {
@@ -1178,6 +1227,7 @@
         st.pages.forEach((p) => { if (p.visible) renderPage(p); });
         if (st.split && !st.cols) note('Nebeneinander gibt es im Querformat – hochkant bleibt die Aufgabe über dem Blatt', 3200);
       }
+      if (a === 'typed') setTyped(!st.typed);
       if (a === 'print') printAll();
       if (a === 'help') { morePop.hidden = true; App.tour.start('blatt'); }
       if (a === 'image') pickImage();
