@@ -250,7 +250,7 @@
         ${num(c.known, 'var(--matcha)', 'kann ich', 'known', 'Lesen und Deutsch → Japanisch sitzen – wird nicht mehr abgefragt')}
         ${num(c.queue, 'var(--ai)', 'in der Lernschlange', 'queue', 'Schon gewusst – kommt von selbst über „Jetzt wiederholen“, bis es sitzt')}
         ${num(c.open, 'var(--muted)', 'warten noch auf dich', 'open', 'Noch einzustufen oder neu im Lernstapel – beim Lesen oder bei Deutsch → Japanisch')}</div>
-        ${cardBtns({ vocab }, '')}</div>
+        <span class="row">${cardBtns({ vocab }, '')}</span></div>
         ${progBar(c)}</div>`; })()}
       ${jlptCard()}
       ${genkiLevelCard()}
