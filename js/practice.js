@@ -222,8 +222,10 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const active = type === 'vocab' && dir === 'de';
     const unchecked = active ? items.filter((i) => App.activeStatus(i) === 'unchecked').length : items.filter((i) => i.char !== '々' && App.vocabStatus(i.id) === 'unchecked').length;
     const allOfType = App.itemsOf(type);
-    // Die ganze Lernschlange, unabhängig von Art und Filter oben
+    // Lernschlange frei üben: nur die Auswahl oben (Art, Richtung, Filter) – oder alles gemischt
+    const learning = W.learning(items, S.srs, write ? 'write' : active ? 'active' : 'read');
     const lParts = App.learningParts(), ln = lParts.reduce((a, x) => a + x.n, 0);
+    const typeLabel = { vocab: 'Vokabeln', kanji: 'Kanji', grammar: 'Grammatik', phrase: 'Ausdrücke' }[type];
     const groups = type === 'phrase' ? Array.from(new Set(allOfType.map((x) => x.group))) : [];
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Karteikarten</div>
       <div class="page-head"><div class="titles"><h1>Karteikarten <span class="jp-title">札</span></h1><p>${due.length} fällig · ${fresh.length} neu in dieser Auswahl</p></div></div>
@@ -234,9 +236,12 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           ${groups.length ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${groups.map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}
           <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Nur gemerkte</button></div>
         <div class="row">${roundStart(cq, 'Wiederholen')}
-          <button class="btn" data-cram ${items.length ? '' : 'disabled'} title="Zählt nicht zur Lernschlange – dein Lernstand bleibt, wie er ist">${icon('shuffle')} Frei üben (${items.length > CRAM_MAX ? CRAM_MAX + ' von ' + items.length : items.length})</button>
-          ${learningBtn(ln)}</div>
-        <div class="small muted">Meine Lernschlange üben nimmt alles, was du gerade lernst, gemischt und unabhängig von der Auswahl oben${ln ? ` – ${learningSum(lParts)}` : ''}. Frei üben geht die Auswahl oben gemischt durch. Beides ändert nichts: Lernstand und Termine bleiben, wie sie sind.</div>
+          <button class="btn" data-cram ${items.length ? '' : 'disabled'} title="Zählt nicht zur Lernschlange – dein Lernstand bleibt, wie er ist">${icon('shuffle')} Frei üben (${items.length > CRAM_MAX ? CRAM_MAX + ' von ' + items.length : items.length})</button></div>
+        <div class="small muted">Frei üben geht die Auswahl oben gemischt durch und zählt nicht zur Lernschlange: Lernstand und Termine bleiben, wie sie sind.</div>
+        <div class="row"><b class="small">Meine Lernschlange üben:</b>
+          <button class="btn" data-learning ${learning.length ? '' : 'disabled'} title="Was du aus der Auswahl oben gerade lernst – auch was heute nicht fällig ist. Dein Lernstand bleibt, wie er ist">${icon('practice')} ${typeLabel} (${learning.length})</button>
+          <button class="btn" data-learning-all ${ln ? '' : 'disabled'} title="Alles, was du gerade lernst, gemischt – auch was heute nicht fällig ist. Dein Lernstand bleibt, wie er ist">${icon('shuffle')} Alle gemischt (${ln})</button></div>
+        <div class="small muted">Alles, was du gerade lernst – auch wenn heute nichts fällig ist. „${typeLabel}“ richtet sich nach der Auswahl oben${ln ? `, „Alle gemischt“ nimmt alles zusammen: ${learningSum(lParts)}` : ''}. Ändert nichts an Lernstand und Terminen.</div>
         ${write ? `<div class="small muted">Schreiben hat einen eigenen Lernstand: Neu sind Kanji, die du lesen kannst, aber noch nie geschrieben hast. Hier schreibst du auf Papier und drehst die Karte um – <a href="#/ueben/kanji">mit dem Stift in der App schreiben</a>.</div>` : ''}
         ${active ? `<div class="small muted">Deutsch → Japanisch hat einen eigenen Lernstand, getrennt vom Lesen. Dazu kommen Wörter, sobald du sie lesen kannst – nach der Aktiv-Einstufung landet im Stapel nur, was du aus dem Deutschen heraus noch nicht weißt.</div>` : ''}
         ${unchecked ? `<div class="card row between" style="background:var(--yamabuki-soft);border-color:transparent;box-shadow:none"><div><b>${unchecked} ${type === 'kanji' ? 'Kanji' : type === 'grammar' ? 'Grammatikpunkte' : type === 'phrase' ? 'Ausdrücke' : 'Vokabeln'} sind ${active ? 'aktiv noch nicht eingestuft' : 'noch ungeprüft'}.</b><div class="small muted">${type === 'grammar' ? 'Neue Karten kommen nur aus deinem Lernstapel. Setze Grammatik auf „Lernstapel“ – im Unterricht behandelte landen dort automatisch.' : active ? 'Du kannst sie lesen – prüfe, welche du auch aus dem Deutschen heraus weißt. Neue Karten kommen nur aus dem Aktiv-Lernstapel.' : 'Neue Karten kommen nur aus deinem Lernstapel. Prüfe erst, was du schon kannst.'}</div></div>
@@ -246,7 +251,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const stage = view.querySelector('[data-stage]');
     const start = (queue, cram) => { view.querySelector('[data-setup]').hidden = true; runCards(stage, queue, { type, dir, cram, write, active, more: () => App.cardQueue(q) }); };
     view.querySelector('[data-cram]').onclick = () => start(App.shuffle(items).slice(0, CRAM_MAX), true);
-    view.querySelector('[data-learning]').onclick = () => start(App.learningQueue(), true);
+    view.querySelector('[data-learning]').onclick = () => start(App.shuffle(learning), true);
+    view.querySelector('[data-learning-all]').onclick = () => start(App.learningQueue(), true);
     bindRoundStart(view, cq, q.round || q.auto, (queue) => start(queue, false));
   });
 
