@@ -128,6 +128,11 @@
     const fresh = items.filter((i) => { const s = rec(i); return !W.inQueue(s) && W.activeStatus(srs, i, needsCheck) === 'learn' && !(s && s.pre && !W.readable(srs, i)); });
     return { due, fresh };
   };
+  // „Meine Lernschlange üben“ (Karteikarten, frei): alles, was gerade gelernt wird – auch was heute nicht fällig ist.
+  // kind: 'read' (Lesen) · 'active' (Deutsch → Japanisch) · 'write' (Kanji schreiben)
+  W.learning = (items, srs, kind) => items.filter((i) => (kind === 'write' ? W.status(srs, i.id) === 'learn'
+    : kind === 'active' ? W.activeAsked(srs, i) && !W.isKnown(srs.get(W.id(i.id)))
+      : W.readAsked(i, srs.get(i.id))));
   // Einstufen pro Lektion: eine Runde mischt beide Richtungen – lesen (Japanisch → Deutsch) für Ungeprüftes und
   // aktiv (de: Deutsch → Japanisch) für das, was schon lesbar ist. Dasselbe Wort steht nie zweimal in einer Runde:
   // die Gegenrichtung kommt frühestens in der nächsten. Solange beides offen ist, teilen sich die Richtungen die Runde.
