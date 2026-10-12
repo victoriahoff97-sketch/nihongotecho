@@ -60,12 +60,17 @@
     return c;
   };
 
-  // Lese-Runde (Japanisch → Deutsch): fällig ist, was schon einmal gewusst wurde und noch nicht „Kann ich“ ist.
-  // Ausdrücke haben keinen Lernstand – sie bleiben im Wiederholungsplan.
-  // In der Lernschlange ist auch, was beim Einstufen auf „Lernen“ gesetzt wurde (queued): es ist gleich fällig, ohne „neue lernen“.
+  // Der gemeinsame Lernweg (ungeprüft → Lernschlange → kann ich) gilt für Vokabeln (beide Richtungen) und Ausdrücke:
+  // alles, was dort „lernen“ sagt, setzt queued – Einstufen, eigene Einträge, jede Bewertung. Kanji laufen wie bisher über den Lernstapel.
+  W.direct = (type) => type === 'vocab' || type === 'phrase';
+  // Lese-Runde (Japanisch → Deutsch): fällig ist, was in der Lernschlange steckt und noch nicht „Kann ich“ ist.
+  // In der Lernschlange: schon einmal gewusst – oder auf „Lernen“ gesetzt (queued): gleich fällig, ohne „neue lernen“.
   // Lesbar (W.unlocked) wird es dadurch nicht – das bleibt an „schon gewusst“ gebunden.
+  // Grammatik wird nie abgefragt: sie hat nur den Haken von Hand.
   W.inQueue = (s) => !!s && (s.reps > 0 || !!s.queued);
-  W.readAsked = (it, s) => W.inQueue(s) && !(it.type !== 'phrase' && W.isKnown(s));
+  W.readAsked = (it, s) => it.type !== 'grammar' && W.inQueue(s) && !W.isKnown(s);
+  // Erstes Zeigen in „neue lernen“: die Karte war noch nie in der Lernschlange – nur dann gibt es „Kann ich schon“
+  W.firstShow = (s) => !W.inQueue(s);
   W.readDue = (items, srs, now) => items.filter((i) => { const s = srs.get(i.id); return W.readAsked(i, s) && s.due <= now; }).sort((a, b) => srs.get(a.id).due - srs.get(b.id).due);
 
   // Fällig gilt für den ganzen Tag: Stichzeit ist das Ende des heutigen Tages, nicht die Minute.
@@ -107,9 +112,9 @@
 
   // ---------- Vokabeln aktiv (Deutsch → Japanisch) ----------
   // Zweiter Lernstand je Vokabel, ebenfalls unter „w:<Id>“. Anders als beim Kanji-Schreiben läuft er wie der Lese-Stand:
-  // erst einstufen („Kann ich“ wird nicht mehr abgefragt, „Lernen“ geht in den Aktiv-Lernstapel), dann Karten.
-  // locked = kann ich noch nicht lesen · unchecked = aktiv noch nicht eingestuft · learn = Aktiv-Lernstapel · known = kann ich aktiv
-  // needsCheck(it): wird der Eintrag überhaupt eingestuft? Eigene Wörter gehen wie beim Lesen direkt in den Lernstapel.
+  // einstufen („Kann ich“ wird nicht mehr abgefragt, „Lernen“ geht in die Lernschlange) oder mit „neue lernen“ holen.
+  // locked = kann ich noch nicht lesen · unchecked = aktiv noch nicht eingestuft · learn = wird aktiv gelernt · known = kann ich aktiv
+  // needsCheck(it): wird der Eintrag überhaupt eingestuft? Eigene Wörter gehen wie beim Lesen direkt in die Lernschlange.
   // Lesbar ist auch jede aus WaniKani angelegte Vokabel (_wk): sie kommt erst in die App, wenn sie dort ab Guru sitzt
   W.readable = (srs, it) => (it.type === 'vocab' && !!it._wk) || W.unlocked(srs, it.id);
   W.activeStatus = (srs, it, needsCheck) => {
@@ -118,19 +123,19 @@
     if (!W.readable(srs, it)) return 'locked';
     return needsCheck(it) ? 'unchecked' : 'learn';
   };
-  // Aktiv-Runde: fällige (älteste zuerst) + neue = im Aktiv-Lernstapel, aber noch nie gewusst (Reihenfolge der Liste)
-  // Vorgemerkt (pre): beim Einstufen pro Lektion nicht gelesen – liegt schon im Aktiv-Lernstapel, Karten kommen erst, wenn das Wort lesbar ist
+  // Aktiv-Runde: fällige (älteste zuerst) + neue = lesbar, aber noch nicht in der Aktiv-Lernschlange – ob eingestuft oder nicht (Reihenfolge der Liste)
+  // Vorgemerkt (pre): schon fürs Lernen vorgesehen, bevor das Wort lesbar ist (Einstufen pro Lektion, eigene Wörter) – Karten kommen erst, wenn es lesbar ist
   // In der Aktiv-Lernschlange: schon gewusst – oder beim Einstufen auf „Lernen“ gesetzt (queued); Vorgemerktes erst, wenn das Wort lesbar ist
   W.activeAsked = (srs, it) => { const s = srs.get(W.id(it.id)); return !!s && (s.reps > 0 || (!!s.queued && !(s.pre && !W.readable(srs, it)))); };
   W.activeQueue = (items, srs, now, needsCheck) => {
     const rec = (i) => srs.get(W.id(i.id));
     const due = items.filter((i) => { const s = rec(i); return W.activeAsked(srs, i) && !W.isKnown(s) && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
-    const fresh = items.filter((i) => { const s = rec(i); return !W.inQueue(s) && W.activeStatus(srs, i, needsCheck) === 'learn' && !(s && s.pre && !W.readable(srs, i)); });
+    const fresh = items.filter((i) => { const s = rec(i), st = W.activeStatus(srs, i, needsCheck); return !W.inQueue(s) && (st === 'learn' || st === 'unchecked') && !(s && s.pre && !W.readable(srs, i)); });
     return { due, fresh };
   };
   // „Meine Lernschlange üben“ (Karteikarten, frei): alles, was gerade gelernt wird – auch was heute nicht fällig ist.
   // kind: 'read' (Lesen) · 'active' (Deutsch → Japanisch) · 'write' (Kanji schreiben)
-  // Gezählt wird nur, was noch nicht „Kann ich“ ist – auch bei Ausdrücken, obwohl die im Wiederholungsplan bleiben: die Zahl soll zum Lernstand passen.
+  // Gezählt wird nur, was noch nicht „Kann ich“ ist.
   W.learning = (items, srs, kind) => items.filter((i) => (kind === 'write' ? W.status(srs, i.id) === 'learn'
     : kind === 'active' ? W.activeAsked(srs, i) && !W.isKnown(srs.get(W.id(i.id)))
       : W.inQueue(srs.get(i.id)) && !W.isKnown(srs.get(i.id))));
@@ -142,6 +147,31 @@
     const jp = items.filter(readOpen);
     const nDe = Math.min(de.length, jp.length ? Math.max(Math.ceil(n / 2), n - jp.length) : n);
     return shuffle(de.slice(0, nDe).map((item) => ({ item, de: true })).concat(jp.slice(0, n - nDe).map((item) => ({ item, de: false }))));
+  };
+  // Einmaliger Umzug auf den gemeinsamen Lernweg: was bei Vokabeln und Ausdrücken bisher im Lernstapel wartete, kommt in die Lernschlange.
+  // Lesen: eingestuft/angelegt, aber nie gewusst · eigene Einträge ohne Lernstand. Aktiv (nur Vokabeln): dasselbe unter „w:<Id>“;
+  // eigene Wörter ohne Aktiv-Stand werden vorgemerkt (pre) und kommen, sobald sie lesbar sind.
+  // Gestaffelt, damit keine Riesenrunde entsteht: perDay Karten pro Tag – erst das Lesen, dann Deutsch → Japanisch, je in der Reihenfolge der Liste. Liefert die zu speichernden Einträge;
+  // was schon passt, fehlt darin – ein zweiter Lauf ändert nichts.
+  W.lernwegPlan = (items, srs, isOwn, now, perDay) => {
+    const start = new Date(now); start.setHours(0, 0, 0, 0);
+    const out = [];
+    const due = () => start.getTime() + Math.floor(out.length / Math.max(1, perDay)) * 864e5;
+    const fresh = (id, extra) => Object.assign({ id, check: 'learn', ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: due(), last: 0, checked: now, queued: 1 }, extra);
+    const waiting = (s) => !!s && s.check !== 'unchecked' && !W.inQueue(s) && !W.isKnown(s);
+    const own = items.filter((it) => W.direct(it.type));
+    // erst alles fürs Lesen (dort warten die Ausdrücke), dann Deutsch → Japanisch
+    own.forEach((it) => {
+      const s = srs.get(it.id);
+      if (waiting(s)) out.push(Object.assign({}, s, { queued: 1, due: due() }));
+      else if (!s && isOwn(it)) out.push(fresh(it.id));
+    });
+    own.filter((it) => it.type === 'vocab').forEach((it) => {
+      const w = srs.get(W.id(it.id));
+      if (waiting(w)) out.push(Object.assign({}, w, { queued: 1, due: due() }));
+      else if (!w && isOwn(it)) out.push(fresh(W.id(it.id), { pre: 1 }));
+    });
+    return out;
   };
   W.activeCounts = (items, srs, needsCheck) => {
     const c = { locked: 0, unchecked: 0, learn: 0, known: 0, total: items.length };

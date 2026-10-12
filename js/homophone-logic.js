@@ -42,7 +42,7 @@
     return out;
   };
 
-  // Sichtbar ist eine Gruppe, sobald eines ihrer Wörter gelernt wird (Lernstapel oder „kann ich“)
+  // Sichtbar ist eine Gruppe, sobald eines ihrer Wörter gelernt wird (wird gelernt oder „kann ich“)
   H.visible = (groups, statusOf) => groups.filter((g) => g.items.some((it) => statusOf(it.id) !== 'unchecked'));
 
   // Die anderen Wörter derselben Gruppe (für den Hinweis am Wort)

@@ -457,7 +457,7 @@
       ${exBlock(it.examples, true)}
       ${commonFields(it)}
       <div class="field"><label>Eigene Notizen</label><textarea class="input" name="notes" rows="2">${esc(it.notes || '')}</textarea></div>
-      ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In den Lernstapel (neues Wort)'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}" ${(it._check || 'learn') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
+      ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In die Lernschlange (neues Wort)'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}" ${(it._check || 'learn') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
       <input type="hidden" name="vcls" value="${esc((it.v || {}).cls || '')}"></div>`;
     },
     bind: (root, it) => {

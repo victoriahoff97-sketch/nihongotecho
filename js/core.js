@@ -289,12 +289,15 @@ window.App = window.App || {};
     // neue eigene Vokabel ohne Beispielsatz: den geprüften aus dem Satz-Index der Pakete eintragen (js/examples.js)
     if (!it.created && it.type === 'vocab' && App.exampleFill) await App.exampleFill(it);
     if (!it.id) it.id = uid(it.type[0]);
-    if (!it.created) it.created = now;
+    const isNew = !it.created;
+    if (isNew) it.created = now;
     it.updated = now;
     if (it._seed || it._pack || it._wk) it._edited = true; // Nutzeränderung: Seed-/Paket-Updates überschreiben den Eintrag nicht mehr (_wk: wird nicht mehr automatisch entfernt)
     if ((it.type === 'vocab' || it.type === 'kanji') && !it.levelManual && App.levelFor) it.level = App.levelFor(it);
     S.items.set(it.id, it);
     await App.db.put('items', it);
+    // neuer eigener Eintrag (Vokabel, Ausdruck): direkt in die Lernschlange (js/vocabcheck.js)
+    if (isNew && App.enqueueOwn) await App.enqueueOwn(it);
     if (!silent) emit('items');
     return it;
   };
@@ -398,7 +401,7 @@ window.App = window.App || {};
     const DAY = 864e5;
     const s = S.srs.get(id) || { id, ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: now };
     if (s.check === 'unchecked') delete s.check; // wer eine Karte übt, prüft sie damit
-    if (g === 0 && s.check === 'known') s.check = 'learn'; // als gelernt eingestuft, aber nicht gewusst: zurück in den Lernstapel
+    if (g === 0 && s.check === 'known') s.check = 'learn'; // als gelernt eingestuft, aber nicht gewusst: wird wieder gelernt
     if (g === 0) { s.lapses++; s.reps = 0; s.ivl = 0; s.ease = Math.max(1.3, s.ease - 0.2); s.due = now + 10 * 60e3; }
     else {
       if (s.reps === 0) s.ivl = g === 1 ? 0.5 : g === 2 ? 1 : 4;
@@ -411,6 +414,9 @@ window.App = window.App || {};
       const tomorrow = new Date(now); tomorrow.setHours(24, 0, 0, 0);
       s.due = Math.max(now + s.ivl * DAY, tomorrow.getTime());
     }
+    // Vokabeln und Ausdrücke: einmal bewertet heißt in der Lernschlange – auch nach „Nochmal“ fällt nichts zurück (Kanji wie bisher)
+    const W = App.writeLogic, it = S.items.get(W.isId(id) ? W.itemId(id) : id);
+    if (it && W.direct(it.type)) s.queued = 1;
     s.last = now;
     S.srs.set(id, s);
     await App.db.put('srs', s);

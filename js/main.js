@@ -120,6 +120,7 @@
       $('#view').innerHTML = `<div class="card"><h3>Speicher nicht verfügbar</h3><p>Dein Browser erlaubt keinen lokalen Speicher (IndexedDB). Bitte öffne die App in Microsoft Edge oder Chrome und nicht im privaten Modus.</p><pre class="small">${esc(e.message || e)}</pre></div>`;
       return;
     }
+    try { await App.lernwegMigrate(); } catch (e) { console.error(e); } // einmaliger Umzug auf den gemeinsamen Lernweg (js/vocabcheck.js)
     if (App.store.settings.sidebarCollapsed) document.body.classList.add('sidebar-collapsed');
     App.applyTheme();
     App.initSearch();

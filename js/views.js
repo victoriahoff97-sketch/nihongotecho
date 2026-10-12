@@ -100,8 +100,8 @@
   // schmale Balken je Bereich (Vokabeln · Kanji · Grammatik) – ohne Zahlen, die stehen im Tooltip
   const miniBars = (p, qs) => `<div class="mini-bars">${p.types.map((t) => { const c = p.pc[t]; return `<a href="${TYPE_INFO[t][1]}?${qs}" title="${c.known} von ${c.total} kann ich · ${c.queue} in der Lernschlange · ${c.open} warten noch">${TYPE_INFO[t][0]}</a>${progBar(c, 'thin')}`; }).join('')}</div>`;
   // Die zwei Knöpfe je Karte – alles, was nicht von selbst kommt:
-  // „neue lernen“ holt Neues aus dem Lernstapel in die Lernschlange (erst Lesen: Vokabeln, Kanji, Grammatik – dann Deutsch → Japanisch),
-  // „einstufen“ geht durch, was noch nicht eingestuft ist (Vokabeln lesen, Kanji, Deutsch → Japanisch, Grammatik).
+  // „neue lernen“ holt Neues in die Lernschlange – bei Vokabeln aus dem Ungeprüften, bei Kanji aus dem Lernstapel (erst Lesen: Vokabeln, Kanji – dann Deutsch → Japanisch),
+  // „einstufen“ geht durch, was noch nicht eingestuft ist (Vokabeln lesen, Kanji, Deutsch → Japanisch). Grammatik hat nur den Haken von Hand.
   const qsObj = (qs) => Object.fromEntries(new URLSearchParams(qs));
   const cardBtns = (sets, qs) => {
     const and = qs ? qs + '&' : '', batch = S.settings.checkBatch || 15, many = Object.keys(sets).length > 1;
@@ -109,12 +109,11 @@
     const btn = (cls, href, label, title = '') => `<a class="btn ${cls}" href="${href}"${title ? ` title="${title}"` : ''}>${label}</a>`;
     // Neues lernen
     const fq = (type) => (sets[type] && (type !== 'kanji' || App.writeLogic.focus(S.settings) !== 'write') ? App.cardQueue(Object.assign({ type, dir: 'jp' }, qsObj(qs))).fresh.length : 0);
-    // Der Knopf sagt, wie viele die Runde hat und wie viele insgesamt neu im Lernstapel liegen („5 von 19 neuen“)
+    // Der Knopf sagt, wie viele die Runde hat und wie viele insgesamt noch warten („5 von 19 neuen“)
     const newN = (n) => `${icon('plus')} ${n > S.settings.newPerDay ? `${S.settings.newPerDay} von ${n} neuen` : `${n} neue`}`;
     const aFresh = sets.vocab ? App.activeQueue(qsObj(qs)).fresh.length : 0;
     const fresh = fq('vocab') ? btn('btn-sec', `#/ueben/karten?${and}round=new`, `${newN(fq('vocab'))}${many ? ' Vokabeln' : ''} lernen`)
       : fq('kanji') ? btn('btn-sec', `#/ueben/karten?type=kanji&dir=jp&${and}round=new`, `${newN(fq('kanji'))} Kanji lernen`)
-      : fq('grammar') ? btn('btn-sec', `#/ueben/karten?type=grammar&${and}round=new`, `${newN(fq('grammar'))} Grammatik lernen`)
       : aFresh ? btn('btn-sec', `#/ueben/karten?dir=de&${and}round=new`, `${newN(aFresh)} lernen`, deTip) : '';
     // Einstufen
     const cls = fresh ? '' : 'btn-sec';
@@ -123,8 +122,7 @@
     const act = (sets.vocab || []).filter((x) => App.activeStatus(x) === 'unchecked').length;
     const check = unch('vocab') ? btn(cls, `#/ueben/einstufen${qs ? '?' + qs : ''}`, `${icon('check')} ${unch('vocab')}${many ? ' Vokabeln' : ''} einstufen`)
       : unch('kanji') ? btn(cls, `#/ueben/einstufen?type=kanji&${and}auto=1`, `${next(unch('kanji'))} Kanji einstufen`)
-      : act ? btn(cls, `#/ueben/einstufen?dir=de${qs ? '&' + qs : ''}`, `${icon('check')} ${act} einstufen`, deTip + ': Welche Wörter weißt du auch aus dem Deutschen heraus?')
-      : unch('grammar') ? btn(cls, `#/grammatik?st=unchecked${qs ? '&' + qs : ''}`, `${icon('check')} Grammatik einstufen`) : '';
+      : act ? btn(cls, `#/ueben/einstufen?dir=de${qs ? '&' + qs : ''}`, `${icon('check')} ${act} einstufen`, deTip + ': Welche Wörter weißt du auch aus dem Deutschen heraus?') : '';
     return fresh + check;
   };
   const pctHead = (p, right, btn = '') => `<div class="row between"><span><b style="font-size:26px;color:var(--matcha)">${p.pct} %</b> <span class="muted">kann ich</span></span><span class="row"><span class="small muted">${right}</span>${btn}</span></div>`;
@@ -198,7 +196,7 @@
     // Wiederholen: der Knopf startet direkt die Lernrunde des ersten Kartentyps mit fälligen (sonst neuen) Karten
     // Kanji-Schwerpunkt (Einstellungen): „Schreiben“ blendet die Lese-Karten der Kanji aus und stellt das Schreiben nach vorn, „Lesen“ umgekehrt
     const focus = App.writeLogic.focus(S.settings);
-    const queues = [['vocab', 'Vokabeln', 'Vokabel'], ['kanji', 'Kanji', 'Kanji'], ['grammar', 'Grammatik', 'Grammatik'], ['phrase', 'Ausdrücke', 'Ausdruck']].filter(([type]) => type !== 'kanji' || focus !== 'write').map(([type, label, one]) => {
+    const queues = [['vocab', 'Vokabeln', 'Vokabel'], ['kanji', 'Kanji', 'Kanji'], ['phrase', 'Ausdrücke', 'Ausdruck']].filter(([type]) => type !== 'kanji' || focus !== 'write').map(([type, label, one]) => {
       const { due, fresh } = App.cardQueue({ type, dir: 'jp' });
       return { label: due.length === 1 ? one : label, due: due.length, fresh: fresh.length, href: `#/ueben/karten?${type === 'vocab' ? '' : `type=${type}&`}${type === 'kanji' ? 'dir=jp&' : ''}auto=1` };
     });
@@ -249,7 +247,7 @@
       <div class="card sec-vocab${foldCls('vocab')}"><div class="row between"><div class="row" style="gap:28px">
         ${num(c.known, 'var(--matcha)', 'kann ich', 'known', 'Lesen und Deutsch → Japanisch sitzen – wird nicht mehr abgefragt')}
         ${num(c.queue, 'var(--ai)', 'in der Lernschlange', 'queue', 'Schon gewusst oder beim Einstufen auf „Lernen“ gesetzt – kommt von selbst über „Jetzt wiederholen“, bis es sitzt')}
-        ${num(c.open, 'var(--muted)', 'warten noch auf dich', 'open', 'Noch einzustufen oder neu im Lernstapel – beim Lesen oder bei Deutsch → Japanisch')}</div>
+        ${num(c.open, 'var(--muted)', 'warten noch auf dich', 'open', 'Noch ungeprüft – beim Lesen oder bei Deutsch → Japanisch. Einstufen oder neue lernen holt sie in die Lernschlange')}</div>
         <span class="row">${cardBtns({ vocab }, '')}</span></div>
         ${progBar(c)}</div>`; })()}
       ${jlptCard()}
@@ -385,9 +383,9 @@
           <dt>Quelle</dt><dd>${App.srcBadge(it) || '–'} ${it.sourceRef ? refLink(it.sourceRef) : ''}</dd>
           ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
           <dt>Lesen <small class="muted" style="font-weight:400">Japanisch → Deutsch</small></dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <div class="small muted" style="margin-top:4px">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : it._wk ? `bei WaniKani gelernt${(() => { const w = App.wk.vInfo(it); return w ? ` (Level ${w.level} · ${w.name})` : ''; })()} – wird hier nur Deutsch → Japanisch gefragt` : 'noch nicht eingestuft'}</div></dd>
+            <div class="small muted" style="margin-top:4px">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'kommt mit „neue lernen“ in die Lernschlange' : it._wk ? `bei WaniKani gelernt${(() => { const w = App.wk.vInfo(it); return w ? ` (Level ${w.level} · ${w.name})` : ''; })()} – wird hier nur Deutsch → Japanisch gefragt` : 'noch ungeprüft – einstufen oder „neue lernen“ holt es in die Lernschlange'}</div></dd>
           <dt>Aktiv <small class="muted" style="font-weight:400">Deutsch → Japanisch</small></dt><dd>${(() => { const ast = App.activeStatus(it), as = App.srsOf(App.writeLogic.id(it.id)); return `<div class="seg" data-ast>${App.statusChoices(it).map(([k, s]) => `<button class="${ast === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <div class="small muted" style="margin-top:4px">${ast === 'locked' ? 'kommt dran, sobald du das Wort lesen kannst' : App.writeLogic.activeAsked(S.srs, it) ? App.srsNote(as) : ast === 'learn' ? 'wartet im Aktiv-Lernstapel auf die Karteikarten' : 'aktiv noch nicht eingestuft'}</div>`; })()}</dd></dl></div>
+            <div class="small muted" style="margin-top:4px">${ast === 'locked' ? 'kommt dran, sobald du das Wort lesen kannst' : App.writeLogic.activeAsked(S.srs, it) ? App.srsNote(as) : ast === 'learn' ? 'kommt mit „neue lernen“ in die Lernschlange' : 'noch ungeprüft – einstufen oder „neue lernen“ holt es in die Lernschlange'}</div>`; })()}</dd></dl></div>
         ${(it.contexts || []).length ? `<div class="section-title">Kontext – wo du das Wort gefunden hast</div>${it.contexts.map((c) => { const s = c.sessionId && App.item(c.sessionId); const o = !s && c.itemId && App.item(c.itemId); const x = !s && !o && c.exerciseId; return `<div class="ctx"><div class="small"><b>${s ? `<a href="${App.link(s)}">授業 ${esc(s.number ? 'Stunde ' + s.number : s.title || 'Unterricht')}</a>` : o ? `<a href="${App.link(o)}">${esc(c.label || 'Anwenden')}</a>` : x ? `<a href="#/aufgabe/${encodeURIComponent(x)}">${esc(c.label || 'Buchaufgabe')}</a>` : esc(c.label || 'Notiz')}</b> · ${App.fmtDate(c.date)}</div>${c.text ? `<div class="jp-s" lang="ja">${App.highlightWord(c.text, it)}</div>` : ''}</div>`; }).join('')}` : ''}
         ${App.useHtml(it)}
         ${it.examples && it.examples.length ? `<div class="section-title">Beispielsätze</div>${it.examples.map(App.exampleHtml).join('')}` : ''}
@@ -396,8 +394,8 @@
         ${App.attachmentsHtml(it)}
       </div><aside>${App.relatedHtml(it) || '<div class="card muted small">Noch keine verwandten Einträge. Mit „Verknüpfen“ kannst du selbst Verbindungen herstellen.</div>'}</aside></div></div>`;
     App.hydrateThumbs(view);
-    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.STATUS[b.dataset.v].label); App.render(true); } };
-    view.querySelector('[data-ast]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(App.writeLogic.id(it.id), b.dataset.v); App.toast('Aktiv-Lernstand: ' + App.STATUS[b.dataset.v].label); App.render(true); } };
+    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label); App.render(true); } };
+    view.querySelector('[data-ast]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(App.writeLogic.id(it.id), b.dataset.v); App.toast('Aktiv-Lernstand: ' + App.statusInfo(it, b.dataset.v).label); App.render(true); } };
   });
 
   // =========================================================
@@ -415,7 +413,7 @@
       `<a class="btn" href="#/ueben/karten?${cardQs}">${icon('practice')} Karteikarten</a><a class="btn" href="#/karte">${icon('map')} Lernlandkarte</a><button class="btn btn-sec" data-new="grammar">${icon('plus')} Grammatik</button>`)}
       ${tabsHtml(q, items.length, files.length)}
       <div class="toolbar">${filterInput(q, 'Grammatik suchen, z. B. て-Form, Vergleich …')}<div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
-      ${App.levelSelect(q.lvl)}<select class="input" data-q-select="st"><option value="">Lernstand</option>${Object.entries(App.STATUS).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>
+      ${App.levelSelect(q.lvl)}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusChoices({ type: 'grammar' }).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>
       <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Gemerkt</button></div></div>
       <div data-body style="margin-top:14px"></div></div>`;
     const body = view.querySelector('[data-body]');
@@ -451,7 +449,7 @@
           <div class="row">${App.srcBadge(it)} ${App.tagsHtml(it.tags)}
           ${sessions.map((s) => `<a class="badge src" style="--c:var(--shu);text-decoration:none" href="${App.link(s)}">授業 ${esc(s.number ? 'Stunde ' + s.number : s.title)} · ${App.fmtDate(s.date)}</a>`).join('')}</div>
           <div class="row" style="margin-top:14px;align-items:center"><span class="small muted">Lernstand</span><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <span class="small muted">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? `wartet im Lernstapel auf die Karteikarten${!srs ? ' (weil im Unterricht behandelt)' : ''}` : 'noch nicht eingestuft'}</span></div></div>
+            <span class="small muted">${App.vocabStatus(it.id) === 'known' ? 'zählt für deinen Lernstand bei Genki und JLPT' : 'Setz den Haken selbst, wenn du den Punkt kannst – Grammatik wird nicht abgefragt'}</span></div></div>
         ${it.structure && it.structure.length ? `<div class="section-title">Aufbau</div><div class="structure">${it.structure.map((s) => `<div>${JP.ruby(s)}</div>`).join('')}</div>` : ''}
         ${it.explanation ? `<div class="section-title">Erklärung</div><div class="card prose">${JP.md(it.explanation)}</div>` : ''}
         ${it.examples && it.examples.length ? `<div class="section-title">Beispiele</div>${it.examples.map(App.exampleHtml).join('')}` : ''}
@@ -465,7 +463,7 @@
       </div><aside>${App.relatedHtml(it)}</aside></div></div>`;
     App.hydrateThumbs(view);
     App.exercises.hydrate(view);
-    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.STATUS[b.dataset.v].label); App.render(true); } };
+    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label); App.render(true); } };
   });
 
   // =========================================================
@@ -570,10 +568,10 @@
         <dl class="kv" style="margin-top:14px"><dt>Lesung</dt><dd lang="ja">${esc(JP.kana(it.jp))}</dd><dt>Gruppe</dt><dd>${esc(it.group)}</dd><dt>Quelle</dt><dd>${App.srcBadge(it) || '–'}</dd>
         ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
           <dt>Lernstand</dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <div class="small muted" style="margin-top:4px">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : 'noch nicht eingestuft'}</div></dd></dl></div>
+            <div class="small muted" style="margin-top:4px">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'kommt mit „neue lernen“ in die Lernschlange' : 'noch ungeprüft – einstufen oder „neue lernen“ holt es in die Lernschlange'}</div></dd></dl></div>
         ${App.attachmentsHtml(it)}</div><aside>${App.relatedHtml(it)}</aside></div></div>`;
     App.hydrateThumbs(view);
-    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.STATUS[b.dataset.v].label); App.render(true); } };
+    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label); App.render(true); } };
   });
 
   // =========================================================

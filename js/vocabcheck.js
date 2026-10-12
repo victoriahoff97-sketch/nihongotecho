@@ -7,25 +7,35 @@
   const DAY = 864e5;
 
   // ---------- Status ----------
-  // unchecked = noch nie geprüft · learn = im Lernstapel / wird gelernt · known = kann ich schon
+  // unchecked = noch nie geprüft · learn = wird gelernt · known = kann ich schon
   // „Kann ich“ ist, was so eingestuft wurde – oder was mit den Karten bis 3 Wochen Abstand gelernt ist (springt von allein um).
-  // Grammatik, die mit einer Unterrichtsstunde verknüpft ist, gilt ohne Einstufung als „Lernstapel“.
-  const autoLearn = (id) => { const it = S.items.get(id); return !!it && it.type === 'grammar' && App.sessionsFor(id).length > 0; };
-  // Eingestuft werden nur Vokabeln/Kanji/Ausdrücke aus Paketen (Genki, JLPT, Kanji) und aus importierten Listen.
-  // Eigene Einträge (selbst angelegt, aus Satzerkennung/Suche übernommen) sind nie „ungeprüft“ – sie sind direkt im Lernstapel.
-  // Einstufen lässt sich in den Einstellungen abschalten (check: 'off'): dann liegt auch das direkt im Lernstapel.
-  // Am Speicher ändert das nichts – wieder eingeschaltet, ist Unberührtes wieder „ungeprüft“. Grammatik bleibt davon unberührt.
+  //
+  // Vokabeln und Ausdrücke gehen einen gemeinsamen Weg: ungeprüft → Lernschlange → kann ich.
+  // „Ungeprüft“ sind nur Einträge aus Paketen (Genki, JLPT) und importierten Listen; dort liegen sie, bis man sie einstuft
+  // oder mit „neue lernen“ holt – auch wenn Einstufen in den Einstellungen aus ist (das blendet nur den Einstufen-Knopf aus).
+  // Eigene Einträge (selbst angelegt, aus Satzerkennung/Suche übernommen) sind nie „ungeprüft“: sie kommen direkt in die Lernschlange.
+  // „learn“ heißt bei ihnen immer: in der Lernschlange (queued).
+  //
+  // Kanji laufen wie bisher: eigene liegen im Lernstapel und warten auf „neue lernen“; ist Einstufen aus (check: 'off'),
+  // liegen auch die aus Paketen dort. Am Speicher ändert das nichts – wieder eingeschaltet, ist Unberührtes wieder „ungeprüft“.
+  //
+  // Grammatik wird nicht abgefragt: sie hat nur den Haken von Hand – „offen“ (unchecked) oder „kann ich“ (known).
   // Aus WaniKani angelegte Vokabeln: lesen lernt man dort – hier gelten sie als lesbar und werden nur aktiv (Deutsch → Japanisch) eingestuft
   const wkVocab = (it) => !!it && it.type === 'vocab' && !!it._wk;
+  const W = App.writeLogic;
   App.checkOn = () => S.settings.check !== 'off';
-  App.needsCheck = (it) => !!it && !((it.type === 'vocab' || it.type === 'kanji' || it.type === 'phrase') && (!App.checkOn() || (!it._seed && !it._pack && !it.imported && !wkVocab(it))));
+  // selbst angelegt – nicht aus Paket, Genki, Import oder WaniKani
+  App.isOwn = (it) => !!it && !it._seed && !it._pack && !it.imported && !wkVocab(it);
+  App.needsCheck = (it) => !!it && (W.direct(it.type) ? !App.isOwn(it) : it.type === 'kanji' ? App.checkOn() && !App.isOwn(it) : true);
   // Lernstand-Filter der Vokabel- und Kanji-Liste: ohne Einstufen gibt es „Ungeprüft“ nicht
   App.statusFilter = (cur) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.checkOn()).map(([k, s]) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('');
   const ownWord = (id) => { const it = S.items.get(id); return !!it && !App.needsCheck(it); };
-  App.statusChoices = (it) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.needsCheck(it));
+  const isGrammar = (id) => { const it = S.items.get(id); return !!it && it.type === 'grammar'; };
   App.vocabStatus = (id) => {
     const s = S.srs.get(id);
-    if (!s) return wkVocab(S.items.get(id)) ? 'known' : autoLearn(id) || ownWord(id) ? 'learn' : 'unchecked';
+    // Grammatik: nur der Haken zählt; ein alter Lernstand aus der Zeit der Grammatik-Karten gilt als „kann ich“, wenn er es damals war
+    if (isGrammar(id)) return App.furiLogic.readKnown(S.srs, id) ? 'known' : 'unchecked';
+    if (!s) return wkVocab(S.items.get(id)) ? 'known' : ownWord(id) ? 'learn' : 'unchecked';
     if (s.check === 'unchecked') return ownWord(id) ? 'learn' : 'unchecked';
     return App.furiLogic.readKnown(S.srs, id) ? 'known' : 'learn';
   };
@@ -34,16 +44,26 @@
     learn: { label: 'Lernstapel', color: 'var(--ai)', dot: '◐' },
     known: { label: 'Kann ich', color: 'var(--matcha)', dot: '●' },
   };
-  // extra: Zusatzfelder für den Lernstapel-Eintrag (pre = für Deutsch → Japanisch vorgemerkt · queued = gleich in der Lernschlange, so setzt es das Einstufen)
+  // Beschriftung je Art: Grammatik kennt nur „Offen“ und „Kann ich“, bei Vokabeln und Ausdrücken heißt „learn“ Lernschlange, bei Kanji Lernstapel
+  App.statusInfo = (it, key) => {
+    const s = App.STATUS[key];
+    if (it && it.type === 'grammar' && key === 'unchecked') return Object.assign({}, s, { label: 'Offen' });
+    if (it && W.direct(it.type) && key === 'learn') return Object.assign({}, s, { label: 'Lernschlange' });
+    return s;
+  };
+  // Auswahl auf der Seite des Eintrags: [Schlüssel, Beschriftung]
+  App.statusChoices = (it) => Object.keys(App.STATUS)
+    .filter((k) => (it && it.type === 'grammar' ? k !== 'learn' : k !== 'unchecked' || App.needsCheck(it)))
+    .map((k) => [k, App.statusInfo(it, k)]);
+  const itemOf = (id) => S.items.get(W.isId(id) ? W.itemId(id) : id);
+  // extra: Zusatzfelder für den Lernstand (pre = für Deutsch → Japanisch vorgemerkt, bis das Wort lesbar ist · queued = in der Lernschlange).
+  // Vokabeln und Ausdrücke: „learn“ heißt immer Lernschlange, also queued – heute fällig, ohne „neue lernen“.
   App.setCheck = async (id, st, extra) => {
     const now = Date.now();
     let s;
     if (st === 'unchecked') {
-      if (!autoLearn(id)) { S.srs.delete(id); await App.db.del('srs', id); return; }
-      // sonst würde die Unterrichts-Verknüpfung den Punkt sofort wieder in den Lernstapel holen
-      s = { id, check: 'unchecked', ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: now, last: 0, checked: now };
-      S.srs.set(id, s);
-      await App.db.put('srs', s);
+      S.srs.delete(id);
+      await App.db.del('srs', id);
       if (App.backup && App.backup.noteChange) App.backup.noteChange();
       return;
     }
@@ -52,11 +72,28 @@
       const ivl = App.furiLogic.KNOWN_IVL;
       s = { id, check: 'known', ivl, ease: 2.6, reps: 3, lapses: 0, due: now + ivl * DAY, last: now, checked: now };
     } else {
-      s = Object.assign({ id, check: 'learn', ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: now, last: 0, checked: now }, extra);
+      const it = itemOf(id);
+      s = Object.assign({ id, check: 'learn', ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: now, last: 0, checked: now }, it && W.direct(it.type) ? { queued: 1 } : null, extra);
     }
     S.srs.set(id, s);
     await App.db.put('srs', s);
     if (App.backup && App.backup.noteChange) App.backup.noteChange();
+  };
+  // Neu angelegter eigener Eintrag (App.saveItem): direkt in die Lernschlange. Vokabeln auch für Deutsch → Japanisch –
+  // vorgemerkt, die Karte kommt, sobald das Wort lesbar ist. Was schon einen Lernstand hat, bleibt.
+  App.enqueueOwn = async (it) => {
+    if (!it || !W.direct(it.type) || !App.isOwn(it)) return;
+    if (!S.srs.has(it.id)) await App.setCheck(it.id, 'learn');
+    if (it.type === 'vocab' && !S.srs.has(W.id(it.id))) await App.setCheck(W.id(it.id), 'learn', { pre: 1 });
+  };
+  // Einmaliger Umzug auf den gemeinsamen Lernweg (write-logic.js: lernwegPlan) – beim Start, solange der Vermerk in den Einstellungen fehlt
+  App.lernwegMigrate = async () => {
+    if (S.settings.lernweg === 1) return 0;
+    const plan = W.lernwegPlan(Array.from(S.items.values()), S.srs, App.isOwn, Date.now(), +S.settings.newPerDay || 15);
+    plan.forEach((s) => S.srs.set(s.id, s));
+    if (plan.length) await App.db.putMany('srs', plan);
+    await App.saveSettings({ lernweg: 1 });
+    return plan.length;
   };
   App.vocabCounts = (items = App.itemsOf('vocab')) => {
     const c = { unchecked: 0, learn: 0, known: 0, total: items.length };
@@ -64,14 +101,13 @@
     return c;
   };
   // Gesamt-Lernstand eines Eintrags – so zählen Startseite und Vokabelliste:
-  // known = kann ich · queue = in der Lernschlange (schon gewusst, kommt von selbst wieder) · open = wartet noch (ungeprüft oder neu im Lernstapel).
+  // known = kann ich · queue = in der Lernschlange (kommt von selbst wieder) · open = wartet noch (ungeprüft; bei Kanji auch neu im Lernstapel).
   // Eine Vokabel ist erst „kann ich“, wenn beide Richtungen sitzen: lesen (Japanisch → Deutsch) UND aktiv (Deutsch → Japanisch).
   // Solange das Lesen noch läuft, zählt sie zur Lernschlange; kann man sie lesen, entscheidet der Aktiv-Stand.
-  // Kanji, Grammatik und Ausdrücke zählen wie bisher nach dem Lese-Stand.
+  // Kanji und Ausdrücke zählen nach dem Lese-Stand, Grammatik nach dem Haken („offen“ zählt als wartet noch).
   App.wordState = (it) => {
     const r = App.vocabStatus(it.id), s = S.srs.get(it.id);
     if (r === 'unchecked') return 'open';
-    const W = App.writeLogic;
     if (r === 'learn') return W.inQueue(s) ? 'queue' : 'open';
     if (it.type !== 'vocab') return 'known';
     const a = W.activeStatus(S.srs, it, App.needsCheck);
@@ -111,7 +147,7 @@
   App.srsNote = (s) => `${s.check === 'known' ? 'als gelernt markiert' : s.reps ? s.reps + '× gewusst' : 'in der Lernschlange'} · ${App.writeLogic.isKnown(s) ? 'wird nicht mehr abgefragt' : 'nächste Wiederholung ' + App.fmtDate(s.due)}`;
   // Vokabel, die man lesen kann, aber aktiv noch nicht: „Kann ich lesen“ – „Kann ich“ heißt beide Richtungen
   App.statusBadge = (id) => {
-    const it = S.items.get(id), st = App.STATUS[App.vocabStatus(id)];
+    const it = S.items.get(id), st = App.statusInfo(it, App.vocabStatus(id));
     const half = it && it.type === 'vocab' && App.vocabStatus(id) === 'known' && App.wordState(it) !== 'known';
     return `<span class="badge vst" style="color:${st.color}" title="${half ? 'Lesen kannst du es – Deutsch → Japanisch fehlt noch' : 'Lernstand'}">${half ? '◐ Kann ich lesen' : `${st.dot} ${st.label}`}</span>`;
   };
@@ -204,9 +240,9 @@
         ${type !== 'vocab' ? '' : `<div class="row"><div class="seg">${[['jp', 'Japanisch → Deutsch (lesen)'], ['de', 'Deutsch → Japanisch (aktiv)'], ['mix', 'Beide gemischt']].map(([k, l]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k}">${l}</button>`).join('')}</div></div>`}
         <div class="row between"><div class="row" style="gap:18px">
           <span><b style="font-size:24px;color:var(--muted)">${c.unchecked}</b> ungeprüft</span>
-          <span><b style="font-size:24px;color:var(--ai)">${c.learn}</b> im ${active ? 'Aktiv-' : ''}Lernstapel</span>
+          <span><b style="font-size:24px;color:var(--ai)">${c.learn}</b> ${type === 'kanji' ? 'im Lernstapel' : 'in der Lernschlange'}</span>
           <span><b style="font-size:24px;color:var(--matcha)">${c.known}</b> kann ich${active ? ' aktiv' : ''}</span></div>
-          <span class="small muted">${mix ? `Deutsch → Japanisch: ${ac.unchecked} offen · ${ac.learn} im Aktiv-Lernstapel · ${ac.known} kann ich aktiv` : q.src || q.l || q.lvl || (isP && q.g) ? `Auswahl · insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
+          <span class="small muted">${mix ? `Deutsch → Japanisch: ${ac.unchecked} offen · ${ac.learn} in der Lernschlange · ${ac.known} kann ich aktiv` : q.src || q.l || q.lvl || (isP && q.g) ? `Auswahl · insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
         <div class="progress" style="display:flex;height:10px"><i style="width:${pct(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pct(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
         <div class="row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}${isP ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${App.phraseGroups().map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}
           <label class="row small" style="gap:8px"><b>${isK ? 'Kanji' : isP ? 'Ausdrücke' : 'Wörter'} pro Runde</b><input class="input" type="number" min="3" max="100" value="${batch}" data-batch style="width:90px"></label>
@@ -544,7 +580,7 @@
         <div class="form"><div class="three"><div class="field"><label>Quelle</label><select class="input" data-src>${App.sourceOptions(defSrc, false)}</select></div>
           <div class="field"><label>Lektion <small>falls keine Spalte</small></label><input class="input" data-lesson value="${esc(body.dataset.lesson || '')}"></div>
           <div class="field"><label>Schlagwörter</label><input class="input" data-tags placeholder="z. B. import"></div></div>
-          <div class="field"><label>Lernstand der neuen Wörter</label><div class="seg" data-st>${App.checkOn() ? '<button class="on" data-v="unchecked">Ungeprüft – erst einstufen (empfohlen)</button>' : ''}<button ${App.checkOn() ? '' : 'class="on" '}data-v="learn">Direkt in den Lernstapel</button><button data-v="known">Kann ich schon</button></div></div></div></div>`;
+          <div class="field"><label>Lernstand der neuen Wörter</label><div class="seg" data-st><button class="on" data-v="unchecked">Ungeprüft (empfohlen)</button><button data-v="learn">Direkt in die Lernschlange</button><button data-v="known">Kann ich schon</button></div></div></div></div>`;
       const prev = () => {
         const map = $$('[data-col]', s2).map((x) => x.value);
         const r = buildItems(st, map, { source: '', lesson: '', tags: [] });

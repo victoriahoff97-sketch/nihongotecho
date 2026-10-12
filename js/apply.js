@@ -593,7 +593,7 @@
     const body = view.querySelector('[data-body]');
     const source = sourceOf(item);
     const newDefaults = baseDefaults(item);
-    // Lernstand neuer Vokabeln kommt aus dem Vokabel-Dialog (Standard „In den Lernstapel“, wie im Unterricht)
+    // Lernstand neuer Vokabeln kommt aus dem Vokabel-Dialog (Standard „In die Lernschlange“, wie im Unterricht)
     const onLinked = async (it, isNew) => {
       await linkInto(item, it, isNew);
       drawSide();

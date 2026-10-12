@@ -11,7 +11,7 @@
   const learned = (it) => App.vocabStatus(it.id) !== 'unchecked';
   // von doppelt angelegten Wörtern zählt das, das du lernst
   const rank = (it) => ({ known: 2, learn: 1 }[App.vocabStatus(it.id)] || 0);
-  // Wann das Wort in den Lernstapel kam: Einstufung, bei eigenen Wörtern das Anlegen
+  // Wann das Wort ins Lernen kam: Einstufung, bei eigenen Wörtern das Anlegen
   const changedAt = (it) => {
     if (!learned(it)) return 0;
     const s = App.srsOf(it.id);
@@ -31,7 +31,7 @@
       <div class="gk-de">${App.meaningHtml(it)}</div>
       <div class="gk-meta">${it.pos ? `<span class="badge">${esc(App.POS[it.pos] || it.pos)}</span>` : ''}${verb ? `<span class="badge sec">${CLS[verb] || esc(verb)}</span><span class="gk-masu" lang="ja">${JP.ruby(JP.conj(it, 'masu'))}</span>` : ''}</div>
       ${ex ? `<div class="gk-ex"><span lang="ja">${JP.ruby(ex.jp)}</span><small>${esc(App.exMeaning(ex))}</small></div>` : ''}
-      <div class="gk-foot">${on ? App.statusBadge(it.id) : `<button class="btn btn-sm" data-gk-learn="${esc(it.id)}">${icon('plus')} In den Lernstapel</button>`}</div>
+      <div class="gk-foot">${on ? App.statusBadge(it.id) : `<button class="btn btn-sm" data-gk-learn="${esc(it.id)}">${icon('plus')} In die Lernschlange</button>`}</div>
     </div>`;
   };
 
@@ -56,14 +56,14 @@
     const q = query.q || '';
     const words = groups.reduce((n, g) => n + g.items.length, 0);
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="page-head"><div class="titles"><h1>Gleichklang <span class="jp-title">同音</span></h1>
-        <p>Wörter, die in der Grundform gleich gelesen werden, aber anders geschrieben sind und etwas anderes bedeuten. Die Übersicht wächst von selbst: Sobald ein Wort in deinem Lernstapel einen Gleichklang hat, steht es hier.</p></div></div>
+        <p>Wörter, die in der Grundform gleich gelesen werden, aber anders geschrieben sind und etwas anderes bedeuten. Die Übersicht wächst von selbst: Sobald ein Wort, das du lernst, einen Gleichklang hat, steht es hier.</p></div></div>
       ${groups.length ? `<div class="toolbar"><input class="input" type="search" data-gk-q placeholder="はし, kami, Brücke …" value="${esc(q)}" style="max-width:280px">
           <div class="seg" data-gk-pos>${POS_FILTER.map(([k, l], i) => `<button class="${i ? '' : 'on'}" data-v="${k}">${l}</button>`).join('')}</div>
           <span class="grow"></span><span class="small muted" data-gk-count></span></div>
         <div class="gk-list">${groups.map((g) => groupHtml(g, q)).join('')}</div>
         <div class="empty-state" data-gk-none hidden><h3>Nichts gefunden</h3></div>
-        <div class="gk-legend small muted"><span><span class="gk-chip sec-vocab"><b lang="ja">橋</b></span> lernst du schon</span><span><span class="gk-chip sec-vocab off"><b lang="ja">箸</b></span> klingt gleich, ist aber noch nicht in deinem Lernstapel</span></div>`
-    : `<div class="empty-state"><div class="big" lang="ja">同音</div><h3>Noch kein Gleichklang</h3><p>Sobald ein Wort in deinem Lernstapel genauso gelesen wird wie ein anderes, erscheint die Gruppe hier – ganz von selbst.</p><a class="btn" href="#/vokabeln">${icon('vocab')} Zu den Vokabeln</a></div>`}</div>`;
+        <div class="gk-legend small muted"><span><span class="gk-chip sec-vocab"><b lang="ja">橋</b></span> lernst du schon</span><span><span class="gk-chip sec-vocab off"><b lang="ja">箸</b></span> klingt gleich, lernst du aber noch nicht</span></div>`
+    : `<div class="empty-state"><div class="big" lang="ja">同音</div><h3>Noch kein Gleichklang</h3><p>Sobald ein Wort, das du lernst, genauso gelesen wird wie ein anderes, erscheint die Gruppe hier – ganz von selbst.</p><a class="btn" href="#/vokabeln">${icon('vocab')} Zu den Vokabeln</a></div>`}</div>`;
     if (!groups.length) return;
 
     const byKey = new Map(groups.map((g) => [g.key, g]));
@@ -94,7 +94,7 @@
       if (!b) return;
       toggled.set(b.closest('[data-gk]').dataset.gk, true);
       await App.setCheck(b.dataset.gkLearn, 'learn');
-      App.toast('Lernstand: ' + App.STATUS.learn.label);
+      App.toast('Lernstand: Lernschlange');
       App.render(true);
     });
     apply();

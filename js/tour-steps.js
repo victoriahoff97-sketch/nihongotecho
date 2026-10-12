@@ -36,7 +36,7 @@
       { target: '#view .toolbar', text: 'Suche ein Wort oder grenze nach Lektion, Wortart und Lernstand ein.' },
       { target: '#view [data-mode="list"]', text: 'Wechsle zwischen Karten und einer kompakten Liste.' },
       { target: '#view .page-head a[href*="einstufen"]', text: 'Geh neue Wörter einmal durch und sag, welche du schon kennst.' },
-      { target: '#view .page-head a[href*="ueben/karten"]', text: 'Hier wiederholst du die Wörter aus deinem Lernstapel.' },
+      { target: '#view .page-head a[href*="ueben/karten"]', text: 'Hier wiederholst du die Wörter aus deiner Lernschlange.' },
       { target: '#view [data-new="vocab"]', text: 'Eigene Wörter legst du hier an. „Automatisch ausfüllen“ ergänzt dabei Lesung und Bedeutung.' },
     ],
     '/kanji': [

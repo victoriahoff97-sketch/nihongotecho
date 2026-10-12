@@ -377,6 +377,32 @@
     : '<p class="small" style="margin:0;color:var(--shu)">Erst in der Karte „Kanji schreiben“ WaniKani verbinden.</p>'}</div>`;
   };
 
+  // =========================================================
+  // So läuft das Lernen – das Schaubild zum Lernweg (Einstellungen, Üben)
+  // =========================================================
+  App.route('/lernweg', (view) => {
+    const box = (cls, title, sub) => `<div class="lw-box ${cls}"><b>${title}</b><small>${sub}</small></div>`;
+    const arrow = (label = '') => `<div class="lw-arrow"><span>↓</span>${label ? `<small>${label}</small>` : ''}</div>`;
+    const row = (cls, name, text) => `<div class="lw-rule ${cls}"><b>${name}</b><span>${text}</span></div>`;
+    view.innerHTML = `<div class="sec-practice"><div class="crumbs">${App.backCrumb()} › So läuft das Lernen</div>
+      <div class="page-head"><div class="titles"><h1>So läuft das Lernen <span class="jp-title">道</span></h1><p>Ein Weg für Vokabeln und Ausdrücke: ungeprüft → Lernschlange → kann ich.</p></div></div>
+      <div class="card pad-lg"><div class="lw">
+        <div class="lw-col">${box('lw-src', 'Selbst angelegt', 'das willst du lernen')}${arrow('direkt, heute fällig')}</div>
+        <div class="lw-col">${box('lw-src', 'Aus Paket oder Import', 'Genki, JLPT, Listen')}${arrow()}
+          ${box('lw-wait', 'Ungeprüft', 'liegt hier, so lange du willst')}${arrow()}
+          <div class="lw-pair">${box('lw-step', 'Einstufen', '„Kann ich“ → fertig<br>„Lernen“ → Lernschlange')}<span class="lw-or">oder</span>${box('lw-step', 'Neue lernen', `die nächsten ${+S.settings.newPerDay || 15} als Karten,<br>beim ersten Mal auch „Kann ich schon“`)}</div>${arrow()}</div>
+        <div class="lw-wide">${box('lw-queue', 'Lernschlange', 'kommt von selbst in „Jetzt wiederholen“ – „Nochmal“ lässt es hier')}${arrow('ab 3 Wochen Abstand')}
+          ${box('lw-known', 'Kann ich', 'wird nicht mehr abgefragt')}</div></div>
+        <div class="lw-legend small muted"><span><i class="lw-wait"></i> wartet auf dich</span><span><i class="lw-queue"></i> läuft von selbst</span><span><i class="lw-known"></i> geschafft</span></div></div>
+      <div class="card"><h3>Was für welchen Bereich gilt</h3><div class="lw-rules">
+        ${row('sec-vocab', 'Vokabeln lesen', 'Der Weg oben, Japanisch → Deutsch.')}
+        ${row('sec-vocab', 'Vokabeln Deutsch → Japanisch', 'Derselbe Weg noch einmal. Er beginnt, sobald du das Wort lesen kannst. Erst wenn beide Richtungen sitzen, zählt die Vokabel als „kann ich“.')}
+        ${row('sec-phrase', 'Ausdrücke', 'Der Weg oben, eine Richtung.')}
+        ${row('sec-kanji', 'Kanji', 'Eigener Weg: Sie warten im Lernstapel auf „neue lernen“. Schreiben kommt dazu, sobald du ein Kanji lesen kannst – der erste Schreibversuch ist die Einstufung.')}
+        ${row('sec-grammar', 'Grammatik', 'Wird nicht abgefragt. Den Haken „Kann ich“ setzt du selbst auf der Seite des Grammatikpunkts; er zählt für Genki und JLPT.')}</div></div>
+      <div class="card"><h3>Frei üben</h3><p class="small" style="margin:0">Geht jederzeit und ändert nichts an Lernstand und Terminen: „Meine Lernschlange üben“ nimmt alles, was du gerade lernst, auch wenn heute nichts fällig ist. „Frei üben“ bei den <a href="#/ueben/karten">Karteikarten</a> geht eine beliebige Auswahl durch – auch Grammatik.</p></div></div>`;
+  });
+
   App.route('/einstellungen', (view) => {
     const st = S.settings;
     view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Einstellungen <span class="jp-title">設定</span></h1><p>Persönliches, Quellen, Sicherung und Teilen mit Freunden.</p></div></div>
@@ -388,7 +414,7 @@
         <div class="field"><label>Furigana</label><select class="input" data-s="furigana"><option value="on" ${st.furigana === 'on' ? 'selected' : ''}>Immer anzeigen</option><option value="hover" ${st.furigana === 'hover' ? 'selected' : ''}>Nur beim Antippen</option></select></div></div>
         <div class="two"><div class="field"><label>Neue Karten pro Sitzung</label><input class="input" type="number" min="1" max="100" data-s="newPerDay" value="${st.newPerDay}"></div>
         ${App.checkOn() ? `<div class="field"><label>Wörter pro Einstufungs-Runde</label><input class="input" type="number" min="3" max="100" data-s="checkBatch" value="${st.checkBatch || 15}"></div>` : ''}</div>
-        <div class="field"><label>Einstufen <small>erst prüfen, was du schon kannst, bevor Vokabeln und Kanji aus Paketen in den Lernstapel kommen</small></label><select class="input" data-s="check">${[['on', 'An – Neues erst einstufen'], ['off', 'Aus – alles Ungeprüfte liegt direkt im Lernstapel']].map(([k, l]) => `<option value="${k}" ${(App.checkOn() ? 'on' : 'off') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="field"><label>Einstufen <small>Bekanntes aus Paketen aussortieren, bevor du es lernst. „Neue lernen“ gibt es immer – für Vokabeln und Ausdrücke blendet „Aus“ nur den Einstufen-Knopf aus</small></label><select class="input" data-s="check">${[['on', 'An – Neues erst einstufen'], ['off', 'Aus – ohne Einstufen (Kanji liegen direkt im Lernstapel)']].map(([k, l]) => `<option value="${k}" ${(App.checkOn() ? 'on' : 'off') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Kanji-Schwerpunkt <small>was Startseite und „fällig“ in den Vordergrund stellen</small></label><select class="input" data-s="kanjiFocus">${[['both', 'Lesen und Schreiben'], ['write', 'Schreiben – Lesen lerne ich woanders (z. B. WaniKani)'], ['read', 'Lesen – Schreiben brauche ich nicht']].map(([k, l]) => `<option value="${k}" ${App.writeLogic.focus(st) === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Furigana beim Abfragen <small>über Kanji, die du schon lesen kannst („Kann ich“ oder mit Karten gelernt)</small></label><select class="input" data-s="furiKnown">${[['hide', 'Ausblenden – nur über Kanji, die ich noch lerne'], ['show', 'Über allen Kanji anzeigen']].map(([k, l]) => `<option value="${k}" ${(st.furiKnown === 'show' ? 'show' : 'hide') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="two">
@@ -414,6 +440,7 @@
         <button class="btn btn-sec" style="--sec:var(--sakura)" data-share>${icon('download')} Teilen-Paket erstellen</button></div>
       ${App.extensionCard()}
       ${App.pwa.card()}
+      <div class="card row between"><div><h3 style="margin:0">So läuft das Lernen</h3><p class="muted small" style="margin:4px 0 0">Das Schaubild: wo neue Einträge landen, was Einstufen und „neue lernen“ tun und wann etwas als „kann ich“ gilt.</p></div><a class="btn" href="#/lernweg">${icon('map')} Schaubild öffnen</a></div>
       <div class="card"><h3>Über</h3><p class="small">Nihongo Techō 日本語手帳 · läuft komplett offline in deinem Browser.<br>Strichfolge-Daten: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, CC BY-SA 3.0. PDF-Anzeige: pdf.js (Mozilla).<br>Inhalte orientieren sich an Genki I (3. Aufl.) – bitte mit deinem Buch abgleichen.</p>
         <button class="btn btn-sm btn-ghost btn-danger" data-reset>${icon('trash')} Alle Daten löschen</button></div>
       </div></div>`;
