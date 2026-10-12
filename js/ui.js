@@ -333,7 +333,11 @@
     const d = e.target.closest && e.target.closest('[data-msel]');
     if (!d) return;
     mselOpen = d.dataset.msel; // bleibt nach dem Neuzeichnen offen, damit man mehrere Häkchen setzen kann
-    App.setQuery({ [d.dataset.msel]: Array.from(d.querySelectorAll('input:checked')).map((c) => c.value).join('|') });
+    const patch = { [d.dataset.msel]: Array.from(d.querySelectorAll('input:checked')).map((c) => c.value).join('|') };
+    // Andere Quelle gewählt: die Lektion gehört zur alten Auswahl. Bliebe sie stehen, filterte sie unsichtbar weiter,
+    // sobald die neue Quelle keine Lektionen hat (z. B. JLPT) – das Lektionsfeld ist dann gar nicht mehr da.
+    if (d.dataset.msel === 'src') patch.l = '';
+    App.setQuery(patch);
   });
   document.addEventListener('click', (e) => {
     const d = e.target.closest && e.target.closest('[data-msel]');

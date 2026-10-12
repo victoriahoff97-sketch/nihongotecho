@@ -437,7 +437,12 @@
     const sec = App.SECTIONS.grammar;
     const sessions = App.sessionsFor(it.id);
     const srs = App.srsOf(it.id);
-    view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${crumbs(sec, it)}
+    // vor/zurück in der Reihenfolge der Grammatikliste (Quelle, Lektion, Buchreihenfolge)
+    const order = App.itemsOf('grammar').slice().sort(byLesson);
+    const at = order.findIndex((g) => g.id === it.id);
+    const prev = order[at - 1], next = order[at + 1];
+    const hop = (g, fwd) => `<a class="btn btn-sm" href="${App.link(g)}" title="${fwd ? 'Nächster' : 'Vorheriger'} Grammatikpunkt: ${esc(g.title)}">${fwd ? '' : icon('back')}<span style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</span>${fwd ? icon('next') : ''}</a>`;
+    view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="row between">${crumbs(sec, it)}<div class="row">${prev ? hop(prev) : ''}${next ? hop(next, true) : ''}</div></div>
       <div class="split"><div>
         <div class="card pad-lg"><div class="row between" style="align-items:flex-start"><div>
           <div lang="ja" style="font-size:30px;color:var(--sec);line-height:1.6">${JP.ruby(it.jp || '')}</div>

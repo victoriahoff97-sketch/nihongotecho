@@ -156,6 +156,8 @@
   // =========================================================
   // Einstufung in Runden
   // =========================================================
+  // „Nächste Runde“ nach einer Runde: gleich weiter mit derselben Auswahl und Anzahl, ohne die Auswahlkarte dazwischen
+  let autoNext = false;
   App.route('/ueben/einstufen', (view, p, q) => {
     if (!App.checkOn()) return App.go('#/ueben'); // abgeschaltet: alte Links und Lesezeichen führen zur Übersicht
     const type = q.type === 'kanji' || q.type === 'phrase' ? q.type : 'vocab';
@@ -222,11 +224,13 @@
       const list = mix ? W.lessonRound(base, S.srs, App.needsCheck, readOpen, n, App.shuffle) : base.filter((v) => statusOf(v) === 'unchecked').slice(0, n).map((item) => ({ item, de: active }));
       if (!list.length) return;
       view.querySelector('[data-setup]').hidden = true;
-      runBatch(stage, list, () => App.render(), type, mix);
+      runBatch(stage, list, () => { autoNext = true; App.render(); }, type, mix);
     };
     $$('[data-lmode]', view).forEach((b) => { b.onclick = () => App.setQuery({ l: b.dataset.lmode, dir: '' }); });
     view.querySelector('[data-go]').onclick = go;
-    if (q.auto) go();
+    const again = autoNext;
+    autoNext = false;
+    if (q.auto || again) go();
   });
 
   // list: Zeilen { item, de } – de: Vokabel Deutsch → Japanisch (gefragt wird die Bedeutung, eingestuft der Aktiv-Stand).
