@@ -162,7 +162,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const now = W.dayEnd(Date.now()); // fällig gilt für den ganzen Tag
     const due = W.readDue(items, S.srs, now);
     // Vokabeln/Kanji/Ausdrücke: neu sind nur Einträge aus dem Lernstapel (ungeprüfte erst einstufen; eigene Einträge sind es ohne Einstufung). Grammatik: Lernstapel inkl. „im Unterricht behandelt“.
-    const fresh = items.filter((i) => { const s = S.srs.get(i.id); return App.vocabStatus(i.id) === 'learn' && (!s || !s.reps); })
+    const fresh = items.filter((i) => { const s = S.srs.get(i.id); return App.vocabStatus(i.id) === 'learn' && !W.inQueue(s); })
       .sort(learnOrder);
     return { items, due, fresh };
   };
@@ -395,7 +395,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     if (byQueue && !pot.queue.size) {
       view.innerHTML = `<div class="${sec.cls}">${head}
         <div class="card" data-setup><div class="stack"><div class="row">${srcSeg}</div>
-          <p data-queue-empty>In deiner Lernschlange ist noch nichts. Dorthin kommt alles, was du bei den Karteikarten schon einmal gewusst hast – es bleibt dort, bis es sitzt.</p>
+          <p data-queue-empty>In deiner Lernschlange ist noch nichts. Dorthin kommt alles, was du beim Einstufen auf „Lernen“ setzt oder bei den Karteikarten schon einmal gewusst hast – es bleibt dort, bis es sitzt.</p>
           <div class="row"><a class="btn btn-primary" href="#/ueben/karten">${icon('practice')} Zu den Karteikarten</a><button class="btn" data-q-src="niveau">Nach Niveau üben</button></div></div></div></div>`;
       return;
     }

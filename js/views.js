@@ -248,7 +248,7 @@
         return `${foldHead('vocab', 'Vokabel-Lernstand', `${c.known} / ${c.total} kann ich`)}
       <div class="card sec-vocab${foldCls('vocab')}"><div class="row between"><div class="row" style="gap:28px">
         ${num(c.known, 'var(--matcha)', 'kann ich', 'known', 'Lesen und Deutsch → Japanisch sitzen – wird nicht mehr abgefragt')}
-        ${num(c.queue, 'var(--ai)', 'in der Lernschlange', 'queue', 'Schon gewusst – kommt von selbst über „Jetzt wiederholen“, bis es sitzt')}
+        ${num(c.queue, 'var(--ai)', 'in der Lernschlange', 'queue', 'Schon gewusst oder beim Einstufen auf „Lernen“ gesetzt – kommt von selbst über „Jetzt wiederholen“, bis es sitzt')}
         ${num(c.open, 'var(--muted)', 'warten noch auf dich', 'open', 'Noch einzustufen oder neu im Lernstapel – beim Lesen oder bei Deutsch → Japanisch')}</div>
         <span class="row">${cardBtns({ vocab }, '')}</span></div>
         ${progBar(c)}</div>`; })()}
@@ -385,9 +385,9 @@
           <dt>Quelle</dt><dd>${App.srcBadge(it) || '–'} ${it.sourceRef ? refLink(it.sourceRef) : ''}</dd>
           ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
           <dt>Lesen <small class="muted" style="font-weight:400">Japanisch → Deutsch</small></dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <div class="small muted" style="margin-top:4px">${srs && srs.reps ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : it._wk ? `bei WaniKani gelernt${(() => { const w = App.wk.vInfo(it); return w ? ` (Level ${w.level} · ${w.name})` : ''; })()} – wird hier nur Deutsch → Japanisch gefragt` : 'noch nicht eingestuft'}</div></dd>
+            <div class="small muted" style="margin-top:4px">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : it._wk ? `bei WaniKani gelernt${(() => { const w = App.wk.vInfo(it); return w ? ` (Level ${w.level} · ${w.name})` : ''; })()} – wird hier nur Deutsch → Japanisch gefragt` : 'noch nicht eingestuft'}</div></dd>
           <dt>Aktiv <small class="muted" style="font-weight:400">Deutsch → Japanisch</small></dt><dd>${(() => { const ast = App.activeStatus(it), as = App.srsOf(App.writeLogic.id(it.id)); return `<div class="seg" data-ast>${App.statusChoices(it).map(([k, s]) => `<button class="${ast === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <div class="small muted" style="margin-top:4px">${ast === 'locked' ? 'kommt dran, sobald du das Wort lesen kannst' : as && as.reps ? App.srsNote(as) : ast === 'learn' ? 'wartet im Aktiv-Lernstapel auf die Karteikarten' : 'aktiv noch nicht eingestuft'}</div>`; })()}</dd></dl></div>
+            <div class="small muted" style="margin-top:4px">${ast === 'locked' ? 'kommt dran, sobald du das Wort lesen kannst' : App.writeLogic.activeAsked(S.srs, it) ? App.srsNote(as) : ast === 'learn' ? 'wartet im Aktiv-Lernstapel auf die Karteikarten' : 'aktiv noch nicht eingestuft'}</div>`; })()}</dd></dl></div>
         ${(it.contexts || []).length ? `<div class="section-title">Kontext – wo du das Wort gefunden hast</div>${it.contexts.map((c) => { const s = c.sessionId && App.item(c.sessionId); const o = !s && c.itemId && App.item(c.itemId); const x = !s && !o && c.exerciseId; return `<div class="ctx"><div class="small"><b>${s ? `<a href="${App.link(s)}">授業 ${esc(s.number ? 'Stunde ' + s.number : s.title || 'Unterricht')}</a>` : o ? `<a href="${App.link(o)}">${esc(c.label || 'Anwenden')}</a>` : x ? `<a href="#/aufgabe/${encodeURIComponent(x)}">${esc(c.label || 'Buchaufgabe')}</a>` : esc(c.label || 'Notiz')}</b> · ${App.fmtDate(c.date)}</div>${c.text ? `<div class="jp-s" lang="ja">${App.highlightWord(c.text, it)}</div>` : ''}</div>`; }).join('')}` : ''}
         ${App.useHtml(it)}
         ${it.examples && it.examples.length ? `<div class="section-title">Beispielsätze</div>${it.examples.map(App.exampleHtml).join('')}` : ''}
@@ -451,7 +451,7 @@
           <div class="row">${App.srcBadge(it)} ${App.tagsHtml(it.tags)}
           ${sessions.map((s) => `<a class="badge src" style="--c:var(--shu);text-decoration:none" href="${App.link(s)}">授業 ${esc(s.number ? 'Stunde ' + s.number : s.title)} · ${App.fmtDate(s.date)}</a>`).join('')}</div>
           <div class="row" style="margin-top:14px;align-items:center"><span class="small muted">Lernstand</span><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <span class="small muted">${srs && srs.reps ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? `wartet im Lernstapel auf die Karteikarten${!srs ? ' (weil im Unterricht behandelt)' : ''}` : 'noch nicht eingestuft'}</span></div></div>
+            <span class="small muted">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? `wartet im Lernstapel auf die Karteikarten${!srs ? ' (weil im Unterricht behandelt)' : ''}` : 'noch nicht eingestuft'}</span></div></div>
         ${it.structure && it.structure.length ? `<div class="section-title">Aufbau</div><div class="structure">${it.structure.map((s) => `<div>${JP.ruby(s)}</div>`).join('')}</div>` : ''}
         ${it.explanation ? `<div class="section-title">Erklärung</div><div class="card prose">${JP.md(it.explanation)}</div>` : ''}
         ${it.examples && it.examples.length ? `<div class="section-title">Beispiele</div>${it.examples.map(App.exampleHtml).join('')}` : ''}
@@ -570,7 +570,7 @@
         <dl class="kv" style="margin-top:14px"><dt>Lesung</dt><dd lang="ja">${esc(JP.kana(it.jp))}</dd><dt>Gruppe</dt><dd>${esc(it.group)}</dd><dt>Quelle</dt><dd>${App.srcBadge(it) || '–'}</dd>
         ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
           <dt>Lernstand</dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <div class="small muted" style="margin-top:4px">${srs && srs.reps ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : 'noch nicht eingestuft'}</div></dd></dl></div>
+            <div class="small muted" style="margin-top:4px">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'wartet im Lernstapel auf die Karteikarten' : 'noch nicht eingestuft'}</div></dd></dl></div>
         ${App.attachmentsHtml(it)}</div><aside>${App.relatedHtml(it)}</aside></div></div>`;
     App.hydrateThumbs(view);
     view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.STATUS[b.dataset.v].label); App.render(true); } };

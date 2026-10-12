@@ -34,7 +34,7 @@
     learn: { label: 'Lernstapel', color: 'var(--ai)', dot: '◐' },
     known: { label: 'Kann ich', color: 'var(--matcha)', dot: '●' },
   };
-  // extra: Zusatzfelder für den Lernstapel-Eintrag (z. B. pre = für Deutsch → Japanisch vorgemerkt)
+  // extra: Zusatzfelder für den Lernstapel-Eintrag (pre = für Deutsch → Japanisch vorgemerkt · queued = gleich in der Lernschlange, so setzt es das Einstufen)
   App.setCheck = async (id, st, extra) => {
     const now = Date.now();
     let s;
@@ -71,10 +71,11 @@
   App.wordState = (it) => {
     const r = App.vocabStatus(it.id), s = S.srs.get(it.id);
     if (r === 'unchecked') return 'open';
-    if (r === 'learn') return s && s.reps ? 'queue' : 'open';
+    const W = App.writeLogic;
+    if (r === 'learn') return W.inQueue(s) ? 'queue' : 'open';
     if (it.type !== 'vocab') return 'known';
-    const W = App.writeLogic, a = W.activeStatus(S.srs, it, App.needsCheck), as = S.srs.get(W.id(it.id));
-    return a === 'known' ? 'known' : a === 'learn' && as && as.reps ? 'queue' : 'open';
+    const a = W.activeStatus(S.srs, it, App.needsCheck);
+    return a === 'known' ? 'known' : a === 'learn' && W.activeAsked(S.srs, it) ? 'queue' : 'open';
   };
   App.WORD_STATE = {
     known: { label: 'Kann ich', color: 'var(--matcha)', dot: '●' },
@@ -107,7 +108,7 @@
     return sum(out);
   };
   // Zeile unter dem Lernstand: „Kann ich“ hat keinen nächsten Termin mehr
-  App.srsNote = (s) => `${s.check === 'known' ? 'als gelernt markiert' : s.reps + '× gewusst'} · ${App.writeLogic.isKnown(s) ? 'wird nicht mehr abgefragt' : 'nächste Wiederholung ' + App.fmtDate(s.due)}`;
+  App.srsNote = (s) => `${s.check === 'known' ? 'als gelernt markiert' : s.reps ? s.reps + '× gewusst' : 'in der Lernschlange'} · ${App.writeLogic.isKnown(s) ? 'wird nicht mehr abgefragt' : 'nächste Wiederholung ' + App.fmtDate(s.due)}`;
   // Vokabel, die man lesen kann, aber aktiv noch nicht: „Kann ich lesen“ – „Kann ich“ heißt beide Richtungen
   App.statusBadge = (id) => {
     const it = S.items.get(id), st = App.STATUS[App.vocabStatus(id)];
@@ -196,7 +197,7 @@
     const pct = (n) => (c.total ? (n / c.total) * 100 : 0);
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="crumbs">${App.backCrumb()} › Einstufen</div>
       <div class="page-head"><div class="titles"><h1>Einstufen <span class="jp-title">確認</span></h1>
-        <p>${mix ? `Geh ${perLesson ? 'eine Lektion' : 'deine Vokabeln'} in Runden durch – beide Richtungen gemischt: Was kannst du schon lesen, und was weißt du auch aus dem Deutschen heraus?` : active ? 'Welche Wörter weißt du auch aus dem Deutschen heraus? Geh alle, die du schon lesen kannst, in Runden durch – danach landet im Aktiv-Lernstapel nur, was du noch üben musst.' : `Was kannst du schon? Geh deine ${isK ? 'Kanji' : isP ? 'Ausdrücke' : 'Vokabeln'} in Runden durch – danach landet im Lernstapel nur, was du wirklich noch lernen musst.`}</p></div>
+        <p>${mix ? `Geh ${perLesson ? 'eine Lektion' : 'deine Vokabeln'} in Runden durch – beide Richtungen gemischt: Was kannst du schon lesen, und was weißt du auch aus dem Deutschen heraus?` : active ? 'Welche Wörter weißt du auch aus dem Deutschen heraus? Geh alle, die du schon lesen kannst, in Runden durch – was du noch üben musst, kommt gleich in die Lernschlange.' : `Was kannst du schon? Geh deine ${isK ? 'Kanji' : isP ? 'Ausdrücke' : 'Vokabeln'} in Runden durch – was du noch lernen musst, kommt gleich in die Lernschlange.`}</p></div>
         <div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div></div>
       <div class="card" data-setup><div class="stack">
         ${type !== 'vocab' || !lessons.length ? '' : `<div class="row"><div class="seg"><button class="${perLesson ? '' : 'on'}" data-lmode="">Alle Lektionen gemischt</button><button class="${perLesson ? 'on' : ''}" data-lmode="${esc(perLesson ? q.l : firstOpen)}">Pro Lektion</button></div></div>`}
@@ -211,7 +212,7 @@
           <label class="row small" style="gap:8px"><b>${isK ? 'Kanji' : isP ? 'Ausdrücke' : 'Wörter'} pro Runde</b><input class="input" type="number" min="3" max="100" value="${batch}" data-batch style="width:90px"></label>
           <button class="btn btn-primary" data-go ${open ? '' : 'disabled'}>${icon('play')} Runde starten (${Math.min(batch, open)})</button>
           ${perLesson && !open && c.total ? `<span class="verdict ok">✓ Lektion ${esc(q.l)} ist eingestuft</span>${nextLesson !== undefined ? `<button class="btn btn-sec" data-lmode="${esc(nextLesson)}">${icon('next')} Lektion ${esc(nextLesson)}</button>` : ''}` : !c.unchecked && c.total ? `<span class="verdict ok">✓ ${active && !(c.learn + c.known) ? 'Noch nichts einzustufen' : 'Alles in dieser Auswahl ist eingestuft'}</span>` : ''}</div>
-        ${mix ? `<div class="small muted">Tipp: Steht ein japanisches Wort da, geht es ums Lesen – steht die deutsche Bedeutung da, um das Wort aus dem Deutschen heraus. Antippen deckt auf. Die Gegenrichtung eines Wortes kommt frühestens in der nächsten Runde. „Lernen“ beim Lesen merkt das Wort gleich für Deutsch → Japanisch vor – diese Karten kommen erst, wenn du es lesen kannst.${ac.locked && !c.unchecked ? ` ${ac.locked} ${ac.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} für Deutsch → Japanisch dazu, sobald du ${ac.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : active ? `<div class="small muted">Tipp: Tippe auf die Bedeutung, um das japanische Wort zu sehen. „Kann ich“ = weiß ich aus dem Deutschen heraus (wird nicht mehr abgefragt). „Lernen“ = kommt in die Karteikarten Deutsch → Japanisch. Der Lese-Lernstand bleibt davon unberührt.${c.locked ? ` ${c.locked} ${c.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} dazu, sobald du ${c.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : `<div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : isP ? 'einen Ausdruck, um Lesung & Übersetzung' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (wird nicht mehr abgefragt). „Lernen“ = kommt in deine Karteikarten.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>`}
+        ${mix ? `<div class="small muted">Tipp: Steht ein japanisches Wort da, geht es ums Lesen – steht die deutsche Bedeutung da, um das Wort aus dem Deutschen heraus. Antippen deckt auf. Die Gegenrichtung eines Wortes kommt frühestens in der nächsten Runde. „Lernen“ = kommt gleich in die Lernschlange und ist heute bei „Jetzt wiederholen“ dabei. Beim Lesen merkt es das Wort auch für Deutsch → Japanisch vor – diese Karten kommen von selbst, sobald du es lesen kannst.${ac.locked && !c.unchecked ? ` ${ac.locked} ${ac.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} für Deutsch → Japanisch dazu, sobald du ${ac.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : active ? `<div class="small muted">Tipp: Tippe auf die Bedeutung, um das japanische Wort zu sehen. „Kann ich“ = weiß ich aus dem Deutschen heraus (wird nicht mehr abgefragt). „Lernen“ = kommt gleich in die Lernschlange (Deutsch → Japanisch) und ist heute bei „Jetzt wiederholen“ dabei. Der Lese-Lernstand bleibt davon unberührt.${c.locked ? ` ${c.locked} ${c.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} dazu, sobald du ${c.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : `<div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : isP ? 'einen Ausdruck, um Lesung & Übersetzung' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (wird nicht mehr abgefragt). „Lernen“ = kommt gleich in die Lernschlange und ist heute bei „Jetzt wiederholen“ dabei.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>`}
       </div></div>
       <div data-stage style="margin-top:18px"></div></div>`;
     const bi = view.querySelector('[data-batch]');
@@ -242,7 +243,6 @@
     const pre = new Set();
     const isK = type === 'kanji';
     const key = (e) => (e.de ? W.id(e.item.id) : e.item.id);
-    const allDe = list.every((e) => e.de);
     const setRow = async (e, st) => {
       const id = e.item.id;
       if (st === 'unchecked') {
@@ -252,8 +252,9 @@
         return;
       }
       decided.set(key(e), st);
-      await App.setCheck(key(e), st);
-      if (mixed && !e.de && st === 'learn' && !S.srs.has(W.id(id))) { pre.add(id); await App.setCheck(W.id(id), 'learn', { pre: 1 }); }
+      // „Lernen“ heißt hier: gleich in die Lernschlange (queued) – heute fällig, ohne den Umweg über „neue lernen“
+      await App.setCheck(key(e), st, st === 'learn' ? { queued: 1 } : undefined);
+      if (mixed && !e.de && st === 'learn' && !S.srs.has(W.id(id))) { pre.add(id); await App.setCheck(W.id(id), 'learn', { pre: 1, queued: 1 }); }
     };
     const answer = (e) => {
       const v = e.item;
@@ -269,7 +270,7 @@
         ${e.de ? `<div class="check-word" data-reveal style="font-family:var(--font-ui);font-size:20px;font-weight:800">${App.meaningHtml(v)}</div>`
         : `<div class="check-word" data-reveal lang="ja" ${isK ? 'style="font-family:var(--font-kanji);font-size:48px"' : ''}>${isK ? esc(v.char) : App.askHtml(v)}</div>`}
         <div class="check-ans" data-reveal>${d || shown.has(key(e)) ? answer(e) : '<span class="muted small">antippen zum Aufdecken</span>'}</div>
-        <div class="check-btns">${d ? `<span class="verdict ${d === 'known' ? 'ok' : ''}" style="${d === 'learn' ? 'background:var(--ai-soft);color:var(--ai)' : ''}">${d === 'known' ? '✓ Kann ich' : '＋ Lernstapel'}</span><button class="btn btn-sm btn-ghost" data-undo>ändern</button>`
+        <div class="check-btns">${d ? `<span class="verdict ${d === 'known' ? 'ok' : ''}" style="${d === 'learn' ? 'background:var(--ai-soft);color:var(--ai)' : ''}">${d === 'known' ? '✓ Kann ich' : '＋ Lernschlange'}</span><button class="btn btn-sm btn-ghost" data-undo>ändern</button>`
           : `<button class="btn btn-sm check-known" data-set="known">${icon('check')} Kann ich</button><button class="btn btn-sm check-learn" data-set="learn">${icon('plus')} Lernen</button>`}</div></div>`;
     };
     const draw = () => {
@@ -281,8 +282,8 @@
         <div class="row">${rest}</div></div>
         <div class="check-list">${list.map(row).join('')}</div>
         ${left ? `<div class="row" style="justify-content:flex-end;margin-top:10px">${rest}</div>` : ''}
-        ${!left ? `<div class="card row between" style="margin-top:16px"><div><b>Runde geschafft!</b> ${k} kannst du schon, ${list.length - k} kommen in den ${allDe ? 'Aktiv-' : ''}Lernstapel.</div>
-          <div class="row">${App.origin() ? App.backBtn() : ''}<a class="btn" href="#/ueben/karten${isK ? '?type=kanji' : type === 'phrase' ? '?type=phrase' : allDe ? '?dir=de' : ''}">${icon('practice')} Lernstapel üben</a><button class="btn btn-primary" data-next>${icon('next')} Nächste Runde</button></div></div>` : ''}`;
+        ${!left ? `<div class="card row between" style="margin-top:16px"><div><b>Runde geschafft!</b> ${k} kannst du schon, ${list.length - k === 1 ? '1 ist' : `${list.length - k} sind`} jetzt in der Lernschlange.</div>
+          <div class="row">${App.origin() ? App.backBtn() : ''}<a class="btn" href="#/ueben/heute">${icon('shuffle')} Jetzt wiederholen</a><button class="btn btn-primary" data-next>${icon('next')} Nächste Runde</button></div></div>` : ''}`;
     };
     stage.onclick = async (ev) => {
       const r = ev.target.closest('.check-row');

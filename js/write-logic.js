@@ -62,7 +62,10 @@
 
   // Lese-Runde (Japanisch → Deutsch): fällig ist, was schon einmal gewusst wurde und noch nicht „Kann ich“ ist.
   // Ausdrücke haben keinen Lernstand – sie bleiben im Wiederholungsplan.
-  W.readAsked = (it, s) => !!s && s.reps > 0 && !(it.type !== 'phrase' && W.isKnown(s));
+  // In der Lernschlange ist auch, was beim Einstufen auf „Lernen“ gesetzt wurde (queued): es ist gleich fällig, ohne „neue lernen“.
+  // Lesbar (W.unlocked) wird es dadurch nicht – das bleibt an „schon gewusst“ gebunden.
+  W.inQueue = (s) => !!s && (s.reps > 0 || !!s.queued);
+  W.readAsked = (it, s) => W.inQueue(s) && !(it.type !== 'phrase' && W.isKnown(s));
   W.readDue = (items, srs, now) => items.filter((i) => { const s = srs.get(i.id); return W.readAsked(i, s) && s.due <= now; }).sort((a, b) => srs.get(a.id).due - srs.get(b.id).due);
 
   // Fällig gilt für den ganzen Tag: Stichzeit ist das Ende des heutigen Tages, nicht die Minute.
@@ -91,7 +94,7 @@
         const wi = items.get(W.itemId(s.id));
         if (!wi || s.due > now || W.isKnown(s)) return;
         // Vokabeln aktiv · Kanji schreiben – andere Einträge (Ausdrücke …) haben keinen zweiten Lernstand
-        if (wi.type === 'vocab' ? s.reps > 0 : wi.type === 'kanji' && focus !== 'read') n++;
+        if (wi.type === 'vocab' ? W.activeAsked(srs, wi) : wi.type === 'kanji' && focus !== 'read') n++;
         return;
       }
       const it = items.get(s.id);
@@ -117,10 +120,12 @@
   };
   // Aktiv-Runde: fällige (älteste zuerst) + neue = im Aktiv-Lernstapel, aber noch nie gewusst (Reihenfolge der Liste)
   // Vorgemerkt (pre): beim Einstufen pro Lektion nicht gelesen – liegt schon im Aktiv-Lernstapel, Karten kommen erst, wenn das Wort lesbar ist
+  // In der Aktiv-Lernschlange: schon gewusst – oder beim Einstufen auf „Lernen“ gesetzt (queued); Vorgemerktes erst, wenn das Wort lesbar ist
+  W.activeAsked = (srs, it) => { const s = srs.get(W.id(it.id)); return !!s && (s.reps > 0 || (!!s.queued && !(s.pre && !W.readable(srs, it)))); };
   W.activeQueue = (items, srs, now, needsCheck) => {
     const rec = (i) => srs.get(W.id(i.id));
-    const due = items.filter((i) => { const s = rec(i); return s && s.reps > 0 && !W.isKnown(s) && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
-    const fresh = items.filter((i) => { const s = rec(i); return (!s || !s.reps) && W.activeStatus(srs, i, needsCheck) === 'learn' && !(s && s.pre && !W.readable(srs, i)); });
+    const due = items.filter((i) => { const s = rec(i); return W.activeAsked(srs, i) && !W.isKnown(s) && s.due <= now; }).sort((a, b) => rec(a).due - rec(b).due);
+    const fresh = items.filter((i) => { const s = rec(i); return !W.inQueue(s) && W.activeStatus(srs, i, needsCheck) === 'learn' && !(s && s.pre && !W.readable(srs, i)); });
     return { due, fresh };
   };
   // Einstufen pro Lektion: eine Runde mischt beide Richtungen – lesen (Japanisch → Deutsch) für Ungeprüftes und
