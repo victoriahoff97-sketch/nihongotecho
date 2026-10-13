@@ -28,6 +28,7 @@
   LK.glossLoaded = () => !!gloss && glossSig === dictSig();
 
   // id = eigener Eintrag (zum Verknüpfen); Wörterbuch-Treffer tragen stattdessen entry
+  // form (optional) = { surface, note }: die gebeugte Form im Text und ihr Name (いけます · Potenzialform + ます-Form)
   const ownResult = (it) => {
     if (it.type === 'kanji') return { id: it.id, jp: it.char, kana: App.kanjiLogic.kunText((it.kun || [])[0]) || (it.on || [])[0] || '', meaning: App.meaning(it).text };
     if (it.type === 'phrase') return { id: it.id, jp: JP.plain(it.jp), kana: JP.kana(it.jp), meaning: App.meaning(it).text };
@@ -64,7 +65,8 @@
       // alle Grundformen, die zu einer Form passen (いきました = 行く oder 生きる), eigene zuerst
       const entriesFor = async (surface) => {
         const cands = App.deinflect(surface);
-        return LL.surfaceEntries(cands, await lookup([...new Set(cands.map((c) => c.base))]), App.posMatches);
+        return LL.surfaceEntries(cands, await lookup([...new Set(cands.map((c) => c.base))]), App.posMatches)
+          .map((e) => { const note = App.formNote(e.via); return note ? Object.assign(e, { form: { surface, note } }) : e; });
       };
       let found = [];
       try {
@@ -75,8 +77,9 @@
       } catch (e) { console.error(e); }
       const seen = new Set();
       found = found.filter((e) => !seen.has(e.id) && seen.add(e.id));
-      scanOwn = found.filter((e) => e.own).map((e) => ownResult(e.own));
-      scanDict = found.filter((e) => !e.own).map(dictResult);
+      const withForm = (r, e) => (e.form ? Object.assign(r, { form: e.form }) : r);
+      scanOwn = found.filter((e) => e.own).map((e) => withForm(ownResult(e.own), e));
+      scanDict = found.filter((e) => !e.own).map((e) => withForm(dictResult(e), e));
     }
     const allOwn = LL.uniq(scanOwn.concat(own)).slice(0, MAX);
     const grammar = LL.rankGrammar(App.itemsOf('grammar'), q, { kanaQ, forms: bases }).map(grammarResult);
@@ -91,9 +94,10 @@
   const ownIx = () => ownMap || (ownMap = LL.ownIndex(App.store.items.values()));
   App.onChange(() => { ownMap = null; });
 
+  const formHtml = (r) => (r.form ? `<span class="lk-form">im Text: <span lang="ja">${esc(r.form.surface)}</span> · ${esc(r.form.note)}</span>` : '');
   const rowHtml = (r, i, grp) => r.grammar
     ? `<button class="lk-row lk-gram ${App.SECTIONS.grammar.cls}" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-de">${esc(r.title)}</span></span></button>`
-    : `<button class="lk-row" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</span><span class="lk-de">${r.lang === 'en' ? '<span class="badge">EN</span> ' : ''}${esc(r.meaning)}</span></span></button>`;
+    : `<button class="lk-row" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</span><span class="lk-de">${r.lang === 'en' ? '<span class="badge">EN</span> ' : ''}${esc(r.meaning)}</span>${formHtml(r)}</span></button>`;
 
   // Ein Fenster pro Schreibfläche; erneutes Öffnen holt das vorhandene nach vorn
   // onLink(r) (optional): Treffer mit dem zuletzt eingekreisten Wort verknüpfen – zeigt in der Detailansicht „Verknüpfen“;
@@ -166,7 +170,7 @@
       }
       const chars = Array.from(r.jp.replace(/\s/g, '')).slice(0, MAX_CHARS);
       body.innerHTML = `<button class="btn btn-sm btn-ghost" data-lkback>${icon('back')} Treffer</button>
-        <div class="lk-big">${esc(r.jp)}</div><div class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</div><div class="lk-de">${esc(r.meaning)}</div>
+        <div class="lk-big">${esc(r.jp)}</div><div class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</div><div class="lk-de">${esc(r.meaning)}</div>${formHtml(r)}
         ${onLink ? `<button class="btn btn-sm btn-primary lk-link" data-lklink>${icon('link')} ${r.id ? 'Mit dem Wort verknüpfen' : 'Als Vokabel speichern & verknüpfen'}</button>` : ''}
         <div class="lk-strokes">${chars.map(() => '<div class="lk-stroke"></div>').join('')}</div>`;
       body.scrollTop = 0;

@@ -103,11 +103,12 @@
 
   // Alle Einträge, die zu einer (evtl. gebeugten) Form passen: cands aus App.deinflect, map aus dem Lookup ihrer Grundformen.
   // いきました kann 行く oder 生きる sein → beide zeigen; eigene Wörter zuerst, dann häufige.
+  // Liefert Kopien mit via = Regelkette der Beugung (für App.formNote); die Einträge im Lookup bleiben unverändert.
   const surfaceEntries = (cands, map, posMatches) => {
     const seen = new Set(), out = [];
     for (const c of cands) for (const e of map.get(c.base) || []) {
       if (seen.has(e.id) || !posMatches(e.p || [], c.type)) continue;
-      seen.add(e.id); out.push(e);
+      seen.add(e.id); out.push(Object.assign({}, e, { via: c.rules || [] }));
     }
     const rank = (e) => (e.own ? 2 : 0) + (e.c ? 1 : 0);
     return out.map((e, i) => ({ e, i })).sort((a, b) => rank(b.e) - rank(a.e) || a.i - b.i).map((x) => x.e);

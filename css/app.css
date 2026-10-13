@@ -995,6 +995,8 @@ body.ink-fit #view { padding-bottom: 16px; }
 .lookup-pop .lk-txt { display: flex; flex-direction: column; min-width: 0; }
 .lookup-pop .lk-kana { font-size: 13px; color: var(--muted); }
 .lookup-pop .lk-de { font-size: 14px; }
+.lookup-pop .lk-form { display: block; font-size: 12.5px; color: var(--muted); }
+.lookup-pop .lk-big ~ .lk-form { text-align: center; margin-top: 2px; }
 .lookup-pop .lk-big { font-family: var(--font-kanji); font-size: 64px; line-height: 1.15; text-align: center; margin-top: 6px; word-break: break-all; }
 .lookup-pop .lk-big + .lk-kana, .lookup-pop .lk-big + .lk-kana + .lk-de { text-align: center; }
 .lookup-pop .lk-big + .lk-kana { font-size: 18px; }

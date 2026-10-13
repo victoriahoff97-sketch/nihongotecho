@@ -90,20 +90,21 @@
             if (isFuncOnly(entry.p)) continue;
             if (!posMatches(entry.p, cand.type)) continue;
             const kanjiMatch = Array.isArray(entry.k) && entry.k.includes(surface);
-            const rank = (entry.c === 1 ? 2 : 0) + (kanjiMatch ? 1 : 0);
+            // Potenzial-Deutung (かえる = 買う „kaufen können“) nur, wenn keine gleich gute direkte Grundform da ist (帰る)
+            const rank = (entry.c === 1 ? 2 : 0) + (kanjiMatch ? 1 : 0) - (cand.rules.includes('potential') ? 0.5 : 0);
             const known = !!(isKnown && isKnown(entry));
             if (!best || rank > best.rank || (rank === best.rank && known && !best.known)) best = { cand, entry, rank, known };
             if (!known && (!bestNew || rank > bestNew.rank)) bestNew = { cand, entry, rank };
           }
         }
         if (best && best.known) hit = { len, known: true };
-        else if (bestNew) hit = { len, surface, base: bestNew.cand.base, entry: bestNew.entry, over: inner.map(({ k }) => k) };
+        else if (bestNew) hit = { len, surface, base: bestNew.cand.base, rules: bestNew.cand.rules, entry: bestNew.entry, over: inner.map(({ k }) => k) };
       }
 
       if (hit && hit.known) {
         i += hit.len; // Stelle ist schon eine eigene Vokabel
       } else if (hit) {
-        const r = { start: i, end: i + hit.len, surface: hit.surface, base: hit.base, entry: hit.entry };
+        const r = { start: i, end: i + hit.len, surface: hit.surface, base: hit.base, rules: hit.rules, entry: hit.entry }; // rules: Beugung der Stelle (App.formNote)
         if (hit.over.length) r.over = hit.over;
         results.push(r);
         usedIds.add(hit.entry.id);

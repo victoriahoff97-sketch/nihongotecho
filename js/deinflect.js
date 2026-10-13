@@ -17,15 +17,16 @@
 
   // Regeltabelle [fromSuffix, toSuffix, fromType, toType, ruleName], rueckwaerts angewandt (wie bei Yomitan)
   const RULES = [];
+  // Der Regelname benennt die Form genau (ません ≠ ました), damit App.formNote sie anzeigen kann
   const rule = (from, to, toType, name, fromType) => RULES.push({ from, to, toType, name, fromType: fromType || 'any' });
 
   // ---------- Hoeflichkeitsform (-ます, -ません, -ました, -ませんでした, -ましょう) ----------
-  ['ます', 'ません', 'ました', 'ませんでした', 'ましょう'].forEach((s) => {
-    rule(s, 'る', 'v1', 'masu'); // Ichidan: Stamm+る
-    Object.entries(U_I).forEach(([u, i]) => rule(i + s, u, 'v5', 'masu')); // Godan: i-Reihe -> u-Reihe
-    rule('し' + s, 'する', 'vs', 'masu');
-    rule('き' + s, 'くる', 'vk', 'masu');
-    rule('来' + s, '来る', 'vk', 'masu');
+  Object.entries({ ます: 'masu', ません: 'masen', ました: 'mashita', ませんでした: 'masendeshita', ましょう: 'mashou' }).forEach(([s, name]) => {
+    rule(s, 'る', 'v1', name); // Ichidan: Stamm+る
+    Object.entries(U_I).forEach(([u, i]) => rule(i + s, u, 'v5', name)); // Godan: i-Reihe -> u-Reihe
+    rule('し' + s, 'する', 'vs', name);
+    rule('き' + s, 'くる', 'vk', name);
+    rule('来' + s, '来る', 'vk', name);
   });
 
   // ---------- て/た-Form ----------
@@ -49,30 +50,34 @@
   rule('きたら', 'くる', 'vk', 'tara'); rule('来たら', '来る', 'vk', 'tara');
   rule('いったら', 'いく', 'v5', 'tara'); rule('行ったら', '行く', 'v5', 'tara');
 
-  // ---------- ている/ていた/ています/てる -> て (Kettenregel, danach greifen die て-Regeln erneut) ----------
-  ['ている', 'ていた', 'ています', 'てる'].forEach((s) => rule(s, 'て', 'any', 'teiru'));
+  // ---------- ている/ていた/ています/てる -> て, ebenso nach で (飲んでいる) (Kettenregel, danach greifen die て-Regeln erneut) ----------
+  Object.entries({ いる: 'teiru', いた: 'teita', います: 'teimasu', る: 'teru' }).forEach(([s, name]) => ['て', 'で'].forEach((te) => rule(te + s, te, 'any', name)));
 
   // ---------- ない/なかった ----------
-  ['ない', 'なかった'].forEach((s) => {
-    rule(s, 'る', 'v1', 'nai');
-    Object.entries(U_A).forEach(([u, a]) => rule(a + s, u, 'v5', 'nai'));
-    rule('し' + s, 'する', 'vs', 'nai');
-    rule('こ' + s, 'くる', 'vk', 'nai');
-    rule('来' + s, '来る', 'vk', 'nai');
+  Object.entries({ ない: 'nai', なかった: 'nakatta' }).forEach(([s, name]) => {
+    rule(s, 'る', 'v1', name);
+    Object.entries(U_A).forEach(([u, a]) => rule(a + s, u, 'v5', name));
+    rule('し' + s, 'する', 'vs', name);
+    rule('こ' + s, 'くる', 'vk', name);
+    rule('来' + s, '来る', 'vk', name);
   });
 
-  // ---------- たい/たかった/たくない (Wunschform, haengt am Stamm) ----------
-  ['たい', 'たかった', 'たくない'].forEach((s) => {
-    rule(s, 'る', 'v1', 'tai');
-    Object.entries(U_I).forEach(([u, i]) => rule(i + s, u, 'v5', 'tai'));
-    rule('し' + s, 'する', 'vs', 'tai');
-    rule('き' + s, 'くる', 'vk', 'tai');
-    rule('来' + s, '来る', 'vk', 'tai');
+  // ---------- たい/たかった/たくない/たくなかった (Wunschform, haengt am Stamm) ----------
+  Object.entries({ たい: 'tai', たかった: 'takatta', たくない: 'takunai', たくなかった: 'takunakatta' }).forEach(([s, name]) => {
+    rule(s, 'る', 'v1', name);
+    Object.entries(U_I).forEach(([u, i]) => rule(i + s, u, 'v5', name));
+    rule('し' + s, 'する', 'vs', name);
+    rule('き' + s, 'くる', 'vk', name);
+    rule('来' + s, '来る', 'vk', name);
   });
 
   // ---------- Passiv/Potenzial (-られる/-れる) ----------
   rule('られる', 'る', 'v1', 'rareru');
   Object.entries(U_A).forEach(([u, a]) => rule(a + 'れる', u, 'v5', 'reru'));
+
+  // ---------- Potenzial der う-Verben (行ける -> 行く): e-Reihe+る sieht aus wie ein る-Verb, deshalb nur aus v1/any;
+  // nie ohne Stamm (ける ist nicht く) ----------
+  Object.entries(U_E).forEach(([u, e]) => { rule(e + 'る', u, 'v5', 'potential', ['v1', 'any']); RULES[RULES.length - 1].stem = true; });
 
   // ---------- Kausativ (-させる/-せる) ----------
   rule('させる', 'る', 'v1', 'saseru');
@@ -92,8 +97,9 @@
   rule('こよう', 'くる', 'vk', 'you');
   rule('来よう', '来る', 'vk', 'you');
 
-  // ---------- i-Adjektive ----------
-  ['く', 'かった', 'くない', 'くなかった', 'くて', 'ければ'].forEach((s) => rule(s, 'い', 'adj-i', 'iadj'));
+  // ---------- i-Adjektive (nur direkt am Wort oder nach einer Adjektiv-Endung wie 〜たい, nie nach einer Verb-Regel: いきます ist nicht いい) ----------
+  Object.entries({ く: 'adj-ku', かった: 'adj-katta', くない: 'adj-kunai', くなかった: 'adj-kunakatta', くて: 'adj-kute', ければ: 'adj-kereba' })
+    .forEach(([s, name]) => rule(s, 'い', 'adj-i', name, ['any', 'adj-i']));
 
   const MAX_STEPS = 4;
 
@@ -107,8 +113,8 @@
       const next = [];
       for (const cand of frontier) {
         for (const r of RULES) {
-          if (r.fromType !== 'any' && r.fromType !== cand.type) continue;
-          if (!cand.base.endsWith(r.from)) continue;
+          if (r.fromType !== 'any' && !r.fromType.includes(cand.type)) continue;
+          if (!cand.base.endsWith(r.from) || (r.stem && cand.base.length === r.from.length)) continue;
           const newBase = cand.base.slice(0, cand.base.length - r.from.length) + r.to;
           if (!newBase) continue;
           const key = newBase + '|' + r.toType;
@@ -123,4 +129,21 @@
     }
     return results;
   };
+
+  // ---------- Formnamen: welche Form stand im Text? ----------
+  const TEIRU = 'いる (gerade dabei)';
+  const FORM_LABEL = {
+    masu: 'ます-Form', masen: 'ます-Form, verneint', mashita: 'ます-Form, Vergangenheit', masendeshita: 'ます-Form, verneint, Vergangenheit',
+    mashou: 'ましょう-Form (lass uns …)',
+    te: 'て-Form', 'iku-te': 'て-Form', ta: 'た-Form (Vergangenheit)', 'iku-ta': 'た-Form (Vergangenheit)', tara: 'たら-Form (wenn/falls)',
+    teiru: TEIRU, teita: TEIRU + ' + た-Form (Vergangenheit)', teimasu: TEIRU + ' + ます-Form', teru: 'いる (gerade dabei, verkürzt zu てる)',
+    nai: 'ない-Form (verneint)', nakatta: 'ない-Form (verneint), Vergangenheit',
+    tai: 'たい-Form (möchte)', takatta: 'たい-Form (möchte), Vergangenheit', takunai: 'たい-Form (möchte), verneint', takunakatta: 'たい-Form (möchte), verneint, Vergangenheit',
+    rareru: 'Passiv oder Potenzial', reru: 'Passiv', potential: 'Potenzialform (können)',
+    saseru: 'Kausativ (lassen)', seru: 'Kausativ (lassen)', ba: 'ば-Form (wenn)', you: 'Volitiv (lass uns / ich will)',
+    'adj-ku': 'く-Form (Adverb)', 'adj-katta': 'Vergangenheit', 'adj-kunai': 'verneint', 'adj-kunakatta': 'verneint, Vergangenheit',
+    'adj-kute': 'て-Form', 'adj-kereba': 'ば-Form (wenn)',
+  };
+  // rules = Regelkette aus App.deinflect (aeusserste Endung zuerst) -> „Potenzialform (können) + ます-Form“; Grundform -> ''
+  App.formNote = (rules) => (rules || []).slice().reverse().map((n) => FORM_LABEL[n]).filter(Boolean).join(' + ');
 })(window.App);

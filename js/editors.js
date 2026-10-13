@@ -690,13 +690,13 @@
   };
 
   // ---------- Wörterbuch-Treffer (Satzerkennung, Suche) ----------
-  // h = {entry, surface?, base?}; der Eintrag selbst wird nie ein Lerneintrag – nur über „Als Vokabel übernehmen“ + Speichern
+  // h = {entry, surface?, base?, rules?}; rules = Beugung der Stelle (App.formNote). Der Eintrag selbst wird nie ein Lerneintrag – nur über „Als Vokabel übernehmen“ + Speichern
   const short = (s) => (s && s.length > 90 ? s.slice(0, 88).trim() + ' …' : s || '');
   App.dictHitHtml = (h, i) => {
     const e = h.entry;
     const d = App.dictVocabDefaults(e, [h.surface, h.base]);
     const w = d.kanji || d.kana;
-    const inSent = h.surface && h.surface !== w && h.surface !== d.kana ? `<span class="small muted"> · im Text: <span lang="ja">${esc(h.surface)}</span></span>` : '';
+    const inSent = h.surface && h.surface !== w && h.surface !== d.kana ? `<span class="small muted"> · im Text: <span lang="ja">${esc(h.surface)}</span>${App.formNote(h.rules) ? ' · ' + esc(App.formNote(h.rules)) : ''}</span>` : '';
     return `<div class="dict-hit row" style="gap:8px;flex-wrap:wrap;align-items:center;padding:6px 0;border-top:1px solid var(--line)">
       <span class="grow" style="min-width:180px"><b lang="ja" style="font-size:17px">${esc(w)}</b>${d.kanji ? ` <span lang="ja" class="small muted">${esc(d.kana)}</span>` : ''} ${App.levelBadge({ level: d.level })}${inSent}
         <div class="small" title="${esc(e.de || e.en || '')}">${App.meaningHtml({ de: short(e.de), en: short(e.en) })}</div></span>
