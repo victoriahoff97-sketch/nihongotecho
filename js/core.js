@@ -265,6 +265,7 @@ window.App = window.App || {};
     wkVocabLevels: [],  // WaniKani-Vokabeln Deutsch → Japanisch: freigeschaltete Level
     furiKnown: 'hide', // Furigana in der Abfrage über Kanji, die man lesen kann: hide | show
     formsKnown: [], // Lernlandkarte: abgehakte Formen (Kennungen aus js/formmap-logic.js)
+    listenPos: 0, // 今日のリスニング: Stelle in der Hör-Kette (js/listening-logic.js)
   };
 
   App.onChange = (fn) => S.listeners.add(fn);

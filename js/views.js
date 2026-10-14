@@ -66,7 +66,8 @@
   App.readTile = readTile;
   const readStrip = () => `<div class="read-strip">
       ${readTile('news', 'https://news.web.nhk/news/easy/', NEWS_SVG, '今日のニュース', 'NHK Easy lesen', 'Eine kurze Nachricht in einfachem Japanisch – mit Furigana.', 'Zur heutigen Nachricht')}
-      ${readTile('wani', 'https://www.wanikani.com/', KANJI_SVG, '今日の漢字', 'WaniKani', 'Deine Kanji- und Vokabel-Reviews von heute erledigen.', 'Zu den Reviews')}</div>`;
+      ${readTile('wani', 'https://www.wanikani.com/', KANJI_SVG, '今日の漢字', 'WaniKani', 'Deine Kanji- und Vokabel-Reviews von heute erledigen.', 'Zu den Reviews')}
+      ${App.listening.tile()}</div>`;
 
   // ---------- Startseite: Lernstand-Karten einklappen ----------
   // Ein Klick auf die Überschrift klappt die Karte darunter ein; eingeklappt steht die Kurzfassung neben dem Titel.
