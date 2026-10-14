@@ -28,12 +28,8 @@
   };
 
   // Auswahl = { pos: [Wortarten], forms: [Form-Kennungen] }
-  // Erster Besuch: was auf der Lernlandkarte abgehakt ist; ist dort nichts abgehakt, ます- und て-Form
-  C.defaults = (known) => {
-    const k = new Set(Array.isArray(known) ? known : []);
-    const forms = C.forms().filter((f) => k.has(f.id)).map((f) => f.id);
-    return { pos: POS_IDS.slice(), forms: forms.length ? forms : ['v-masu', 'v-te'] };
-  };
+  // Erster Besuch: alles ausgewählt – eingeschränkt wird bei Bedarf in den aufgeklappten Linien
+  C.defaults = () => ({ pos: POS_IDS.slice(), forms: C.forms().map((f) => f.id) });
   // Gemerkte Auswahl (JSON-Text) prüfen: Unsinn → null, unbekannte Kennungen fliegen raus
   C.clean = (raw) => {
     let o;

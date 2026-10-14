@@ -28,8 +28,8 @@
       <span class="kicker"><span lang="ja">今日のリスニング</span> · ca. ${L.minutes(p)} Min.</span>
       <b>${esc(L.head(p))}</b>
       <span class="desc"><span ${p.kind === 'audio' ? 'lang="ja"' : ''}>${esc(L.detail(p))}</span> · ${L.source(p)}</span>
-      <span class="listen-row"><button type="button" class="go" data-listen-play>${icon('play')} Anhören</button><button type="button" class="go ghost" data-listen-done>${icon('check')} Gehört</button></span>
-      <span class="listen-pos">Stück ${pos() + 1}${resumeAt(p) ? ` · weiter ab ${L.mmss(resumeAt(p))}` : ''}${hint ? ' · ' + hint : ''}</span></span></div>`;
+      <span class="listen-pos">Stück ${pos() + 1}${resumeAt(p) ? ` · weiter ab ${L.mmss(resumeAt(p))}` : ''}${hint ? ' · ' + hint : ''}</span>
+      <span class="listen-row"><button type="button" class="go" data-listen-play>${icon('play')} Anhören</button><button type="button" class="go ghost" data-listen-done>${icon('check')} Gehört</button></span></span></div>`;
   };
 
   // Wo man gerade ist, solange das Fenster offen ist; gemerkt wird beim Schließen und beim Verlassen der App
