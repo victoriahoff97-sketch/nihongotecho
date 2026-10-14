@@ -45,6 +45,7 @@
         ${!App.checkOn() ? '' : `<a class="mode-card sec-vocab" href="#/ueben/einstufen"><span class="k">確</span><h3>Einstufen</h3><span class="muted">Vokabeln, Kanji &amp; Ausdrücke: Kenne ich das? In Runden prüfen, was du schon kannst und was in die Lernschlange kommt.</span>${(() => { const n = App.vocabCounts().unchecked + App.vocabCounts(App.itemsOf('phrase')).unchecked + W.activeCounts(App.itemsOf('vocab'), S.srs, App.needsCheck).unchecked; return n ? `<span class="badge">${n} ungeprüft</span>` : ''; })()}</a>`}
         <a class="mode-card sec-apply" href="#/anwenden"><span class="k">使</span><h3>Anwenden</h3><span class="muted">Tagebuch schreiben und Smalltalk-Fragen beantworten – mit Stift oder Tastatur.</span></a>
         <a class="mode-card sec-grammar" href="#/ueben/saetze"><span class="k">訳</span><h3>Übersetzungsübungen</h3><span class="muted">Sätze aus deinen Grammatik- und Vokabelbausteinen – nur mit dem, was du schon kennst.</span></a>
+        <a class="mode-card sec-grammar" href="#/ueben/konjugieren"><span class="k">活</span><h3>Konjugieren</h3><span class="muted">Formen von Verben und Adjektiven selbst bilden – welche, wählst du aus.</span></a>
         <a class="mode-card sec-kanji" href="#/ueben/kanji"><span class="k">書</span><h3>Kanji-Quiz</h3><span class="muted">Bedeutung sehen → mit dem Stift schreiben, oder Lesungen erkennen.</span>${wDue ? `<span class="badge count">${wDue} zu schreiben</span>` : ''}</a>
         <a class="mode-card sec-phrase" href="#/ueben/karten?type=phrase"><span class="k">表</span><h3>Auswendig-Lernen</h3><span class="muted">Wochentage, Zahlen, Zähler, Uhrzeiten, Floskeln …</span></a>
         <button class="mode-card sec-library" data-ai-prompt><span class="k">AI</span><h3>KI-Prompt</h3><span class="muted">Fertigen Prompt mit deinem Wortschatz & deiner Grammatik kopieren – für Claude & Co.</span></button>
@@ -203,6 +204,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     };
     go();
   };
+  // Kartenrunde für andere Seiten (Konjugieren): opts.onGrade(ent, g) nach jeder Bewertung, opts.endHtml() im Abschlussbild
+  App.cards = { run: (...a) => runCards(...a), takeParked: () => takeParked(), chunkSize, chunkSelect, bindChunk };
   const learningBtn = (n) => `<button class="btn" data-learning ${n ? '' : 'disabled'} title="Alles, was du gerade lernst – auch was heute nicht fällig ist. Dein Lernstand bleibt, wie er ist">${icon('practice')} Meine Lernschlange üben (${n})</button>`;
   // Was morgen dazukommt: fällig bis morgen Abend, abzüglich dessen, was heute schon dran ist
   App.dueTomorrow = () => { const end = W.dayEnd(Date.now()); return W.dueCount(S.srs, S.items, kanjiFocus(), end + 864e5) - W.dueCount(S.srs, S.items, kanjiFocus(), end); };
@@ -333,7 +336,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       wantPark = false;
       if (!cur) {
         const rest = left ? left() : 0; // Lernschlange in Häppchen: so viel ist noch nicht dran gewesen
-        stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${cram ? `Frei geübt – an deinem Lernstand hat sich nichts geändert.${left && !rest ? ' Damit war alles einmal dran.' : ''}` : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>
+        stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${cram ? `Frei geübt – an deinem Lernstand hat sich nichts geändert.${left && !rest ? ' Damit war alles einmal dran.' : ''}` : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>${opts.endHtml ? opts.endHtml() : ''}
           <div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${cram ? (rest ? `<button class="btn" data-again>Zur Auswahl</button><button class="btn btn-primary" data-next-chunk>${icon('play')} Nächste Runde (noch ${rest})</button>` : '<button class="btn btn-primary" data-again>Weitere Runde</button>') : roundEnd(more())}</div></div></div>`;
         if (cram) stage.querySelector('[data-again]').onclick = () => App.render();
         if (rest) stage.querySelector('[data-next-chunk]').onclick = () => nextChunk();
@@ -342,7 +345,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         return;
       }
       if (ent.pad) return padCard();
-      const f = cardFaces(cur, ent.dir);
+      const f = ent.kind === 'conj' ? App.conjFaces(cur, ent.form) : cardFaces(cur, ent.dir); // Konjugieren (conj.js) bringt eigene Kartenseiten mit
       stage.innerHTML = `<div class="flash-stage ${App.furiClass()}">${head()}
         <div class="flash" data-flip>${f.front}<div class="back" hidden>${f.back}</div><span class="tap-hint">Tippen oder Leertaste zum Umdrehen</span></div>
         <div class="grade-row"${cram ? ' style="grid-template-columns:repeat(2,1fr)"' : ''} hidden>${cram ? '<button class="g0" data-g="0">Nicht gewusst<small>kommt gleich noch einmal</small></button><button class="g2" data-g="2">Gewusst</button>' : [['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, own())}</small></button>`).join('')}</div>
@@ -394,6 +397,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       if (!cram) await (ent.kind === 'write' ? App.gradeWrite(cur.id, g) : App.grade(ent.kind === 'active' ? W.id(cur.id) : cur.id, g));
       busy = false;
       done++; if (g > 0) right++;
+      if (opts.onGrade) opts.onGrade(ent, g);
       if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
       next();
     };

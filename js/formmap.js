@@ -58,7 +58,7 @@
         ${uses.length ? `<div class="fm-uses"><div class="small muted" style="font-weight:800">Das kannst du mit dieser Form</div>${uses.map((x) => `<a class="fm-use" href="${App.link(x)}" data-grammar><span><b>${esc(x.title)}</b><span class="jp small" lang="ja">${JP.ruby(x.jp || '')}</span></span>${App.srcBadge(x)}</a>`).join('')}</div>` : ''}
         ${s === 'later' ? `<div class="small muted">Dafür fehlt dir noch: ${prev.filter((p) => F.status(p, known()) !== 'done').map((p) => esc(p.label)).join(', ')}.</div>` : ''}
       </div>`,
-      foot: `${g ? `<a class="btn" href="${App.link(g)}" data-grammar>${icon('grammar')} Grammatik öffnen</a>` : ''}
+      foot: `${App.conjLogic.preset(f.id) ? `<a class="btn" href="#/ueben/konjugieren?form=${f.id}" data-grammar>${icon('practice')} Diese Form üben</a>` : ''}${g ? `<a class="btn" href="${App.link(g)}" data-grammar>${icon('grammar')} Grammatik öffnen</a>` : ''}
         <button class="btn ${s === 'done' ? '' : 'btn-primary'}" data-toggle>${icon('check')} ${s === 'done' ? 'Doch noch nicht' : 'Kann ich'}</button>`,
     });
     md.el.querySelector('[data-toggle]').onclick = async () => {

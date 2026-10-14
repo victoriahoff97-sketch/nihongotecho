@@ -319,7 +319,7 @@
 
   const conjTable = (it) => {
     if (it.pos === 'verb' && it.v && it.v.cls) {
-      const forms = [['masu', 'höflich'], ['masen', 'höflich, verneint'], ['mashita', 'höflich, Vergangenheit'], ['masendeshita', 'höfl. Verg. verneint'], ['te', 'て-Form'], ['nai', 'Kurzform verneint'], ['ta', 'Kurzform Vergangenheit'], ['nakatta', 'Kurzform Verg. verneint'], ['tai', 'möchte …'], ['mashou', 'lass uns …']];
+      const forms = [['masu', 'höflich'], ['masen', 'höflich, verneint'], ['mashita', 'höflich, Vergangenheit'], ['masendeshita', 'höfl. Verg. verneint'], ['te', 'て-Form'], ['nai', 'Kurzform verneint'], ['ta', 'Kurzform Vergangenheit'], ['nakatta', 'Kurzform Verg. verneint'], ['tai', 'möchte …'], ['mashou', 'lass uns …'], ['potential', 'Potential (können)'], ['volitional', 'Volitional (lass uns …)']].filter(([f]) => f !== 'potential' || !JP.noPotential(it));
       const cls = { u: 'う-Verb (Godan)', ru: 'る-Verb (Ichidan)', irr: 'unregelmäßig' }[it.v.cls];
       return `<div class="section-title">Konjugation · ${cls}</div><div class="grid cols-3" style="gap:8px">${forms.map(([f, l]) => `<div class="card" style="padding:10px 14px"><div class="small muted">${l}</div><div lang="ja" style="font-size:19px">${JP.ruby(JP.conj(it, f))}</div></div>`).join('')}</div>`;
     }

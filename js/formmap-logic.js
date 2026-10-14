@@ -6,7 +6,7 @@
 
   // Zwei Karten; w/h = Zeichenfläche des Streckenplans
   F.MAPS = [
-    { id: 'verb', title: 'Verben', w: 680, h: 500 },
+    { id: 'verb', title: 'Verben', w: 680, h: 660 },
     { id: 'adj', title: 'Adjektive', w: 680, h: 460 },
   ];
   // Jede Formenfamilie ist eine Linie mit eigener Farbe
@@ -15,6 +15,8 @@
     masu: { label: 'ます-Linie', color: 'var(--murasaki)' },
     te: { label: 'て-Linie', color: 'var(--sora)' },
     nai: { label: 'ない-Linie', color: 'var(--daidai)' },
+    pot: { label: 'える-Linie', color: 'var(--matcha)' },
+    vol: { label: 'よう-Linie', color: 'var(--shu)' },
     i: { label: 'い-Linie', color: 'var(--ai)' },
     na: { label: 'な-Linie', color: 'var(--sakura)' },
   };
@@ -48,6 +50,10 @@
       rule: 'ない → なかった. (ない beugt sich wie ein い-Adjektiv.)' },
     { id: 'v-naide', map: 'verb', line: 'nai', from: ['v-nai'], label: 'ないで-Form', conj: 'naide', grammar: 'g-g8-naidekudasai', x: 360, y: 450,
       rule: 'ない-Form + で.' },
+    { id: 'v-pot', map: 'verb', line: 'pot', from: ['v-dict'], label: 'Potentialform', conj: 'potential', grammar: 'g-n4-potential', x: 220, y: 520,
+      rule: '„Können“: る-Verben: る → られる. う-Verben: die letzte Silbe in die e-Reihe + る (く → ける, む → める). する → できる, くる → こられる. Das Ergebnis beugt sich wie ein る-Verb. Umgangssprachlich hört man bei る-Verben auch die Kurzform (食べれる).' },
+    { id: 'v-vol', map: 'verb', line: 'vol', from: ['v-dict'], label: 'Volitionalform', conj: 'volitional', grammar: 'g-n4-volitional', uses: ['g-n4-you-to-omou'], x: 160, y: 600,
+      rule: 'Die Kurzform von 〜ましょう: る-Verben: る → よう. う-Verben: die letzte Silbe in die o-Reihe + う (く → こう, む → もう). する → しよう, くる → こよう.' },
 
     { id: 'a-i', map: 'adj', line: 'start', from: [], label: 'い-Adjektiv', conj: 'plain', grammar: 'g-g5-adjectives', uses: ['g-g7-body', 'g-g10-yori', 'g-g10-ichiban', 'g-g10-adj-no', 'g-g10-naru', 'g-g12-sugiru'], x: 70, y: 120, out: 60,
       rule: 'Die Grundform endet auf い. Zum Beugen fällt das letzte い weg. Ausnahme: いい beugt sich als よ- (よくない, よかった).' },
@@ -117,7 +123,8 @@
     };
     const words = (vocab || []).filter((w) => w && w.kana);
     if (form.map === 'verb') {
-      return ['u', 'ru', 'irr'].map((cls) => pick(words.filter((w) => w.pos === 'verb' && w.v && w.v.cls === cls), 1)[0] || FALLBACK[cls]);
+      const fits = (w) => w.pos === 'verb' && w.v && !(form.conj === 'potential' && JP.noPotential(w)); // ある → あれる wäre falsches Japanisch
+      return ['u', 'ru', 'irr'].map((cls) => pick(words.filter((w) => fits(w) && w.v.cls === cls), 1)[0] || FALLBACK[cls]);
     }
     const pos = adjPos(form);
     const own = pick(words.filter((w) => w.pos === pos), 2);

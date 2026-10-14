@@ -110,20 +110,22 @@
   // ---------- Verbkonjugation ----------
   const U_I = { う: 'い', く: 'き', ぐ: 'ぎ', す: 'し', つ: 'ち', ぬ: 'に', ぶ: 'び', む: 'み', る: 'り' };
   const U_A = { う: 'わ', く: 'か', ぐ: 'が', す: 'さ', つ: 'た', ぬ: 'な', ぶ: 'ば', む: 'ま', る: 'ら' };
+  const U_E = { う: 'え', く: 'け', ぐ: 'げ', す: 'せ', つ: 'て', ぬ: 'ね', ぶ: 'べ', む: 'め', る: 'れ' };
+  const U_O = { う: 'お', く: 'こ', ぐ: 'ご', す: 'そ', つ: 'と', ぬ: 'の', ぶ: 'ぼ', む: 'も', る: 'ろ' };
   const U_TE = { う: 'って', つ: 'って', る: 'って', む: 'んで', ぶ: 'んで', ぬ: 'んで', く: 'いて', ぐ: 'いで', す: 'して' };
-  // liefert {stem, te, nai} für die Kana-Endung
+  // liefert {stem, te, nai, ta, pot, vol} für die Kana-Endung
   function base(dict, cls) {
     if (cls === 'irr') {
-      if (dict.endsWith('する')) { const p = dict.slice(0, -2); return { stem: p + 'し', te: p + 'して', nai: p + 'しない', ta: p + 'した' }; }
-      if (dict.endsWith('くる')) { const p = dict.slice(0, -2); return { stem: p + 'き', te: p + 'きて', nai: p + 'こない', ta: p + 'きた' }; }
-      if (dict.endsWith('来る')) { const p = dict.slice(0, -2); return { stem: p + '来', te: p + '来て', nai: p + '来ない', ta: p + '来た' }; }
+      if (dict.endsWith('する')) { const p = dict.slice(0, -2); return { stem: p + 'し', te: p + 'して', nai: p + 'しない', ta: p + 'した', pot: p + 'できる', vol: p + 'しよう' }; }
+      if (dict.endsWith('くる')) { const p = dict.slice(0, -2); return { stem: p + 'き', te: p + 'きて', nai: p + 'こない', ta: p + 'きた', pot: p + 'こられる', vol: p + 'こよう' }; }
+      if (dict.endsWith('来る')) { const p = dict.slice(0, -2); return { stem: p + '来', te: p + '来て', nai: p + '来ない', ta: p + '来た', pot: p + '来られる', vol: p + '来よう' }; }
     }
-    if (cls === 'ru') { const p = dict.slice(0, -1); return { stem: p, te: p + 'て', nai: p + 'ない', ta: p + 'た' }; }
+    if (cls === 'ru') { const p = dict.slice(0, -1); return { stem: p, te: p + 'て', nai: p + 'ない', ta: p + 'た', pot: p + 'られる', vol: p + 'よう' }; }
     const p = dict.slice(0, -1), e = dict.slice(-1);
     let te = p + (U_TE[e] || 'って');
     if (/(行く|いく)$/.test(dict)) te = p + 'って';
     const nai = (dict === 'ある' ? '' : p + (U_A[e] || 'ら')) + 'ない';
-    return { stem: p + (U_I[e] || 'り'), te, nai, ta: te.replace(/て$/, 'た').replace(/で$/, 'だ') };
+    return { stem: p + (U_I[e] || 'り'), te, nai, ta: te.replace(/て$/, 'た').replace(/で$/, 'だ'), pot: p + (U_E[e] || 'れ') + 'る', vol: p + (U_O[e] || 'ろ') + 'う' };
   }
   function verbForm(dict, cls, form) {
     const b = base(dict, cls);
@@ -147,6 +149,8 @@
       case 'tari': return b.ta + 'り';
       case 'nakatta': return naiStem + 'かった';
       case 'naide': return b.nai + 'で';
+      case 'potential': return b.pot;
+      case 'volitional': return b.vol;
       default: return dict;
     }
   }
@@ -162,6 +166,9 @@
     } else kj = verbForm(it.kanji, cls, form);
     return JP.notate(kj, kana);
   };
+
+  // Verben ohne Potentialform: ある, わかる und was schon „können“ heißt (できる, 〜できる, 見える, 聞こえる)
+  JP.noPotential = (it) => /^(ある|わかる|みえる|きこえる)$|できる$/.test((it && it.kana) || '');
 
   // ---------- Adjektive ----------
   JP.adj = (it, form) => {
