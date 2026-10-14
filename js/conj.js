@@ -67,16 +67,17 @@
         el.classList.toggle('off', off);
         el.querySelectorAll('input, button').forEach((x) => { x.disabled = off; });
       });
-      const nForms = sel.forms.filter((id) => sel.pos.includes(C.posOf(F.form(id)))).length;
       const pl = pool(), n = pl.words.length;
       const go = setup.querySelector('[data-go]');
       go.disabled = !n;
       go.innerHTML = `${icon('play')} Runde starten (${n} ${n === 1 ? 'Wort' : 'Wörter'})`;
-      const hints = [];
-      if (!nForms) hints.push('Wähle mindestens eine Form aus.');
-      else if (!n && !byChoice) hints.push('Unter deinen Wörtern ist noch kein passendes Verb oder Adjektiv. Dorthin kommt alles, was du lernst oder schon kannst. <button class="btn btn-sm" data-q-w="wahl">Nach Lektion oder Niveau üben</button>');
-      else if (!n) hints.push('Zu dieser Auswahl gibt es keine passenden Wörter.');
-      if (pl.skipped) hints.push(`${pl.skipped} ${pl.skipped === 1 ? 'Verb' : 'Verben'} ohne Verbgruppe ausgelassen – die Verbgruppe trägst du im Vokabel-Eintrag ein.`);
+      const hints = [{
+        pos: 'Wähle mindestens eine Wortart aus.',
+        forms: 'Wähle mindestens eine Form aus.',
+        mine: 'Unter deinen Wörtern ist noch kein passendes Verb oder Adjektiv. Dorthin kommt alles, was du lernst oder schon kannst. <button class="btn btn-sm" data-q-w="wahl">Nach Lektion oder Niveau üben</button>',
+        choice: 'Zu dieser Auswahl gibt es keine passenden Wörter.',
+      }[C.reason(sel, n, byChoice)]].filter(Boolean);
+      if (pl.skipped) hints.push(`${pl.skipped} ${pl.skipped === 1 ? 'Verb' : 'Verben'} ohne passende Verbgruppe ausgelassen – prüfe die Verbgruppe im Vokabel-Eintrag.`);
       setup.querySelector('[data-hint]').innerHTML = hints.map((h) => `<div>${h}</div>`).join('');
     };
     const setList = (list, id, on) => { const i = list.indexOf(id); if (on && i < 0) list.push(id); if (!on && i >= 0) list.splice(i, 1); };

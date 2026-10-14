@@ -63,15 +63,24 @@
   C.applies = (form, w) => C.usable(w) && C.posOf(form) === w.pos && !(form.conj === 'potential' && JP.noPotential(w));
 
   const chosen = (sel) => (sel.forms || []).map(askable).filter((f) => f && (sel.pos || []).includes(C.posOf(f)));
-  // Wortvorrat zur Auswahl; skipped = Verben ohne Verbgruppe (damit die Seite sagen kann, warum sie fehlen)
+  // Wortvorrat zur Auswahl; skipped = Verben ohne passende Verbgruppe – keine eingetragen oder eine, die nicht zur
+  // Endung passt (damit die Seite sagen kann, warum sie fehlen)
   C.pool = (words, sel) => {
     const forms = chosen(sel);
     const list = (words || []).filter(Boolean);
     const verbs = forms.some((f) => f.map === 'verb');
     return {
       words: list.filter((w) => forms.some((f) => C.applies(f, w))),
-      skipped: verbs ? list.filter((w) => w.pos === 'verb' && w.kana && !(w.v && w.v.cls)).length : 0,
+      skipped: verbs ? list.filter((w) => w.pos === 'verb' && w.kana && !C.usable(w)).length : 0,
     };
+  };
+  // Warum sich keine Runde starten lässt: pos = keine Wortart, forms = keine Form (einer gewählten Wortart),
+  // mine / choice = keine passenden Wörter unter „Meine Wörter“ bzw. in der Auswahl nach Lektion oder Niveau
+  C.reason = (sel, n, byChoice) => {
+    if (!sel.pos.length) return 'pos';
+    if (!chosen(sel).length) return 'forms';
+    if (!n) return byChoice ? 'choice' : 'mine';
+    return null;
   };
 
   // Aufgaben einer Runde: [{ it, form }]. Erst jedes Wort einmal mit einer zufälligen passenden Form;
