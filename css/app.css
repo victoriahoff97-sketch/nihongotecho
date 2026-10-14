@@ -1383,3 +1383,6 @@ button.day-box:hover { border-color: var(--matcha); }
 .matsuri-banner.out { transition: opacity .7s, transform .7s; opacity: 0 !important; transform: translate(-50%, -60%) scale(.95); }
 @keyframes matsuri-in { to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .matsuri-banner { animation: none; opacity: 1; transform: translate(-50%, -50%); } }
+
+/* Startseite unten: Unterrichtsstunden, Zuletzt gespeichert und die Tagesliste 今日 nebeneinander (ganz rechts) */
+.home-bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 22px; align-items: start; }

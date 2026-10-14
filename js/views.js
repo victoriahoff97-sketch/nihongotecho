@@ -266,12 +266,12 @@
           <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
           <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}</div></div>`; })()}</div>`; })()}
-      <div class="grid cols-2" style="margin-top:22px;align-items:start">
+      <div class="home-bottom">
         <div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
           <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>
-        <div class="stack" style="gap:14px"><div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
+        <div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
           <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>
-          ${App.dayCheck.card()}</div>
+        ${App.dayCheck.card()}
       </div></div>`;
     view.querySelector('[data-new-vocab]').onclick = () => App.editItem({ type: 'vocab' });
   });
