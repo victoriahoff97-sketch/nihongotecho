@@ -86,12 +86,34 @@
     return it.pos === 'i-adj' ? ['adj-i'] : [];
   };
   // Map Form (Schreibung oder Lesung) -> Einträge { id, k, r, de, en, c, p, own }
+  // Gemischte Schreibweisen einer Vokabel: Lernende schreiben die Kanji, die sie können, den Rest in Hiragana
+  // (犬のしつけ教室 → 犬のしつけきょうしつ, いぬのしつけ教室). Jeder Kanji-Block steht in Kanji oder in seiner Lesung;
+  // die Lesung je Block kommt aus dem Abgleich der Schreibung mit der Lesung an den Kana-Stellen. Passt das nicht, gibt es nichts.
+  const mixedForms = (kanji, kana) => {
+    if (!kanji || !kana) return [];
+    const runs = String(kanji).split(/([ぁ-ゖァ-ヺー]+)/).filter(Boolean);
+    const isKana = (r) => /^[ぁ-ゖァ-ヺー]+$/.test(r);
+    const blocks = runs.filter((r) => !isKana(r)).length;
+    if (!blocks || blocks > 4) return [];
+    const re = new RegExp('^' + runs.map((r) => (isKana(r) ? escRe(hira(r)) : '(.+?)')).join('') + '$');
+    const m = hira(kana).match(re);
+    if (!m) return [];
+    let out = [''];
+    let g = 1;
+    for (const r of runs) {
+      if (isKana(r)) { out = out.map((o) => o + r); continue; }
+      const reading = m[g++];
+      out = out.flatMap((o) => [o + r, o + reading]);
+    }
+    return [...new Set(out)];
+  };
+
   const ownIndex = (items) => {
     const map = new Map();
     for (const it of items) {
       if (it.type !== 'vocab' || !it.kana) continue;
       const e = { id: it.id, k: it.kanji ? [it.kanji] : [], r: [it.kana], de: it.de || '', en: it.en || '', c: 1, p: ownTags(it), own: it };
-      for (const f of new Set([it.kanji, it.kana])) { if (f) { if (!map.has(f)) map.set(f, []); map.get(f).push(e); } }
+      for (const f of new Set([it.kanji, it.kana, ...mixedForms(it.kanji, it.kana)])) { if (f) { if (!map.has(f)) map.set(f, []); map.get(f).push(e); } }
     }
     return map;
   };
@@ -173,6 +195,6 @@
     return /[㐀-鿿豈-﫿々]/.test(q) ? { kanji: q } : { kana: q };
   };
 
-  const P = { isJp, glossScore, rankDict, dictResult, dedupe, uniq, ownMatch, dictForms, mergeDict, ownTags, ownIndex, combineLookups, surfaceEntries, grammarTerms, rankGrammar, newDefaults };
+  const P = { isJp, glossScore, rankDict, dictResult, dedupe, uniq, ownMatch, dictForms, mergeDict, ownTags, mixedForms, ownIndex, combineLookups, surfaceEntries, grammarTerms, rankGrammar, newDefaults };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.lookupLogic = P;
 })(this);

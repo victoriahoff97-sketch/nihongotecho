@@ -45,6 +45,8 @@
       const set = new Set([base]);
       // Wörter werden oft auch in Kana geschrieben (きのう statt 昨日)
       const writings = v.kanji && v.kana && v.kana.length >= 3 ? [v, Object.assign({}, v, { kanji: '' })] : [v];
+      // gemischt geschrieben (犬のしつけきょうしつ): jeder Kanji-Block in Kanji oder Lesung
+      App.lookupLogic.mixedForms(v.kanji, v.kana).filter((k) => k !== v.kanji && k !== v.kana && JP.hasKanji(k)).forEach((k) => writings.push(Object.assign({}, v, { kanji: k })));
       for (const w of writings) {
         const b = w.kanji || w.kana;
         set.add(b);
