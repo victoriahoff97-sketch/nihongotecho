@@ -34,6 +34,15 @@
 
   // Wo man gerade ist, solange das Fenster offen ist; gemerkt wird beim Schließen und beim Verlassen der App
   let cur = null;
+  // Tagesliste: wirklich abgespielte Sekunden zählen; ab einer Minute (heute insgesamt) ist „Listening“ abgehakt
+  const D = App.dayCheckLogic;
+  const track = (t) => {
+    if (!cur) return;
+    cur.played = (cur.played || 0) + D.step(cur.last, t);
+    cur.last = t;
+    if (!cur.reached && cur.played >= cur.need) { cur.reached = true; flush(); }
+  };
+  const flush = () => { if (cur && cur.played > 0) { App.dayCheck.listened(cur.played); cur.need = Math.max(0, cur.need - cur.played); cur.played = 0; } };
   const remember = () => { if (cur && cur.t > 0) App.saveSettings({ listenAt: { pos: cur.pos, t: Math.floor(cur.t) } }); };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') remember(); });
   // Eingebettetes YouTube meldet seine Abspielzeit per postMessage, sobald man sich als Zuhörer anmeldet
@@ -42,7 +51,7 @@
     let d;
     try { d = JSON.parse(e.data); } catch (err) { return; } // fremde Nachricht
     if (!d.info) return;
-    if (typeof d.info.currentTime === 'number') cur.t = d.info.currentTime;
+    if (typeof d.info.currentTime === 'number') { cur.t = d.info.currentTime; track(cur.t); }
     // Untertitel lädt YouTube erst beim Abspielen – sobald es läuft, (erneut) ausschalten
     if (d.info.playerState === undefined) return;
     const was = cur.state;
@@ -70,17 +79,17 @@
       body = `<div class="listen-video"><iframe src="${esc(L.embedUrl(p, at))}" title="${esc(L.head(p))}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
         <p class="small muted">${esc(L.detail(p))} · stoppt am Ende des Stücks${atNote} · <a href="${esc(L.watchUrl(p))}" target="_blank" rel="noopener">Auf YouTube öffnen ${icon('link')}</a></p>`;
     }
-    cur = { pos: pos(), t: at };
+    cur = { pos: pos(), t: at, played: 0, last: null, need: D.listenNeed(App.store.settings.dayLog, App.today()) };
     const md = App.modal({
       title: esc(L.head(p)), body, wide: p.kind === 'video', cls: 'listen-modal',
       foot: `<button class="btn" data-listen-close>Schließen</button><button class="btn btn-primary" data-listen-done>${icon('check')} Gehört</button>`,
-      onClose: () => { remember(); cur = null; },
+      onClose: () => { remember(); flush(); cur = null; },
     });
     md.el.querySelector('[data-listen-close]').onclick = md.close;
     const audio = md.el.querySelector('audio');
     if (audio) {
       if (at) audio.addEventListener('loadedmetadata', () => { audio.currentTime = at; }, { once: true });
-      audio.addEventListener('timeupdate', () => { if (cur) cur.t = audio.currentTime; });
+      audio.addEventListener('timeupdate', () => { if (cur) { cur.t = audio.currentTime; track(cur.t); } });
     }
     const frame = md.el.querySelector('iframe');
     if (frame) {
@@ -102,7 +111,8 @@
     if (back) back.closest('.modal-back').querySelector('[data-x]').click();
     const oldAt = App.store.settings.listenAt || null;
     await App.saveSettings({ listenPos: old + 1, listenAt: null });
-    App.toast('Gehört – das nächste Stück ist bereit', { label: 'Rückgängig', fn: () => App.saveSettings({ listenPos: old, listenAt: oldAt }) });
+    App.dayCheck.mark('listen'); // Tagesliste: „Listening“
+    App.toast('Gehört – das nächste Stück ist bereit', { label: 'Rückgängig', fn: async () => { await App.saveSettings({ listenPos: old, listenAt: oldAt }); App.dayCheck.mark('listen', false); } });
   };
 
   document.addEventListener('click', (e) => {

@@ -182,6 +182,7 @@
   // Bewertung eines Schreibversuchs (g: 0 falsch … 3 leicht) – braucht den Speicher der App
   // Als gelernt Eingestuftes bleibt beim freien Üben gelernt – außer es war falsch: dann zurück in den Übungsstapel
   App.gradeWrite = async (id, g) => {
+    if (App.dayCheck) App.dayCheck.mark('kanji'); // Tagesliste: „Kanji geschrieben“
     const s = App.store.srs.get(W.id(id));
     if (s && s.check === 'known') { if (g > 0) return s; delete s.check; }
     return App.grade(W.id(id), g);
@@ -191,6 +192,7 @@
     if (App.store.srs.delete(W.id(id))) await App.db.del('srs', W.id(id));
   };
   App.markWriteKnown = async (id) => {
+    if (App.dayCheck) App.dayCheck.mark('kanji');
     const s = W.markedKnown(id, Date.now());
     App.store.srs.set(s.id, s);
     await App.db.put('srs', s);

@@ -266,6 +266,7 @@ window.App = window.App || {};
     furiKnown: 'hide', // Furigana in der Abfrage über Kanji, die man lesen kann: hide | show
     formsKnown: [], // Lernlandkarte: abgehakte Formen (Kennungen aus js/formmap-logic.js)
     listenPos: 0, // 今日のリスニング: Stelle in der Hör-Kette (js/listening-logic.js)
+    dayLog: null, // Tagesliste „今日“ auf der Startseite: was heute erledigt ist (js/daycheck-logic.js)
     listenAt: null, // 今日のリスニング: gemerkte Stelle im offenen Stück { pos, t } (Sekunde)
   };
 
@@ -399,6 +400,7 @@ window.App = window.App || {};
   // ---------- SRS (vereinfachtes SM-2) ----------
   App.srsOf = (id) => S.srs.get(id);
   App.grade = async (id, g) => {
+    const wasNew = App.dayCheckLogic ? App.dayCheckLogic.isNewCard(S.srs.get(id)) : false; // Tagesliste: „Neue Wörter gelernt“
     const now = Date.now();
     const DAY = 864e5;
     const s = S.srs.get(id) || { id, ivl: 0, ease: 2.5, reps: 0, lapses: 0, due: now };
@@ -423,6 +425,7 @@ window.App = window.App || {};
     S.srs.set(id, s);
     await App.db.put('srs', s);
     if (App.backup && App.backup.noteChange) App.backup.noteChange(); // Üben zählt als Änderung (kein emit: die Runde soll nicht neu zeichnen)
+    if (App.dayCheck) App.dayCheck.graded(id, wasNew);
     return s;
   };
   App.srsStage = (id) => { const s = S.srs.get(id); if (!s || !s.reps) return 0; return s.ivl >= 21 ? 2 : 1; };

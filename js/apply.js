@@ -16,6 +16,8 @@
   // Kurzname für Abzeichen: Grammatik-Titel nur bis zur Erklärung („〜たり〜たりする – …“)
   const itemName = (it) => (it.title ? it.title.split(' – ')[0] : '') || it.kanji || it.kana || it.jp || '';
   const notebookOf = (it) => App.filesFor({ itemId: it.id }).find((f) => App.fileKind(f) === 'notebook');
+  // Steht etwas drin? Getippter Text oder Handschrift auf dem Blatt – ein leer angelegter Eintrag zählt nicht (Tagesliste)
+  App.applyHasContent = (it) => { if (AL.plainText(it.html || '').trim()) return true; const nb = notebookOf(it); return !!(nb && App.store.inkCount.get(nb.id)); };
 
   // ---------- Zufallsfrage ----------
   App.randomPrompt = ({ level = '', lastId = '' } = {}) => AL.pickRandom(App.itemsOf('prompt'), App.itemsOf('answer'), { level, lastId, today: App.today() });

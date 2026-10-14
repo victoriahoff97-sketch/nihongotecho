@@ -152,7 +152,7 @@
       const opts = {
         cram: true,
         left: () => entries.length,
-        onGrade: (ent, g) => { C.tally(stats, ent.form, g > 0, !ent.again); ent.again = true; },
+        onGrade: (ent, g) => { C.tally(stats, ent.form, g > 0, !ent.again); ent.again = true; App.dayCheck.mark('conj'); },
         endHtml: () => { const rows = C.summary(stats); return rows.length ? `<div class="conj-summary">${rows.map((r) => { const f = F.form(r.form); return `<div style="--c:${lineColor(f)}"><b>${esc(f.label)}</b><span>${r.right}/${r.asked}</span></div>`; }).join('')}<a class="small" href="#/karte">${icon('map')} Zur Lernlandkarte</a></div>` : ''; },
       };
       opts.nextChunk = () => {
