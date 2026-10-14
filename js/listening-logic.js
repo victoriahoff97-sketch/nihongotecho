@@ -41,7 +41,15 @@
     if (p.kind === 'audio') return p.sub;
     return p.parts > 1 ? `ab ${mmss(p.from)} bis ${mmss(p.to)}` : `ganzes Video, ${mmss(p.to)}`;
   };
-  L.embedUrl = (p) => `https://www.youtube-nocookie.com/embed/${p.id}?start=${p.from}&end=${p.to}&rel=0&playsinline=1`;
+  // Gemerkte Stelle ({ pos, t }: Stück und Sekunde im Video bzw. in der Folge) – nur gültig für dasselbe Stück,
+  // nicht ganz am Anfang und nicht kurz vor dem Ende (dann lieber von vorn bzw. fertig)
+  L.resume = (p, pos, saved) => {
+    if (!p || !saved || saved.pos !== pos || !(saved.t > 0)) return 0;
+    const from = p.kind === 'video' ? p.from : 0, to = p.kind === 'video' ? p.to : (p.s || Infinity);
+    const t = Math.floor(saved.t);
+    return t > from + 5 && t < to - 5 ? t : 0;
+  };
+  L.embedUrl = (p, at = 0) => `https://www.youtube-nocookie.com/embed/${p.id}?start=${at || p.from}&end=${p.to}&rel=0&playsinline=1&enablejsapi=1&cc_load_policy=0`;
   L.watchUrl = (p) => `https://www.youtube.com/watch?v=${p.id}${p.from ? `&t=${p.from}s` : ''}`;
   // Was danach kommt (kurz), z. B. für den Hinweis beim Wechsel zu Teppei
   L.nextHint = (pos) => {

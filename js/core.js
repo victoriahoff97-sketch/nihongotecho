@@ -266,6 +266,7 @@ window.App = window.App || {};
     furiKnown: 'hide', // Furigana in der Abfrage über Kanji, die man lesen kann: hide | show
     formsKnown: [], // Lernlandkarte: abgehakte Formen (Kennungen aus js/formmap-logic.js)
     listenPos: 0, // 今日のリスニング: Stelle in der Hör-Kette (js/listening-logic.js)
+    listenAt: null, // 今日のリスニング: gemerkte Stelle im offenen Stück { pos, t } (Sekunde)
   };
 
   App.onChange = (fn) => S.listeners.add(fn);
