@@ -1386,3 +1386,36 @@ button.day-box:hover { border-color: var(--matcha); }
 
 /* Startseite unten: Unterrichtsstunden, Zuletzt gespeichert und die Tagesliste 今日 nebeneinander (ganz rechts) */
 .home-bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 22px; align-items: start; }
+
+/* Startseite anpassen: Leisten und Schnellaktionen am Griff ziehen (pro Gerät gemerkt) */
+.home-block + .home-block { margin-top: 18px; }
+.home-block > :first-child, .home-block > .home-grip + * { margin-top: 0; }
+.home-block > :last-child { margin-bottom: 0; }
+.home-block .home-actions { margin-bottom: 0; }
+.home-block .read-strip { margin-top: 0; }
+.home-block .stat-grid { margin-bottom: 0; }
+.home-edit-foot { display: flex; justify-content: center; margin-top: 26px; }
+.home-editbar { position: sticky; top: calc(var(--topbar-h, 56px) + 8px); z-index: 40; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; margin-bottom: 16px; border-radius: 14px; background: var(--card); border: 2px solid var(--shu); box-shadow: var(--shadow-lg); }
+.home-editing .home-block { position: relative; padding: 12px 12px 12px 54px; border: 2px dashed var(--line); border-radius: 18px; background: var(--paper-2); }
+.home-editing .home-block > :not(.home-grip):not(.home-live) { pointer-events: none; }
+.home-editing .home-block > .home-live > * { pointer-events: auto; }
+.home-grip { all: unset; box-sizing: border-box; display: grid; place-items: center; width: 40px; height: 44px; border-radius: 10px; color: var(--muted); background: var(--card); border: 1px solid var(--line); cursor: grab; touch-action: none; flex: none; }
+.home-grip svg { width: 12px; height: 18px; }
+.home-grip:hover { color: var(--ink); border-color: var(--shu); }
+.home-grip:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+.home-block > .home-grip { position: absolute; left: 7px; top: 10px; }
+.home-act[data-quick] { cursor: default; gap: 10px; padding-left: 8px; }
+.home-act[data-quick] .grow { flex: 1; min-width: 0; }
+.quick-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.home-empty { padding: 10px 4px; }
+.drag-ph { border: 2px dashed var(--shu); border-radius: 18px; background: var(--shu-soft); }
+.dragging { box-shadow: var(--shadow-lg); opacity: .94; pointer-events: none; }
+.dragging .home-grip { cursor: grabbing; }
+body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+.home-act[data-quick] b { overflow-wrap: break-word; hyphens: manual; }
+@media (max-width: 700px) {
+  .home-editbar { padding: 8px 10px; }
+  .home-editbar .hint { display: none; }
+  .home-editing .home-block { padding: 56px 8px 8px; }
+  .home-block > .home-grip { left: 8px; top: 6px; }
+}

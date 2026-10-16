@@ -186,6 +186,134 @@
         <div class="lesson-strip" style="margin-top:14px">${p.lessons.map(tile).join('')}</div></div>`;
   };
 
+  // ---------- Startseite: Leisten anordnen und Schnellaktionen wählen ----------
+  // Gemerkt pro Gerät (localStorage), nicht in den Einstellungen: auf Surface und iPad darf es verschieden aussehen.
+  // Nur im Bearbeiten-Modus („Startseite anpassen“ unten) gibt es Griffe; gezogen wird mit Maus, Stift oder Finger.
+  const HO = App.homeOrderLogic;
+  let homeEdit = false;
+  window.addEventListener('hashchange', () => { homeEdit = false; });
+  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert · 今日' };
+  // Schnellaktionen: [Farbe, Attribute, Symbol, Titel, Untertitel] – die ersten drei stehen von Anfang an da
+  const QUICK = {
+    saetze: ['sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze erkennen', 'Text einfügen, Vokabeln finden'],
+    vokabel: ['sec-vocab', 'data-new-vocab', 'plus', 'Neue Vokabel', 'Ein Wort schnell speichern'],
+    stunde: ['sec-session', 'data-action="new-session"', 'session', 'Neue Unterrichts­stunde', 'Mitschrift für heute anlegen'],
+    kanji: ['sec-kanji', 'data-new="kanji"', 'plus', 'Neues Kanji', 'Ein Zeichen speichern'],
+    grammatik: ['sec-grammar', 'data-new="grammar"', 'plus', 'Neue Grammatik', 'Eine Regel aus dem Unterricht'],
+    ausdruck: ['sec-phrase', 'data-new="phrase"', 'plus', 'Neuer Ausdruck', 'Redewendung oder Baustein'],
+    karten: ['sec-practice', 'href="#/ueben/karten"', 'cards', 'Karteikarten', 'Frei üben nach Kartentyp'],
+    einstufen: ['sec-practice', 'href="#/ueben/einstufen"', 'check', 'Einstufen', 'Ungeprüftes durchgehen'],
+    uebersetzen: ['sec-practice', 'href="#/ueben/saetze"', 'edit', 'Übersetzen', 'Sätze selbst übersetzen'],
+    konjugieren: ['sec-practice', 'href="#/ueben/konjugieren"', 'shuffle', 'Konjugieren', 'Verbformen üben'],
+    schreiben: ['sec-kanji', 'href="#/ueben/kanji"', 'pen', 'Kanji schreiben', 'Mit dem Stift üben'],
+    lernweg: ['sec-practice', 'href="#/lernweg"', 'list', 'Lernweg', 'Wie deine Wörter wandern'],
+    karte: ['sec-grammar', 'href="#/karte"', 'map', 'Lernlandkarte', 'Grammatik Station für Station'],
+    eingang: ['sec-vocab', 'href="#/eingang"', 'download', 'Eingang', 'Aus dem Browser übernommen'],
+    suche: ['sec-home', 'href="#/suche"', 'search', 'Suche', 'Alles in der App durchsuchen'],
+  };
+  const QUICK_DEFAULT = ['saetze', 'vokabel', 'stunde'];
+  const quickList = () => { const s = HO.parse(App.lsGet('homeActions')); return (s || QUICK_DEFAULT).filter((k) => QUICK[k]); };
+  const GRIP = '<svg viewBox="0 0 12 18" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="1.6"/><circle cx="9" cy="3" r="1.6"/><circle cx="3" cy="9" r="1.6"/><circle cx="9" cy="9" r="1.6"/><circle cx="3" cy="15" r="1.6"/><circle cx="9" cy="15" r="1.6"/></g></svg>';
+  const grip = (label) => `<button type="button" class="home-grip" data-grip aria-label="${esc(label)} verschieben" title="Am Griff ziehen – oder mit den Pfeiltasten verschieben">${GRIP}</button>`;
+  const quickAct = (k) => { const [cls, attrs, ico, title, sub] = QUICK[k]; const tag = attrs.startsWith('href') ? 'a' : 'button'; return `<${tag} class="home-act ${cls}" ${attrs}><span class="i">${icon(ico)}</span><span><b>${title}</b><small>${sub}</small></span></${tag}>`; };
+  const quickHtml = () => {
+    const list = quickList();
+    if (!homeEdit) return list.length ? `<div class="home-actions">${list.map(quickAct).join('')}</div>` : '';
+    const rest = Object.keys(QUICK).filter((k) => !list.includes(k));
+    return `<div class="home-live"><div class="home-actions" data-quick-list>${list.map((k) => { const [cls, , ico, title, sub] = QUICK[k]; return `<div class="home-act ${cls}" data-quick="${k}">${grip(title)}<span class="i">${icon(ico)}</span><span class="grow"><b>${title}</b><small>${sub}</small></span><button type="button" class="icon-btn" data-quick-off="${k}" title="Von der Startseite nehmen" aria-label="${title} entfernen">${icon('close')}</button></div>`; }).join('') || '<p class="small muted">Keine Schnellaktion gewählt – such dir unten welche aus.</p>'}</div>
+      ${rest.length ? `<div class="quick-more"><span class="small muted">Weitere Schnellaktionen:</span>${rest.map((k) => `<button type="button" class="chip" data-quick-on="${k}">${icon('plus')} ${QUICK[k][3]}</button>`).join('')}</div>` : ''}</div>`;
+  };
+  // Leisten in gemerkter Reihenfolge; im Bearbeiten-Modus auch leere (z. B. JLPT ohne Paket), damit sie sich platzieren lassen
+  const homeBlocks = (blocks) => HO.order(Object.keys(blocks), HO.parse(App.lsGet('homeOrder'))).map((k) => (blocks[k] || homeEdit
+    ? `<section class="home-block" data-block="${k}">${homeEdit ? grip(BLOCK_LABEL[k]) : ''}${blocks[k] || `<div class="home-empty small muted">${BLOCK_LABEL[k]} – zurzeit nichts zu zeigen</div>`}</section>` : '')).join('');
+  const saveList = (list) => {
+    if (list.matches('[data-home-blocks]')) App.lsSet('homeOrder', JSON.stringify(Array.from(list.children).map((c) => c.dataset.block).filter(Boolean)));
+    else if (list.matches('[data-quick-list]')) App.lsSet('homeActions', JSON.stringify(Array.from(list.children).map((c) => c.dataset.quick).filter(Boolean)));
+  };
+
+  // Ziehen am Griff: das Element schwebt mit, eine Lücke zeigt, wo es landet; am Bildschirmrand scrollt die Seite mit
+  document.addEventListener('pointerdown', (e) => {
+    const g = e.target.closest && e.target.closest('[data-grip]');
+    if (!g || e.button > 0) return;
+    const item = g.parentElement, list = item.parentElement;
+    const attr = item.hasAttribute('data-block') ? 'data-block' : 'data-quick';
+    e.preventDefault();
+    const r = item.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+    let x = e.clientX, y = e.clientY, raf = 0, moved = false;
+    const ph = document.createElement('div');
+    ph.className = 'drag-ph';
+    ph.style.height = r.height + 'px';
+    const lift = () => {
+      list.insertBefore(ph, item);
+      Object.assign(item.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', zIndex: 60 });
+      item.classList.add('dragging');
+      document.body.classList.add('is-dragging');
+      raf = requestAnimationFrame(tick);
+    };
+    const place = () => {
+      item.style.left = (x - dx) + 'px'; item.style.top = (y - dy) + 'px';
+      const others = Array.from(list.children).filter((c) => c !== item && c.hasAttribute(attr));
+      if (!others.length) return;
+      let target = null, before = true;
+      for (const c of others) {
+        const b = c.getBoundingClientRect();
+        if (y >= b.top && y <= b.bottom && x >= b.left && x <= b.right) { target = c; before = b.width > list.clientWidth * 0.75 ? y < b.top + b.height / 2 : x < b.left + b.width / 2; break; }
+      }
+      if (!target) {
+        const f = others[0].getBoundingClientRect(), l = others[others.length - 1].getBoundingClientRect();
+        if (y < f.top) target = others[0];
+        else if (y > l.bottom) { target = others[others.length - 1]; before = false; }
+      }
+      if (target) list.insertBefore(ph, before ? target : target.nextSibling);
+    };
+    const tick = () => {
+      const edge = 80, v = y < edge ? -(edge - y) / 3 : y > innerHeight - edge ? (y - innerHeight + edge) / 3 : 0;
+      if (v) { window.scrollBy(0, v); place(); }
+      raf = requestAnimationFrame(tick);
+    };
+    const move = (ev) => {
+      x = ev.clientX; y = ev.clientY;
+      if (!moved) { if (Math.abs(x - e.clientX) + Math.abs(y - e.clientY) < 4) return; moved = true; lift(); }
+      place();
+    };
+    const end = () => {
+      g.removeEventListener('pointermove', move); g.removeEventListener('pointerup', end); g.removeEventListener('pointercancel', end);
+      if (!moved) return;
+      cancelAnimationFrame(raf);
+      list.insertBefore(item, ph); ph.remove();
+      ['position', 'left', 'top', 'width', 'zIndex'].forEach((p) => { item.style[p] = ''; });
+      item.classList.remove('dragging');
+      document.body.classList.remove('is-dragging');
+      saveList(list);
+    };
+    try { g.setPointerCapture(e.pointerId); } catch (err) { /* egal */ }
+    g.addEventListener('pointermove', move); g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+  });
+  // Ohne Ziehen: Pfeiltasten am Griff verschieben um einen Platz
+  document.addEventListener('keydown', (e) => {
+    const g = e.target.closest && e.target.closest('[data-grip]');
+    const dir = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }[e.key];
+    if (!g || !dir) return;
+    e.preventDefault();
+    const item = g.parentElement, list = item.parentElement;
+    const sib = dir < 0 ? item.previousElementSibling : item.nextElementSibling;
+    if (!sib || !sib.querySelector(':scope > [data-grip]')) return;
+    list.insertBefore(item, dir < 0 ? sib : sib.nextSibling);
+    g.focus();
+    saveList(list);
+  });
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-home-edit], [data-home-done], [data-home-reset], [data-quick-on], [data-quick-off]');
+    if (!t) return;
+    if (t.matches('[data-home-edit]')) { homeEdit = true; App.render(); return; }
+    if (t.matches('[data-home-done]')) { homeEdit = false; App.render(); return; }
+    if (t.matches('[data-home-reset]')) { App.lsSet('homeOrder', ''); App.lsSet('homeActions', ''); App.render(true); App.toast && App.toast('Startseite wie am Anfang'); return; }
+    const list = quickList();
+    if (t.dataset.quickOn) App.lsSet('homeActions', JSON.stringify(list.concat(t.dataset.quickOn)));
+    else App.lsSet('homeActions', JSON.stringify(list.filter((k) => k !== t.dataset.quickOff)));
+    App.render(true);
+  });
+
   // =========================================================
   // Start
   // =========================================================
@@ -211,37 +339,29 @@
     const next = queues.find((x) => x.fresh);
     // „Wiederholen“ startet nur Fälliges – ohne Fälliges ist der Knopf aus, Neues kommt nie von selbst dazu
     const repeatBtn = (ico, n, href) => (n ? `<a class="btn btn-sec" href="${href}">${icon(ico)} Wiederholen <span class="badge">${n}</span></a>` : `<button class="btn" disabled title="Gerade ist nichts fällig">${icon(ico)} Wiederholen</button>`);
-    const action = (cls, attrs, ico, title, sub) => `<${attrs.startsWith('href') ? 'a' : 'button'} class="home-act ${cls}" ${attrs}><span class="i">${icon(ico)}</span><span><b>${title}</b><small>${sub}</small></span></${attrs.startsWith('href') ? 'a' : 'button'}>`;
     const vocab = App.itemsOf('vocab');
     const sessions = App.itemsOf('session').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const recent = Array.from(S.items.values()).filter((i) => i.created && i.type !== 'session' && !App.APPLY_TYPES.includes(i.type)).sort((a, b) => b.created - a.created).slice(0, 8);
     const stat = (t, n, sub) => { const s = App.SECTIONS[t]; return `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; };
     // Genki-Freischaltung: auf der Startseite nur, solange sie noch aussteht (nicht bei none/open)
     const genkiCard = App.genki && ['locked', 'stale'].includes(App.genki.state()) ? `<div style="margin-bottom:18px">${App.genki.card()}</div>` : '';
-    view.innerHTML = `<div class="sec-home">
-      ${App.welcome.card()}
-      <div data-backup-home>${App.backup.homeCard({ noRestoreHint: !!App.welcome.card() })}</div>
-      ${genkiCard}
-      <div class="hero"><div class="big-jp">日本語</div>
+    const blocks = {
+      hero: `<div class="hero"><div class="big-jp">日本語</div>
         <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
         <p>${due ? `Heute: <b>${due} ${due === 1 ? 'Karte' : 'Karten'}</b> – ${dueQ.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : `Für heute ist alles wiederholt${next ? ' – wenn du magst, ist Zeit für neue Karten.' : '.'}`}</p>
         <div class="row">${due ? `<a class="btn solid" href="#/ueben/heute?auto=1">${icon('shuffle')} Jetzt wiederholen <span class="badge">${due}</span></a>` : `<a class="btn solid" href="${next ? next.href : '#/ueben/karten'}">${icon(next ? 'play' : 'practice')} ${next ? 'Neue Karten lernen' : 'Karteikarten'}</a>`}</div>
-        <p class="small" style="margin-top:10px">${due ? 'Alles gemischt in einer Runde' : ''}${due && tomorrow ? ' · ' : ''}${tomorrow ? `morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu` : ''}</p></div>
-      <div class="home-actions">
-        ${action('sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze erkennen', 'Text einfügen, Vokabeln finden')}
-        ${action('sec-vocab', 'data-new-vocab', 'plus', 'Neue Vokabel', 'Ein Wort schnell speichern')}
-        ${action('sec-session', 'data-action="new-session"', 'session', 'Neue Unterrichtsstunde', 'Mitschrift für heute anlegen')}
-      </div>
-      ${readStrip()}
-      <div class="section-title" style="margin-top:20px">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>
+        <p class="small" style="margin-top:10px">${due ? 'Alles gemischt in einer Runde' : ''}${due && tomorrow ? ' · ' : ''}${tomorrow ? `morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu` : ''}</p></div>`,
+      actions: quickHtml(),
+      read: readStrip(),
+      sammlung: `<div class="section-title">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>
       <div class="stat-grid" style="margin-top:0">
         ${stat('grammar', count('grammar'), 'Grammatikpunkte')}
         ${stat('vocab', count('vocab'), 'Wörter')}
         ${stat('session', count('session'), 'Stunden mitgeschrieben')}
         ${stat('kanji', count('kanji'), 'Kanji')}
         ${stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')}
-      </div>
-      ${(() => { // Jedes Wort zählt einmal: „kann ich“ erst, wenn Lesen und Deutsch → Japanisch sitzen – wie beim JLPT- und Genki-Lernstand
+      </div>`,
+      vocab: (() => { // Jedes Wort zählt einmal: „kann ich“ erst, wenn Lesen und Deutsch → Japanisch sitzen – wie beim JLPT- und Genki-Lernstand
         const c = progOf({ vocab }).tot;
         const num = (n, color, label, st, title) => `<a href="#/vokabeln?st=${st}" style="text-decoration:none" title="${title}"><b style="font-size:26px;color:${color}">${n}</b> ${label}</a>`;
         return `${foldHead('vocab', 'Vokabel-Lernstand', `${c.known} / ${c.total} kann ich`)}
@@ -250,10 +370,10 @@
         ${num(c.queue, 'var(--ai)', 'in der Lernschlange', 'queue', 'Schon gewusst oder beim Einstufen auf „Lernen“ gesetzt – kommt von selbst über „Jetzt wiederholen“, bis es sitzt')}
         ${num(c.open, 'var(--muted)', 'warten noch auf dich', 'open', 'Noch ungeprüft – beim Lesen oder bei Deutsch → Japanisch. Einstufen oder neue lernen holt sie in die Lernschlange')}</div>
         <span class="row">${cardBtns({ vocab }, '')}</span></div>
-        ${progBar(c)}</div>`; })()}
-      ${jlptCard()}
-      ${genkiLevelCard()}
-      ${(() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `${foldHead('kanji', 'Kanji-Lernstand', `${c.known} / ${c.total} kann ich`)}
+        ${progBar(c)}</div>`; })(),
+      jlpt: jlptCard(),
+      genki: genkiLevelCard(),
+      kanji: (() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `${foldHead('kanji', 'Kanji-Lernstand', `${c.known} / ${c.total} kann ich`)}
       <div class="card sec-kanji${foldCls('kanji')}"><div class="row between"><div class="row" style="gap:22px">
         <a href="#/kanji?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
         <a href="#/kanji?st=known" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
@@ -265,15 +385,25 @@
           <span><b style="font-size:20px;color:var(--matcha)">${w.known}</b> kann ich</span>
           <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
-          <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}</div></div>`; })()}</div>`; })()}
-      <div class="home-bottom">
+          <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}</div></div>`; })()}</div>`; })(),
+      bottom: `<div class="home-bottom">
         <div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
           <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>
         <div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
           <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>
         ${App.dayCheck.card()}
-      </div></div>`;
-    view.querySelector('[data-new-vocab]').onclick = () => App.editItem({ type: 'vocab' });
+      </div>`,
+    };
+    view.innerHTML = `<div class="sec-home${homeEdit ? ' home-editing' : ''}">
+      ${App.welcome.card()}
+      <div data-backup-home>${App.backup.homeCard({ noRestoreHint: !!App.welcome.card() })}</div>
+      ${genkiCard}
+      ${homeEdit ? `<div class="home-editbar"><span><b>Startseite anpassen</b><span class="hint"> · Leisten und Schnellaktionen am Griff ziehen. Gilt nur für dieses Gerät.</span></span><span class="row"><button class="btn btn-sm" data-home-reset>Zurücksetzen</button><button class="btn btn-sm btn-primary" data-home-done>${icon('check')} Fertig</button></span></div>` : ''}
+      <div data-home-blocks>${homeBlocks(blocks)}</div>
+      ${homeEdit ? '' : `<div class="home-edit-foot"><button class="btn btn-sm" data-home-edit>${icon('edit')} Startseite anpassen</button></div>`}
+      </div>`;
+    const nv = view.querySelector('[data-new-vocab]');
+    if (nv) nv.onclick = () => App.editItem({ type: 'vocab' });
   });
 
   // =========================================================
