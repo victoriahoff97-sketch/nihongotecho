@@ -740,6 +740,26 @@ body.ink-fit #view { padding-bottom: 16px; }
 .verdict { font-weight: 800; padding: 8px 14px; border-radius: 10px; display: inline-flex; gap: 8px; align-items: center; }
 .verdict.ok { background: var(--matcha-soft); color: var(--matcha); }
 .verdict.no { background: var(--shu-soft); color: var(--shu); }
+/* Antwort auf Karteikarten (Deutsch → Japanisch): Auswahl als drei kleine Symbole, Feld unter der Karte */
+.seg.ans-mode { padding: 2px; }
+.seg.ans-mode button { min-height: 30px; padding: 0 8px; }
+.flash-stage:has(.ans-box:not([hidden]) .ans-line) .flash { min-height: 180px; } /* mit Antwortfeld: Karte niedriger, damit alles auf den Bildschirm passt */
+.ans-box { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.ans-line { display: flex; gap: 8px; }
+.ans-line .ans-in { flex: 1; min-width: 0; font-size: 20px; }
+.ans-cands { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: thin; }
+.ans-cands .chip { flex: none; padding: 4px 12px; font-family: var(--font-kanji); font-size: 20px; }
+.ans-box .verdict b { font-family: var(--font-kanji); }
+.ans-box [data-averdict] { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.ans-diff { font-size: 22px; }
+.ans-diff del { color: var(--shu); text-decoration: line-through; }
+.ans-diff ins { color: var(--matcha); text-decoration: underline; }
+.grade-row button.suggest { outline: 3px solid var(--ink); outline-offset: 2px; }
+.hw-pad { position: relative; height: 130px; border: 1px dashed var(--line-2); border-radius: 10px; background: var(--paper-2); }
+.hw-pad canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.hw-pad-hint { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: none; }
+.hw-pad.empty .hw-pad-hint { display: flex; }
+.hw-pad-tools { position: absolute; top: 2px; right: 2px; display: flex; }
 .score-ring { font-size: 48px; font-weight: 800; color: var(--sec); }
 .prompt-box { font-family: ui-monospace, Consolas, monospace; font-size: 13px; white-space: pre-wrap; background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; max-height: 320px; overflow: auto; }
 

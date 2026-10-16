@@ -310,6 +310,27 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     else d = s.ivl * (g === 1 ? 1.2 : g === 2 ? s.ease : s.ease * 1.3);
     return d < 1 ? 'morgen' : d < 30 ? Math.round(d) + ' T' : Math.round(d / 30) + ' Mon';
   };
+  // ---------- Antwort auf Japanisch (Deutsch → Japanisch): aus · mit dem Stift · getippt – pro Gerät gemerkt ----------
+  const AL = App.answerLogic;
+  const AMODES = [['off', 'eyeOff', 'Nur umdrehen, nichts schreiben'], ['pen', 'pen', 'Antwort mit dem Stift schreiben'], ['key', 'keyboard', 'Antwort tippen']];
+  const answerMode = () => { const m = App.lsGet('answerMode'); return AMODES.some(([k]) => k === m) ? m : 'off'; };
+  const answerable = (ent) => !ent.pad && ent.kind !== 'conj' && ent.dir === 'de' && (ent.it.type === 'vocab' || ent.it.type === 'phrase');
+  // Lesungen der Kanji aus der Sammlung und dem Kanji-Index (wird beim ersten Antwortfeld geladen), um Mischungen wie 勉きょう zu erkennen
+  let kIndex = null;
+  const loadKanjiIndex = () => { if (!kIndex) App.kanjiIndex().then((x) => { kIndex = x; }); };
+  const kanjiReadings = () => {
+    const m = new Map();
+    S.items.forEach((i) => { if (i.type === 'kanji' && i.char) m.set(i.char, i); });
+    return (c) => {
+      const own = m.get(c), ix = kIndex && App.kanjiLogic.entry(kIndex, c);
+      return own || ix ? { on: [].concat(own ? own.on || [] : [], ix ? ix.on : []), kun: [].concat(own ? own.kun || [] : [], ix ? ix.kun : []) } : null;
+    };
+  };
+  const diffHtml = (d) => d.map((x) => (x.t === 'same' ? esc(x.s) : x.t === 'del' ? `<del>${esc(x.s)}</del>` : `<ins>${esc(x.s)}</ins>`)).join('');
+  const verdictHtml = (r) => (r.ok
+    ? `<div class="verdict ok">✓ Richtig${r.exact ? '' : ` – mit Kanji: <span lang="ja">${r.missing.map((c) => `<b>${esc(c)}</b>`).join(' ')}</span>`}</div>`
+    : `<div class="verdict no">✗ Nicht ganz</div><div class="ans-diff" lang="ja">${diffHtml(r.diff)}</div>`);
+
   // write/active: eigener Lernstand unter „w:<Id>“ (Kanji schreiben · Vokabeln Deutsch → Japanisch)
   // cram = freies Üben: nichts wird bewertet, der Lernstand bleibt unberührt – nicht Gewusstes kommt nur in dieser Runde noch einmal
   // Gemischte Runde: Einträge { it, kind: 'read' | 'active' | 'write', dir, pad } bringen Richtung und Lernstand selbst mit; pad = Kanji mit dem Stift schreiben
@@ -322,6 +343,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     let total = resume ? resume.total : queue.length; // wächst, wenn nicht Gewusstes in derselben Runde noch einmal kommt
     let done = resume ? resume.done : 0, right = resume ? resume.right : 0, flipped = false, cur = null, ent = null;
     let wantPark = false; // „Eintrag öffnen“ angetippt: beim Verlassen der Seite wird die Runde geparkt
+    let ans = null, suggest = null, readingsOf = null; // Antwortfeld der Karte · vorgeschlagene Bewertung nach dem Prüfen
     const own = () => ent.kind !== 'read';
     const srsKey = () => (ent.kind === 'read' ? cur.id : W.id(cur.id));
     // „neue lernen“ bei Vokabeln und Ausdrücken: beim ersten Zeigen lässt sich Bekanntes gleich aussortieren – danach nicht mehr
@@ -333,6 +355,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       cur = ent ? ent.it : null;
       flipped = false;
       wantPark = false;
+      if (ans && ans.pad) ans.pad.stop();
+      ans = null; suggest = null;
       if (!cur) {
         const rest = left ? left() : 0; // Lernschlange in Häppchen: so viel ist noch nicht dran gewesen
         stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${cram ? `Frei geübt – an deinem Lernstand hat sich nichts geändert.${left && !rest ? ' Damit war alles einmal dran.' : ''}` : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>${opts.endHtml ? opts.endHtml() : ''}
@@ -347,8 +371,60 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       const f = ent.kind === 'conj' ? App.conjFaces(cur, ent.form) : cardFaces(cur, ent.dir); // Konjugieren (conj.js) bringt eigene Kartenseiten mit
       stage.innerHTML = `<div class="flash-stage ${App.furiClass()}">${head()}
         <div class="flash" data-flip>${f.front}<div class="back" hidden>${f.back}</div><span class="tap-hint">Tippen oder Leertaste zum Umdrehen</span></div>
+        ${answerable(ent) ? '<div class="ans-box" data-answer></div>' : ''}
         <div class="grade-row"${cram ? ' style="grid-template-columns:repeat(2,1fr)"' : ''} hidden>${cram ? '<button class="g0" data-g="0">Nicht gewusst<small>kommt gleich noch einmal</small></button><button class="g2" data-g="2">Gewusst</button>' : [['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, own())}</small></button>`).join('')}</div>
-        <div class="row" style="justify-content:center;margin-top:10px">${canSkip() ? `<button class="btn btn-sm check-known" data-known hidden title="Gilt als gelernt und wird in dieser Richtung nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-sm btn-ghost" href="${App.link(cur)}" data-park>${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}</div></div>`;
+        <div class="row" style="justify-content:center;margin-top:10px">${canSkip() ? `<button class="btn btn-sm check-known" data-known hidden title="Gilt als gelernt und wird in dieser Richtung nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-sm btn-ghost" href="${App.link(cur)}" data-park>${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}${answerable(ent) ? `<span class="seg ans-mode" title="Antwort aufschreiben?">${AMODES.map(([k, ic, t]) => `<button data-amode="${k}" title="${t}" aria-label="${t}">${icon(ic)}</button>`).join('')}</span>` : ''}</div></div>`;
+      if (answerable(ent)) answerBox();
+    };
+    // Antwortfeld unter der Karte: Stift (Schreibfeld + Vorschläge) oder Tastatur (Romaji wird zu かな); Prüfen deckt die Karte auf
+    const answerBox = () => {
+      const box = stage.querySelector('[data-answer]'), mode = answerMode();
+      if (ans && ans.pad) ans.pad.stop();
+      stage.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b.dataset.amode === mode));
+      ans = null;
+      box.hidden = mode === 'off';
+      if (box.hidden) { box.innerHTML = ''; return; }
+      loadKanjiIndex();
+      box.innerHTML = `${mode === 'pen' ? '<div data-hwpad></div>' : ''}
+        <div class="ans-line"><input class="input ans-in" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${mode === 'pen' ? 'Erkannt wird hier eingetragen' : 'Auf Japanisch (Romaji wird zu かな)'}"><button class="btn btn-primary" data-acheck>${icon('check')} Prüfen</button></div>
+        ${mode === 'pen' ? '<div class="ans-cands" hidden></div>' : ''}<div data-averdict></div>`;
+      const inp = box.querySelector('.ans-in'), cands = box.querySelector('.ans-cands');
+      ans = { mode, inp, cands, list: [], checked: false };
+      if (mode === 'key') { App.bindRomaji(inp); setTimeout(() => { if (inp.isConnected && !flipped) inp.focus(); }, 50); }
+      else {
+        const msg = (t) => { cands.innerHTML = `<span class="muted small">${esc(t)}</span>`; cands.hidden = false; };
+        ans.pad = App.hwPad(box.querySelector('[data-hwpad]'), {
+          onMsg: msg,
+          onClear: () => { ans.list = []; inp.value = ''; cands.innerHTML = ''; cands.hidden = true; },
+          onResult: (ja) => {
+            ans.list = ja; inp.value = ja[0];
+            cands.innerHTML = ja.map((t, i) => `<button class="chip${i ? '' : ' on'}" data-acand="${esc(t)}" lang="ja">${esc(t)}</button>`).join('');
+            cands.hidden = false;
+          },
+        });
+      }
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); if (!checkAnswer()) flip(); } });
+    };
+    // true = geprüft (die Karte ist damit aufgedeckt); false = nichts geschrieben
+    const checkAnswer = () => {
+      if (!ans || ans.checked || flipped) return false;
+      const val = ans.inp.value;
+      if (!val.trim()) return false;
+      if (!readingsOf) readingsOf = kanjiReadings();
+      const forms = AL.forms(cur, readingsOf);
+      // Stift: unverändert übernommen = auch die nächsten Vorschläge der Erkennung zählen
+      const r = ans.mode === 'pen' && ans.list.length && val === ans.list[0] ? AL.checkAny(ans.list, forms) : AL.check(val, forms);
+      if (!r) return false;
+      ans.checked = true;
+      if (r.ok && r.answer !== AL.clean(val)) ans.inp.value = r.answer;
+      ans.inp.readOnly = true; ans.inp.blur();
+      if (ans.pad) { ans.pad.stop(); stage.querySelector('[data-hwpad]').hidden = true; ans.cands.hidden = true; } // nach dem Prüfen zählt nur noch das Ergebnis
+      stage.querySelector('[data-averdict]').innerHTML = verdictHtml(r);
+      stage.querySelector('[data-acheck]').hidden = true;
+      suggest = r.ok ? 2 : 0;
+      flip();
+      const sb = stage.querySelector(`.grade-row [data-g="${suggest}"]`); if (sb) sb.classList.add('suggest');
+      return true;
     };
     // Kanji schreiben in der gemischten Runde: mit dem Stift schreiben, auflösen, selbst bewerten – wie im Kanji-Quiz
     const padCard = () => {
@@ -376,11 +452,14 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     };
     const flip = () => {
       if (!cur || flipped || ent.pad) return;
+      if (ans && !ans.checked && checkAnswer()) return; // etwas geschrieben: Umdrehen prüft gleich mit
       flipped = true;
       stage.querySelector('.back').hidden = false;
       stage.querySelector('.tap-hint').hidden = true;
       stage.querySelector('.grade-row').hidden = false;
       const kb = stage.querySelector('[data-known]'); if (kb) kb.hidden = false;
+      // ohne Antwort aufgedeckt: kein leeres Schreibfeld unter der Karte
+      if (ans && !ans.checked) { stage.querySelector('[data-answer]').hidden = true; if (ans.pad) ans.pad.stop(); }
     };
     const markKnown = async () => {
       if (!flipped || busy) return;
@@ -404,18 +483,26 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       if (e.target.closest('a[data-park]')) wantPark = true;
       if (e.target.closest('[data-speak]') || e.target.closest('a')) return;
       if (e.target.closest('[data-flip]')) flip();
+      const am = e.target.closest('[data-amode]');
+      if (am) { App.lsSet('answerMode', am.dataset.amode); if (!flipped) answerBox(); else stage.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b === am)); return; }
+      if (e.target.closest('[data-acheck]')) { if (!checkAnswer()) flip(); return; }
+      const ac = e.target.closest('[data-acand]');
+      if (ac && ans && !ans.checked) { ans.cands.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === ac)); ans.inp.value = ac.dataset.acand; return; }
       if (e.target.closest('[data-known]')) return markKnown();
       const r = e.target.closest('[data-r]'); if (r && ent && ent.pad) return gradePad(+r.dataset.r);
       const b = e.target.closest('[data-g]'); if (b) grade(+b.dataset.g);
     });
     const onKey = (e) => {
       if (e.target.matches('input, textarea')) return;
+      // nach dem Prüfen: Enter nimmt die vorgeschlagene Bewertung
+      if (e.key === 'Enter' && flipped && suggest !== null && ent && !ent.pad) { e.preventDefault(); grade(suggest); return; }
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
       if (['1', '2', '3', '4'].includes(e.key) && ent && !ent.pad) grade(+e.key - 1);
     };
     document.addEventListener('keydown', onKey);
     App.onLeave(() => {
       document.removeEventListener('keydown', onKey);
+      if (ans && ans.pad) ans.pad.stop();
       if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue), done, right, total, open: flipped };
     });
     next();

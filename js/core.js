@@ -49,6 +49,7 @@ window.App = window.App || {};
     upload: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>',
     download: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
     file: '<path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/>',
+    keyboard: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
     pen: '<path d="M12 19l7-7 3 3-7 7z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18z"/><path d="M2 2l7.6 7.6"/><circle cx="11" cy="11" r="2"/>',
     ballpen: '<path d="M17.5 3.5l3 3L9 18l-4.5 1.5L6 15z"/><path d="M15.5 5.5l3 3"/><path d="M19 2l3 3"/>',
     fountain: '<path d="M12 21.5l-5.5-9.5L9 4.5h6l2.5 7.5z"/><path d="M12 21.5V13"/><circle cx="12" cy="11.5" r="1.4"/><path d="M9 4.5V2h6v2.5"/>',
