@@ -208,6 +208,22 @@
   };
 
   // ---------- Suche ----------
+  // „Te-Form“, „te form“ und „て-Form“ sollen dasselbe finden: Trenner werden zu einem Leerzeichen
+  // (zwischen Kana/Kanji ganz weg), Romaji-Wörter dürfen auch als Kana gemeint sein
+  const SEP = /[\s\-–—_〜～~・／/\u0001]+/g;
+  const JA_GAP = /(?<=[ぁ-ゖー々一-龯]) (?=[ぁ-ゖー々一-龯])/g;
+  const LAT = /[a-z0-9äöüß]/;
+  const flat = (s) => JP.toHira(String(s).toLowerCase()).replace(SEP, ' ').replace(JA_GAP, '').trim();
+  // Treffer nur am Wortanfang, damit „te form“ nicht in „verneinte Form“ hängen bleibt
+  const has = (t, v) => { for (let i = t.indexOf(v); i >= 0; i = t.indexOf(v, i + 1)) if (!i || !LAT.test(v[0]) || !LAT.test(t[i - 1])) return true; return false; };
+  const kanaWord = (w) => { if (!JP.looksRomaji(w)) return null; const k = JP.romaji(w); return /^[ぁ-ゖー]+$/.test(k) ? k : null; };
+  const queryVariants = (words) => {
+    if (words.length > 6) return [words.join(' ')];
+    return words.reduce((acc, w) => {
+      const opts = [w, kanaWord(w)].filter(Boolean);
+      return acc.flatMap((a) => opts.map((o) => (a ? a + ' ' : '') + o));
+    }, ['']).map(flat);
+  };
   App.searchText = (it) => {
     if (it._st) return it._st;
     const parts = [];
@@ -222,6 +238,7 @@
     if (it.type === 'answer' || it.type === 'journal') push((it.html || '').replace(/<[^>]+>/g, ' '));
     const s = parts.join(' \u0001 ');
     const st = { lc: s.toLowerCase(), hira: JP.toHira(s) };
+    st.flat = flat(s);
     Object.defineProperty(it, '_st', { value: st, enumerable: false, configurable: true, writable: true });
     return st;
   };
@@ -233,6 +250,14 @@
     const tag = q.startsWith('#') ? q.slice(1).toLowerCase() : null;
     const lc = q.toLowerCase();
     const kanaQ = JP.looksRomaji(q) ? JP.romaji(lc) : JP.toHira(q);
+    const words = flat(lc).split(' ').filter(Boolean);
+    const variants = queryVariants(words);
+    // Mehrere Wörter dürfen auch auseinanderstehen; kurze Romaji wie „te“ zählen nur als Kana (sonst trifft jedes deutsche „te“)
+    const wordHit = (st, w) => {
+      const k = kanaWord(w);
+      if (k && w.length <= 2) return st.flat.includes(k);
+      return st.flat.includes(w) || (!!k && k.length > 1 && st.flat.includes(k));
+    };
     for (const it of App.store.items.values()) {
       if (types && !types.includes(it.type)) continue;
       let score = 0;
@@ -243,8 +268,16 @@
         const exact = [it.kana, it.kanji, it.char, it.jp && JP.plain(it.jp), ...mean, (it.title || '').toLowerCase()].filter(Boolean);
         if (exact.includes(q) || exact.includes(lc) || exact.map(JP.toHira).includes(kanaQ)) score = 100;
         else if (mean.some((m) => m.split(/[,;]\s*/).some((d) => d === lc || d.replace(/^(der|die|das|sich|to) /, '') === lc))) score = 80;
-        else if (st.lc.includes(lc)) score = 30 + ((mean.length ? mean : [(it.title || '').toLowerCase()]).some((m) => m.startsWith(lc)) ? 20 : 0);
+        else if (it.title && variants.includes(flat(it.title.split(/\s[–—-]\s/)[0]))) score = 75; // „て-Form – und dann“
+        else if (st.lc.includes(lc) && (words.length < 2 || has(st.flat, flat(lc)))) score = 30 + ((mean.length ? mean : [(it.title || '').toLowerCase()]).some((m) => m.startsWith(lc)) ? 20 : 0);
         else if (kanaQ && st.hira.includes(kanaQ)) score = 25;
+        else if (variants.some((v) => has(st.flat, v))) score = 28 + ([...mean, (it.title || '').toLowerCase()].some((m) => variants.some((v) => flat(m).startsWith(v))) ? 20 : 0);
+        else if (words.length > 1 && words.every((w) => wordHit(st, w))) score = 15;
+        // Treffer im Titel vor Treffern in Beispielen/Notizen
+        if (score && score < 75 && it.title) {
+          const tf = { flat: flat(it.title) };
+          if (variants.some((v) => has(tf.flat, v)) || (kanaQ && tf.flat.includes(flat(kanaQ))) || (words.length > 1 && words.every((w) => wordHit(tf, w)))) score += 15;
+        }
       }
       if (score) res.push({ it, score });
     }
