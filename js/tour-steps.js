@@ -103,6 +103,7 @@
       { target: '#view [data-pick-on]', text: 'Zum Aufräumen: Markiere eine oder mehrere Dateien und lösche sie zusammen.' },
     ],
     '/pakete': [
+      { target: '#view [data-pack-upload] h3', title: 'Paket hochladen', text: 'Hast du ein Paket als Datei bekommen – etwa die Unterrichtsfolien oder ein Paket von Freunden –, öffnest du es hier.' },
       { target: '#view .pack-card:has([data-id="dict-common"])', text: 'Mit dem Wörterbuch kann die App Wörter nachschlagen und beim Anlegen vorausfüllen.' },
       { target: '#view .pack-card:has([data-id="n5"])', text: 'Die JLPT-Pakete ergänzen Wörter, Kanji und Grammatik der jeweiligen Stufe. Du schaltest sie selbst frei, wenn du sie möchtest.' },
       { target: '#view [data-act="unlock"][data-id="n5"]', title: 'So schaltest du frei', text: 'Ein Tipp zeigt dir zuerst, wie viele Einträge dazukommen. Geladen wird erst, wenn du das bestätigst.' },

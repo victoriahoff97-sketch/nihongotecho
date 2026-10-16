@@ -273,6 +273,10 @@
     view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Pakete <span class="jp-title">包</span></h1>
       <p>JLPT-Wortschatz, Kanji und Grammatik freischalten und das Wörterbuch für den Satz-Scan installieren. Alles bleibt offline in diesem Browser.</p></div>
       <a class="btn btn-sm" href="#/lizenzen">${icon('info')} Lizenzen</a></div>
+      <div class="section-title">Paket hochladen</div>
+      <div class="card" data-pack-upload><h3>Paket-Datei öffnen</h3>
+        <p class="small muted">Für Pakete, die du als Datei bekommst: die Unterrichtsfolien (Grammatik-Übersichten), Pakete von Freunden und die Genki-Buchaufgaben (.ntpaket). Eine ZIP-Datei mit genau einem Paket darin geht auch. Was schon da ist, kommt nicht doppelt dazu.</p>
+        <label class="btn btn-primary">${icon('upload')} Paket hochladen<input type="file" accept=".json,.ntpaket,.zip,application/json,application/zip" hidden data-pack-imp></label></div>
       <div class="section-title">Lehrbuch</div>
       <div class="stack">${App.genki && App.genki.present() ? App.genki.card() : ''}${App.exercises.card()}</div>
       <div class="section-title">JLPT-Niveaus</div>
@@ -287,6 +291,12 @@
       const b = e.target.closest('[data-act]');
       if (!b || busy) return;
       onAction(b.dataset.act, b.dataset.id);
+    });
+    root.addEventListener('change', async (e) => {
+      const imp = e.target.closest('[data-pack-imp]');
+      if (!imp || !imp.files[0]) return;
+      const file = imp.files[0]; imp.value = '';
+      try { const r = await App.paket.open(file); App.toast(r.text); App.render(true); } catch (er) { App.toast(er.message); }
     });
   });
 
