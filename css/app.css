@@ -347,7 +347,11 @@ details.adv { border: 1px dashed var(--line-2); border-radius: 12px; padding: 10
 details.adv summary { cursor: pointer; font-weight: 800; color: var(--ink-2); min-height: 32px; display: flex; align-items: center; }
 details.adv[open] summary { margin-bottom: 12px; }
 .ex-row { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); position: relative; }
-.ex-row .rm { position: absolute; top: 6px; right: 6px; }
+.ex-row .ex-side { position: absolute; top: 6px; right: 6px; display: flex; flex-direction: column; gap: 2px; }
+/* Reihenfolge: ↑ beim obersten, ↓ beim untersten Satz ausblenden; bei nur einem Satz beides samt Hinweis */
+.ex-row:first-child .mv[data-mv-ex="-1"], .ex-row:last-child .mv[data-mv-ex="1"] { visibility: hidden; }
+.ex-row:only-child .mv { display: none; }
+.field:not(:has(.ex-row + .ex-row)) .ex-order-hint { display: none; }
 .ex-row > .mic-field { margin-right: 32px; }
 .mic-field { position: relative; display: flex; }
 .mic-field .input { flex: 1; padding-right: 80px; }

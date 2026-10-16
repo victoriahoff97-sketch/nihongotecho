@@ -38,14 +38,14 @@
   const micBtn = (lang, title) => (App.dictate.supported() ? `<button type="button" class="icon-btn sm mic" data-mic="${lang}" title="${title}">${icon('mic')}</button>` : '');
   // Feld mit Knöpfen am rechten Rand: Mikrofon (wo vorhanden), dann „Zeile leeren“ (nur sichtbar, wenn etwas drinsteht)
   const exField = (input, mic = '') => `<div class="mic-field${mic ? '' : ' one'}">${input}<span class="field-btns">${mic}<button type="button" class="icon-btn sm clr" data-clr title="Zeile leeren">${icon('eraser')}</button></span></div>`;
-  const exRow = (ex = {}) => `<div class="ex-row" data-en="${esc(ex.en || '')}" data-had-de="${ex.de ? '1' : ''}" data-furi="${esc(ex.furi || (ex.jp && JP.hasNotation(ex.jp) ? ex.jp : ''))}"><button type="button" class="icon-btn sm rm" data-rm-ex title="Entfernen">${icon('close')}</button>
+  const exRow = (ex = {}) => `<div class="ex-row" data-en="${esc(ex.en || '')}" data-had-de="${ex.de ? '1' : ''}" data-furi="${esc(ex.furi || (ex.jp && JP.hasNotation(ex.jp) ? ex.jp : ''))}"><span class="ex-side"><button type="button" class="icon-btn sm rm" data-rm-ex title="Entfernen">${icon('close')}</button><button type="button" class="icon-btn sm mv" data-mv-ex="-1" title="Nach oben">${icon('up')}</button><button type="button" class="icon-btn sm mv" data-mv-ex="1" title="Nach unten">${icon('down')}</button></span>
       ${exField(`<input class="input jp-in" data-ex="jp" placeholder="Japanisch, z. B. 毎日ご飯を食べます。" value="${esc(ex.jp && JP.hasNotation(ex.jp) ? JP.plain(ex.jp) : ex.jp || '')}">`, micBtn('ja-JP', 'Japanisch diktieren'))}
       ${exField(`<input class="input jp-in" data-ex="kana" placeholder="Lesung in Kana (füllt sich bei Kanji von selbst – ergibt Furigana)" value="${esc(ex.kana || (ex.jp && JP.hasNotation(ex.jp) ? JP.kana(ex.jp) : ''))}">`)}
       ${exField(`<input class="input" data-ex="de" placeholder="Deutsche Übersetzung (füllt sich von selbst)" value="${esc(App.exMeaning(ex))}">`, micBtn('de-DE', 'Deutsch diktieren'))}
       ${exField(`<input class="input" data-ex="src" placeholder="Fundstelle (optional, z. B. NHK Easy 12.09.)" value="${esc(ex.src || '')}">`)}
       <div class="ex-note small muted" data-ex-note hidden></div></div>`;
   // suggest: Knopf „Satz vorschlagen“ (holt kurze Sätze zum Wort von Tatoeba, braucht Internet)
-  const exBlock = (exs, suggest) => `<div class="field"><label>Beispielsätze</label><div class="stack" data-exs>${(exs && exs.length ? exs : [{}]).map(exRow).join('')}</div>
+  const exBlock = (exs, suggest) => `<div class="field"><label>Beispielsätze <small class="ex-order-hint">der oberste wird beim Abfragen gezeigt</small></label><div class="stack" data-exs>${(exs && exs.length ? exs : [{}]).map(exRow).join('')}</div>
       <div class="row"><button type="button" class="btn btn-sm" data-add-ex>${icon('plus')} Beispielsatz</button>
         ${suggest ? `<button type="button" class="btn btn-sm" data-suggest-ex>${icon('sparkle')} Satz vorschlagen</button>` : ''}</div>
       ${suggest ? '<div class="sugg" data-sugg hidden></div>' : ''}</div>`;
@@ -53,6 +53,13 @@
     root.addEventListener('click', (e) => {
       if (e.target.closest('[data-add-ex]')) { root.querySelector('[data-exs]').insertAdjacentHTML('beforeend', exRow()); App.hydrateIcons(root); }
       const rm = e.target.closest('[data-rm-ex]'); if (rm) rm.closest('.ex-row').remove();
+      // Reihenfolge: der oberste Satz ist der, den Abfragen und Karteikarten zeigen
+      const mv = e.target.closest('[data-mv-ex]');
+      if (mv) {
+        const row = mv.closest('.ex-row'), up = mv.dataset.mvEx === '-1';
+        const other = up ? row.previousElementSibling : row.nextElementSibling;
+        if (other) { if (up) other.before(row); else other.after(row); mv.focus(); }
+      }
       const mic = e.target.closest('[data-mic]'); if (mic) App.dictate.toggle(mic.closest('.mic-field').querySelector('input'), mic, mic.dataset.mic);
     });
     bindExFill(root);
