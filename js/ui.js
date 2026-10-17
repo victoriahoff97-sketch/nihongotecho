@@ -17,6 +17,7 @@
     prompt: { one: 'Frage', label: 'Smalltalk', jp: '会話', icon: 'edit', cls: 'sec-apply', route: '#/anwenden/frage' },
     answer: { one: 'Antwort', label: 'Antworten', jp: '答', icon: 'edit', cls: 'sec-apply', route: '#/anwenden/antwort' },
     journal: { one: 'Tagebucheintrag', label: 'Tagebuch', jp: '日記', icon: 'edit', cls: 'sec-apply', route: '#/anwenden/eintrag' },
+    notebook: { one: 'Notizbuch', label: 'Notizbücher', jp: '帳', icon: 'notebook', cls: 'sec-library', route: '#/bibliothek/heft' },
   };
   // Anwenden-Typen: für Startseite/Suche/Teilen/Löschen gemeinsam behandelt
   App.APPLY_TYPES = ['prompt', 'answer', 'journal'];
@@ -28,6 +29,7 @@
   App.link = (it) => {
     if (!it) return '#/';
     if (it.type === 'kanji') return '#/kanji/' + encodeURIComponent(it.char || it.id);
+    if (it.type === 'notebook') return App.heftLink(it.id);
     return App.SECTIONS[it.type].route + '/' + encodeURIComponent(it.id);
   };
   App.kanjiByChar = (c) => { for (const it of App.store.items.values()) if (it.type === 'kanji' && it.char === c) return it; return null; };
@@ -137,6 +139,7 @@
       case 'phrase': return JP.plain(it.jp);
       case 'grammar': return it.title;
       case 'session': return (it.number ? 'Stunde ' + it.number + ': ' : '') + (it.title || '') + (it.topic ? ' · ' + it.topic : '');
+      case 'notebook': return it.title;
       default: return it.id;
     }
   };
@@ -281,7 +284,7 @@
       }
       if (score) res.push({ it, score });
     }
-    const order = { vocab: 0, grammar: 1, kanji: 2, phrase: 3, session: 4, prompt: 5, answer: 6, journal: 7 };
+    const order = { vocab: 0, grammar: 1, kanji: 2, phrase: 3, session: 4, prompt: 5, answer: 6, journal: 7, notebook: 8 };
     res.sort((a, b) => b.score - a.score || order[a.it.type] - order[b.it.type]);
     return res.slice(0, limit).map((r) => r.it);
   };

@@ -1340,7 +1340,7 @@
     const root = document.createElement('div');
     $('#overlay-root').appendChild(root);
     const home = (!opts.onLinkWord && App.sheetLinkOpts && App.sheetLinkOpts(App.store.files.get(fileId))) || {};
-    const ctrl = await INK.mount(root, fileId, { ...home, ...opts, embedded: false, onClose: () => { ctrl.destroy(); root.remove(); App.backup.nudge(); } });
+    const ctrl = await INK.mount(root, fileId, { ...home, ...opts, embedded: false, onClose: () => { ctrl.destroy(); root.remove(); App.backup.nudge(); if (opts.afterClose) opts.afterClose(); } });
     if (!ctrl) root.remove();
   };
 })(window.App);

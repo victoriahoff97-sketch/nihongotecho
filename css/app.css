@@ -1447,3 +1447,20 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
   .home-editing .home-block { padding: 56px 8px 8px; }
   .home-block > .home-grip { left: 8px; top: 6px; }
 }
+
+/* Eigene Notizbücher (heft.js) */
+.heft-head { margin: 4px 0 10px; font-size: 1rem; }
+.heft-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 8px; }
+.heft-card { width: 120px; height: 150px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; padding: 12px 10px 10px 14px; border-radius: 4px 12px 12px 4px; border: 1px solid #b9a3d6; border-left: 9px solid #7a4b93; background: #efe6fa; color: #4a2f5e; text-decoration: none; box-shadow: var(--shadow); transition: transform .12s; font: inherit; text-align: left; cursor: pointer; }
+.heft-card:nth-child(3n+2) { background: #fbe4ee; border-color: #e6a9c1; border-left-color: #b8577f; color: #6b2a45; }
+.heft-card:nth-child(3n+3) { background: #e3f1e8; border-color: #a9d3b6; border-left-color: #3f8a5a; color: #24543a; }
+.heft-card:hover { transform: translateY(-2px); }
+.heft-card b { font-size: .95rem; overflow-wrap: anywhere; }
+.heft-card span { font-size: .8rem; opacity: .85; }
+.heft-card.heft-new { background: transparent; border: 1.5px dashed var(--line); border-radius: 12px; color: var(--muted, #777); box-shadow: none; align-items: center; justify-content: center; flex-direction: row; }
+.heft-card.heft-new svg { width: 1em; height: 1em; }
+.heft-menu { display: flex; flex-direction: column; gap: 8px; }
+.heft-arrange { display: flex; flex-direction: column; gap: 8px; }
+.heft-ch { gap: 6px; flex-wrap: nowrap; }
+.heft-ch .kb-no { min-width: 1.6em; text-align: right; }
+.heft-empty { margin-top: 1em; display: flex; flex-direction: column; align-items: flex-start; gap: .6em; }

@@ -187,7 +187,8 @@
   App.route('/bibliothek', (view, p, q) => {
     const sec = App.SECTIONS.library;
     // Versuche zu Buchaufgaben stehen bei ihrer Aufgabe (Kategorie „Buchaufgaben“), nicht als einzelne Dateien in der Liste
-    const all = Array.from(S.files.values()).filter((f) => !f.exerciseId);
+    // Kapitel eigener Notizbücher stehen im Heft (heft.js), nicht als einzelne Dateien
+    const all = Array.from(S.files.values()).filter((f) => !f.exerciseId && !f.bookId);
     const exMode = q.sec === 'exercise';
     let files = all;
     if (q.src) files = files.filter((f) => App.srcMatch(f, q.src));
@@ -202,17 +203,19 @@
     const secs = Array.from(new Set(all.map((f) => f.section)));
     if (App.exercises.inLibrary()) secs.push('exercise');
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Alle Materialien: Buchseiten, Präsentationen, Hausaufgaben, Notizblätter – filterbar nach Quelle, Bereich und Lektion.',
-      `${App.exercises.inLibrary() ? `<a class="btn ${exMode ? 'btn-sec' : ''}" href="${exMode ? '#/bibliothek' : App.exercises.libHref()}">${icon('practice')} Buchaufgaben</a>` : ''}${!exMode && files.length && !pick ? `<button class="btn" data-pick-on>${icon('check')} Auswählen</button>` : ''}<button class="btn" data-nb>${icon('notebook')} Notizblatt</button><button class="btn btn-sec" data-upload="library">${icon('upload')} Hochladen</button>`)}
+      `${App.exercises.inLibrary() ? `<a class="btn ${exMode ? 'btn-sec' : ''}" href="${exMode ? '#/bibliothek' : App.exercises.libHref()}">${icon('practice')} Buchaufgaben</a>` : ''}${!exMode && files.length && !pick ? `<button class="btn" data-pick-on>${icon('check')} Auswählen</button>` : ''}<button class="btn" data-heft-new>${icon('notebook')} Neues Notizbuch</button><button class="btn" data-nb>${icon('notebook')} Notizblatt</button><button class="btn btn-sec" data-upload="library">${icon('upload')} Hochladen</button>`)}
       <div class="dropzone" data-drop style="margin-bottom:18px"${exMode || pick ? ' hidden' : ''}>${icon('upload')} <b>Dateien hierher ziehen</b> – PDF, Fotos, PowerPoint, Videos …</div>
       <div class="toolbar"><div class="filter-row">
         ${App.sourceSelect(all, q.src)}<select class="input" data-q-select="sec"><option value="">Alle Bereiche</option>${secs.map((s) => `<option value="${s}" ${q.sec === s ? 'selected' : ''}>${SEC_LABEL[s] || s}</option>`).join('')}</select>
         ${exMode ? '' : `<select class="input" data-q-select="kind"><option value="">Alle Dateitypen</option>${kinds.map((k) => `<option value="${k}" ${q.kind === k ? 'selected' : ''}>${KIND_LABEL[k]}</option>`).join('')}</select>
         ${App.lessonSelect(all, q.l)}`}</div></div>
       ${pick ? `<div class="pick-bar"><b data-pick-count></b><button class="btn btn-sm" data-pick-all></button><span class="grow"></span><button class="btn btn-sm btn-danger" data-pick-del>${icon('trash')} Löschen</button><button class="btn btn-sm btn-sec" data-pick-off>Fertig</button></div>` : ''}
+      ${!exMode && !pick && !q.src && !q.sec && !q.kind && !q.l ? App.heftRow() : ''}
       <div style="margin-top:16px">${exMode ? App.exercises.libraryHtml(q) : files.length ? (pick ? `<div class="file-grid picking" data-fixed>${files.map(pickCard).join('')}</div>` : `<div class="file-grid">${files.map(App.fileCard).join('')}</div>`) : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien</h3><p>Lade deine Genki-Seiten, Marugoto-PDFs, PowerPoints aus dem VHS-Kurs oder Hausaufgaben hoch.</p></div>`}</div></div>`;
     App.hydrateThumbs(view);
     App.exercises.hydrate(view);
     view.querySelector('[data-nb]').onclick = () => App.newNotebook({ section: 'library' });
+    view.querySelectorAll('[data-heft-new]').forEach((b) => { b.onclick = () => App.newHeft(); });
     const on = view.querySelector('[data-pick-on]');
     if (on) on.onclick = () => { pick = new Set(); App.render(true); };
     if (pick) {

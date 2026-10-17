@@ -358,6 +358,7 @@ window.App = window.App || {};
       sessionId: meta.sessionId || '', itemId: meta.itemId || '', role: meta.role || '', note: meta.note || '',
       created: Date.now(), pages: meta.pages || 0, paper: meta.paper || '',
     };
+    if (meta.bookId) f.bookId = meta.bookId; // Kapitel eines eigenen Notizbuchs (heft.js)
     await App.db.put('blobs', { id, blob });
     await App.db.put('files', f);
     S.files.set(id, f);

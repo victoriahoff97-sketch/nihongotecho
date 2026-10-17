@@ -99,6 +99,7 @@
     '/bibliothek': [
       { target: '#view [data-upload="library"]', text: 'Lege Arbeitsblätter, PDFs und Bilder aus dem Kurs hier ab.' },
       { target: '#view [data-nb]', text: 'Oder beginne ein leeres Blatt zum Schreiben, unabhängig von einer Stunde.' },
+      { target: '#view [data-heft-new]', text: 'Für dein eigenes Lernen: Lege ein Notizbuch mit Kapiteln an – mit Inhaltsverzeichnis wie im Kurs.' },
       { target: '#view .toolbar', text: 'Später findest du Dateien über Bereich und Dateityp wieder.' },
       { target: '#view [data-pick-on]', text: 'Zum Aufräumen: Markiere eine oder mehrere Dateien und lösche sie zusammen.' },
     ],

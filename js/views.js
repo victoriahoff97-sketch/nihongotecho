@@ -341,7 +341,7 @@
     const repeatBtn = (ico, n, href) => (n ? `<a class="btn btn-sec" href="${href}">${icon(ico)} Wiederholen <span class="badge">${n}</span></a>` : `<button class="btn" disabled title="Gerade ist nichts fällig">${icon(ico)} Wiederholen</button>`);
     const vocab = App.itemsOf('vocab');
     const sessions = App.itemsOf('session').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    const recent = Array.from(S.items.values()).filter((i) => i.created && i.type !== 'session' && !App.APPLY_TYPES.includes(i.type)).sort((a, b) => b.created - a.created).slice(0, 8);
+    const recent = Array.from(S.items.values()).filter((i) => i.created && i.type !== 'session' && i.type !== 'notebook' && !App.APPLY_TYPES.includes(i.type)).sort((a, b) => b.created - a.created).slice(0, 8);
     const stat = (t, n, sub) => { const s = App.SECTIONS[t]; return `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; };
     // Genki-Freischaltung: auf der Startseite nur, solange sie noch aussteht (nicht bei none/open)
     const genkiCard = App.genki && ['locked', 'stale'].includes(App.genki.state()) ? `<div style="margin-bottom:18px">${App.genki.card()}</div>` : '';
@@ -722,7 +722,7 @@
     const inText = new Set(textRes.map((r) => r.file.id));
     const fileRes = q.q ? Array.from(S.files.values()).filter((f) => !inText.has(f.id) && !f.exerciseId).filter((f) => (f.name + ' ' + (f.tags || []).join(' ') + ' ' + (f.note || '')).toLowerCase().includes(q.q.toLowerCase().replace(/^#/, ''))) : [];
     view.innerHTML = `<div class="page-head"><div class="titles"><h1>Suche <span class="jp-title">検索</span></h1><p>${res.length + fileRes.length + textRes.length} Treffer für „${esc(q.q || '')}“${JP.looksRomaji(q.q) ? ` · auch als <span lang="ja">${esc(JP.romaji(q.q))}</span>` : ''}</p></div></div>
-      ${['vocab', 'grammar', 'kanji', 'phrase', 'session', 'prompt', 'answer', 'journal'].filter((t) => groups.has(t)).map((t) => {
+      ${['vocab', 'grammar', 'kanji', 'phrase', 'session', 'prompt', 'answer', 'journal', 'notebook'].filter((t) => groups.has(t)).map((t) => {
         const s = App.SECTIONS[t];
         const list = groups.get(t);
         const inner = t === 'kanji' ? `<div class="kanji-grid">${list.map(App.kanjiTile).join('')}</div>`

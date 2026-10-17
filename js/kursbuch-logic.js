@@ -29,6 +29,19 @@
     return out;
   };
 
+  // Eigenes Notizbuch: Kapitel in der Reihenfolge von chapterIds; Blätter des Hefts, die dort fehlen (z. B. nach dem Zusammenführen), hinten
+  const bookChapters = (book, files) => {
+    const own = files.filter((f) => f.bookId === book.id), byId = new Map(own.map((f) => [f.id, f]));
+    const out = (book.chapterIds || []).map((id) => byId.get(id)).filter(Boolean), seen = new Set(out.map((f) => f.id));
+    return out.concat(own.filter((f) => !seen.has(f.id)).sort((a, b) => (a.created || 0) - (b.created || 0)));
+  };
+  // Grammatikpunkte eines Hefts: die auf den Seiten verknüpften, jeder nur einmal – bei der ersten Seite, auf der er steht
+  const topicsFromLinks = (pgs, isGrammar) => {
+    const seen = new Set(), out = [];
+    pgs.forEach((p) => p.linkIds.forEach((id) => { if (!seen.has(id) && isGrammar(id)) { seen.add(id); out.push({ itemId: id, sessionId: p.sessionId }); } }));
+    return out;
+  };
+
   const sessionPage = (pgs, sessionId) => pgs.findIndex((p) => p.sessionId === sessionId);
   // Wo steht ein Grammatikpunkt? Auf der Seite, auf der er markiert ist – sonst am Anfang seiner Stunde
   const topicPage = (pgs, itemId, sessionId) => {
@@ -52,6 +65,6 @@
     return next || clampZoom(z);
   };
 
-  const K = { ZOOM_MAX, clampZoom, stepZoom, TOC_ROWS, courseSessions, pages, topics, sessionPage, topicPage, tocSpreads, chunk, leafOf, spreadOfPage, spreadCount };
+  const K = { ZOOM_MAX, clampZoom, stepZoom, TOC_ROWS, courseSessions, pages, topics, bookChapters, topicsFromLinks, sessionPage, topicPage, tocSpreads, chunk, leafOf, spreadOfPage, spreadCount };
   if (typeof module !== 'undefined' && module.exports) module.exports = K; else root.App.kursbuchLogic = K;
 })(this);
