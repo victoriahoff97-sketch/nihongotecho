@@ -444,6 +444,35 @@
     if (it.source) setLastSrc(it.source);
   };
 
+  // ---------- Vokabel gibt es schon? (nur beim Neuanlegen) ----------
+  const dupeRows = (list) => list.slice(0, 4).map(({ it }) => `<div class="dupe-row row between"><span><span lang="ja" class="jp-w">${JP.wordRuby(it)}</span> <b>${App.meaningHtml(it)}</b> ${App.srcBadge(it)}</span>
+    <a class="btn btn-sm" href="${App.link(it)}" data-dupe-open>Öffnen</a></div>`).join('');
+  const bindDupeWarn = (root, md) => {
+    const box = root.querySelector('[data-dupe]');
+    const refresh = () => {
+      const list = App.autofillLogic.dupes(App.itemsOf('vocab'), { kana: val(root, 'kana'), kanji: val(root, 'kanji') });
+      box.hidden = !list.length;
+      if (!list.length) { box.innerHTML = ''; return; }
+      const same = list.some((d) => d.kind === 'same');
+      box.innerHTML = `<div class="small"><b>${same ? 'Dieses Wort gibt es schon' : 'Mit dieser Lesung gibt es schon'}</b> – du kannst es trotzdem neu anlegen.</div>${dupeRows(list)}`;
+    };
+    const later = App.debounce(refresh, 250);
+    // capture: auch das „change“ vom automatischen Ausfüllen (bubbelt nicht) löst die Prüfung aus
+    root.addEventListener('input', later); root.addEventListener('change', later, true);
+    box.addEventListener('click', (e) => { if (e.target.closest('[data-dupe-open]') && md) md.close(); });
+    refresh();
+  };
+  // beim Speichern mit den fertigen Feldern noch einmal fragen (true = speichern)
+  const confirmDupe = async (it) => {
+    const list = App.autofillLogic.dupes(App.itemsOf('vocab'), { kana: it.kana, kanji: it.kanji });
+    if (!list.length) return true;
+    const ex = list[0].it;
+    const msg = list[0].kind === 'same'
+      ? `„${it.kanji || it.kana}“ gibt es schon (${[App.meaning(ex).text, ex.source].filter(Boolean).join(' · ')}). Trotzdem eine zweite Karteikarte anlegen?`
+      : `Mit der Lesung ${it.kana} gibt es schon: ${list.slice(0, 3).map((d) => App.itemPlain(d.it)).join(', ')}. Trotzdem neu anlegen?`;
+    return App.confirm(msg, { ok: 'Trotzdem anlegen', title: 'Dieses Wort gibt es schon', danger: false });
+  };
+
   // ---------- Formulare je Typ ----------
   const FORMS = {};
   FORMS.vocab = {
@@ -458,6 +487,7 @@
       <div class="row"><button type="button" class="btn btn-sm btn-sec" data-autofill>${icon('sparkle')} Automatisch ausfüllen</button>
         <span class="small muted">Wort eintippen – das Wörterbuch füllt die leeren Felder aus.</span></div>
       <div class="sugg" data-af hidden></div>
+      ${!it._existing ? '<div class="dupe-warn" data-dupe hidden></div>' : ''}
       <div class="two"><div class="field"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}" placeholder="z. B. essen / die Schule"></div>
       <div class="field full-only"><label>Wortart</label><select class="input" name="pos"><option value="">–</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${it.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
       <div class="full-only">${enLevelFields(it)}</div>
@@ -468,8 +498,9 @@
       ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In die Lernschlange (neues Wort)'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}" ${(it._check || 'learn') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
       <input type="hidden" name="vcls" value="${esc((it.v || {}).cls || '')}"></div>`;
     },
-    bind: (root, it) => {
+    bind: (root, it, md) => {
       bindEx(root);
+      if (!it._existing) bindDupeWarn(root, md);
       // Stand vor dem Bearbeiten: daran erkennt read, ob die Satzbau-Angaben bleiben dürfen
       root._old = it._existing ? { pos: it.pos || '', de: it.de || '', cat: it.cat, n: it.n, v: it.v, a: it.a, t: it.t } : null;
       const form = root.querySelector('.form');
@@ -669,10 +700,13 @@
       title: title || (isNew ? `Neu: ${sec.one}` : `${sec.one} bearbeiten`), body, wide: type === 'grammar',
       foot: `${!isNew ? `<button class="btn btn-ghost btn-danger" data-del>${icon('trash')} Löschen</button>` : ''}<span class="grow"></span><button class="btn" data-no>Abbrechen</button>${isNew && !single ? '<button class="btn" data-ok-more>Speichern & weiter</button>' : ''}<button class="btn btn-primary" data-ok>${icon('check')} Speichern</button>`,
     });
-    F.bind(body, it);
+    // schon bestätigt (Mitschrift: „Trotzdem neu anlegen“) → beim Speichern nicht noch einmal fragen
+    const dupeOk = !!it._dupeOk; delete it._dupeOk;
+    F.bind(body, it, md);
     const save = async (more) => {
       try {
         F.read(body, it);
+        if (type === 'vocab' && isNew && !dupeOk && !(await confirmDupe(it))) return;
         delete it._existing;
         const chk = it._check; delete it._check;
         if (type === 'kanji' && isNew) it.id = 'k-' + it.char.codePointAt(0).toString(16);
@@ -683,7 +717,7 @@
         App.toast(isNew ? `${sec.one} gespeichert` : 'Änderungen gespeichert');
         onSaved && onSaved(saved);
         md.close();
-        if (more) App.editItem({ type, defaults: Object.assign({}, defaults, { source: saved.source, lesson: saved.lesson, sourceRef: saved.sourceRef, tags: saved.tags, group: saved.group }), onSaved, title });
+        if (more) App.editItem({ type, defaults: Object.assign({}, defaults, { source: saved.source, lesson: saved.lesson, sourceRef: saved.sourceRef, tags: saved.tags, group: saved.group, _dupeOk: undefined }), onSaved, title });
         else if (isNew && !onSaved) App.go(App.link(saved));
       } catch (e) { App.toast(e.message); }
     };
@@ -886,6 +920,7 @@
         if (cx.example) d.examples = [{ jp: cx.example, de: '', src: ctx.label || '' }];
         if (ctx.label) d.sourceRef = ctx.label;
         d._check = 'learn';
+        if (ex) d._dupeOk = true;
         onNewItem('vocab', d, (it) => replaceSel(it));
       }
     };

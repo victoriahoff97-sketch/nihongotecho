@@ -83,6 +83,25 @@
     return it;
   };
 
-  const P = { rank, sure, wordForms, fill, guessClass, sentenceData };
+  // Vokabeln, die es schon gibt (Warnung im Formular). typed = { kana, kanji } wie oben, selfId = der Eintrag selbst.
+  // 'same': gleiche Schreibung (Kanji, auch im Lesungs-Feld getippt) oder gleiche Lesung bei Wörtern ohne Kanji;
+  // 'reading': nur Kana getippt, das vorhandene Wort hat Kanji (おそい → 遅い, aber auch はし → 箸 und 橋).
+  // Sind Kanji getippt, zählt ein Wort mit anderen Kanji und gleicher Lesung nicht (Homophon: 橋 ≠ 箸).
+  const hasKanji = (s) => /[㐀-鿿々]/.test(s);
+  const dupes = (items, typed, selfId) => {
+    const kana = String((typed && typed.kana) || '').trim(), kanji = String((typed && typed.kanji) || '').trim();
+    const spell = kanji || (hasKanji(kana) ? kana : '');
+    const reading = hasKanji(kana) ? '' : hira(kana);
+    if (!spell && !reading) return [];
+    const out = [];
+    for (const v of items || []) {
+      if (!v || v.type !== 'vocab' || (selfId && v.id === selfId)) continue;
+      if (spell && (v.kanji === spell || (!v.kanji && v.kana === spell))) out.push({ it: v, kind: 'same' });
+      else if (reading && hira(v.kana) === reading && (!v.kanji || !spell)) out.push({ it: v, kind: v.kanji ? 'reading' : 'same' });
+    }
+    return out.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'same' ? -1 : 1));
+  };
+
+  const P = { rank, sure, wordForms, fill, guessClass, sentenceData, dupes };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.autofillLogic = P;
 })(typeof window !== 'undefined' ? window : globalThis);

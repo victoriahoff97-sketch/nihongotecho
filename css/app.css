@@ -364,6 +364,10 @@ details.adv[open] summary { margin-bottom: 12px; }
 .ex-note .row { display: inline-flex; gap: 6px; margin-left: 4px; vertical-align: middle; }
 .sugg { display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--line-2); border-radius: 12px; }
 .sugg[hidden] { display: none; }
+.dupe-warn { display: grid; gap: 6px; padding: 10px 14px; border-left: 4px solid var(--shu); background: var(--shu-soft); border-radius: 8px; }
+.dupe-warn[hidden] { display: none; }
+.dupe-row { gap: 8px; flex-wrap: wrap; }
+.dupe-row .jp-w { font-family: var(--font-jp); font-size: 19px; }
 .sugg-list { display: grid; gap: 6px; }
 .sugg-row { display: grid; gap: 2px; text-align: left; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card-2); color: inherit; font: inherit; cursor: pointer; }
 .sugg-row:hover { border-color: var(--line-2); }
