@@ -66,5 +66,18 @@
     return true;
   };
 
-  App.paketLogic = { kind, zipEntries, pick, backupShape };
+  // Teilen-Paket: neue Vokabeln überspringen, die es schon gibt (gleiche Schreibung bzw. gleiche Kana ohne Kanji) –
+  // auch innerhalb des Pakets. Einträge mit bekannter id werden wie bisher aktualisiert. dupes = App.autofillLogic.dupes
+  const shareSkip = (existing, incoming, dupes) => {
+    const have = new Map((existing || []).map((it) => [it.id, it]));
+    const skip = new Set();
+    for (const it of incoming || []) {
+      if (have.has(it.id)) continue;
+      if (it.type === 'vocab' && dupes(Array.from(have.values()), it).some((d) => d.kind === 'same')) { skip.add(it.id); continue; }
+      have.set(it.id, it);
+    }
+    return skip;
+  };
+
+  App.paketLogic = { kind, zipEntries, pick, backupShape, shareSkip };
 })(window.App);

@@ -40,7 +40,7 @@
       console.error(e);
       throw fail('BACKUP');
     }
-    return { art: 'backup', text: `Importiert: ${r.n} Einträge, ${r.nf} Dateien` };
+    return { art: 'backup', text: `Importiert: ${r.n} Einträge, ${r.nf} Dateien${r.skipped ? ` · ${r.skipped} Wörter hattest du schon` : ''}` };
   };
 
   const importAufgaben = async (file) => {

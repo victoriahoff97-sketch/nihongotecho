@@ -201,6 +201,11 @@
     const isK = type === 'kanji', isP = type === 'phrase';
     const sec = App.SECTIONS[type];
     const all = App.itemsOf(type).filter((i) => i.char !== '々');
+    // Pro Lektion gilt immer für genau eine Quelle – Genki Lektion 1 und Duolingo-Einheit 1 sind verschiedene Lektionen
+    if (type === 'vocab' && q.l && !App.oneSrc(q.src)) {
+      const first = all.filter((i) => App.srcMatch(i, q.src) && String(i.lesson) === q.l && i.source).sort(order)[0];
+      if (first) return App.setQuery({ src: first.source });
+    }
     let items = all;
     if (q.src) items = items.filter((i) => App.srcMatch(i, q.src));
     if (q.l) items = items.filter((i) => String(i.lesson) === q.l);

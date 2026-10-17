@@ -277,6 +277,7 @@
       if (sources) items = items.filter((i) => !i.source || sources.includes(i.source));
     }
     const data = { app: 'nihongo-techo', version: 1, exported: new Date().toISOString(), share, items: items.map((i) => { const c = Object.assign({}, i); delete c._st; return c; }) };
+    if (share) data.sources = S.settings.sources.filter((s) => items.some((i) => i.source === s.name));
     if (!share) {
       const p = await App.stateParts();
       data.srs = p.srs; data.settings = p.settings; data.ink = await App.db.all('ink');
@@ -321,7 +322,10 @@
         await App.db.put('meta', { key: 'deletedPackItems', value: Array.from(del) });
       }
     }
+    // Teilen-Paket: Wörter, die es hier schon gibt, nicht doppelt anlegen
+    const skip = data.share ? App.paketLogic.shareSkip(Array.from(S.items.values()), data.items, App.autofillLogic.dupes) : new Set();
     for (const it of data.items || []) {
+      if (skip.has(it.id)) continue;
       const cur = S.items.get(it.id);
       if (!cur || (it.updated || 0) >= (cur.updated || 0)) {
         // JLPT-Niveau wie beim Speichern bestimmen (Import schreibt direkt, ohne saveItem)
@@ -337,9 +341,15 @@
     }
     for (const k of data.ink || []) { await App.db.put('ink', k); if (App.inkImages.hasInk(k)) S.inkCount.set(k.fileId, (S.inkCount.get(k.fileId) || 0) + 1); }
     if (data.srs && !data.share) for (const s of data.srs) { const c = S.srs.get(s.id); if (!c || (s.last || 0) > (c.last || 0)) { S.srs.set(s.id, s); await App.db.put('srs', s); } }
+    // Teilen-Paket bringt seine Quellen (Name + Farbe) mit; vorhandene bleiben unverändert
+    if (data.share && Array.isArray(data.sources)) {
+      const keep = S.settings.sources;
+      const neu = data.sources.filter((s) => s && typeof s.name === 'string' && s.name && !keep.some((k) => k.name === s.name));
+      if (neu.length) { neu.forEach((s) => keep.push({ name: s.name, color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color : '#7d7f89' })); await App.saveSettings({ sources: keep }); }
+    }
     if (data.settings && !data.share) { const keep = S.settings.sources; await App.saveSettings(Object.assign({}, data.settings)); data.settings.sources.forEach((s) => { if (!keep.some((k) => k.name === s.name)) keep.push(s); }); await App.saveSettings({ sources: keep }); }
     App.emit('items');
-    return { n, nf };
+    return { n, nf, skipped: skip.size };
   };
 
   // Karte „Kanji schreiben“: Quelle der Schreib-Runde, WaniKani-Verbindung, Level einzeln freischalten
