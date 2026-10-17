@@ -760,7 +760,7 @@ body.ink-fit #view { padding-bottom: 16px; }
 .ans-diff ins { color: var(--matcha); text-decoration: underline; }
 .grade-row button.suggest { outline: 3px solid var(--ink); outline-offset: 2px; }
 .hw-pad { position: relative; height: 130px; border: 1px dashed var(--line-2); border-radius: 10px; background: var(--paper-2); }
-.hw-pad canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.hw-pad canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Ccircle cx='4' cy='4' r='2.5' fill='%23333' stroke='white' stroke-width='1'/%3E%3C/svg%3E") 4 4, auto; /* kleiner Punkt statt Fadenkreuz – mit dem Stift wirkt das Kreuz riesig */ }
 .hw-pad-hint { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: none; }
 .hw-pad.empty .hw-pad-hint { display: flex; }
 .hw-pad-tools { position: absolute; top: 2px; right: 2px; display: flex; }
@@ -1046,7 +1046,7 @@ body.ink-fit #view { padding-bottom: 16px; }
 .hw-pop .hw-ja .chip { font-family: var(--font-kanji); font-size: 20px; padding: 4px 12px; }
 .hw-pop .hw-de .chip { font-size: 14px; }
 .lookup-pop .lk-pad { position: relative; flex: none; height: 120px; margin-top: 8px; border: 1px dashed var(--line-2); border-radius: 10px; background: var(--paper-2); }
-.lookup-pop .lk-pad canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.lookup-pop .lk-pad canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Ccircle cx='4' cy='4' r='2.5' fill='%23333' stroke='white' stroke-width='1'/%3E%3C/svg%3E") 4 4, auto; /* kleiner Punkt statt Fadenkreuz – mit dem Stift wirkt das Kreuz riesig */ }
 .lookup-pop .lk-pad-hint { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: none; }
 .lookup-pop .lk-pad.empty .lk-pad-hint { display: flex; }
 .lookup-pop .lk-pad-tools { position: absolute; top: 2px; right: 2px; display: flex; }
