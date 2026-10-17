@@ -344,11 +344,13 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     let done = resume ? resume.done : 0, right = resume ? resume.right : 0, flipped = false, cur = null, ent = null;
     let wantPark = false; // „Eintrag öffnen“ angetippt: beim Verlassen der Seite wird die Runde geparkt
     let ans = null, suggest = null, readingsOf = null; // Antwortfeld der Karte · vorgeschlagene Bewertung nach dem Prüfen
+    let last = null; // zuletzt bewertete Karte – „Rückgängig“ holt sie mit ihrem alten Lernstand zurück
     const own = () => ent.kind !== 'read';
     const srsKey = () => (ent.kind === 'read' ? cur.id : W.id(cur.id));
     // „neue lernen“ bei Vokabeln und Ausdrücken: beim ersten Zeigen lässt sich Bekanntes gleich aussortieren – danach nicht mehr
     const canSkip = () => !cram && ent.kind !== 'write' && W.direct(cur.type) && W.firstShow(S.srs.get(srsKey()));
-    const head = () => `<div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${cram ? ' · freies Üben' : ''}</span><span>${App.srcBadge(cur)}</span></div>
+    const undoBtn = () => (last ? ` <button class="btn btn-sm btn-ghost" data-undo-card title="Letzte Bewertung zurücknehmen (Strg+Z)">${icon('undo')} Rückgängig</button>` : '');
+    const head = () => `<div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${cram ? ' · freies Üben' : ''}${undoBtn()}</span><span>${App.srcBadge(cur)}</span></div>
         <div class="progress" style="margin-bottom:14px"><i style="width:${(done / Math.max(1, total)) * 100}%"></i></div>`;
     const next = () => {
       ent = queue.shift();
@@ -360,7 +362,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       if (!cur) {
         const rest = left ? left() : 0; // Lernschlange in Häppchen: so viel ist noch nicht dran gewesen
         stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${cram ? `Frei geübt – an deinem Lernstand hat sich nichts geändert.${left && !rest ? ' Damit war alles einmal dran.' : ''}` : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>${opts.endHtml ? opts.endHtml() : ''}
-          <div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${cram ? (rest ? `<button class="btn" data-again>Zur Auswahl</button><button class="btn btn-primary" data-next-chunk>${icon('play')} Nächste Runde (noch ${rest})</button>` : '<button class="btn btn-primary" data-again>Weitere Runde</button>') : roundEnd(more())}</div></div></div>`;
+          <div class="row" style="justify-content:center">${undoBtn()}${App.backBtn('Zur Übersicht')}${cram ? (rest ? `<button class="btn" data-again>Zur Auswahl</button><button class="btn btn-primary" data-next-chunk>${icon('play')} Nächste Runde (noch ${rest})</button>` : '<button class="btn btn-primary" data-again>Weitere Runde</button>') : roundEnd(more())}</div></div></div>`;
         if (cram) stage.querySelector('[data-again]').onclick = () => App.render();
         if (rest) stage.querySelector('[data-next-chunk]').onclick = () => nextChunk();
         bindRoundEnd(stage);
@@ -444,6 +446,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const gradePad = async (g) => {
       if (busy) return;
       busy = true;
+      remember([W.id(cur.id)], g === 0);
       if (!cram) await App.gradeWrite(cur.id, g);
       busy = false;
       done++; if (g > 0) right++;
@@ -461,9 +464,25 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       // ohne Antwort aufgedeckt: kein leeres Schreibfeld unter der Karte
       if (ans && !ans.checked) { stage.querySelector('[data-answer]').hidden = true; if (ans.pad) ans.pad.stop(); }
     };
+    // Konjugieren zählt eigene Treffer mit (onGrade) – dort gibt es kein Zurück
+    const remember = (keys, again) => { last = opts.onGrade ? null : { ent, snap: cram ? null : App.srsSnap(keys), done, right, total, again }; };
+    const undo = async () => {
+      if (!last || busy) return;
+      busy = true;
+      const l = last;
+      last = null;
+      if (l.snap) await App.srsRestore(l.snap);
+      if (l.again) { const i = queue.indexOf(l.ent); if (i >= 0) queue.splice(i, 1); }
+      if (ent && ent !== l.ent) queue.unshift(ent);
+      queue.unshift(l.ent);
+      ({ done, right, total } = l);
+      busy = false;
+      next();
+    };
     const markKnown = async () => {
       if (!flipped || busy) return;
       busy = true;
+      remember([srsKey()], false);
       await App.setCheck(srsKey(), 'known');
       busy = false;
       done++; right++;
@@ -472,6 +491,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const grade = async (g) => {
       if (!flipped || busy) return; // Doppeltipp: nicht dieselbe Karte zweimal bewerten und die nächste überspringen
       busy = true;
+      remember([ent.kind === 'read' || ent.kind === 'conj' ? cur.id : W.id(cur.id)], g === 0);
       if (!cram) await (ent.kind === 'write' ? App.gradeWrite(cur.id, g) : App.grade(ent.kind === 'active' ? W.id(cur.id) : cur.id, g));
       busy = false;
       done++; if (g > 0) right++;
@@ -482,6 +502,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     stage.addEventListener('click', (e) => {
       if (e.target.closest('a[data-park]')) wantPark = true;
       if (e.target.closest('[data-speak]') || e.target.closest('a')) return;
+      if (e.target.closest('[data-undo-card]')) return undo();
       if (e.target.closest('[data-flip]')) flip();
       const am = e.target.closest('[data-amode]');
       if (am) { App.lsSet('answerMode', am.dataset.amode); if (!flipped) answerBox(); else stage.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b === am)); return; }
@@ -494,6 +515,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     });
     const onKey = (e) => {
       if (e.target.matches('input, textarea')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
       // nach dem Prüfen: Enter nimmt die vorgeschlagene Bewertung
       if (e.key === 'Enter' && flipped && suggest !== null && ent && !ent.pad) { e.preventDefault(); grade(suggest); return; }
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
@@ -702,16 +724,28 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     pool.forEach((k) => (k.words || []).forEach((w) => words.push({ k, w })));
     const qs = queue ? queue.slice() : free ? App.shuffle(free) : mode === 'reading' ? App.shuffle(words).slice(0, 10) : App.shuffle(pool).slice(0, 10);
     let i = 0, score = 0;
+    let pending = null; // Bewertungs-Klick des offenen Kanji
+    let last = null; // { i, score, snap, again } – „Rückgängig“ holt das zuletzt bewertete Kanji zurück
+    const undoBtn = () => (last ? `<button class="btn btn-sm btn-ghost" data-kundo title="Letzte Bewertung zurücknehmen">${icon('undo')} Rückgängig</button>` : '');
+    const undo = async () => {
+      const l = last;
+      last = null;
+      if (l.snap) await App.srsRestore(l.snap);
+      if (l.again) qs.splice(l.again, 1);
+      ({ i, score } = l);
+      next();
+    };
+    stage.addEventListener('click', (e) => { if (e.target.closest('[data-kundo]') && last) undo(); });
     const next = () => {
       if (i >= qs.length) {
-        stage.innerHTML = `<div class="card pad-lg" style="text-align:center;max-width:640px;margin:0 auto"><div class="score-ring">${score} / ${qs.length}</div><h2>${score >= qs.length * 0.8 ? 'すごい！' : 'がんばって！'}</h2>${queue || free ? `<p class="muted">${qs.length > (queue || free).length ? 'Falsch Geschriebenes kam in dieser Runde gleich noch einmal dran.' : 'Alles auf Anhieb richtig geschrieben.'}</p>` : ''}<div class="row" style="justify-content:center">${App.backBtn('Zur Übersicht')}${queue ? roundEnd(more()) : '<button class="btn btn-primary" data-again>Nochmal</button>'}</div></div>`;
+        stage.innerHTML = `<div class="card pad-lg" style="text-align:center;max-width:640px;margin:0 auto"><div class="score-ring">${score} / ${qs.length}</div><h2>${score >= qs.length * 0.8 ? 'すごい！' : 'がんばって！'}</h2>${queue || free ? `<p class="muted">${qs.length > (queue || free).length ? 'Falsch Geschriebenes kam in dieser Runde gleich noch einmal dran.' : 'Alles auf Anhieb richtig geschrieben.'}</p>` : ''}<div class="row" style="justify-content:center">${undoBtn()}${App.backBtn('Zur Übersicht')}${queue ? roundEnd(more()) : '<button class="btn btn-primary" data-again>Nochmal</button>'}</div></div>`;
         if (!queue) stage.querySelector('[data-again]').onclick = () => App.render();
         bindRoundEnd(stage);
         return;
       }
       const cur = qs[i];
       if (mode === 'write') {
-        stage.innerHTML = `<div class="card pad-lg"><div class="row between"><div><div class="small muted">Kanji ${i + 1} / ${qs.length}${queue ? '' : ' · freies Üben'} – schreibe:${queue && W.isFirst(S.srs, cur.id) ?' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
+        stage.innerHTML = `<div class="card pad-lg"><div class="row between"><div><div class="small muted">${undoBtn()} Kanji ${i + 1} / ${qs.length}${queue ? '' : ' · freies Üben'} – schreibe:${queue && W.isFirst(S.srs, cur.id) ?' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
           <div class="muted" lang="ja">${esc((cur.kun || []).map(App.kanjiLogic.kunText).concat(cur.on || []).slice(0, 4).join('、'))}</div></div></div>
           <div class="kanji-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
           <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div>`;
@@ -739,13 +773,17 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         }));
         return;
       }
-      stage.addEventListener('click', async function h(e) {
+      if (pending) stage.removeEventListener('click', pending);
+      stage.addEventListener('click', pending = async function h(e) {
         const b = e.target.closest('[data-r]'); if (!b) return;
         stage.removeEventListener('click', h);
+        pending = null;
         const known = b.dataset.r === 'known'; // Einstufung beim ersten Versuch: gilt als gelernt
-        const g = known ? 2 : +b.dataset.r; if (g) score++;
+        const g = known ? 2 : +b.dataset.r;
+        last = { i, score, snap: queue ? App.srsSnap([W.id(cur.id)]) : null, again: 0 };
+        if (g) score++;
         if (queue) await (known ? App.markWriteKnown(cur.id) : App.gradeWrite(cur.id, g));
-        if ((queue || free) && !g) qs.splice(Math.min(i + 4, qs.length), 0, cur);
+        if ((queue || free) && !g) { last.again = Math.min(i + 4, qs.length); qs.splice(last.again, 0, cur); }
         i++; next();
       });
     };

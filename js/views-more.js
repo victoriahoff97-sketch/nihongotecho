@@ -150,15 +150,16 @@
       const st = W.STATUS[why ? 'locked' : W.status(S.srs, it.id)];
       view.querySelector('[data-wst]').innerHTML = `<span class="badge vst" style="color:${st.color}">${st.dot} ${st.label}</span> <span class="small muted">${W.isMarkedKnown(S.srs, it.id) ? 'als gelernt eingestuft – wird nicht mehr abgefragt' : W.isKnown(ws) ? 'gelernt – wird nicht mehr abgefragt' : ws ? `nächste Wiederholung ${App.fmtDate(ws.due)}` : why || 'kommt beim nächsten „Schreiben lernen“ dran'}</span>${wi ? ` <span class="small muted">· WaniKani Level ${wi.level}, ${esc(wi.name)}</span>` : ''}${ws ? ' <button class="btn btn-sm btn-ghost" data-wreset title="Schreib-Stand löschen – das Kanji kommt wieder neu in die Schreib-Runde">zurücksetzen</button>' : ''}`;
       const rs = view.querySelector('[data-wreset]');
-      if (rs) rs.onclick = async () => { await App.resetWrite(it.id); wst(); App.toast('Schreib-Stand zurückgesetzt'); };
+      if (rs) rs.onclick = async () => { const snap = App.srsSnap([App.writeLogic.id(it.id)]); await App.resetWrite(it.id); wst(); App.undoToast('Schreib-Stand zurückgesetzt', snap, () => App.render(true)); };
     };
     wst();
     view.querySelector('[data-vst]').onclick = async (e) => {
       const b = e.target.closest('[data-v]'); if (!b) return;
+      const snap = App.srsSnap([it.id]);
       await App.setCheck(it.id, b.dataset.v);
       wst();
       view.querySelectorAll('[data-vst] [data-v]').forEach((x) => x.classList.toggle('on', x === b));
-      App.toast('Lernstand: ' + App.STATUS[b.dataset.v].label);
+      App.undoToast('Lernstand: ' + App.STATUS[b.dataset.v].label, snap, () => App.render(true));
     };
     view.querySelector('[data-add-media]').onclick = () => App.uploadDialog({ itemId: it.id, section: 'kanji', source: it.source, lesson: it.lesson, accept: 'image/*,video/*', title: 'Strichfolge-GIF oder Video hinzufügen' });
     const mh = view.querySelector('[data-media]');

@@ -40,8 +40,10 @@
     t.className = 'toast';
     t.innerHTML = `<span>${esc(msg)}</span>` + (action ? `<button>${esc(action.label)}</button>` : '');
     if (action) t.querySelector('button').onclick = () => { action.fn(); t.remove(); };
+    // action.id: ein neuer Hinweis gleicher Art ersetzt den alten (z. B. nur das letzte „Rückgängig“ gilt)
+    if (action && action.id) { $$(`#toasts [data-tid="${action.id}"]`).forEach((x) => x.remove()); t.dataset.tid = action.id; }
     $('#toasts').appendChild(t);
-    setTimeout(() => t.remove(), action ? 6000 : 3200);
+    setTimeout(() => t.remove(), action ? action.ms || 6000 : 3200);
   };
   App.modal = ({ title, body, foot, wide, cls = '', onClose }) => {
     const back = document.createElement('div');

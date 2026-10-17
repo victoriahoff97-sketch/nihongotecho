@@ -79,6 +79,22 @@
     await App.db.put('srs', s);
     if (App.backup && App.backup.noteChange) App.backup.noteChange();
   };
+  // Rückgängig: Lernstand vorher merken (Kopie – App.grade ändert den Eintrag an Ort und Stelle), später genau so zurückspielen.
+  // null = hatte noch keinen Lernstand → wird wieder gelöscht
+  App.srsSnap = (ids) => Array.from(new Set(ids)).map((id) => [id, S.srs.has(id) ? JSON.parse(JSON.stringify(S.srs.get(id))) : null]);
+  App.srsRestore = async (snap) => {
+    const puts = [];
+    for (const [id, s] of snap) {
+      if (s) { S.srs.set(id, s); puts.push(s); } else if (S.srs.delete(id)) await App.db.del('srs', id);
+    }
+    if (puts.length) await App.db.putMany('srs', puts);
+    if (App.backup && App.backup.noteChange) App.backup.noteChange();
+  };
+  // Hinweis mit „Rückgängig“: spielt den gemerkten Stand zurück, danach after() (z. B. neu zeichnen)
+  App.undoToast = (msg, snap, after) => App.toast(msg, {
+    label: 'Rückgängig', ms: 8000, id: 'undo',
+    fn: async () => { await App.srsRestore(snap); if (after) await after(); App.toast('Rückgängig gemacht'); },
+  });
   // Neu angelegter eigener Eintrag (App.saveItem): direkt in die Lernschlange. Vokabeln auch für Deutsch → Japanisch –
   // vorgemerkt, die Karte kommt, sobald das Wort lesbar ist. Was schon einen Lernstand hat, bleibt.
   App.enqueueOwn = async (it) => {
@@ -329,7 +345,19 @@
     stage.onclick = async (ev) => {
       const r = ev.target.closest('.check-row');
       const all = ev.target.closest('[data-all]');
-      if (all) { for (const e of list) if (!decided.has(key(e))) await setRow(e, all.dataset.all); draw(); return; }
+      if (all) {
+        // auf einmal eingestuft – ein Verklicker lässt sich mit „Rückgängig“ zurücknehmen: die Zeilen stehen dann wieder offen da
+        const rows = list.filter((e) => !decided.has(key(e)));
+        const snap = App.srsSnap(rows.flatMap((e) => [key(e), W.id(e.item.id)]));
+        const prePrev = new Set(pre);
+        for (const e of rows) await setRow(e, all.dataset.all);
+        draw();
+        App.undoToast(`${rows.length} ${all.dataset.all === 'known' ? 'als „kann ich“ eingestuft' : 'in die Lernschlange gelegt'}`, snap, () => {
+          rows.forEach((e) => { decided.delete(key(e)); if (!prePrev.has(e.item.id)) pre.delete(e.item.id); });
+          if (stage.isConnected) draw();
+        });
+        return;
+      }
       if (ev.target.closest('[data-next]')) { onDone(); return; }
       if (!r) return;
       const e = list[+r.dataset.i];

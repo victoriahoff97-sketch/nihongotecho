@@ -526,8 +526,8 @@
         ${App.attachmentsHtml(it)}
       </div><aside>${App.relatedHtml(it) || '<div class="card muted small">Noch keine verwandten Einträge. Mit „Verknüpfen“ kannst du selbst Verbindungen herstellen.</div>'}</aside></div></div>`;
     App.hydrateThumbs(view);
-    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label); App.render(true); } };
-    view.querySelector('[data-ast]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(App.writeLogic.id(it.id), b.dataset.v); App.toast('Aktiv-Lernstand: ' + App.statusInfo(it, b.dataset.v).label); App.render(true); } };
+    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { const snap = App.srsSnap([it.id]); await App.setCheck(it.id, b.dataset.v); App.undoToast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label, snap, () => App.render(true)); App.render(true); } };
+    view.querySelector('[data-ast]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { const snap = App.srsSnap([App.writeLogic.id(it.id)]); await App.setCheck(App.writeLogic.id(it.id), b.dataset.v); App.undoToast('Aktiv-Lernstand: ' + App.statusInfo(it, b.dataset.v).label, snap, () => App.render(true)); App.render(true); } };
   });
 
   // =========================================================
@@ -595,7 +595,7 @@
       </div><aside>${App.relatedHtml(it)}</aside></div></div>`;
     App.hydrateThumbs(view);
     App.exercises.hydrate(view);
-    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label); App.render(true); } };
+    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { const snap = App.srsSnap([it.id]); await App.setCheck(it.id, b.dataset.v); App.undoToast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label, snap, () => App.render(true)); App.render(true); } };
   });
 
   // =========================================================
@@ -703,7 +703,7 @@
             <div class="small muted" style="margin-top:4px">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'kommt mit „neue lernen“ in die Lernschlange' : 'noch ungeprüft – einstufen oder „neue lernen“ holt es in die Lernschlange'}</div></dd></dl></div>
         ${App.attachmentsHtml(it)}</div><aside>${App.relatedHtml(it)}</aside></div></div>`;
     App.hydrateThumbs(view);
-    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { await App.setCheck(it.id, b.dataset.v); App.toast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label); App.render(true); } };
+    view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { const snap = App.srsSnap([it.id]); await App.setCheck(it.id, b.dataset.v); App.undoToast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label, snap, () => App.render(true)); App.render(true); } };
   });
 
   // =========================================================
