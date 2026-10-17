@@ -10,6 +10,9 @@
   const WEEKDAY_ABBR = ['So.', 'Mo.', 'Di.', 'Mi.', 'Do.', 'Fr.', 'Sa.']; // Index = getUTCDay()
 
   const isOwn = (p) => !p._seed && !p._pack;
+  // Frage mit Furigana (p.furi = Notation 食[た]べる) – wie in der Abfrage nur über Kanji, die man noch nicht lesen kann
+  const knownFn = () => (App.store.settings.furiKnown === 'show' ? null : App.furiLogic.knownChars(App.store.items, App.store.srs));
+  const promptHtml = (p, known = knownFn()) => App.furiLogic.wordHtml({ type: 'prompt', jp: p.furi || p.jp || '' }, known);
   const answersOf = (promptId) => App.itemsOf('answer').filter((a) => a.promptId === promptId)
     .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || 0) - (a.created || 0));
   const lvlBadge = (p) => (isOwn(p) && !p.level ? '<span class="badge">eigene</span>' : App.levelBadge(p));
@@ -44,8 +47,15 @@
     md.el.querySelector('[data-ok]').onclick = async () => {
       const g = (n) => el(n).value.trim();
       if (!g('jp')) { App.toast('Bitte die Frage auf Japanisch eingeben'); el('jp').focus(); return; }
+      const jpChanged = g('jp') !== it.jp;
       Object.assign(it, { jp: g('jp'), de: g('de'), level: g('level'), hint: g('hint') });
       md.close();
+      // Furigana von selbst (eigene Vokabeln + Offline-Wörterbuch); Kanji ohne gefundene Lesung bleiben ohne
+      if (jpChanged || !it.furi) {
+        let furi = '';
+        try { furi = JP.hasKanji(it.jp) ? (await App.sentenceReading(it.jp)).furi || '' : ''; } catch (e) { console.error(e); }
+        it.furi = furi && furi !== it.jp ? furi : '';
+      }
       const saved = await App.saveItem(it);
       if (isNew) App.go(App.link(saved));
     };
@@ -209,11 +219,12 @@
     const levels = LEVELS.filter((l) => visible.some((p) => p.level === l));
     const ownN = visible.filter(isOwn).length;
     const chip = (val, label, n) => `<button class="chip ${lvl === val ? 'on' : ''}" data-q-lvl="${val}">${label} <span class="small" style="opacity:.75">${n}</span></button>`;
+    const known = knownFn();
     const card = (p) => {
       const st = stats[p.id];
       return `<a class="card prompt-card ${isOwn(p) ? 'own' : ''}" href="${App.link(p)}">
         <div class="row between">${lvlBadge(p) || '<span></span>'}${st ? `<span class="small prompt-count">✓ ${st.count}×</span>` : '<span class="small muted">neu</span>'}</div>
-        <div class="prompt-jp" lang="ja">${esc(p.jp)}</div>
+        <div class="prompt-jp" lang="ja">${promptHtml(p, known)}</div>
         <div class="small muted">${st ? 'zuletzt ' + esc(App.fmtDate(st.last)) : 'noch keine Antwort'}</div></a>`;
     };
     const emptyGrid = lvl === 'own'
@@ -239,7 +250,7 @@
       }
       const st = stats[cur.id];
       host.innerHTML = `<div class="card random-card-in"><div class="row between"><span class="random-label">🎲 ZUFÄLLIGE FRAGE</span>${lvlBadge(cur)}</div>
-        <a class="random-jp" lang="ja" href="${App.link(cur)}">${esc(cur.jp)}</a>
+        <a class="random-jp" lang="ja" href="${App.link(cur)}">${promptHtml(cur)}</a>
         <div class="small muted" style="margin-bottom:14px">${st ? `${st.count}× beantwortet · zuletzt ${esc(App.fmtDate(st.last))}` : 'noch nie beantwortet'}</div>
         <div class="row"><button class="btn btn-sec" data-answer="${esc(cur.id)}">${icon('pen')} Jetzt beantworten</button><button class="btn" data-reroll>${icon('shuffle')} Andere Frage</button></div></div>`;
     };
@@ -257,7 +268,7 @@
     const box = md.el.querySelector('[data-rows]');
     const draw = () => {
       const hs = rows();
-      box.innerHTML = hs.map((p) => `<div class="row between" style="gap:10px"><div class="row" style="gap:8px">${lvlBadge(p)}<span lang="ja">${esc(p.jp)}</span></div>
+      box.innerHTML = hs.map((p) => `<div class="row between" style="gap:10px"><div class="row" style="gap:8px">${lvlBadge(p)}<span lang="ja">${promptHtml(p)}</span></div>
         <button class="btn btn-sm" data-show="${esc(p.id)}">${icon('eye')} Einblenden</button></div>`).join('') || '<div class="muted">Keine ausgeblendeten Fragen.</div>';
     };
     box.addEventListener('click', async (e) => {
@@ -275,7 +286,7 @@
     const sec = App.SECTIONS.apply;
     const tab = q.tab === 'smalltalk' ? 'smalltalk' : 'diary';
     const actions = tab === 'smalltalk' ? `<button class="btn" data-action="new-prompt">${icon('plus')} Eigene Frage</button>` : '';
-    view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Schreib, sprich, wiederhol – mit dem, was du schon kannst.', actions)}
+    view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${App.pageHead(sec, 'Schreib, sprich, wiederhol – mit dem, was du schon kannst.', actions)}
       <div class="tabs">${[['diary', '<span class="tab-kanji">日記</span> Tagebuch'], ['smalltalk', '<span class="tab-kanji">会話</span> Smalltalk']].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-q-tab="${k === 'diary' ? '' : k}">${l}</button>`).join('')}</div>
       <div data-body>${tab === 'smalltalk' ? smalltalkTab(q) : diaryTab(q)}</div></div>`;
     if (tab !== 'smalltalk') { mountDiary(view, q); return; }
@@ -362,7 +373,7 @@
 
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="crumbs"><a href="#/anwenden">Anwenden</a> › <a href="#/anwenden?tab=smalltalk">Smalltalk</a></div>
       <div class="card prompt-head"><div class="row between" style="align-items:flex-start;flex-wrap:nowrap">
-        <div><div class="row" style="gap:8px;margin-bottom:4px">${lvlBadge(p)}${p.hidden ? '<span class="badge">ausgeblendet</span>' : ''}</div><h1 lang="ja">${JP.ruby(p.jp || '')}</h1></div>
+        <div><div class="row" style="gap:8px;margin-bottom:4px">${lvlBadge(p)}${p.hidden ? '<span class="badge">ausgeblendet</span>' : ''}</div><h1 lang="ja">${promptHtml(p)}</h1></div>
         <details class="apply-menu"><summary class="icon-btn" title="Menü">${icon('menu')}</summary><div class="apply-menu-pop card">
           <button class="btn btn-ghost btn-sm" data-p-edit>${icon('edit')} Bearbeiten</button>
           <button class="btn btn-ghost btn-sm" data-p-hide>${icon('eye')} ${p.hidden ? 'Einblenden' : 'Ausblenden'}</button>
@@ -492,7 +503,7 @@
       head = `<div class="crumbs"><a href="#/anwenden">Anwenden</a> › <a href="#/anwenden?tab=smalltalk">Smalltalk</a>${prompt ? ` › <a href="${App.link(prompt)}">Frage</a>` : ''}</div>
         <div class="card write-head"><div class="row between" style="align-items:flex-start;flex-wrap:nowrap">
           <div class="grow"><div class="row" style="gap:8px">${prompt ? lvlBadge(prompt) : ''}${dateField}</div>
-            <h1 lang="ja">${prompt ? JP.ruby(prompt.jp || '') : '<span class="muted">Frage nicht mehr vorhanden</span>'}</h1></div>${menu}</div>
+            <h1 lang="ja">${prompt ? promptHtml(prompt) : '<span class="muted">Frage nicht mehr vorhanden</span>'}</h1></div>${menu}</div>
           ${prompt && prompt.de ? `<details class="prompt-more"><summary>Deutsch</summary><div>${esc(prompt.de)}</div></details>` : ''}
           ${prompt && prompt.hint ? `<details class="prompt-more"><summary>Grammatik-Tipp</summary><div lang="ja">${esc(prompt.hint)}</div></details>` : ''}
           ${prompt ? `<a class="small write-earlier" href="${App.link(prompt)}">${earlier ? `${earlier} frühere ${earlier === 1 ? 'Antwort' : 'Antworten'}` : 'Zur Frage'} →</a>` : ''}</div>`;

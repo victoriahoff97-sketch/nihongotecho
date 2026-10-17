@@ -69,6 +69,12 @@
   // ---------- Beispielsatz: Lesung und Übersetzung von selbst (nach dem Eintragen oder Diktieren des japanischen Satzes) ----------
   // Lesung: aus den eigenen Vokabeln und dem Offline-Wörterbuch. Übersetzung: Google Übersetzer (Internet, einmalige Zustimmung).
   const LV_BONUS = { N5: 6, N4: 5, N3: 4, N2: 3, N1: 2 };
+  // Lesung eines Satzes aus eigenen Vokabeln + Offline-Wörterbuch → { furi, kana, missing } (auch für eigene Smalltalk-Fragen)
+  App.sentenceReading = (jp) => {
+    const LL = App.lookupLogic;
+    const bonus = (e, base, r) => LV_BONUS[((window.JLPT_INDEX || {}).v || {})[App.vocabKey({ kanji: base, kana: r })]] || 0;
+    return App.exfillLogic.reading(jp, { lookup: LL.combineLookups(LL.ownIndex(App.store.items.values()), App.dict.installed() ? App.dict.lookup : null), deinflect: App.deinflect, posMatches: App.posMatches, notate: JP.notate, bonus });
+  };
   const bindExFill = (root) => {
     const X = App.exfillLogic;
     let declined = false; // „Nein“ zur Übersetzung gilt für dieses Formular
@@ -77,15 +83,10 @@
     // frei = leer, oder es steht noch die automatische Fassung zu einem früheren Stand des Satzes drin
     const free = (row, k) => { const v = field(row, k).value.trim(); return !v || v === row.dataset['auto' + k]; };
     const setAuto = (row, k, v) => { field(row, k).value = v; row.dataset['auto' + k] = v; };
-    const bonus = (e, base, r) => LV_BONUS[((window.JLPT_INDEX || {}).v || {})[App.vocabKey({ kanji: base, kana: r })]] || 0;
-
     const readKana = async (row, jp, stale) => {
-      const LL = App.lookupLogic;
       const hasDict = App.dict.installed();
       let res;
-      try {
-        res = await X.reading(jp, { lookup: LL.combineLookups(LL.ownIndex(App.store.items.values()), hasDict ? App.dict.lookup : null), deinflect: App.deinflect, posMatches: App.posMatches, notate: JP.notate, bonus });
-      } catch (e) { console.error(e); return ''; }
+      try { res = await App.sentenceReading(jp); } catch (e) { console.error(e); return ''; }
       if (stale()) return '';
       if (res.missing.length) {
         setAuto(row, 'kana', '');
