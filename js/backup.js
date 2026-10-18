@@ -333,7 +333,7 @@
     if (st.kind === 'unsupported') {
       const h = K.hand();
       const last = h.saved ? when(h.saved) : 'noch nie';
-      return `<p class="muted small">Auf diesem Gerät sichert die App nicht von selbst. Tippe oben auf das Sichern-Symbol und lege die Datei in einen Ordner deiner Wahl (z. B. iCloud Drive).</p>
+      return `<p class="muted small">Auf diesem Gerät sichert die App nicht von selbst. Tippe oben auf das Sichern-Symbol und lege die Datei in einen Ordner deiner Wahl (z. B. Google Drive oder iCloud Drive).</p>
         <p class="small"><b>Zuletzt gesichert:</b> ${last}${h.dirty ? ' · seitdem geändert' : ''}</p>
         <div class="stack">${btn('hand-save', 'Jetzt sichern', 'btn-primary', 'backup')}</div>`;
     }

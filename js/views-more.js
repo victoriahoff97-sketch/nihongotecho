@@ -439,7 +439,7 @@
       <div class="card"><h3>Quellen</h3><p class="muted small">Damit du deine Inhalte nach Buch, App oder Kurs filtern kannst (z. B. nur Genki-Vokabeln).</p>
         <div class="stack" data-srcs style="gap:6px">${st.sources.map((s, i) => `<div class="row"><input type="color" value="${s.color}" data-sc="${i}" style="width:44px;height:40px;border:0;background:none"><input class="input grow" value="${esc(s.name)}" data-sn="${i}"><button class="icon-btn sm" data-sd="${i}">${icon('trash')}</button></div>`).join('')}</div>
         <button class="btn btn-sm" style="margin-top:10px" data-sadd>${icon('plus')} Quelle hinzufügen</button></div>
-      <div class="card"><h3>Sicherung</h3>
+      <div class="card"><h3 class="row between">Sicherung <button class="icon-btn sm help-q" data-tour="sicherung" title="So richtest du die Sicherung ein" aria-label="So richtest du die Sicherung ein">${icon('help')}</button></h3>
         <h4 class="sub-h">Automatische Sicherung</h4><div data-backup-auto>${App.backup.card()}</div>
         <h4 class="sub-h">Von Hand</h4><p class="muted small" data-backup-manual ${App.backup.manualHint() ? '' : 'hidden'}>Alles wird lokal in diesem Browser gespeichert. Mach regelmäßig ein Backup – damit kannst du auch auf ein anderes Gerät umziehen.</p>
         <div class="stack"><button class="btn" data-exp>${icon('download')} Komplett-Backup (mit Dateien & Stiftnotizen)</button>

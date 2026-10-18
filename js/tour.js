@@ -5,8 +5,19 @@
   const L = App.tourLogic;
   const PAD = 6;            // Luft zwischen Ziel und Rahmen
   const MOBILE = 860;       // darunter liegt die Seitenleiste verborgen (css/app.css)
-  const NO_ROUND = ['rundgang', 'hinweis', 'erweiterung']; // ohne „Ganzen Rundgang zeigen“ am Ende
+  const BACKUP = ['sicherungOrdner', 'sicherungIpad', 'sicherungAndroid', 'sicherungHand'];
+  const NO_ROUND = ['rundgang', 'hinweis', 'erweiterung'].concat(BACKUP); // ohne „Ganzen Rundgang zeigen“ am Ende
   const HOME = { erweiterung: '/einstellungen' };          // Touren, die auf einer bestimmten Seite laufen
+  BACKUP.forEach((k) => (HOME[k] = '/einstellungen'));
+
+  // „sicherung“ heißt: die Sicherungs-Hilfe für dieses Gerät
+  const resolve = (key) => {
+    if (key !== 'sicherung') return key;
+    const W = App.welcomeLogic;
+    let os = 'other';
+    try { if (W && W.env) os = W.env({ ua: navigator.userAgent, maxTouchPoints: navigator.maxTouchPoints }).os; } catch (e) { /* bleibt other */ }
+    return L.backupTourKey({ os, folder: !!(App.backup && App.backup.supported && App.backup.supported()) });
+  };
 
   let cur = null;      // laufende Tour
   let pending = null;  // Tour, die nach dem Seitenwechsel startet
@@ -131,6 +142,7 @@
   };
 
   const start = (key, opts = {}) => {
+    key = resolve(key);
     const all = App.TOURS[key];
     if (cur || !all) return false;
     const path = App.parseHash().path;

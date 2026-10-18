@@ -45,6 +45,9 @@
   // noch Schritte zeigt (setup), wartet sie: erst einrichten, dann der Rundgang.
   const shouldAsk = ({ asked, path, busy, inApp, setup }) => !asked && path === '/' && !busy && !inApp && !setup;
 
-  const T = { GAP, MARGIN, tourKeyFor, visibleSteps, placeBubble, shouldAsk };
+  // Sicherungs-Hilfe je Gerät: mit Ordnerzugriff (Chrome/Edge am PC) automatisch, sonst von Hand – iPad und Android eigens
+  const backupTourKey = ({ os, folder }) => (folder ? 'sicherungOrdner' : os === 'ios' ? 'sicherungIpad' : os === 'android' ? 'sicherungAndroid' : 'sicherungHand');
+
+  const T = { GAP, MARGIN, tourKeyFor, visibleSteps, placeBubble, shouldAsk, backupTourKey };
   if (typeof module !== 'undefined' && module.exports) module.exports = T; else root.App.tourLogic = T;
 })(this);

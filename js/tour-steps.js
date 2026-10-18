@@ -4,6 +4,7 @@
 'use strict';
 (function (root) {
   const EXT = '[data-ext-card]';
+  const BK = '#view .card:has([data-backup-auto])';
 
   const TOURS = {
     // Angebot beim ersten Start
@@ -112,14 +113,40 @@
     ],
     '/einstellungen': [
       { target: '#view .card:has([data-s="name"]) h3', text: 'Name, Aussehen, Furigana und wie viele neue Karten du pro Tag möchtest.' },
-      { target: '#view .card:has([data-bk]) h3', text: 'Deine Daten liegen nur auf diesem Gerät. Hier sicherst du sie – oder von jeder Seite aus mit dem Sichern-Symbol oben. Ein Punkt am Symbol heißt: noch nicht gesichert.' },
+      { target: '#view .card:has([data-bk]) h3', text: 'Deine Daten liegen nur auf diesem Gerät. Hier sicherst du sie. Das „?“ daneben zeigt dir, wie das auf deinem Gerät geht.' },
       { target: '#view [data-wk-token]', title: 'WaniKani verknüpfen', text: 'Erstelle bei WaniKani unter Settings → API Tokens einen Schlüssel (Lesezugriff genügt), trage ihn hier ein und tippe „Verbinden“.' },
       { target: '#view [data-wk-card] h3', text: 'Danach wählst du hier die Level aus. Kanji, die du bei WaniKani bis Master gelernt hast, kommen dann zum Schreiben dran. Die Karte daneben schaltet WaniKani-Vokabeln für Deutsch → Japanisch frei.' },
       { target: EXT + ' h3', title: 'Text aus dem Browser', text: 'Mit der Erweiterung holst du japanischen Text von jeder Webseite in die App.', link: { label: 'Schritt für Schritt zeigen', tour: 'erweiterung' } },
     ],
+    // Sicherungs-Hilfe („?“ an der Karte Sicherung) – je Gerät eine, gewählt in tour-logic.js (backupTourKey).
+    // Immer zuerst automatisch, dann von Hand. So kurz wie möglich.
+    sicherungOrdner: [
+      { target: BK + ' [data-backup-auto]', title: '1. Automatisch', text: 'Tippe „Ordner wählen“ und nimm einen Ordner in Google Drive. Ab dann sichert die App von selbst.' },
+      { target: BK + ' [data-backup-auto]', title: 'Nach einem Neustart', text: 'Fragt der Browser nach dem Ordner, tippe „Erlauben“. Das ist alles.' },
+      { target: BK + ' [data-exp]', until: BK + ' [data-exp-light]', title: '2. Von Hand', text: 'Lädt eine Backup-Datei herunter. Brauchst du nur ohne Ordner.' },
+      { target: BK + ' label:has([data-imp])', title: 'Zurückholen', text: 'Hier spielst du eine Backup-Datei wieder ein.' },
+    ],
+    sicherungIpad: [
+      { target: BK + ' [data-backup-auto]', title: '1. Automatisch', text: 'Geht auf dem iPad leider nicht. Darum sicherst du von Hand – mit einem Tipp.' },
+      { target: '#backup-top', title: '2. Von Hand', text: 'Tippe oben auf dieses Symbol. Ein Punkt daran heißt: noch nicht gesichert.' },
+      { title: 'In Dateien sichern', text: 'Im Fenster, das aufgeht, wähle „In Dateien sichern“ und einen Ordner, z. B. iCloud Drive. Fertig.' },
+      { target: BK + ' label:has([data-imp])', title: 'Zurückholen', text: 'Hier spielst du die Datei wieder ein.' },
+    ],
+    sicherungAndroid: [
+      { target: BK + ' [data-backup-auto]', title: '1. Automatisch', text: 'Geht auf Android leider nicht. Darum sicherst du von Hand – mit einem Tipp.' },
+      { target: '#backup-top', title: '2. Von Hand', text: 'Tippe oben auf dieses Symbol. Ein Punkt daran heißt: noch nicht gesichert.' },
+      { title: 'In Google Drive', text: 'Im Fenster, das aufgeht, wähle „Drive“ und tippe „Speichern“. Kommt kein Fenster: Die Datei liegt in „Downloads“. Öffne die Drive-App, tippe „+“ → „Hochladen“ und wähle sie aus.' },
+      { target: BK + ' label:has([data-imp])', title: 'Zurückholen', text: 'Hier spielst du die Datei wieder ein – auch direkt aus Google Drive.' },
+    ],
+    sicherungHand: [
+      { target: BK + ' [data-backup-auto]', title: '1. Automatisch', text: 'Geht nur mit Chrome oder Edge am PC. In diesem Browser sicherst du von Hand.' },
+      { target: '#backup-top', title: '2. Von Hand', text: 'Klicke oben auf dieses Symbol. Ein Punkt daran heißt: noch nicht gesichert.' },
+      { title: 'Ablegen', text: 'Die Datei landet in „Downloads“. Schieb sie z. B. in Google Drive.' },
+      { target: BK + ' label:has([data-imp])', title: 'Zurückholen', text: 'Hier spielst du die Datei wieder ein.' },
+    ],
     // Browser-Erweiterung: läuft immer auf der Karte in den Einstellungen
     erweiterung: [
-      { target: EXT + ' h3', title: 'Wozu?', text: 'Du liest etwas auf Japanisch im Netz, etwa bei NHK Easy, markierst ein Wort oder einen Satz und hast es mit einem Klick in der App. Geht mit Chrome oder Edge am PC.' },
+      { target: EXT + ' h3', title: 'Wozu?', text: 'Du liest etwas auf Japanisch im Netz, etwa bei NHK Easy, markierst ein Wort oder einen Satz und hast es mit einem Klick in der App. Geht nur mit Chrome oder Edge am PC, nicht auf Handy oder Tablet.' },
       { target: EXT + ' .row', title: 'Holen', text: 'Lade die Erweiterung herunter und entpacke sie an einen Ort, an dem der Ordner bleiben kann, zum Beispiel Dokumente.' },
       { target: EXT + ' ol', title: 'Einmal einrichten', text: 'Öffne im Browser chrome://extensions, schalte den Entwicklermodus ein und wähle über „Entpackte Erweiterung laden“ den Ordner aus.' },
       { target: EXT + ' ol', title: 'Markieren', text: 'Lass die App geöffnet, lade die Webseite neu und markiere japanischen Text. An der Markierung erscheinen zwei Knöpfe.' },
