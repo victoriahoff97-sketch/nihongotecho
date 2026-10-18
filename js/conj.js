@@ -14,7 +14,7 @@
     const f = F.form(formId);
     const sol = F.example(f, it).to;
     return {
-      front: `<div class="front" lang="ja">${JP.wordRuby(it)}</div><div class="muted">${App.meaningHtml(it)}</div><div class="conj-ask" style="--c:${lineColor(f)}">→ ${esc(f.label)}</div>`,
+      front: `<div class="front" lang="ja">${JP.wordRuby(it)}</div><div class="muted">${App.meaningHtml(it)}</div><div class="conj-ask" style="--c:${lineColor(f)}">→ ${esc(f.ask || f.label)}</div>`,
       back: `<div class="ans jp" lang="ja">${JP.ruby(sol)}</div>${it.pos === 'verb' ? `<div><span class="badge">${VERB_CLS[it.v.cls]}</span></div>` : ''}<p class="small muted conj-rule">${esc(f.rule)}</p>`,
       speak: JP.plain(sol),
     };
