@@ -20,7 +20,16 @@
         <li>Im Browser <b>chrome://extensions</b> (Edge: <b>edge://extensions</b>) öffnen und den <b>Entwicklermodus</b> einschalten.</li>
         <li><b>Entpackte Erweiterung laden</b> antippen und den Ordner <b>extension</b> wählen.</li>
         <li>Diese App geöffnet lassen, die Webseite neu laden und japanischen Text markieren – an der Markierung erscheinen zwei Knöpfe.</li>
-      </ol></div>`;
+      </ol>${web ? `
+      <h4 style="margin:16px 0 4px">Auf dem Android-Tablet</h4>
+      <p class="muted small">Chrome auf Android kann keine Erweiterungen. Die kleine Zusatz-App bringt „Nihongo Techō“ in das Menü, das beim Markieren von Text erscheint (manchmal unter „⋮“) – in Chrome und anderen Apps.</p>
+      <div class="row"><a class="btn btn-sec" href="nihongotecho-markieren.apk" download="NihongoTecho-Markieren.apk">${icon('download')} Android-App herunterladen</a>
+        <a class="btn btn-ghost btn-sm" href="extension-firefox.zip" download="NihongoTecho-Erweiterung-Firefox.zip">Erweiterung für Firefox</a></div>
+      <ol class="small" style="margin:10px 0 0;padding-left:20px">
+        <li>Diese App zuerst installieren („Als App installieren“), damit der Text später in ihr landet.</li>
+        <li>Die heruntergeladene Datei antippen. Android fragt einmal, ob Chrome Apps installieren darf – erlauben, dann „Installieren“.</li>
+        <li>Auf einer Webseite japanischen Text markieren und im Menü <b>Nihongo Techō</b> antippen.</li>
+      </ol>` : ''}</div>`;
   };
 
   // Adresse ersetzen (Neuladen/„Zurück“ holt nichts ein zweites Mal herein) und die Zielseite zeichnen
