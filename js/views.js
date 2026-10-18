@@ -202,6 +202,7 @@
     grammatik: ['sec-grammar', 'data-new="grammar"', 'plus', 'Neue Grammatik', 'Eine Regel aus dem Unterricht'],
     ausdruck: ['sec-phrase', 'data-new="phrase"', 'plus', 'Neuer Ausdruck', 'Redewendung oder Baustein'],
     karten: ['sec-practice', 'href="#/ueben/karten"', 'cards', 'Karteikarten', 'Frei üben nach Kartentyp'],
+    schlange: ['sec-practice', 'href="#/ueben/heute?lernen=1"', 'practice', 'Lernschlange üben', 'Alles, was du lernst – ohne Termin'],
     einstufen: ['sec-practice', 'href="#/ueben/einstufen"', 'check', 'Einstufen', 'Ungeprüftes durchgehen'],
     uebersetzen: ['sec-practice', 'href="#/ueben/saetze"', 'edit', 'Übersetzen', 'Sätze selbst übersetzen'],
     konjugieren: ['sec-practice', 'href="#/ueben/konjugieren"', 'shuffle', 'Konjugieren', 'Verbformen üben'],

@@ -213,8 +213,9 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const resume = takeParked();
     const parts = App.todayParts(), n = parts.reduce((a, x) => a + x.n, 0), tomorrow = App.dueTomorrow();
     const lParts = App.learningParts(), ln = lParts.reduce((a, x) => a + x.n, 0);
-    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Jetzt wiederholen</div>
-      <div class="page-head"><div class="titles"><h1>Jetzt wiederholen <span class="jp-title">復習</span></h1><p>${n ? `Heute ${n === 1 ? 'ist 1 Karte' : `sind ${n} Karten`} dran: ${parts.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : 'Für heute ist alles wiederholt.'}</p></div></div>
+    const title = q.lernen && ln ? 'Meine Lernschlange üben' : 'Jetzt wiederholen';
+    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › ${title}</div>
+      <div class="page-head"><div class="titles"><h1>${title} <span class="jp-title">復習</span></h1><p>${q.lernen && ln ? `Alles, was du gerade lernst, gemischt – ${learningSum(lParts)}. Ändert nichts an Lernstand und Terminen.` : n ? `Heute ${n === 1 ? 'ist 1 Karte' : `sind ${n} Karten`} dran: ${parts.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : 'Für heute ist alles wiederholt.'}</p></div></div>
       <div class="card" data-setup><div class="row between"><div class="small muted">${n ? 'Alles gemischt in einer Runde.' : 'お疲れ様！'}${tomorrow ? ` Morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu.` : ''}</div>
         <div class="row">${n ? `<button class="btn btn-primary" data-round="due">${icon('shuffle')} Jetzt wiederholen (${n})</button>` : `<a class="btn" href="#/">Zur Startseite</a><a class="btn" href="#/ueben/karten">${icon('practice')} Karteikarten</a>`}${learningBtn(ln)}${ln ? chunkSelect() : ''}</div></div>
         ${ln ? `<div class="small muted" style="margin-top:8px">Meine Lernschlange üben: alles, was du gerade lernst, gemischt – ${learningSum(lParts)}. Ändert nichts an Lernstand und Terminen.</div>` : ''}</div>
@@ -225,6 +226,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     nextRound = null;
     view.querySelector('[data-learning]').onclick = () => runLearning(view, App.learningQueue(), {});
     bindChunk(view);
+    // Schnellaktion „Lernschlange üben“ (Startseite): gleich alles gemischt starten
+    if (q.lernen && ln) return view.querySelector('[data-learning]').click();
     if (!go) return;
     go.onclick = () => { view.querySelector('[data-setup]').hidden = true; runCards(view.querySelector('[data-stage]'), App.todayQueue(), { more: () => ({ due: App.todayQueue(), fresh: [] }) }); };
     if (auto) go.click();
