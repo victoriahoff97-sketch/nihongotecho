@@ -20,12 +20,13 @@
   // liegen auch die aus Paketen dort. Am Speicher ändert das nichts – wieder eingeschaltet, ist Unberührtes wieder „ungeprüft“.
   //
   // Grammatik wird nicht abgefragt: sie hat nur den Haken von Hand – „offen“ (unchecked) oder „kann ich“ (known).
-  // Aus WaniKani angelegte Vokabeln: lesen lernt man dort – hier gelten sie als lesbar und werden nur aktiv (Deutsch → Japanisch) eingestuft
-  const wkVocab = (it) => !!it && it.type === 'vocab' && !!it._wk;
+  // Aus WaniKani angelegte Vokabeln: lesen lernt man dort – hier gelten sie als lesbar und werden nur aktiv (Deutsch → Japanisch) eingestuft.
+  // Ebenso aus WaniKani angelegte Kanji: lesen lernt man dort – hier kommen sie nur zum Schreiben (ab Master, wk-logic.js).
+  const wkLearned = (it) => !!it && !!it._wk && (it.type === 'vocab' || it.type === 'kanji');
   const W = App.writeLogic;
   App.checkOn = () => S.settings.check !== 'off';
   // selbst angelegt – nicht aus Paket, Genki, Import oder WaniKani
-  App.isOwn = (it) => !!it && !it._seed && !it._pack && !it.imported && !wkVocab(it);
+  App.isOwn = (it) => !!it && !it._seed && !it._pack && !it.imported && !wkLearned(it);
   App.needsCheck = (it) => !!it && (W.direct(it.type) ? !App.isOwn(it) : it.type === 'kanji' ? App.checkOn() && !App.isOwn(it) : true);
   // Lernstand-Filter der Vokabel- und Kanji-Liste: ohne Einstufen gibt es „Ungeprüft“ nicht
   App.statusFilter = (cur) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.checkOn()).map(([k, s]) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('');
@@ -35,7 +36,7 @@
     const s = S.srs.get(id);
     // Grammatik: nur der Haken zählt; ein alter Lernstand aus der Zeit der Grammatik-Karten gilt als „kann ich“, wenn er es damals war
     if (isGrammar(id)) return App.furiLogic.readKnown(S.srs, id) ? 'known' : 'unchecked';
-    if (!s) return wkVocab(S.items.get(id)) ? 'known' : ownWord(id) ? 'learn' : 'unchecked';
+    if (!s) return wkLearned(S.items.get(id)) ? 'known' : ownWord(id) ? 'learn' : 'unchecked';
     if (s.check === 'unchecked') return ownWord(id) ? 'learn' : 'unchecked';
     return App.furiLogic.readKnown(S.srs, id) ? 'known' : 'learn';
   };
@@ -110,6 +111,15 @@
     if (plan.length) await App.db.putMany('srs', plan);
     await App.saveSettings({ lernweg: 1 });
     return plan.length;
+  };
+  // Einmalig: Lese-Karten von WaniKani-Kanji wieder heraus – sie kamen versehentlich über „neue lernen“ dazu (Lesen lernt man bei WaniKani).
+  // Der Schreib-Stand (w:…) bleibt.
+  App.wkKanjiMigrate = async () => {
+    if (S.settings.wkKanjiRead === 1) return 0;
+    const ids = App.itemsOf('kanji').filter((it) => it._wk && S.srs.has(it.id)).map((it) => it.id);
+    for (const id of ids) { S.srs.delete(id); await App.db.del('srs', id); }
+    await App.saveSettings({ wkKanjiRead: 1 });
+    return ids.length;
   };
   App.vocabCounts = (items = App.itemsOf('vocab')) => {
     const c = { unchecked: 0, learn: 0, known: 0, total: items.length };
