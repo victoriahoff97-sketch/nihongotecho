@@ -61,7 +61,7 @@
       { target: '#view a.mode-card[href="#/ueben/einstufen"]', text: 'Neues erst einstufen, damit du nichts wiederholst, was du schon kannst.' },
       { target: '#view a.mode-card[href="#/ueben/kanji"]', text: 'Kanji mit dem Stift schreiben oder Lesungen erkennen.' },
       { target: '#view a.mode-card[href="#/ueben/saetze"]', text: 'Ganze Sätze, gebaut nur aus Wörtern und Grammatik, die du schon hast.' },
-      { target: '#view a.mode-card[href="#/ueben/konjugieren"]', text: 'Formen bilden: Du wählst, welche Formen und Wortarten drankommen, bildest sie im Kopf oder auf Papier und deckst auf.' },
+      { target: '#view a.mode-card[href="#/ueben/konjugieren"]', text: 'Formen bilden: Du wählst eine Mischung, zum Beispiel nur die て-Form, bildest die Formen im Kopf oder auf Papier und deckst auf.' },
     ],
     '/anwenden': [
       { target: '#view .tabs', text: 'Zwei Wege, Japanisch selbst zu benutzen: ein Tagebuch und Fragen zum Beantworten.' },

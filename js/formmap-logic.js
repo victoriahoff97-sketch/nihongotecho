@@ -9,16 +9,16 @@
     { id: 'verb', title: 'Verben', w: 680, h: 660 },
     { id: 'adj', title: 'Adjektive', w: 680, h: 460 },
   ];
-  // Jede Formenfamilie ist eine Linie mit eigener Farbe
+  // Jede Formenfamilie ist eine Linie mit eigener Farbe; label = Name der Familie, wie ihn Lernende kennen (nicht „Linie“)
   F.LINES = {
-    start: { label: 'Start', color: 'var(--muted)' },
-    masu: { label: 'ます-Linie', color: 'var(--murasaki)' },
-    te: { label: 'て-Linie', color: 'var(--sora)' },
-    nai: { label: 'ない-Linie', color: 'var(--daidai)' },
-    pot: { label: 'える-Linie', color: 'var(--matcha)' },
-    vol: { label: 'よう-Linie', color: 'var(--shu)' },
-    i: { label: 'い-Linie', color: 'var(--ai)' },
-    na: { label: 'な-Linie', color: 'var(--sakura)' },
+    start: { label: 'Grundform', color: 'var(--muted)' },
+    masu: { label: 'ます-Formen', color: 'var(--murasaki)' },
+    te: { label: 'て-, た- und たり-Form', color: 'var(--sora)' },
+    nai: { label: 'ない-Formen', color: 'var(--daidai)' },
+    pot: { label: 'Potentialform', color: 'var(--matcha)' },
+    vol: { label: 'Volitionalform', color: 'var(--shu)' },
+    i: { label: 'い-Adjektive', color: 'var(--ai)' },
+    na: { label: 'な-Adjektive', color: 'var(--sakura)' },
   };
 
   // from = Formen, aus denen man diese ableitet · conj = Schlüssel für JP.conj bzw. JP.adj

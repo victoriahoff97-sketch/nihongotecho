@@ -1355,21 +1355,22 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 }
 
 /* ---------- Konjugieren ---------- */
-.conj-label { font-weight: 800; text-transform: uppercase; letter-spacing: .06em; font-size: 12px; margin-bottom: 4px; }
-.conj-demo { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.conj-demo-card { min-width: 120px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 12px; text-align: center; }
-.conj-demo-card .jp { font-size: 24px; }
-.conj-demo-card b { display: block; margin-top: 4px; color: var(--c); }
-.conj-demo p { flex: 1 1 180px; margin: 0; }
-.conj-sum { display: grid; gap: 2px; }
-.conj-detail { border-top: 1px solid var(--line); padding-top: 14px; }
+.conj-mixes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.conj-mix { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; padding: 12px 14px; min-height: 92px; border: 1px solid var(--line); border-left: 5px solid var(--c); border-radius: 14px; background: var(--card); color: var(--ink); font: inherit; cursor: pointer; }
+.conj-mix:hover { background: var(--paper-2); }
+.conj-mix b { font-size: 16px; }
+.conj-mix-ex { margin-top: auto; font-size: 17px; color: var(--c); }
+.conj-mix.custom { border-style: dashed; border-left-style: dashed; }
+.conj-mix.on { border-color: var(--c); box-shadow: 0 0 0 2px var(--c); background: color-mix(in srgb, var(--c) 10%, var(--card)); }
+.conj-mix:focus-visible { outline: 2px solid var(--c); outline-offset: 3px; }
+.conj-visit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; border-left: 4px solid var(--c); padding: 6px 12px; }
+.conj-visit b { color: var(--c); }
+.conj-visit .small { flex-basis: 100%; }
+.conj-custom { border-top: 1px solid var(--line); padding-top: 12px; }
+.conj-words { align-items: center; }
 .conj-groups { display: grid; gap: 6px; }
 .conj-group { border-left: 4px solid var(--c); padding: 2px 0 2px 12px; }
-.conj-group.off { opacity: .45; }
-.conj-group-head { display: flex; align-items: center; gap: 6px; color: var(--c); }
-.conj-group-head b { margin-left: 2px; }
-.conj-group-head .picker-row { min-height: 40px; padding: 4px 8px 4px 0; }
-.conj-group-head [data-expand] { margin-left: auto; }
+.conj-group-head { color: var(--c); min-height: 40px; padding: 4px 8px 4px 0; }
 .conj-forms { display: flex; flex-wrap: wrap; gap: 0 8px; }
 .conj-forms .picker-row { min-height: 44px; padding: 6px 10px; }
 .conj-ask { margin-top: 14px; font-size: 26px; font-weight: 800; color: var(--c); }

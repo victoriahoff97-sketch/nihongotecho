@@ -16,7 +16,7 @@
   // Abfragbar ist jede Station der Lernlandkarte außer den Startstationen (Grundformen)
   C.forms = (pos) => F.FORMS.filter((f) => f.from.length && (!pos || C.posOf(f) === pos));
   const askable = (id) => { const f = F.form(id); return f && f.from.length ? f : null; };
-  // Für die Auswahl: je Linie eine Gruppe, in der Reihenfolge der Karte
+  // Für „Selbst zusammenstellen“: je Formenfamilie eine Gruppe, in der Reihenfolge der Karte
   C.groups = () => {
     const out = [];
     C.forms().forEach((f) => {
@@ -28,7 +28,7 @@
   };
 
   // Auswahl = { pos: [Wortarten], forms: [Form-Kennungen] }
-  // Erster Besuch: alles ausgewählt – eingeschränkt wird bei Bedarf in den aufgeklappten Linien
+  // Erster Besuch von „Selbst zusammenstellen“: alles angekreuzt
   C.defaults = () => ({ pos: POS_IDS.slice(), forms: C.forms().map((f) => f.id) });
   // Gemerkte Auswahl (JSON-Text) prüfen: Unsinn → null, unbekannte Kennungen fliegen raus
   C.clean = (raw) => {
@@ -39,6 +39,33 @@
   };
   // Von der Lernlandkarte: genau diese eine Form
   C.preset = (formId) => { const f = askable(formId); return f ? { pos: [C.posOf(f)], forms: [f.id] } : null; };
+
+  // Fertige Mischungen für die Startseite – erst eine wählen, die Feinauswahl gibt es nur bei „Selbst zusammenstellen“.
+  // forms = null: alle abfragbaren Formen (bzw. alle einer Wortart über pos) · custom: eigene Auswahl
+  C.MIXES = [
+    { id: 'te', label: 'Nur die て-Form', forms: ['v-te'], note: 'Genki Lektion 6' },
+    { id: 'te-ta', label: 'て-, た- und たり-Form', forms: ['v-te', 'v-ta', 'v-tari'] },
+    { id: 'masu', label: 'ます-Formen', forms: ['v-stem', 'v-masu', 'v-mashita', 'v-mashou'], note: 'höflich' },
+    { id: 'nai', label: 'ない-Formen', forms: ['v-nai', 'v-nakatta', 'v-naide'], note: 'verneint' },
+    { id: 'kann', label: 'Können und wollen', forms: ['v-pot', 'v-vol', 'v-tai'] },
+    { id: 'adj', label: 'Adjektive', forms: null, pos: ['i-adj', 'na-adj'] },
+    { id: 'all', label: 'Alles gemischt', forms: null },
+    { id: 'custom', label: 'Selbst zusammenstellen', custom: true },
+  ];
+  C.mix = (id) => C.MIXES.find((m) => m.id === id) || null;
+  // Gemerkte Mischung prüfen; unbekannt oder leer → „Alles gemischt“ (wie bisher: erst einmal alles)
+  C.cleanMix = (id) => (C.mix(id) ? id : 'all');
+  // Die Formen einer Mischung (Form-Objekte, in Kartenreihenfolge)
+  C.mixForms = (m) => (m.forms ? m.forms.map(askable).filter(Boolean) : C.forms().filter((f) => !m.pos || m.pos.includes(C.posOf(f))));
+  // Auswahl aus Formen: die Wortarten ergeben sich aus den Formen – eine eigene Wortart-Wahl braucht es nicht mehr
+  C.selOf = (formIds) => {
+    const forms = C.forms().filter((f) => (formIds || []).includes(f.id));
+    return { pos: POS_IDS.filter((p) => forms.some((f) => C.posOf(f) === p)), forms: forms.map((f) => f.id) };
+  };
+  C.mixSel = (id, custom) => {
+    const m = C.mix(id) || C.mix('all');
+    return C.selOf(m.custom ? (custom || C.defaults()).forms : C.mixForms(m).map((f) => f.id));
+  };
 
   // „Meine Wörter“ – dieselbe Regel wie beim Übersetzen: in der Lernschlange, kann ich, oder lesen kann ich schon
   C.mine = (state, read) => state !== 'open' || read === 'known';
