@@ -410,9 +410,24 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       }
       inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); if (!checkAnswer()) flip(); } });
     };
-    // true = geprüft (die Karte ist damit aufgedeckt); false = nichts geschrieben
+    // true = geprüft (die Karte ist damit aufgedeckt) oder Stift-Erkennung wird noch abgewartet; false = nichts geschrieben
     const checkAnswer = () => {
       if (!ans || ans.checked || flipped) return false;
+      // Stift: Schreibpause bzw. Erkennung noch nicht vorbei – erst abwarten, sonst wäre das Feld noch leer
+      if (ans.waiting) return true;
+      if (ans.pad && !ans.waited && ans.pad.pending()) {
+        const a = ans;
+        a.waiting = true;
+        a.pad.flush().then(() => {
+          a.waiting = false; a.waited = true; // nur einmal warten: klappt die Erkennung nicht, wird einfach aufgedeckt
+          if (ans !== a || a.checked || flipped || checkAnswer()) return;
+          flip();
+          const box = stage.querySelector('[data-answer]');
+          box.hidden = false; box.querySelectorAll('[data-hwpad], .ans-line, .ans-cands').forEach((x) => { x.hidden = true; });
+          box.querySelector('[data-averdict]').innerHTML = '<div class="verdict no">Schrift nicht erkannt – vergleiche selbst</div>';
+        });
+        return true;
+      }
       const val = ans.inp.value;
       if (!val.trim()) return false;
       if (!readingsOf) readingsOf = kanjiReadings();

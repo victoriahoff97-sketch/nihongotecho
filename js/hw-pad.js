@@ -9,7 +9,7 @@
     host.innerHTML = `<div class="hw-pad empty"><canvas></canvas><span class="hw-pad-hint muted small">Hier mit dem Stift schreiben</span>
       <div class="hw-pad-tools"><button class="icon-btn sm" data-hwundo title="Letzten Strich zurücknehmen">${icon('undo')}</button><button class="icon-btn sm" data-hwclear title="Schreibfeld leeren">${icon('trash')}</button></div></div>`;
     const pad = host.firstElementChild, cv = pad.querySelector('canvas');
-    let strokes = [], cur = null, timer = 0, run = 0;
+    let strokes = [], cur = null, timer = 0, run = 0, fresh = false, job = null, jobRun = -1; // fresh = Vorschläge passen zu den Strichen im Feld
     const draw = () => {
       pad.classList.toggle('empty', !strokes.length && !cur);
       const W = pad.clientWidth, k = window.devicePixelRatio || 1;
@@ -26,8 +26,9 @@
       });
     };
     const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width]; };
-    const clear = () => { clearTimeout(timer); run++; strokes = []; cur = null; draw(); if (onClear) onClear(); };
-    const recognize = async () => {
+    const clear = () => { clearTimeout(timer); run++; strokes = []; cur = null; fresh = false; draw(); if (onClear) onClear(); };
+    const recognize = () => { job = recognizeNow(); jobRun = run; return job; };
+    const recognizeNow = async () => {
       const n = ++run;
       if (!strokes.length) { clear(); return; }
       if (strokes.length > HW.MAX_STROKES) { onMsg('Zu viel geschrieben – bitte ein Wort'); return; }
@@ -37,12 +38,13 @@
       const ja = (await App.hw.recognize(strokes)).ja.filter((t) => t.trim());
       if (n !== run || !pad.isConnected) return; // inzwischen weitergeschrieben, geleert oder weitergeblättert
       if (!ja.length) { onMsg('Erkennung gerade nicht erreichbar'); return; }
+      fresh = true;
       onResult(ja);
     };
     cv.addEventListener('pointerdown', (e) => {
       if (cur || (e.pointerType === 'mouse' && e.button > 0)) return;
       e.preventDefault();
-      clearTimeout(timer); run++; // eine laufende Erkennung soll nicht mitten im Schreiben dazwischenfunken
+      clearTimeout(timer); run++; fresh = false; // eine laufende Erkennung soll nicht mitten im Schreiben dazwischenfunken
       cv.setPointerCapture(e.pointerId);
       cur = { id: e.pointerId, pts: [pt(e)] };
       draw();
@@ -57,10 +59,18 @@
     cv.addEventListener('pointerup', end);
     cv.addEventListener('pointercancel', end);
     pad.addEventListener('click', (e) => {
-      if (e.target.closest('[data-hwundo]')) { if (strokes.length) { strokes.pop(); draw(); recognize(); } return; }
+      if (e.target.closest('[data-hwundo]')) { if (strokes.length) { strokes.pop(); fresh = false; draw(); recognize(); } return; }
       if (e.target.closest('[data-hwclear]')) clear();
     });
     requestAnimationFrame(draw);
-    return { clear, stop: () => { clearTimeout(timer); run++; } };
+    // pending: geschrieben, aber noch nicht (fertig) erkannt · flush: sofort erkennen bzw. die laufende Erkennung abwarten
+    const pending = () => !!strokes.length && !fresh;
+    const flush = async () => {
+      if (!pending()) return;
+      clearTimeout(timer);
+      // run zählt bei jedem neuen Strich hoch: gleiche Nummer = die laufende Erkennung gilt schon für alle Striche im Feld
+      await (jobRun === run ? job : recognize());
+    };
+    return { clear, pending, flush, stop: () => { clearTimeout(timer); run++; } };
   };
 })(window.App);

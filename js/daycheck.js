@@ -43,10 +43,11 @@
     if (it && it.type === 'vocab') mark('new');
   };
 
-  // Feuerwerk einmal am Tag, sobald alle drei Pflichtpunkte stehen
+  // Feuerwerk einmal am Tag, sobald alle drei Pflichtpunkte stehen – nie mitten im Hörstück:
+  // solange das Listening-Fenster offen ist, wartet es (js/listening.js prüft beim Schließen erneut)
   let checking = false;
   const check = async () => {
-    if (checking || !S.settings) return;
+    if (checking || !S.settings || document.querySelector('.listen-modal')) return;
     const m = main();
     if (!L.shouldCelebrate(log(), App.today(), m)) return;
     checking = true;

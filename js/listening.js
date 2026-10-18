@@ -83,7 +83,7 @@
     const md = App.modal({
       title: esc(L.head(p)), body, wide: p.kind === 'video', cls: 'listen-modal',
       foot: `<button class="btn" data-listen-close>Schließen</button><button class="btn btn-primary" data-listen-done>${icon('check')} Gehört</button>`,
-      onClose: () => { remember(); flush(); cur = null; },
+      onClose: () => { const was = cur; remember(); flush(); cur = null; if (was) App.dayCheck.check(); }, // Feuerwerk erst nach dem Schließen
     });
     md.el.querySelector('[data-listen-close]').onclick = md.close;
     const audio = md.el.querySelector('audio');
