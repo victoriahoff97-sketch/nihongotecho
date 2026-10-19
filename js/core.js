@@ -609,23 +609,81 @@ window.App = window.App || {};
   App.backBtn = (fallback = 'Zur Übersicht') => { const o = App.origin(); return o ? `<a class="btn" href="${esc(o.hash)}">${App.icon('back')} Zurück ${esc(App.originLogic.label(o.hash).to)}</a>` : `<a class="btn" href="#/ueben">${fallback}</a>`; };
   let cleanup = [];
   App.onLeave = (fn) => cleanup.push(fn);
+  const findRoute = (path) => {
+    for (const r of routes) {
+      const m = path.match(r.re);
+      if (m) {
+        const params = {};
+        r.keys.forEach((k, i) => (params[k] = decodeURIComponent(m[i + 1])));
+        return { r, params };
+      }
+    }
+    return null;
+  };
   App.render = (keepScroll) => {
     const { path, query } = App.parseHash();
     cleanup.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } });
     cleanup = [];
     const view = $('#view');
     const scroll = window.scrollY;
-    for (const r of routes) {
-      const m = path.match(r.re);
-      if (m) {
-        const params = {};
-        r.keys.forEach((k, i) => (params[k] = decodeURIComponent(m[i + 1])));
-        try { r.handler(view, params, query); } catch (e) { console.error(e); view.innerHTML = `<div class="card"><h3>Upps – Fehler beim Anzeigen</h3><pre class="small">${esc(e.stack || e)}</pre></div>`; }
-        App.afterRender && App.afterRender(path);
-        if (keepScroll) window.scrollTo(0, scroll); else window.scrollTo(0, 0);
-        return;
-      }
+    const hit = findRoute(path);
+    if (hit) {
+      try { hit.r.handler(view, hit.params, query); } catch (e) { console.error(e); view.innerHTML = `<div class="card"><h3>Upps – Fehler beim Anzeigen</h3><pre class="small">${esc(e.stack || e)}</pre></div>`; }
+      App.afterRender && App.afterRender(path);
+      if (keepScroll) window.scrollTo(0, scroll); else window.scrollTo(0, 0);
+      return;
     }
     view.innerHTML = '<div class="empty-state"><div class="big">迷</div><h3>Seite nicht gefunden</h3><a class="btn" href="#/">Zur Startseite</a></div>';
+  };
+  // Neue Seite um ein Element der alten herum einsetzen: Das Element (z. B. das Suchfeld) bleibt im Dokument –
+  // Fokus, Bildschirmtastatur und eine halbfertige japanische Eingabe gehen nicht verloren. false = Aufbau passt nicht.
+  const graft = (oldRoot, newRoot, keepOld, keepNew) => {
+    const oldPath = [], newPath = [];
+    for (let n = keepOld; n !== oldRoot; n = n.parentNode) { if (!n) return false; oldPath.unshift(n); }
+    for (let n = keepNew; n !== newRoot; n = n.parentNode) { if (!n) return false; newPath.unshift(n); }
+    if (oldPath.length !== newPath.length || oldPath.some((n, i) => n.nodeName !== newPath[i].nodeName)) return false;
+    let op = oldRoot, np = newRoot;
+    oldPath.forEach((oc, i) => {
+      const nc = newPath[i];
+      Array.from(op.childNodes).forEach((c) => { if (c !== oc) c.remove(); });
+      Array.from(np.childNodes).forEach((c) => { if (c !== nc) op.insertBefore(c, nc.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_PRECEDING ? oc : null); });
+      if (oc !== keepOld) {
+        Array.from(oc.attributes).forEach((a) => { if (!nc.hasAttribute(a.name)) oc.removeAttribute(a.name); });
+        Array.from(nc.attributes).forEach((a) => oc.setAttribute(a.name, a.value));
+      }
+      op = oc; np = nc;
+    });
+    return true;
+  };
+  // Wie setQuery, aber das gerade benutzte Eingabefeld bleibt stehen (Suchfelder: Tastatur klappt nicht zu)
+  App.setQueryKeep = (patch, el, sel) => {
+    const { path, query } = App.parseHash();
+    Object.entries(patch).forEach(([k, v]) => { if (v === '' || v == null || v === false) delete query[k]; else query[k] = v; });
+    const qs = new URLSearchParams(query).toString();
+    history.replaceState(history.state, '', '#' + path + (qs ? '?' + qs : ''));
+    const view = $('#view');
+    const hit = findRoute(path);
+    if (hit && view.contains(el)) {
+      cleanup.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } });
+      cleanup = [];
+      const tmp = document.createElement('div');
+      let ok = true;
+      try { hit.r.handler(tmp, hit.params, query); } catch (e) { console.error(e); ok = false; }
+      const nu = ok && tmp.querySelector(sel);
+      if (nu && graft(view, tmp, el, nu)) { App.afterRender && App.afterRender(path); return; }
+    }
+    App.render(true);
+    const g = $(sel);
+    if (g) { g.focus(); g.setSelectionRange(g.value.length, g.value.length); }
+  };
+  // Suchfeld, das beim Tippen filtert: wartet, bis die japanische Eingabe (IME) fertig ist, und baut die Seite
+  // um das Feld herum neu auf
+  App.bindLiveFilter = (input, sel, key = 'f', wait = 350) => {
+    if (!input) return;
+    const run = App.debounce(() => { if (!input.isConnected || composing) return; App.setQueryKeep({ [key]: input.value }, input, sel); }, wait);
+    let composing = false;
+    input.addEventListener('compositionstart', () => { composing = true; });
+    input.addEventListener('compositionend', () => { composing = false; run(); });
+    input.addEventListener('input', (e) => { if (!e.isComposing) run(); });
   };
 })(window.App);

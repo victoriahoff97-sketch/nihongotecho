@@ -25,7 +25,7 @@
   const bindFilter = (view) => {
     const f = view.querySelector('[data-filter]');
     if (!f) return;
-    f.addEventListener('input', App.debounce(() => { App.setQuery({ f: f.value }); const g = App.$('[data-filter]'); if (g) { g.focus(); g.setSelectionRange(g.value.length, g.value.length); } }, 350));
+    App.bindLiveFilter(f, '[data-filter]');
   };
   const filesTab = (section, q) => {
     const files = App.filesFor({ section, source: q.src || undefined, lesson: q.l || undefined });

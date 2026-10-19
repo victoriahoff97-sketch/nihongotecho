@@ -74,7 +74,7 @@
       (async () => {
         const missing = [];
         for (const k of all) if (k.char && k.char !== '々' && !(await App.stroke.has(k.char))) missing.push(k.char);
-        const b = body.querySelector('[data-kvg-all]');
+        const b = $('#view [data-kvg-all]');
         if (!b || !missing.length) return;
         b.hidden = false;
         b.innerHTML = `${icon('download')} Strichfolge für ${missing.length} Kanji laden`;
@@ -98,7 +98,7 @@
       byL.forEach((list, k) => { html += `<div class="group-head"><h2>${esc(k)}</h2><span class="badge">${list.length}</span><span class="line"></span></div><div class="kanji-grid">${list.map(App.kanjiTile).join('')}</div>`; });
       body.querySelector('[data-grid]').innerHTML = html || '<div class="empty-state"><div class="big">漢</div><h3>Keine Kanji gefunden</h3></div>';
       const kf = body.querySelector('[data-kf]');
-      kf.addEventListener('input', App.debounce(() => { App.setQuery({ f: kf.value }); const g = $('[data-kf]'); if (g) { g.focus(); g.setSelectionRange(g.value.length, g.value.length); } }, 350));
+      App.bindLiveFilter(kf, '[data-kf]');
     }
   });
 
