@@ -1052,11 +1052,12 @@
       if (root.querySelector('.stk-pop') || st.stamp) { setStamp(null); return; }
       const pop = document.createElement('div');
       pop.className = 'stk-pop card';
-      const kw = (g) => KW.LIST.filter((s) => s.group === g).map((s) => `<button class="stk" data-stk="k:${s.id}" title="${esc(s.label)}"><img src="${KW.src({ k: s.id, w: s.w, h: s.h })}" alt=""><span>${esc(s.label)}</span></button>`).join('');
+      // Reiter: Zettel (Merkzettel, Kanji-Feld, Banner) und drei Sticker-Stufen: Kawaii (mit Gesichtern), Süß (bunt, ohne Gesichter), Normal (Kritzel in Stiftfarbe)
+      const kw = (t) => KW.tab(t).map((s) => `<button class="stk" data-stk="k:${s.id}" title="${esc(s.label)}"><img src="${KW.src({ k: s.id, w: s.w, h: s.h })}" alt="" loading="lazy"><span>${esc(s.label)}</span></button>`).join('');
       const fill = () => {
-        const tab = App.lsGet('stkTab') === 'normal' ? 'normal' : 'kawaii';
-        pop.innerHTML = `<div class="stk-tabs">${[['kawaii', 'Kawaii'], ['normal', 'Normal']].map(([t, l]) => `<button class="chip ${tab === t ? 'on' : ''}" data-stk-tab="${t}">${l}</button>`).join('')}</div>`
-          + (tab === 'kawaii' ? `<div class="stk-head">Merkzettel und Kanji-Feld</div>${kw('zettel')}<div class="stk-head">Sticker</div>${kw('sticker')}`
+        const tab = ['zettel', 'kawaii', 'suess', 'normal'].includes(App.lsGet('stkTab')) ? App.lsGet('stkTab') : 'kawaii';
+        pop.innerHTML = `<div class="stk-tabs">${[['zettel', 'Zettel'], ['kawaii', 'Kawaii'], ['suess', 'Süß'], ['normal', 'Normal']].map(([t, l]) => `<button class="chip ${tab === t ? 'on' : ''}" data-stk-tab="${t}">${l}</button>`).join('')}</div>`
+          + (tab !== 'normal' ? kw(tab)
             : STK.LIST.map((s) => `<button class="stk" data-stk="${s.id}" title="${esc(s.label)}">${STK.svg(s.id, st.mcolor)}<span>${esc(s.label)}</span></button>`).join(''));
       };
       fill();

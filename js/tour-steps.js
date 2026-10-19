@@ -83,7 +83,7 @@
     ],
     // zweiter Teil, erreichbar über den letzten Schritt von „blatt“; „Buch“ gibt es nur im Notizblatt, „Nebeneinander“ nur bei Buchaufgaben
     blattMehr: [
-      { target: '.viewer-bar [data-v="sticker"]', title: 'Sticker', text: 'Wähle einen Sticker, Merkzettel oder ein Kanji-Feld und tippe auf die Stelle im Blatt. Mit „Auswahl“ verschiebst, drehst und skalierst du ihn danach.' },
+      { target: '.viewer-bar [data-v="sticker"]', title: 'Sticker', text: 'Zettel, Banner und Kanji-Feld oder Sticker in drei Stufen (Kawaii, Süß, Normal): wählen, dann auf die Stelle im Blatt tippen. Mit „Auswahl“ verschieben, drehen, skalieren.' },
       { target: '.viewer-bar [data-v="book"]', text: 'Zeigt zwei Seiten nebeneinander wie in einem aufgeschlagenen Heft.' },
       { target: '.viewer-bar [data-v="split"]', title: 'Genki-Aufgaben', text: 'Aufgabe und Schreibblatt stehen nebeneinander statt untereinander. Geht im Querformat.' },
       { target: '.viewer-bar [data-v="more"]', text: 'Zoom, Drucken und „Nur Stift schreibt“ liegen hier. Bei Genki-Aufgaben auch „Seiten tauschen“ und „Mit der Tastatur antworten“: ein Feld zum Tippen statt des Schreibblatts.' },
