@@ -241,7 +241,7 @@
         <button class="more-item" data-v="help">${icon('help')}<span>Hilfe</span></button>
       </div></div>
       <div class="viewer-scroll">${embedded ? '' : `<div class="viewer-name" data-title>${esc(f.name)}</div>`}<div class="viewer-pages"></div></div>`;
-    root.style.setProperty('--sec', 'var(--sora)');
+    root.style.setProperty('--sec', 'var(--budo)'); // Datei-Betrachter gehört zur Bibliothek
     if (!embedded) document.body.style.overflow = 'hidden';
     const scroller = root.querySelector('.viewer-scroll');
     const pagesEl = root.querySelector('.viewer-pages');

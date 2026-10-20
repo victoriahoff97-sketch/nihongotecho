@@ -28,22 +28,31 @@
       <span class="kicker"><span lang="ja">今日のリスニング</span> · ca. ${L.minutes(p)} Min.</span>
       <b>${esc(L.head(p))}</b>
       <span class="desc"><span ${p.kind === 'audio' ? 'lang="ja"' : ''}>${esc(L.detail(p))}</span> · ${L.source(p)}</span>
-      <span class="listen-pos">Stück ${pos() + 1}${resumeAt(p) ? ` · weiter ab ${L.mmss(resumeAt(p))}` : ''}${hint ? ' · ' + hint : ''}</span>
+      <span class="listen-pos">Stück ${pos() + 1}${resumeAt(p) ? ` · weiter ab ${L.mmss(resumeAt(p))}` : ''}${hint ? ' · ' + hint : ''}<span class="listen-all"> · <a href="#/hoeren">Alle Folgen</a></span></span>
       <span class="listen-row"><button type="button" class="go" data-listen-play>${icon('play')} Anhören</button><button type="button" class="go ghost" data-listen-done>${icon('check')} Gehört</button></span></span></div>`;
   };
 
-  // Wo man gerade ist, solange das Fenster offen ist; gemerkt wird beim Schließen und beim Verlassen der App
-  let cur = null;
-  // Tagesliste: wirklich abgespielte Sekunden zählen; ab einer Minute (heute insgesamt) ist „Listening“ abgehakt
+  // Tagesliste: wirklich abgespielte Sekunden zählen; ab einer Minute (heute insgesamt) ist „Listening“ abgehakt.
+  // Auch für Shun (js/shun.js): tick(t) bei jeder neuen Abspielzeit, done() beim Schließen
   const D = App.dayCheckLogic;
-  const track = (t) => {
-    if (!cur) return;
-    cur.played = (cur.played || 0) + D.step(cur.last, t);
-    cur.last = t;
-    if (!cur.reached && cur.played >= cur.need) { cur.reached = true; flush(); }
+  L.playCounter = () => {
+    let played = 0, last = null, reached = false;
+    let need = D.listenNeed(App.store.settings.dayLog, App.today());
+    const done = () => { if (played > 0) { App.dayCheck.listened(played); need = Math.max(0, need - played); played = 0; } };
+    const tick = (t) => {
+      played += D.step(last, t);
+      last = t;
+      if (!reached && played >= need) { reached = true; done(); }
+    };
+    return { tick, done };
   };
-  const flush = () => { if (cur && cur.played > 0) { App.dayCheck.listened(cur.played); cur.need = Math.max(0, cur.need - cur.played); cur.played = 0; } };
-  const remember = () => { if (cur && cur.t > 0) App.saveSettings({ listenAt: { pos: cur.pos, t: Math.floor(cur.t) } }); };
+
+  // Wo man gerade ist, solange das Fenster offen ist; gemerkt wird beim Schließen und beim Verlassen der App
+  // (nicht beim freien Abspielen eines anderen Stücks von der Seite „Hören“ aus)
+  let cur = null;
+  const track = (t) => { if (cur) cur.cnt.tick(t); };
+  const flush = () => { if (cur) cur.cnt.done(); };
+  const remember = () => { if (cur && !cur.free && cur.t > 0) App.saveSettings({ listenAt: { pos: cur.pos, t: Math.floor(cur.t) } }); };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') remember(); });
   // Eingebettetes YouTube meldet seine Abspielzeit per postMessage, sobald man sich als Zuhörer anmeldet
   window.addEventListener('message', (e) => {
@@ -59,12 +68,15 @@
     if (cur.state === 1 && was !== 1 && cur.noCaptions) [0, 600, 1500].forEach((ms) => setTimeout(() => cur && cur.noCaptions && cur.noCaptions(), ms));
   });
 
-  // Fenster zum Anhören: Video-Ausschnitt (startet und stoppt an den Grenzen des Stücks) oder Teppei als Audio
-  const open = () => {
-    const p = L.at(pos());
+  // Fenster zum Anhören: Video-Ausschnitt (startet und stoppt an den Grenzen des Stücks) oder Teppei als Audio.
+  // Ohne Angabe das aktuelle Stück; ein anderes Stück (Seite „Hören“) spielt frei: keine gemerkte Stelle, statt „Gehört“ „Ab hier weitermachen“
+  const open = (at0 = pos()) => {
+    const p = L.at(at0);
     if (!p) return;
-    const at = resumeAt(p);
+    const free = at0 !== pos();
+    const at = free ? 0 : resumeAt(p);
     const atNote = at ? ` · weiter ab ${L.mmss(at)} <button type="button" class="linklike" data-listen-restart>von vorn</button>` : '';
+    const back = free ? '' : ' und tippe „Gehört“';
     let body;
     if (p.kind === 'audio') {
       body = `<p class="small" lang="ja">${esc(p.sub)}</p>
@@ -73,16 +85,18 @@
     } else if (location.protocol === 'file:') {
       // In der Tablet-Version (file://) lässt YouTube kein eingebettetes Video zu – dort öffnet es sich auf YouTube
       body = `<p>Das Video öffnet sich auf YouTube${p.from ? ` an der richtigen Stelle (ab ${L.mmss(p.from)})` : ''}.</p>
-        <p class="small muted">${p.parts > 1 ? `Hör bis ${L.mmss(p.to)}, dann komm zurück und tippe „Gehört“.` : 'Wenn du fertig bist, komm zurück und tippe „Gehört“.'}</p>
+        <p class="small muted">${p.parts > 1 ? `Hör bis ${L.mmss(p.to)}, dann komm zurück${back}.` : `Wenn du fertig bist, komm zurück${back}.`}</p>
         <a class="btn btn-primary" href="${esc(L.watchUrl(p))}" target="_blank" rel="noopener">${icon('play')} Auf YouTube öffnen</a>`;
     } else {
       body = `<div class="listen-video"><iframe src="${esc(L.embedUrl(p, at))}" title="${esc(L.head(p))}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
         <p class="small muted">${esc(L.detail(p))} · stoppt am Ende des Stücks${atNote} · <a href="${esc(L.watchUrl(p))}" target="_blank" rel="noopener">Auf YouTube öffnen ${icon('link')}</a></p>`;
     }
-    cur = { pos: pos(), t: at, played: 0, last: null, need: D.listenNeed(App.store.settings.dayLog, App.today()) };
+    cur = { pos: at0, t: at, free, cnt: L.playCounter() };
     const md = App.modal({
       title: esc(L.head(p)), body, wide: p.kind === 'video', cls: 'listen-modal',
-      foot: `<button class="btn" data-listen-close>Schließen</button><button class="btn btn-primary" data-listen-done>${icon('check')} Gehört</button>`,
+      foot: `<button class="btn" data-listen-close>Schließen</button>${free
+        ? `<button class="btn btn-primary" data-listen-jump="${at0}">Ab hier weitermachen</button>`
+        : `<button class="btn btn-primary" data-listen-done>${icon('check')} Gehört</button>`}`,
       onClose: () => { const was = cur; remember(); flush(); cur = null; if (was) App.dayCheck.check(); }, // Feuerwerk erst nach dem Schließen
     });
     md.el.querySelector('[data-listen-close]').onclick = md.close;
@@ -115,10 +129,23 @@
     App.toast('Gehört – das nächste Stück ist bereit', { label: 'Rückgängig', fn: async () => { await App.saveSettings({ listenPos: old, listenAt: oldAt }); App.dayCheck.mark('listen', false); } });
   };
 
+  // „Ab hier weitermachen“ (Seite „Hören“): Position auf dieses Stück setzen, gemerkte Stelle vergessen; mit Rückgängig
+  const jump = async (at) => {
+    const back = document.querySelector('.listen-modal');
+    if (back) back.closest('.modal-back').querySelector('[data-x]').click();
+    const old = pos(), oldAt = App.store.settings.listenAt || null;
+    await App.saveSettings({ listenPos: at, listenAt: null });
+    App.toast('Ab hier geht es weiter', { label: 'Rückgängig', fn: () => App.saveSettings({ listenPos: old, listenAt: oldAt }) });
+  };
+  L.open = open;
+  L.jump = jump;
+
   document.addEventListener('click', (e) => {
-    const t = e.target.closest && e.target.closest('[data-listen-play], [data-listen-done]');
+    const t = e.target.closest && e.target.closest('[data-listen-play], [data-listen-done], [data-listen-jump]');
     if (!t) return;
     e.preventDefault();
-    if (t.matches('[data-listen-play]')) open(); else done();
+    if (t.matches('[data-listen-play]')) open(t.dataset.pos != null ? +t.dataset.pos : undefined);
+    else if (t.matches('[data-listen-jump]')) jump(+t.dataset.listenJump);
+    else done();
   });
 })(window.App);

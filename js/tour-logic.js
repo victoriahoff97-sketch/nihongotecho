@@ -4,7 +4,7 @@
   const GAP = 12;    // Abstand Blase – Ziel
   const MARGIN = 8;  // Mindestabstand zum Fensterrand
 
-  const PAGES = ['/grammatik', '/vokabeln', '/kanji', '/ausdruecke', '/gleichklang', '/ueben', '/anwenden', '/unterricht', '/bibliothek', '/pakete', '/einstellungen'];
+  const PAGES = ['/grammatik', '/vokabeln', '/kanji', '/ausdruecke', '/gleichklang', '/ueben', '/anwenden', '/hoeren', '/unterricht', '/bibliothek', '/pakete', '/einstellungen'];
   // Seiten ohne eigene Tour zeigen die der Seite, zu der sie gehören
   const ALIAS = { '/karte': '/grammatik', '/saetze': '/vokabeln', '/eingang': 'erweiterung' };
 

@@ -51,6 +51,32 @@
   };
   L.embedUrl = (p, at = 0) => `https://www.youtube-nocookie.com/embed/${p.id}?start=${at || p.from}&end=${p.to}&rel=0&playsinline=1&enablejsapi=1&cc_load_policy=0`;
   L.watchUrl = (p) => `https://www.youtube.com/watch?v=${p.id}${p.from ? `&t=${p.from}s` : ''}`;
+  // Seite „Hören“: Art eines Stücks (die Videos kommen vom Build schon in dieser Reihenfolge) und Gruppen der Kette
+  L.groupOf = (p) => {
+    if (p.kind === 'audio') return 'teppei';
+    if (/^Start here/.test(p.title)) return 'intro';
+    if (/^Basics \d/.test(p.title)) return 'basics';
+    if (/^Slice of Life/.test(p.title)) return 'slice';
+    if (/^Talking about a thing/.test(p.title)) return 'thing';
+    return 'rest';
+  };
+  const GROUP_LABEL = { intro: 'Einführung', basics: 'Basics', slice: 'Slice of Life', thing: 'Talking about a thing', rest: 'Weitere Chienowa-Videos' };
+  L.TEPPEI_BLOCK = 100;
+  // [{ key, label, from, to }] – to exklusiv; aufeinanderfolgende Stücke derselben Art bilden eine Gruppe, Teppei in Blöcken zu 100
+  L.groups = (all) => {
+    const out = [];
+    all.forEach((p, i) => {
+      const key = L.groupOf(p);
+      const last = out[out.length - 1];
+      const full = key === 'teppei' && last && last.key === 'teppei' && last.to - last.from >= L.TEPPEI_BLOCK;
+      if (last && last.key === key && !full) last.to = i + 1;
+      else out.push({ key, label: GROUP_LABEL[key] || '', from: i, to: i + 1 });
+    });
+    for (const g of out) if (g.key === 'teppei') g.label = `Nihongo con Teppei #${all[g.from].n}–${all[g.to - 1].n}`;
+    return out;
+  };
+  L.groupIndexOf = (groups, pos) => groups.findIndex((g) => pos >= g.from && pos < g.to);
+
   // Was danach kommt (kurz), z. B. für den Hinweis beim Wechsel zu Teppei
   L.nextHint = (pos) => {
     const p = L.at(pos), q = L.at(pos + 1);

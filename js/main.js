@@ -15,6 +15,8 @@
     null,
     ['practice', 'Üben', '#/ueben', 'sec-practice', '練習'],
     ['edit', 'Anwenden', '#/anwenden', 'sec-apply', '使'],
+    ['listen', 'Hören', '#/hoeren', 'sec-listen', '聞'],
+    null,
     ['session', 'Unterricht', '#/unterricht', 'sec-session', '授業'],
     ['library', 'Bibliothek', '#/bibliothek', 'sec-library', '資料'],
   ];

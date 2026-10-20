@@ -68,6 +68,11 @@
       { target: '#view .cal-sheet', text: 'Tipp auf einen Tag, um dazu einen Eintrag zu schreiben oder zu lesen.' },
       { target: '#view [data-cal-today]', text: 'Ein paar Sätze reichen. Schreiben kannst du mit Stift oder Tastatur.' },
     ],
+    '/hoeren': [
+      { target: '#view .hr-now', text: 'Dein Stück für heute – dasselbe wie auf der Startseite. Mit „Gehört“ geht die Hör-Kette ein Stück weiter.' },
+      { target: '#view .hr-block[open]', text: 'Die ganze Reihenfolge der Kette. ▶ spielt ein Stück zum Reinhören, „Ab hier“ setzt die Kette auf dieses Stück.' },
+      { target: '#shun', text: 'Shuns Podcast: Folgen passend zu jeder Genki-Lektion und alle normalen Folgen. Den Haken setzt du selbst, wenn du eine gehört hast.' },
+    ],
     '/unterricht': [
       { target: '#view [data-action="new-session"]', text: 'Lege für jede Unterrichtsstunde eine Mitschrift an.' },
       { target: '#view .fold-btn[data-fold-course]', text: 'Die Stunden sind nach Kurs geordnet. Ein Tipp auf eine Stunde öffnet ihr Blatt.' },

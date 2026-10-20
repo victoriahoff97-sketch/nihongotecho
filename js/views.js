@@ -555,7 +555,9 @@
     else {
       let html = '';
       groupBy(items, lessonKey).forEach((list, key) => {
-        html += `<div class="group-head"><h2>${esc(key)}</h2><span class="badge">${list.length}</span><span class="line"></span></div><div class="grid cols-3">${list.map(App.grammarCard).join('')}</div>`;
+        // Genki-Lektion: passende Folgen von Japanese with Shun (js/shun.js) unter der Überschrift
+        const shun = App.shunUi ? App.shunUi.lessonBox(list[0].source, +list[0].lesson) : '';
+        html += `<div class="group-head"><h2>${esc(key)}</h2><span class="badge">${list.length}</span><span class="line"></span></div>${shun}<div class="grid cols-3">${list.map(App.grammarCard).join('')}</div>`;
       });
       body.innerHTML = html;
     }

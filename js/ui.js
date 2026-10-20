@@ -689,7 +689,7 @@
     if (k === 'video') body = `<video src="${url}" controls style="width:100%;border-radius:12px"></video>`;
     else if (k === 'audio') body = `<audio src="${url}" controls style="width:100%"></audio>`;
     else if (k === 'slides') body = `<p><b>PowerPoint-Präsentation</b> (${App.fmtSize(f.size)}). Browser können PowerPoint-Dateien nicht direkt anzeigen – mit „Öffnen“ startet PowerPoint.</p>
-      <div class="card" style="background:var(--sora-soft);border-color:transparent"><b>Tipp zum Mitschreiben:</b> In PowerPoint <i>Datei › Speichern unter › PDF</i> wählen und das PDF hier hochladen. Dann kannst du direkt mit dem Stift auf die Folien schreiben.
+      <div class="card" style="background:var(--budo-soft);border-color:transparent"><b>Tipp zum Mitschreiben:</b> In PowerPoint <i>Datei › Speichern unter › PDF</i> wählen und das PDF hier hochladen. Dann kannst du direkt mit dem Stift auf die Folien schreiben.
       <div style="margin-top:10px"><button class="btn btn-sm" data-add-pdf>${icon('upload')} PDF-Version hinzufügen</button></div></div>`;
     else body = `<p>${esc(f.name)} (${App.fmtSize(f.size)})</p><p class="muted">Diese Datei wird mit dem passenden Programm geöffnet.</p>`;
     body += `<div class="small muted" style="margin-top:12px">${f.note ? esc(f.note) : ''}</div>`;
