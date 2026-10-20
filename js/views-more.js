@@ -378,15 +378,15 @@
         <p class="small" data-wk-msg style="margin:6px 0 0;color:var(--shu)"></p>`}</div></div>`;
   };
 
-  // Karte „WaniKani-Vokabeln“: Level einzeln freischalten – abgefragt wird nur Deutsch → Japanisch, ab Guru
+  // Karte „WaniKani-Vokabeln“: Level einzeln freischalten – abgefragt wird nur Deutsch → Japanisch, ab Master
   const wkVocabCard = () => {
     const wk = App.wk, con = wk.connected(), on = wk.vLevels(), stats = con ? wk.vStats() : null;
     const rows = !con ? '' : Array.from({ length: wk.state.user.level }, (_, i) => i + 1).map((l) => {
       const c = stats(l), isOn = on.includes(l);
-      return `<label class="row wk-level"><input type="checkbox" data-wkv-level="${l}" ${isOn ? 'checked' : ''}><b>Level ${l}</b><span class="small muted grow">${c.total} Vokabeln · ${c.ready} ab Guru</span><span class="small muted">${isOn ? c.known + ' kann ich aktiv' : c.fresh ? c.fresh + ' neu in der App' : ''}</span></label>`;
+      return `<label class="row wk-level"><input type="checkbox" data-wkv-level="${l}" ${isOn ? 'checked' : ''}><b>Level ${l}</b><span class="small muted grow">${c.total} Vokabeln · ${c.ready} ab Master</span><span class="small muted">${isOn ? c.known + ' kann ich aktiv' : c.fresh ? c.fresh + ' neu in der App' : ''}</span></label>`;
     }).join('');
     return `<div class="card" data-wkv-card><h3>WaniKani-Vokabeln <small class="muted" style="font-weight:400">Deutsch → Japanisch</small></h3>
-      <p class="muted small" style="margin:0 0 8px">Vokabeln, die du bei WaniKani lesen gelernt hast, hier aus dem Deutschen heraus üben. Aus einem freigeschalteten Level kommt jedes Wort dazu, sobald es bei WaniKani Guru ist – Japanisch → Deutsch wird dafür nie gefragt. Wörter, die es in der App schon gibt (Genki, JLPT, eigene), bleiben, wo sie sind.</p>
+      <p class="muted small" style="margin:0 0 8px">Vokabeln, die du bei WaniKani lesen gelernt hast, hier aus dem Deutschen heraus üben. Aus einem freigeschalteten Level kommt jedes Wort dazu, sobald es bei WaniKani Master ist, mit einem einfachen Beispielsatz – Japanisch → Deutsch wird dafür nie gefragt. Wörter, die es in der App schon gibt (Genki, JLPT, eigene), bleiben, wo sie sind.</p>
       ${con ? `<p class="small" data-wkv-msg style="margin:0;color:var(--shu)">${wk.state.vSubjectsAt ? '' : 'Tippe in der Karte „Kanji schreiben“ einmal auf „Abgleichen“, damit die Vokabeln geholt werden.'}</p><div class="wk-levels">${rows}</div>`
     : '<p class="small" style="margin:0;color:var(--shu)">Erst in der Karte „Kanji schreiben“ WaniKani verbinden.</p>'}</div>`;
   };

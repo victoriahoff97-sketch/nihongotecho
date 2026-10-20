@@ -115,7 +115,7 @@
   // einstufen („Kann ich“ wird nicht mehr abgefragt, „Lernen“ geht in die Lernschlange) oder mit „neue lernen“ holen.
   // locked = kann ich noch nicht lesen · unchecked = aktiv noch nicht eingestuft · learn = wird aktiv gelernt · known = kann ich aktiv
   // needsCheck(it): wird der Eintrag überhaupt eingestuft? Eigene Wörter gehen wie beim Lesen direkt in die Lernschlange.
-  // Lesbar ist auch jede aus WaniKani angelegte Vokabel (_wk): sie kommt erst in die App, wenn sie dort ab Guru sitzt
+  // Lesbar ist auch jede aus WaniKani angelegte Vokabel (_wk): sie kommt erst in die App, wenn sie dort ab Master sitzt
   W.readable = (srs, it) => (it.type === 'vocab' && !!it._wk) || W.unlocked(srs, it.id);
   W.activeStatus = (srs, it, needsCheck) => {
     const s = srs.get(W.id(it.id));

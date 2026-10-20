@@ -87,10 +87,11 @@
   };
 
   // ---------- Vokabeln Deutsch → Japanisch ----------
-  // Zustand: vocab = WaniKani-Nummer → { c, level, pos, en, kana, p } · vstage = WaniKani-Nummer → Stufe.
-  // Eine Vokabel kommt in die App, sobald ihr Level eingeschaltet und sie bei WaniKani Guru (5) oder höher ist –
+  // Zustand: vocab = WaniKani-Nummer → { c, level, pos, en, kana, p, s } · vstage = WaniKani-Nummer → Stufe.
+  // Eine Vokabel kommt in die App, sobald ihr Level eingeschaltet und sie bei WaniKani Master (7) oder höher ist –
   // lesen lernt man sie dort, hier wird sie nur aus dem Deutschen heraus abgefragt (Aktiv-Lernstand, js/write-logic.js).
-  K.GURU = 5;
+  // s = kürzester Beispielsatz von WaniKani { ja, en } – Ersatz, wenn weder Paket noch Tatoeba einen haben
+  K.V_SCHEMA = 2; // ab 2 mit Beispielsatz – ältere Stände holen die Vokabeln einmal vollständig neu
   const VOCAB = ['vocabulary', 'kana_vocabulary'];
   // Eine Seite von /v2/subjects?types=vocabulary,kana_vocabulary einarbeiten
   K.mergeVocab = (state, page) => {
@@ -105,6 +106,8 @@
         kana: first((x.readings || []).filter((r) => r.accepted_answer !== false)).map((r) => r.reading),
         p: x.parts_of_speech || [],
       };
+      const s = K.shortest(x.context_sentences);
+      if (s) state.vocab[d.id].s = s;
     });
     return state;
   };
@@ -123,7 +126,14 @@
       .forEach(([id, v]) => { if (!m.has(v.level)) m.set(v.level, []); m.get(v.level).push(id); });
     return m;
   };
-  K.vReady = (state, id) => !!state.vocab[id] && (state.vstage[id] || 0) >= K.GURU;
+  K.vReady = (state, id) => !!state.vocab[id] && (state.vstage[id] || 0) >= K.MASTER;
+  // Kürzester Beispielsatz (nach der Länge des Japanischen) → { ja, en } oder null
+  K.shortest = (list) => {
+    const ok = (list || []).filter((x) => x && String(x.ja || '').trim());
+    if (!ok.length) return null;
+    const b = ok.reduce((a, x) => (x.ja.trim().length < a.ja.trim().length ? x : a));
+    return { ja: b.ja.trim(), en: String(b.en || '').trim() };
+  };
 
   // WaniKani-Wortarten → Wortart der App (wie App.mapPos); „する verb“ ist nur als „…する“ ein Verb
   K.vPos = (parts, chars) => {
@@ -149,7 +159,7 @@
     if (mp.cls) it.v = { cls: mp.cls };
     return Object.assign(it, { examples: [], tags: [], _wk: true });
   };
-  // Vokabeln eines Levels ab Guru, die es in der App noch nicht gibt. Steht das Wort schon da (gleiche Schreibung und
+  // Vokabeln eines Levels ab Master, die es in der App noch nicht gibt. Steht das Wort schon da (gleiche Schreibung und
   // Lesung, z. B. aus Genki oder JLPT), wird es übersprungen – es bleibt dann ganz bei seiner Quelle.
   // hasKey(App.vocabKey) = Wort vorhanden · hasId(Kennung) = schon aus WaniKani angelegt
   const vFresh = (state, level, { hasKey, hasId }) => {
@@ -163,12 +173,16 @@
   };
   K.vMissing = vFresh;
   // Automatisch angelegte Vokabeln eines Levels (level null = alle), die niemand angefasst hat – wie K.removable
-  K.vRemovable = (level, items, { srs, refs }) => items.filter((it) => {
-    if (!it._wk || it.type !== 'vocab' || (level != null && +it.lesson !== level)) return false;
-    if (it._edited || it.star || (Array.isArray(it.marks) && it.marks.length)) return false;
-    return !srs.has(it.id) && !srs.has('w:' + it.id) && !(refs && refs.has(it.id));
+  const untouched = (it, { srs, refs }) => !it._edited && !it.star && !(Array.isArray(it.marks) && it.marks.length)
+    && !srs.has(it.id) && !srs.has('w:' + it.id) && !(refs && refs.has(it.id));
+  const wkVocab = (it) => !!it._wk && it.type === 'vocab';
+  K.vRemovable = (level, items, ctx) => items.filter((it) => wkVocab(it) && (level == null || +it.lesson === level) && untouched(it, ctx)).map((it) => it.id);
+  // Unberührte Vokabeln, die bei WaniKani (noch oder wieder) unter Master stehen – z. B. aus der Zeit, als Guru reichte
+  K.vBelow = (state, items, ctx) => items.filter((it) => {
+    const id = wkVocab(it) && String(it.id).replace(/^v-wk/, '');
+    return !!id && !!state.vocab[id] && !K.vReady(state, id) && untouched(it, ctx);
   }).map((it) => it.id);
-  // Zahlen einer Level-Zeile: ready = ab Guru · fresh = käme beim Einschalten neu dazu · known = kann ich aktiv
+  // Zahlen einer Level-Zeile: ready = ab Master · fresh = käme beim Einschalten neu dazu · known = kann ich aktiv
   K.vLevelStats = (state, level, ctx) => {
     const ids = K.vLevels(state).get(level) || [];
     return {
@@ -199,4 +213,25 @@
     out.push(cur.trim());
     return out.filter(Boolean).slice(0, n).join('; ');
   };
+
+  // ---------- Beispielsätze der WaniKani-Vokabeln ----------
+  // Reihenfolge: Satz-Index der Pakete → kürzester Tatoeba-Satz → kürzester Satz von WaniKani (js/wanikani.js)
+  const hira = (s) => App.jp.toHira(norm(s));
+  // Lesung des Wortes ohne Okurigana (食べる → たべ, 勉強する → べんきょう), damit auch gebeugte Formen im Satz passen
+  K.stem = (it) => {
+    const w = norm(it.kanji), r = hira(it.kana);
+    if (!w || !/[㐀-鿿豈-﫿々]/.test(w)) return r;
+    let k = 0;
+    while (k < w.length - 1 && k < r.length && /[ぁ-ゖ]/.test(w[w.length - 1 - k]) && w[w.length - 1 - k] === r[r.length - 1 - k]) k++;
+    if (k >= 2 && /する$/.test(w)) return r.slice(0, r.length - 2); // 勉強する: nur する fällt weg
+    return r.slice(0, r.length - Math.min(k, 1));
+  };
+  // Tatoeba-Vorschläge (kürzeste zuerst) → der erste, in dem das Wort mit seiner Lesung steht (人 ≠ じん in 日本人)
+  K.pickTatoeba = (list, it) => {
+    const st = K.stem(it);
+    return (list || []).find((ex) => ex && (!st || hira(ex.kana).includes(st))) || null;
+  };
+  // Zeilen fürs Feld examples: Tatoeba { jp mit Furigana, de | en, src } · WaniKani { jp, de | en, src: 'WaniKani' }
+  K.tatoebaRow = (ex) => Object.assign({ jp: ex.furi || ex.jp, src: ex.src }, ex.de ? { de: ex.de } : { en: ex.en });
+  K.wkRow = (s, furi, de) => Object.assign({ jp: furi || s.ja, src: 'WaniKani' }, de ? { de } : { en: s.en });
 })(window.App);
