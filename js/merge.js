@@ -58,6 +58,7 @@
     (Array.isArray(ex.also) ? ex.also : []).forEach((w) => keys.push(App.vocabKey(w)));
     return keys;
   };
+  App.phraseKeys = phraseKeys; // auch für die WaniKani-Vokabeln (js/wanikani.js)
   const phraseMatches = (packItem, existingAll) => {
     const pKey = App.vocabKey(packItem);
     return existingAll.filter((ex) => ex.type === 'phrase' && phraseKeys(ex).includes(pKey));

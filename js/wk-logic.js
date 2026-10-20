@@ -200,13 +200,6 @@
   const hira = (s) => App.jp.toHira(norm(s));
   const KANJI = /[㐀-鿿豈-﫿々]/;
   K.form = (it) => norm(it.kanji || it.kana); // Suchform fürs Wörterbuch
-  // Schlüssel (wie App.vocabKey) eines Ausdrucks: aus gen (Kanji/Kana) und aus der Furigana-Schreibung jp
-  K.phraseKeys = (p) => {
-    const out = [];
-    if (p.gen && (p.gen.kana || p.gen.kanji)) out.push(App.vocabKey({ kanji: p.gen.kanji || '', kana: p.gen.kana || p.gen.kanji }));
-    if (p.jp) out.push(App.vocabKey({ kanji: App.jp.plain(p.jp), kana: App.jp.kana(p.jp) }));
-    return out;
-  };
   // Weitere Schlüssel desselben Wortes: andere Schreibweisen laut Wörterbuch (入り口 = 入口, gleiche Lesung) und die
   // reine Kana-Schreibung. Die Schreibweisen im Wörterbuch sind verlässlich – anders als sein Deutsch.
   K.altKeys = (it, entries) => {

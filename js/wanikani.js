@@ -108,7 +108,7 @@
   // Schlüssel der Wörter, die es in der App schon gibt: Vokabeln (mit oder ohne die aus WaniKani) und Ausdrücke
   const haveKeys = (withWk) => {
     const keys = new Set(App.itemsOf('vocab').filter((it) => withWk || !it._wk).map(App.vocabKey));
-    App.itemsOf('phrase').forEach((p) => K.phraseKeys(p).forEach((k) => keys.add(k)));
+    App.itemsOf('phrase').forEach((p) => App.phraseKeys(p).forEach((k) => keys.add(k))); // mit also (七[なな]／七[しち]) und gen
     return keys;
   };
   // Andere Schreibweisen je WaniKani-Vokabel (Wörterbuch), einmal je Sitzung nachgeschlagen; ohne Wörterbuch nur die Kana-Schreibung
