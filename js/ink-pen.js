@@ -44,6 +44,19 @@
     return pts;
   };
 
-  const P = { FOUNTAIN_WIDTHS, DEFAULT_THINNING, clampThinning, fountainOutline, isDot, dot, straight, linePts };
+  // zuletzt gewählter Stift (Einstellung inkPen: { tool, wIdx, color, mcolor }) → Werkzeug-Zustand für INK.mount, nur gültige Teile
+  const PEN_TOOLS = ['pen', 'fountain', 'marker'];
+  const isColor = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+  const penPref = (v) => {
+    const o = {};
+    if (!v || typeof v !== 'object') return o;
+    if (PEN_TOOLS.includes(v.tool)) o.defaultTool = v.tool;
+    if ([0, 1, 2].includes(v.wIdx)) o.wIdx = v.wIdx;
+    if (isColor(v.color)) o.color = v.color;
+    if (isColor(v.mcolor)) o.mcolor = v.mcolor;
+    return o;
+  };
+
+  const P = { FOUNTAIN_WIDTHS, DEFAULT_THINNING, PEN_TOOLS, clampThinning, fountainOutline, isDot, dot, straight, linePts, penPref };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.inkPen = P;
 })(this);

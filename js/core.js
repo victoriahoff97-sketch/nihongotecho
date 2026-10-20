@@ -271,6 +271,7 @@ window.App = window.App || {};
     listenPos: 0, // 今日のリスニング: Stelle in der Hör-Kette (js/listening-logic.js)
     dayLog: null, // Tagesliste „今日“ auf der Startseite: was heute erledigt ist (js/daycheck-logic.js)
     listenAt: null, // 今日のリスニング: gemerkte Stelle im offenen Stück { pos, t } (Sekunde)
+    inkPen: null, // Schreibblatt: zuletzt gewählter Stift { tool, wIdx, color, mcolor } (js/ink-pen.js penPref)
   };
 
   App.onChange = (fn) => S.listeners.add(fn);

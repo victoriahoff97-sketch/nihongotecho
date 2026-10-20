@@ -197,6 +197,8 @@
     const XL = App.exercisesLogic;
     const splittable = !embedded && !!f.exerciseId;
     const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser', 'cut'];
+    // zuletzt gewählter Stift samt Dicke und Farbe – außer der Aufrufer reicht den Zustand eines gerade offenen Blatts weiter (der hat immer wIdx)
+    if (opts.wIdx === undefined) opts = { ...opts, ...PEN.penPref(S.inkPen) };
     const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, ruler: false, stamp: null, book: bookable && !!S.inkBook, spread: 0, split: splittable && S.exSplit !== false, side: S.exSide === 'r' ? 'r' : 'l', cols: null, exOff: 0 };
     // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
     // Blättern gibt es nur ohne „Nur Stift“ – sonst scrollt ohnehin der Finger
@@ -271,7 +273,7 @@
       pop.style.left = Math.max(8, r.left - rr.left - 80) + 'px';
       pop.style.top = r.bottom - rr.top + 6 + 'px';
       root.appendChild(pop);
-      pop.addEventListener('click', (e) => { const b = e.target.closest('[data-fpw]'); if (b) { st.wIdx = +b.dataset.fpw; drawColors(); pop.remove(); } });
+      pop.addEventListener('click', (e) => { const b = e.target.closest('[data-fpw]'); if (b) { st.wIdx = +b.dataset.fpw; drawColors(); rememberPen(); pop.remove(); } });
       pop.querySelector('[data-fpth]').addEventListener('change', (e) => App.saveSettings({ inkThinning: App.inkPen.clampThinning(e.target.value) }));
     };
 
@@ -996,11 +998,17 @@
       const none = !ja.length && !de.length ? '<div class="small muted">Nicht erkannt</div>' : '';
       pop.innerHTML = `<div class="hw-list">${none}${chips(ja, 'hw-ja')}${chips(de, 'hw-de')}<div class="hw-row hw-self"><button class="chip" data-hw="">${icon('edit')} Selbst eingeben</button></div></div><button class="icon-btn sm" data-hwclose title="Schließen">${icon('close')}</button>`;
     };
+    // Stift, Dicke und Farben fürs nächste Öffnen merken (auch nach Neustart, Einstellung inkPen)
+    const rememberPen = () => {
+      const tool = PEN.PEN_TOOLS.includes(st.tool) ? st.tool : (S.inkPen || {}).tool;
+      App.saveSettings({ inkPen: { tool, wIdx: st.wIdx, color: st.color, mcolor: st.mcolor } });
+    };
     const setTool = (t) => {
       closeHw();
       if (t !== 'select') clearSel();
       st.tool = t;
       if (t === 'eraser' || t === 'cut') st.eraser = t;
+      if (PEN.PEN_TOOLS.includes(t)) rememberPen();
       $$('[data-tool]', root).forEach((b) => b.classList.toggle('active', b.dataset.tool === t));
       drawColors();
       const fp = root.querySelector('.fp-pop'); if (fp) fp.remove();
@@ -1185,7 +1193,7 @@
       const t = e.target.closest('[data-tool]');
       if (t) { setTool(t.dataset.tool); return; }
       const c = e.target.closest('[data-color]');
-      if (c) { if (st.tool === 'marker') st.mcolor = c.dataset.color; else st.color = c.dataset.color; drawColors(); return; }
+      if (c) { if (st.tool === 'marker') st.mcolor = c.dataset.color; else st.color = c.dataset.color; drawColors(); rememberPen(); return; }
       const x = e.target.closest('[data-x]');
       if (x) { const t = (opts.extraTools || []).find((y) => y.id === x.dataset.x); morePop.hidden = true; if (t) t.onClick(); return; }
       const v = e.target.closest('[data-v]'); if (!v) return;
@@ -1203,7 +1211,7 @@
       if (a === 'fit') setZoom(1);
       if (a === 'width') {
         if (st.tool === 'fountain') { toggleFpPop(v); return; }
-        st.wIdx = (st.wIdx + 1) % 3; v.textContent = ['●', '●●', '●●●'][st.wIdx];
+        st.wIdx = (st.wIdx + 1) % 3; v.textContent = ['●', '●●', '●●●'][st.wIdx]; rememberPen();
       }
       if (a === 'penonly') {
         st.penOnly = !st.penOnly; v.querySelector('[data-state]').textContent = st.penOnly ? 'an' : 'aus'; App.saveSettings({ penOnly: st.penOnly });
