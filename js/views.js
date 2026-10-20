@@ -590,6 +590,7 @@
         ${it.notes ? `<div class="section-title">Notizen</div><div class="card prose">${JP.md(it.notes)}</div>` : ''}
         <div class="section-title">Üben</div>
         <div class="row"><a class="btn btn-sec" href="#/ueben/saetze?g=${encodeURIComponent(it.id)}">${icon('sparkle')} Übersetzungsübung zu diesem Thema</a>
+        ${App.drillLogic.field(it, 'drill') ? `<a class="btn btn-sec" href="#/ueben/umformen?g=${encodeURIComponent(it.id)}">${icon('edit')} Umformen üben</a>` : ''}
         <span class="small muted">${(it.patterns || []).length ? `${it.patterns.length} Satzmuster + Beispielsätze` : 'Nutzt die Beispielsätze dieses Punktes'}</span></div>
         ${App.exercises.grammarBlock(it)}
         ${App.attachmentsHtml(it)}

@@ -43,6 +43,9 @@
     const add = (e) => { const key = d.plain(e.jp); if (!seen.has(key)) { seen.add(key); out.push(e); } };
     const fixed = sentences.map((s) => Object.assign({ words: [] }, s));
     grammar.filter((g) => !queue || queue.has(g.id)).forEach((g) => (g.examples || []).forEach((e) => fixed.push({ g, jp: e.jp, de: d.meaning(e), kana: e.kana, words: [] })));
+    // Situationen (jemand sagt q, man antwortet auf Japanisch): jeder gewählte Punkt, auch ohne Lernschlange
+    const situations = d.situations || ((g) => g.situations || []);
+    grammar.forEach((g) => (situations(g) || []).forEach((s) => fixed.push({ g, sit: true, q: s.q, de: s.hint, jp: s.jp, alt: s.alt || [], kana: s.kana, words: [] })));
     const rest = d.shuffle(fixed);
     const withPat = grammar.filter((g) => (g.patterns || []).length);
     let guard = 0;

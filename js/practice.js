@@ -336,10 +336,13 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       return own || ix ? { on: [].concat(own ? own.on || [] : [], ix ? ix.on : []), kun: [].concat(own ? own.kun || [] : [], ix ? ix.kun : []) } : null;
     };
   };
+  // auch für Umformen (js/drill.js): Lesungen-Nachschlag und Urteil mit Unterschied
+  App.kanjiReadings = () => { loadKanjiIndex(); return kanjiReadings(); };
   const diffHtml = (d) => d.map((x) => (x.t === 'same' ? esc(x.s) : x.t === 'del' ? `<del>${esc(x.s)}</del>` : `<ins>${esc(x.s)}</ins>`)).join('');
   const verdictHtml = (r) => (r.ok
-    ? `<div class="verdict ok">✓ Richtig${r.exact ? '' : ` – mit Kanji: <span lang="ja">${r.missing.map((c) => `<b>${esc(c)}</b>`).join(' ')}</span>`}</div>`
+    ? `<div class="verdict ok">✓ Richtig${r.exact || !r.missing.length ? '' : ` – mit Kanji: <span lang="ja">${r.missing.map((c) => `<b>${esc(c)}</b>`).join(' ')}</span>`}</div>`
     : `<div class="verdict no">✗ Nicht ganz</div><div class="ans-diff" lang="ja">${diffHtml(r.diff)}</div>`);
+  App.answerVerdictHtml = verdictHtml;
 
   // write/active: eigener Lernstand unter „w:<Id>“ (Kanji schreiben · Vokabeln Deutsch → Japanisch)
   // cram = freies Üben: nichts wird bewertet, der Lernstand bleibt unberührt – nicht Gewusstes kommt nur in dieser Runde noch einmal
@@ -567,7 +570,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   const genWords = () => App.itemsOf('vocab').concat(App.itemsOf('phrase').map((p) => (p.gen ? Object.assign({}, p, p.gen) : p)));
   // Füllwort neben der Lernschlange: was du schon lesen kannst
   const canRead = (it) => App.vocabStatus(it.id) === 'known';
-  const BUILD = { fill: JP.fill, plain: JP.plain, pick: App.pick, shuffle: App.shuffle, meaning: App.exMeaning };
+  const BUILD = { fill: JP.fill, plain: JP.plain, pick: App.pick, shuffle: App.shuffle, meaning: App.exMeaning, situations: (g) => App.drillLogic.field(g, 'situations') || [] };
 
   App.route('/ueben/saetze', (view, p, q) => {
     const sec = App.SECTIONS.grammar;
@@ -655,13 +658,15 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         return;
       }
       const e = exs[i];
-      const dir = dirMode === 'mix' ? (Math.random() < 0.5 ? 'de' : 'jp') : dirMode;
+      const dir = e.sit ? 'de' : dirMode === 'mix' ? (Math.random() < 0.5 ? 'de' : 'jp') : dirMode;
       const kanaSol = e.kana || JP.kana(e.jp);
       stage.innerHTML = `<div class="ex-card ${App.furiClass()}"><div class="row between small muted" style="margin-bottom:8px"><span>Satz ${i + 1} / ${exs.length}</span>${exBadge(e.g)}</div>
         <div class="progress" style="margin-bottom:14px"><i style="width:${(i / exs.length) * 100}%"></i></div>
         <div class="card pad-lg">
-          <div class="small muted">${dir === 'de' ? 'Übersetze ins Japanische:' : 'Übersetze ins Deutsche:'}</div>
-          <div class="ex-prompt ${dir === 'jp' ? 'jp' : ''}" ${dir === 'jp' ? 'lang="ja"' : ''}>${dir === 'de' ? esc(e.de) : JP.ruby(e.jp)} ${dir === 'jp' ? App.speakBtn(e.jp) : ''}</div>
+          ${e.sit ? `<div class="small muted">Antworte auf Japanisch:</div>
+          <div class="ex-prompt jp" lang="ja">${JP.ruby(e.q)} ${App.speakBtn(e.q)}</div><div class="muted" style="margin:-4px 0 8px">Hinweis: ${esc(e.de)}</div>`
+          : `<div class="small muted">${dir === 'de' ? 'Übersetze ins Japanische:' : 'Übersetze ins Deutsche:'}</div>
+          <div class="ex-prompt ${dir === 'jp' ? 'jp' : ''}" ${dir === 'jp' ? 'lang="ja"' : ''}>${dir === 'de' ? esc(e.de) : JP.ruby(e.jp)} ${dir === 'jp' ? App.speakBtn(e.jp) : ''}</div>`}
           ${dir === 'de' ? `<input class="input answer-in" placeholder="Antwort (Romaji wird zu かな)" autocomplete="off" autocapitalize="off" spellcheck="false">
             <div class="row" style="margin-top:8px"><label class="small row" style="gap:6px"><input type="checkbox" data-rj checked> Romaji → かな</label><button class="btn btn-sm btn-ghost" data-hand>${icon('pen')} Mit Stift schreiben</button></div><div data-handpad hidden style="margin-top:10px"></div>`
           : `<textarea class="input" style="width:100%;font-size:19px" rows="2" placeholder="Deine Übersetzung …"></textarea>`}
@@ -681,14 +686,14 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         const ans = inp.value.trim();
         let auto = null;
         if (dir === 'de' && ans) {
-          const a = JP.lenient(JP.romaji(ans));
-          auto = [JP.lenient(e.jp), JP.lenient(kanaSol), JP.lenient(JP.plain(e.jp))].includes(a);
+          const r = App.drillLogic.sameAnswer(ans, App.drillLogic.solutionsOf(e), App.kanjiReadings());
+          auto = r ? r.ok : null;
         }
         const words = (e.words || []).filter(Boolean);
         stage.querySelector('[data-sol]').innerHTML = `<div class="solution">
           ${auto === true ? '<div class="verdict ok">✓ Richtig!</div>' : auto === false ? '<div class="verdict no">Nicht ganz – vergleiche:</div>' : ''}
           <div class="small muted" style="margin-top:8px">Lösung</div>
-          ${dir === 'de' ? `<div class="sol-jp" lang="ja">${JP.ruby(e.jp)} ${App.speakBtn(e.jp)}</div><div class="small muted" lang="ja">${esc(kanaSol)}</div>` : `<div style="font-size:21px;font-weight:800">${esc(e.de)}</div><div class="small muted" lang="ja">${esc(kanaSol)}</div>`}
+          ${dir === 'de' ? `<div class="sol-jp" lang="ja">${JP.ruby(e.jp)} ${App.speakBtn(e.jp)}</div><div class="small muted" lang="ja">${esc(kanaSol)}</div>${(e.alt || []).length ? `<div class="small muted" style="margin-top:6px">Auch richtig: <span lang="ja">${e.alt.map((a) => JP.ruby(a)).join(' · ')}</span></div>` : ''}` : `<div style="font-size:21px;font-weight:800">${esc(e.de)}</div><div class="small muted" lang="ja">${esc(kanaSol)}</div>`}
           ${words.length ? `<div class="row" style="margin-top:10px;gap:6px">${words.map((w) => `<a class="badge" style="background:var(--fuji-soft);color:var(--fuji);text-decoration:none" href="${App.link(w)}" target="_blank" lang="ja">${esc(wordOf(w))} = ${esc(w.de)}</a>`).join('')}</div>` : ''}
           <div class="row" style="margin-top:14px">${auto === true ? `<button class="btn btn-primary" data-res="1">Weiter ${icon('next')}</button>` : `<button class="btn" style="background:var(--shu-soft)" data-res="0">✗ Hatte ich falsch</button><button class="btn" style="background:var(--matcha-soft)" data-res="1">✓ Hatte ich richtig</button>`}</div></div>`;
         stage.querySelector('[data-check]').hidden = true;
