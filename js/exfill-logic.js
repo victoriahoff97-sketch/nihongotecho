@@ -221,11 +221,12 @@
 
   // ---------- Übersetzung (Google Übersetzer, braucht Internet) ----------
   const TR_URL = 'https://translate.googleapis.com/translate_a/single';
-  const translateUrl = (text) => TR_URL + '?' + new URLSearchParams({ client: 'gtx', sl: 'ja', tl: 'de', dt: 't', q: text });
+  // sl = Ausgangssprache: 'ja' (Beispielsätze) oder 'en' (Bedeutungen der WaniKani-Vokabeln)
+  const translateUrl = (text, sl = 'ja') => TR_URL + '?' + new URLSearchParams({ client: 'gtx', sl, tl: 'de', dt: 't', q: text });
   // Antwort: [[["Ich esse.", "食べます。", …], …], …] – die Teile der Übersetzung aneinander
   const parseTranslation = (j) => (Array.isArray(j) && Array.isArray(j[0]) ? j[0].map((x) => (Array.isArray(x) && typeof x[0] === 'string' ? x[0] : '')).join('').trim() : '');
-  const translate = async (text, fetchFn) => {
-    const r = await fetchFn(translateUrl(text), { signal: AbortSignal.timeout(8000) });
+  const translate = async (text, fetchFn, sl) => {
+    const r = await fetchFn(translateUrl(text, sl), { signal: AbortSignal.timeout(8000) });
     if (!r.ok) throw new Error('Übersetzung antwortet nicht (' + r.status + ')');
     return parseTranslation(await r.json());
   };

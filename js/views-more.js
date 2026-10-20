@@ -472,7 +472,7 @@ const lvv = e.target.closest('[data-wkv-level]');
         const msg = view.querySelector('[data-wkv-msg]'), n = +lvv.dataset.wkvLevel;
         view.querySelectorAll('[data-wkv-level]').forEach((x) => (x.disabled = true));
         try {
-          await App.wk.setVocabLevel(n, lvv.checked, (frac) => { if (msg.isConnected) msg.textContent = `Wörterbuch für die deutschen Bedeutungen wird installiert … ${Math.round(frac * 100)} %`; });
+          await App.wk.setVocabLevel(n, lvv.checked, (frac) => { if (msg.isConnected) msg.textContent = `Wörterbuch wird installiert … ${Math.round(frac * 100)} %`; });
           App.toast(`WaniKani-Vokabeln Level ${n} ${lvv.checked ? 'freigeschaltet' : 'ausgeschaltet'}`);
         } catch (er) { console.error(er); App.toast('Das hat nicht geklappt: ' + er.message); }
         App.render(true);

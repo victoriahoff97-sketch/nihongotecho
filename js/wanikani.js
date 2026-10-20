@@ -74,16 +74,15 @@
     if (keepV.length !== wk.vLevels().length) await App.saveSettings({ wkVocabLevels: keepV });
     await dropBelow(); // unberührte Vokabeln, die bei WaniKani unter Master stehen
     for (const l of keepV) await fillVocab(l); // Vokabeln, die inzwischen Master sind
-    await App.db.putMany('items', await german(App.itemsOf('vocab').filter((it) => it._wk))); // Deutsch nachtragen, falls das Wörterbuch erst jetzt da ist
     App.emit('items');
-    wk.examples();
+    wk.enrich();
     return wk.state;
   };
   wk.connect = (token) => wk.sync(String(token || '').trim());
-  // Höchstens einmal am Tag von selbst, still im Hintergrund; sonst nur fehlende Beispielsätze nachholen
+  // Höchstens einmal am Tag von selbst, still im Hintergrund; sonst nur aufräumen und Fehlendes nachholen (wk.enrich)
   wk.autoSync = () => {
     if (!wk.connected() || navigator.onLine === false) return;
-    if (Date.now() - (wk.state.syncedAt || 0) < DAY) { wk.examples(); return; }
+    if (Date.now() - (wk.state.syncedAt || 0) < DAY) { wk.enrich(); return; }
     wk.sync().catch((e) => console.warn('WaniKani: ' + e.message));
   };
 
@@ -106,38 +105,61 @@
       await App.db.del('items', id);
     }
   };
-  // Deutsche Bedeutung aus dem Wörterbuch eintragen (ohne Wörterbuch oder ohne Treffer bleibt die englische von WaniKani);
-  // liefert die geänderten Einträge. Bearbeitetes wird nie angefasst.
-  const german = async (items) => {
-    const todo = items.filter((it) => !it.de && !it._edited);
-    if (!todo.length || !App.dict.installed()) return [];
-    let hits;
-    try { hits = await App.dict.lookup(todo.map(K.form)); } catch (e) { console.error(e); return []; }
-    return todo.filter((it) => { const e = K.pickDict(hits.get(K.form(it)), it); if (e) it.de = K.gloss(e.de); return !!e; });
+  // Schlüssel der Wörter, die es in der App schon gibt: Vokabeln (mit oder ohne die aus WaniKani) und Ausdrücke
+  const haveKeys = (withWk) => {
+    const keys = new Set(App.itemsOf('vocab').filter((it) => withWk || !it._wk).map(App.vocabKey));
+    App.itemsOf('phrase').forEach((p) => K.phraseKeys(p).forEach((k) => keys.add(k)));
+    return keys;
   };
+  // Andere Schreibweisen je WaniKani-Vokabel (Wörterbuch), einmal je Sitzung nachgeschlagen; ohne Wörterbuch nur die Kana-Schreibung
+  const altCache = new Map();
+  const altsOf = (it) => altCache.get(it.id) || K.altKeys(it, null);
+  const loadAlts = async (items) => {
+    const todo = items.filter((it) => it.kanji && !altCache.has(it.id));
+    if (!todo.length || !App.dict.installed()) return;
+    let hits;
+    try { hits = await App.dict.lookup(Array.from(new Set(todo.map(K.form)))); } catch (e) { console.error(e); return; }
+    todo.forEach((it) => altCache.set(it.id, K.altKeys(it, hits.get(K.form(it)))));
+  };
+  // Deutsch aus dem Paket eintragen; altes Wörterbuch-Deutsch fliegt raus (dann gilt bis zur Übersetzung das Englische).
+  // Liefert die geänderten Einträge. Bearbeitetes wird nie angefasst.
+  const packGerman = (idx, items) => items.filter(K.needsGerman).filter((it) => {
+    const de = K.packGerman(idx, it, altsOf(it));
+    if (de) { it.de = de; it._de = 'pack'; return true; }
+    if (it.de && !it._de) { it.de = ''; return true; }
+    return false;
+  });
   // Vokabeln eines Levels anlegen, die bei WaniKani ab Master sind – Wörter, die es schon gibt, bleiben bei ihrer Quelle
   const fillVocab = async (level) => {
-    const keys = new Set(App.itemsOf('vocab').map(App.vocabKey));
-    const adds = K.vMissing(wk.state, level, { hasKey: (k) => keys.has(k), hasId: (id) => S.items.has(id) });
-    await german(adds);
+    const keys = haveKeys(true), hasId = (id) => S.items.has(id);
+    await loadAlts(K.vMissing(wk.state, level, { hasKey: () => false, hasId }));
+    const adds = K.vMissing(wk.state, level, { hasKey: (k) => keys.has(k), hasId, alts: altsOf });
+    packGerman(await App.exampleIndex(), adds);
     const now = Date.now();
     adds.forEach((it, i) => { it.created = it.updated = now + i; if (App.levelFor) it.level = App.levelFor(it); S.items.set(it.id, it); }); // + i: WaniKani-Reihenfolge bleibt die Lernreihenfolge
     await App.db.putMany('items', adds);
   };
+  // Entfernt, was pick(Vokabeln, ctx) liefert; gibt die Anzahl zurück
   const dropVocab = async (pick) => {
     const refs = App.allRefs(Array.from(S.items.values()), Array.from(S.files.values()));
-    for (const id of pick(App.itemsOf('vocab'), { srs: S.srs, refs })) {
+    const ids = pick(App.itemsOf('vocab'), { srs: S.srs, refs });
+    for (const id of ids) {
       S.items.delete(id);
       await App.db.del('items', id);
     }
+    return ids.length;
   };
   const clearVocab = (level) => dropVocab((items, ctx) => K.vRemovable(level, items, ctx));
   const dropBelow = () => dropVocab((items, ctx) => K.vBelow(wk.state, items, ctx));
 
-  // ---------- Beispielsätze: Satz-Index der Pakete → kürzester Tatoeba-Satz → kürzester Satz von WaniKani ----------
-  // Still im Hintergrund, Wort für Wort. Nie über App.saveItem – das würde die Vokabel als bearbeitet markieren.
+  // ---------- Aufräumen und Nachholen (wk.enrich), still im Hintergrund ----------
+  // 1. Doppelte entfernen (gibt es schon als Vokabel oder Ausdruck, auch in anderer Schreibweise)
+  // 2. Deutsch: Paket → übersetzte englische Bedeutung von WaniKani (nur mit Zustimmung zum Google Übersetzer)
+  // 3. Beispielsatz: Satz-Index der Pakete → kürzester Tatoeba-Satz → kürzester Satz von WaniKani
+  // Wort für Wort; nie über App.saveItem – das würde die Vokabel als bearbeitet markieren.
   // Ohne Internet oder wenn Tatoeba hakt, bleibt der Rest für den nächsten Lauf.
   const needsEx = (it) => !!it && it._wk && App.exampleLogic.needs(it);
+  const needsMt = (it) => !!it && K.needsGerman(it) && !!S.settings.trConsent && !!K.enQuery(it);
   const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   const wkSentence = async (it) => {
     const s = (wk.state.vocab[String(it.id).replace(/^v-wk/, '')] || {}).s;
@@ -147,28 +169,44 @@
     if (S.settings.trConsent) { try { de = await App.exfillLogic.translate(s.ja, (u, o) => fetch(u, o)); } catch (e) { console.warn('Übersetzung: ' + e.message); } }
     return K.wkRow(s, furi, de);
   };
-  const fillExamples = async () => {
+  const enrich = async () => {
+    const wkItems = () => App.itemsOf('vocab').filter((it) => it._wk);
+    if (!wkItems().length) return;
     const idx = await App.exampleIndex();
     const put = async (list) => { if (!list.length) return; const now = Date.now(); list.forEach((it) => { it.updated = now; }); await App.db.putMany('items', list); App.emit('items'); };
-    await put(App.itemsOf('vocab').filter((it) => needsEx(it) && App.exampleLogic.fill(idx, it)));
+    await loadAlts(wkItems());
+    const has = haveKeys(false);
+    if (await dropVocab((items, ctx) => K.vDupes(items, (k) => has.has(k), altsOf, ctx))) App.emit('items');
+    await put(packGerman(idx, wkItems()));
+    await put(wkItems().filter((it) => needsEx(it) && App.exampleLogic.fill(idx, it)));
     let batch = [];
-    for (const it of App.itemsOf('vocab').filter(needsEx)) {
+    for (const it of wkItems().filter((x) => needsEx(x) || needsMt(x))) {
       if (navigator.onLine === false) break;
-      let list;
-      try { list = (await App.tatoeba.search(K.form(it), (u, o) => fetch(u, o)).more(5)).list; }
-      catch (e) { console.warn('Tatoeba: ' + e.message); break; }
-      const ex = K.pickTatoeba(list, it);
-      const row = ex ? K.tatoebaRow(ex) : await wkSentence(it);
+      let de = '', row = null, failed = false;
+      if (needsMt(it)) {
+        try { de = await App.exfillLogic.translate(K.enQuery(it), (u, o) => fetch(u, o), 'en'); } catch (e) { console.warn('Übersetzung: ' + e.message); }
+      }
+      if (needsEx(it)) {
+        try {
+          const ex = K.pickTatoeba((await App.tatoeba.search(K.form(it), (u, o) => fetch(u, o)).more(5)).list, it);
+          row = ex ? K.tatoebaRow(ex) : await wkSentence(it);
+        } catch (e) { console.warn('Tatoeba: ' + e.message); failed = true; }
+      }
       const cur = S.items.get(it.id);
-      if (row && needsEx(cur)) { cur.examples = [row]; batch.push(cur); }
+      let changed = false;
+      if (de && needsMt(cur)) { cur.de = de; cur._de = 'mt'; changed = true; }
+      if (row && needsEx(cur)) { cur.examples = [row]; changed = true; }
+      if (changed) batch.push(cur);
       if (batch.length >= 20) { await put(batch); batch = []; }
+      if (failed) break;
       await pause(300);
     }
     await put(batch);
   };
-  let exRun = null;
-  wk.examples = () => exRun || (exRun = fillExamples().catch((e) => console.error(e)).finally(() => { exRun = null; }));
-  // Beim Einschalten wird das Wörterbuch (häufige Wörter) mit installiert, falls keins da ist – daraus kommt das Deutsch
+  let enrichRun = null;
+  wk.enrich = () => enrichRun || (enrichRun = enrich().catch((e) => console.error(e)).finally(() => { enrichRun = null; }));
+  // Beim Einschalten wird das Wörterbuch (häufige Wörter) mit installiert, falls keins da ist – daraus kommen die anderen
+  // Schreibweisen (入り口 = 入口) und die Lesung der WaniKani-Beispielsätze
   wk.setVocabLevel = async (level, on, onProgress) => {
     const set = new Set(wk.vLevels());
     if (on) {
@@ -178,7 +216,7 @@
     } else { set.delete(level); await clearVocab(level); }
     await App.saveSettings({ wkVocabLevels: Array.from(set).sort((a, b) => a - b) });
     App.emit('items');
-    if (on) wk.examples();
+    if (on) wk.enrich();
   };
   wk.setLevel = async (level, on) => {
     const set = new Set(wk.levels());
@@ -201,8 +239,8 @@
   wk.vInfo = (it) => { const id = it && it._wk && it.type === 'vocab' ? String(it.id).slice(4) : '', v = wk.state.vocab[id]; return v ? { level: v.level, stage: wk.state.vstage[id], name: K.stageName(wk.state.vstage[id]) } : null; };
   // Zahlen einer Level-Zeile der Einstellungen
   wk.vStats = () => {
-    const keys = new Set(App.itemsOf('vocab').map(App.vocabKey));
-    const ctx = { hasKey: (k) => keys.has(k), hasId: (id) => S.items.has(id), known: (id) => { const s = S.srs.get('w:' + id); return S.items.has(id) && App.writeLogic.isKnown(s); } };
+    const keys = haveKeys(true);
+    const ctx = { hasKey: (k) => keys.has(k), hasId: (id) => S.items.has(id), alts: altsOf, known: (id) => { const s = S.srs.get('w:' + id); return S.items.has(id) && App.writeLogic.isKnown(s); } };
     return (level) => K.vLevelStats(wk.state, level, ctx);
   };
 })(window.App);

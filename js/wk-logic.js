@@ -160,13 +160,13 @@
     return Object.assign(it, { examples: [], tags: [], _wk: true });
   };
   // Vokabeln eines Levels ab Master, die es in der App noch nicht gibt. Steht das Wort schon da (gleiche Schreibung und
-  // Lesung, z. B. aus Genki oder JLPT), wird es übersprungen – es bleibt dann ganz bei seiner Quelle.
-  // hasKey(App.vocabKey) = Wort vorhanden · hasId(Kennung) = schon aus WaniKani angelegt
-  const vFresh = (state, level, { hasKey, hasId }) => {
+  // Lesung, z. B. aus Genki oder JLPT – als Vokabel oder Ausdruck), wird es übersprungen – es bleibt dann ganz bei seiner Quelle.
+  // hasKey(App.vocabKey) = Wort vorhanden · hasId(Kennung) = schon aus WaniKani angelegt · alts(Eintrag) = weitere Schlüssel (K.altKeys)
+  const vFresh = (state, level, { hasKey, hasId, alts }) => {
     const seen = new Set();
     return (K.vLevels(state).get(level) || []).filter((id) => K.vReady(state, id)).map((id) => vEntry(id, state.vocab[id])).filter((it) => {
       const key = App.vocabKey(it);
-      if (hasId(it.id) || hasKey(key) || seen.has(key)) return false;
+      if (hasId(it.id) || hasKey(key) || seen.has(key) || (alts ? alts(it) : []).some(hasKey)) return false;
       seen.add(key);
       return true;
     });
@@ -191,36 +191,55 @@
     };
   };
 
-  // Wörterbucheintrag zu einer Vokabel: gleiche Schreibung und Lesung, zur Not nur die Schreibung; ohne Deutsch keiner
+  // Unberührte WaniKani-Vokabeln, die es schon anderswo gibt (has = Schlüssel ohne WaniKani-Einträge, alts wie bei vFresh)
+  K.vDupes = (items, has, alts, ctx) => items.filter((it) => wkVocab(it) && untouched(it, ctx)
+    && [App.vocabKey(it), ...alts(it)].some(has)).map((it) => it.id);
+
+  // ---------- Gibt es das Wort schon? ----------
   const norm = (s) => String(s || '').replace(/[\s〜～~]/g, '');
+  const hira = (s) => App.jp.toHira(norm(s));
+  const KANJI = /[㐀-鿿豈-﫿々]/;
   K.form = (it) => norm(it.kanji || it.kana); // Suchform fürs Wörterbuch
-  K.pickDict = (entries, it) => {
-    const w = norm(it.kanji), r = App.jp.toHira(norm(it.kana));
-    const list = (entries || []).filter((e) => e && e.de);
-    const reads = (e) => (e.r || []).some((x) => App.jp.toHira(x) === r);
-    const writes = (e) => (e.k || []).includes(w);
-    return (w ? list.find((e) => writes(e) && reads(e)) || list.find(writes) : list.find(reads)) || null;
-  };
-  // Stichwort für die Abfrage: die ersten n Bedeutungen („;“ innerhalb von Klammern trennt nicht)
-  K.gloss = (de, n = 2) => {
+  // Schlüssel (wie App.vocabKey) eines Ausdrucks: aus gen (Kanji/Kana) und aus der Furigana-Schreibung jp
+  K.phraseKeys = (p) => {
     const out = [];
-    let depth = 0, cur = '';
-    for (const c of String(de || '')) {
-      if (c === '(' || c === '（') depth++;
-      else if ((c === ')' || c === '）') && depth > 0) depth--;
-      if (c === ';' && depth === 0) { out.push(cur.trim()); cur = ''; } else cur += c;
-    }
-    out.push(cur.trim());
-    return out.filter(Boolean).slice(0, n).join('; ');
+    if (p.gen && (p.gen.kana || p.gen.kanji)) out.push(App.vocabKey({ kanji: p.gen.kanji || '', kana: p.gen.kana || p.gen.kanji }));
+    if (p.jp) out.push(App.vocabKey({ kanji: App.jp.plain(p.jp), kana: App.jp.kana(p.jp) }));
+    return out;
   };
+  // Weitere Schlüssel desselben Wortes: andere Schreibweisen laut Wörterbuch (入り口 = 入口, gleiche Lesung) und die
+  // reine Kana-Schreibung. Die Schreibweisen im Wörterbuch sind verlässlich – anders als sein Deutsch.
+  K.altKeys = (it, entries) => {
+    const w = norm(it.kanji), r = hira(it.kana);
+    if (!w || !r || !KANJI.test(w)) return [];
+    const out = new Set();
+    (entries || []).filter((e) => e && (e.k || []).includes(w) && (e.r || []).some((x) => App.jp.toHira(x) === r))
+      .forEach((e) => e.k.forEach((k) => out.add(App.vocabKey({ kanji: k, kana: r }))));
+    out.add(App.vocabKey({ kanji: '', kana: r }));
+    out.delete(App.vocabKey(it));
+    return [...out];
+  };
+
+  // ---------- Deutsche Bedeutung ----------
+  // Nie aus dem Wörterbuch: dessen Deutsch hängt bei vielen Wörtern am falschen Eintrag (一 „f-Rauschen“, 三つ „Mawashi“).
+  // Zuerst die geprüfte Bedeutung aus dem Satz-Index der Pakete (gleiches Wort, auch in anderer Schreibweise mit Kanji),
+  // sonst die übersetzte englische Bedeutung von WaniKani (js/wanikani.js). _de = 'pack' | 'mt' merkt die Herkunft.
+  K.needsGerman = (it) => wkVocab(it) && !it._edited && (!it.de || !it._de);
+  K.packGerman = (index, it, alts) => {
+    if (!index || !index.v) return '';
+    const key = App.vocabKey(it);
+    for (const k of [key, ...(alts || []).filter((x) => KANJI.test(x.split('|')[0]))]) if (index.v[k] && index.v[k][2]) return index.v[k][2];
+    return '';
+  };
+  // Was zum Übersetzen geht: die ersten zwei englischen Bedeutungen
+  K.enQuery = (it) => String(it.en || '').split(/;\s*/).filter(Boolean).slice(0, 2).join('; ');
 
   // ---------- Beispielsätze der WaniKani-Vokabeln ----------
   // Reihenfolge: Satz-Index der Pakete → kürzester Tatoeba-Satz → kürzester Satz von WaniKani (js/wanikani.js)
-  const hira = (s) => App.jp.toHira(norm(s));
   // Lesung des Wortes ohne Okurigana (食べる → たべ, 勉強する → べんきょう), damit auch gebeugte Formen im Satz passen
   K.stem = (it) => {
     const w = norm(it.kanji), r = hira(it.kana);
-    if (!w || !/[㐀-鿿豈-﫿々]/.test(w)) return r;
+    if (!w || !KANJI.test(w)) return r;
     let k = 0;
     while (k < w.length - 1 && k < r.length && /[ぁ-ゖ]/.test(w[w.length - 1 - k]) && w[w.length - 1 - k] === r[r.length - 1 - k]) k++;
     if (k >= 2 && /する$/.test(w)) return r.slice(0, r.length - 2); // 勉強する: nur する fällt weg
