@@ -288,7 +288,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       const de = it.title.includes(' – ') ? it.title.split(' – ').slice(1).join(' – ') : (it.summary || it.title);
       const ex = it.examples && it.examples[0];
       const struct = (it.structure || []).length ? `<div class="structure" style="text-align:left;margin-top:10px">${it.structure.map((x) => `<div>${JP.ruby(x)}</div>`).join('')}</div>` : '';
-      const exHtml = ex ? `<div style="margin-top:10px">${App.exampleHtml(ex)}</div>` : '';
+      const exHtml = ex ? `<div style="margin-top:6px">${App.exampleHtml(ex)}</div>` : '';
       if (dir === 'de') return { front: `<div class="front de-front">${esc(de)}</div><div class="muted">Welche Grammatik ist das?</div>`, back: `<div class="ans jp" lang="ja">${JP.ruby(it.jp || '')}</div><div>${esc(it.title)}</div>${App.levelBadge(it)}${struct}${exHtml}`, speak: '' };
       return { front: `<div class="front" lang="ja">${JP.ruby(it.jp || '')}</div><div class="muted">Was bedeutet das, wie benutzt man es?</div>`, back: `<div class="ans">${esc(it.title)}</div><div class="muted">${esc(it.summary || '')}</div>${App.levelBadge(it)}${struct}${exHtml}`, speak: '' };
     }
@@ -299,7 +299,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const jpHtml = it.type === 'vocab' ? JP.wordRuby(it) : JP.ruby(it.jp);
     const reading = it.type === 'vocab' ? it.kana : JP.kana(it.jp);
     const ex = it.examples && it.examples[0];
-    const extra = (it.type === 'vocab' ? App.accentHtml(it) + App.useHtml(it, true) : '') + (ex ? `<div style="margin-top:10px">${App.exampleHtml(ex)}</div>` : '') + (it.note ? `<div class="small muted">${esc(it.note)}</div>` : '');
+    const extra = (it.type === 'vocab' ? App.accentHtml(it) + App.useHtml(it, true) : '') + (ex ? `<div style="margin-top:6px">${App.exampleHtml(ex)}</div>` : '') + (it.note ? `<div class="small muted">${esc(it.note)}</div>` : '');
     const speakTxt = it.type === 'vocab' ? (it.kanji || it.kana) : it.jp;
     if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it)}</div>`, back: `<div class="ans jp" lang="ja">${jpHtml}</div>${App.levelBadge(it)}${extra}`, speak: speakTxt };
     return { front: `<div class="front" lang="ja">${App.askHtml(it)}</div>`, back: `<div class="jp" lang="ja" style="font-size:20px;color:var(--muted)">${esc(reading)}</div><div class="ans">${App.meaningHtml(it)}</div>${App.levelBadge(it)}${extra}`, speak: speakTxt };
@@ -318,6 +318,13 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   const AMODES = [['off', 'eyeOff', 'Nur umdrehen, nichts schreiben'], ['pen', 'pen', 'Antwort mit dem Stift schreiben'], ['key', 'keyboard', 'Antwort tippen']];
   const answerMode = () => { const m = App.lsGet('answerMode'); return AMODES.some(([k]) => k === m) ? m : 'off'; };
   const answerable = (ent) => !ent.pad && ent.kind !== 'conj' && ent.dir === 'de' && (ent.it.type === 'vocab' || ent.it.type === 'phrase');
+  // Kanji schreiben: „Auflösen“ (danach Falsch/Richtig) in die Knopfspalte neben dem Schreibfeld – so bleibt alles ohne Scrollen erreichbar
+  const padButtons = (stage) => {
+    const col = stage.querySelector('[data-pad] .stack'), b = stage.querySelector('[data-btns]');
+    if (!col || !b) return;
+    b.className = 'stack pad-btns'; b.style.marginTop = '';
+    col.insertBefore(b, col.querySelector('[data-p="tpl"]')); // vor „Vorlage“/„Vergleichen“, die erst nach dem Auflösen erscheinen
+  };
   // Lesungen der Kanji aus der Sammlung und dem Kanji-Index (wird beim ersten Antwortfeld geladen), um Mischungen wie 勉きょう zu erkennen
   let kIndex = null;
   const loadKanjiIndex = () => { if (!kIndex) App.kanjiIndex().then((x) => { kIndex = x; }); };
@@ -354,7 +361,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const canSkip = () => !cram && ent.kind !== 'write' && W.direct(cur.type) && W.firstShow(S.srs.get(srsKey()));
     const undoBtn = () => (last ? ` <button class="btn btn-sm btn-ghost" data-undo-card title="Letzte Bewertung zurücknehmen (Strg+Z)">${icon('undo')} Rückgängig</button>` : '');
     const head = () => `<div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${cram ? ' · freies Üben' : ''}${undoBtn()}</span><span>${App.srcBadge(cur)}</span></div>
-        <div class="progress" style="margin-bottom:14px"><i style="width:${(done / Math.max(1, total)) * 100}%"></i></div>`;
+        <div class="progress" style="margin-bottom:10px"><i style="width:${(done / Math.max(1, total)) * 100}%"></i></div>`;
     const next = () => {
       ent = queue.shift();
       cur = ent ? ent.it : null;
@@ -441,6 +448,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       if (ans.pad) { ans.pad.stop(); stage.querySelector('[data-hwpad]').hidden = true; ans.cands.hidden = true; } // nach dem Prüfen zählt nur noch das Ergebnis
       stage.querySelector('[data-averdict]').innerHTML = verdictHtml(r);
       stage.querySelector('[data-acheck]').hidden = true;
+      stage.querySelector('[data-answer]').classList.add('done');
       suggest = r.ok ? 2 : 0;
       flip();
       const sb = stage.querySelector(`.grade-row [data-g="${suggest}"]`); if (sb) sb.classList.add('suggest');
@@ -450,9 +458,10 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const padCard = () => {
       stage.innerHTML = `<div class="sec-kanji">${head()}<div class="card pad-lg"><div class="small muted">Schreibe das Kanji:${W.isFirst(S.srs, cur.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
           <div class="muted" lang="ja">${esc((cur.kun || []).map(App.kanjiLogic.kunText).concat(cur.on || []).slice(0, 4).join('、'))}</div>
-          <div class="kanji-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
+          <div class="kanji-stage quiz-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
           <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div></div>`;
       const pad = App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false, quiz: true });
+      padButtons(stage);
       stage.querySelector('[data-show]').onclick = () => {
         flipped = true;
         pad.then((p) => p.reveal());
@@ -765,9 +774,10 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       if (mode === 'write') {
         stage.innerHTML = `<div class="card pad-lg"><div class="row between"><div><div class="small muted">${undoBtn()} Kanji ${i + 1} / ${qs.length}${queue ? '' : ' · freies Üben'} – schreibe:${queue && W.isFirst(S.srs, cur.id) ?' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
           <div class="muted" lang="ja">${esc((cur.kun || []).map(App.kanjiLogic.kunText).concat(cur.on || []).slice(0, 4).join('、'))}</div></div></div>
-          <div class="kanji-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
+          <div class="kanji-stage quiz-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
           <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div>`;
         const pad = App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false, quiz: true });
+        padButtons(stage);
         stage.querySelector('[data-show]').onclick = () => {
           pad.then((p) => p.reveal());
           App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);

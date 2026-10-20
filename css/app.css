@@ -726,17 +726,24 @@ body.ink-fit #view { padding-bottom: 16px; }
 .flash-stage { max-width: 760px; margin: 0 auto; }
 .flash {
   min-height: 330px; border-radius: 24px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow-lg);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; cursor: pointer; gap: 10px; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 18px 30px; cursor: pointer; gap: 6px; position: relative;
 }
 .flash .front { font-family: var(--font-jp); font-size: 46px; line-height: 1.5; }
 .flash .front.kanji-front { font-family: var(--font-kanji); font-size: 110px; line-height: 1.1; }
 .flash .front.de-front { font-family: var(--font-ui); font-size: 34px; font-weight: 800; }
-.flash .back { border-top: 1px dashed var(--line-2); padding-top: 14px; margin-top: 6px; width: 100%; }
+.flash .back { border-top: 1px dashed var(--line-2); padding-top: 10px; margin-top: 2px; width: 100%; }
+.flash .example { padding: 8px 14px; }
+.flash .back > .badge.lvl { position: absolute; top: 14px; left: 18px; } /* Niveau in die Kartenecke statt eigener Zeile */
+#view:has(.flash[data-flip], .quiz-stage) .page-head { margin-bottom: 12px; } /* während einer Runde: Unterzeile („… fällig“) weg, Platz für die Karte */
+#view:has(.flash[data-flip], .quiz-stage) .page-head p { display: none; }
+/* Kanji schreiben: Schreibfeld richtet sich nach der Bildschirmhöhe, Auflösen/Bewerten steht in der Spalte daneben */
+.quiz-stage .pad-wrap { width: min(100%, clamp(260px, calc(100dvh - 420px), 420px)); }
+.pad-btns .btn { white-space: normal; text-align: left; justify-content: flex-start; } /* auf der Karte knapper als auf der Eintragsseite – die Bewertung soll ohne Scrollen sichtbar bleiben */
 .flash .back .ans { font-size: 26px; font-weight: 800; }
 .flash .back .ans.jp { font-family: var(--font-jp); font-weight: 500; font-size: 32px; }
 .flash .tap-hint { position: absolute; bottom: 14px; color: var(--muted); font-size: 13px; }
-.grade-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
-.grade-row button { min-height: 60px; border-radius: 14px; border: 0; font-weight: 800; font-size: 16px; cursor: pointer; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
+.grade-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+.grade-row button { min-height: 54px; border-radius: 14px; border: 0; font-weight: 800; font-size: 16px; cursor: pointer; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
 .grade-row button small { font-weight: 600; opacity: .85; font-size: 12px; }
 .g0 { background: #c0392b; } .g1 { background: #d68910; } .g2 { background: #4f8a3a; } .g3 { background: #2f6fa8; }
 .ex-card { max-width: 860px; margin: 0 auto; }
@@ -752,8 +759,10 @@ body.ink-fit #view { padding-bottom: 16px; }
 .seg.ans-mode { padding: 2px; }
 .seg.ans-mode button { min-height: 30px; padding: 0 8px; }
 .flash-stage:has(.ans-box:not([hidden]) .ans-line) .flash { min-height: 180px; } /* mit Antwortfeld: Karte niedriger, damit alles auf den Bildschirm passt */
-.ans-box { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.ans-box { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ans-box.done { flex-direction: row; flex-wrap: wrap; align-items: center; } /* nach dem Prüfen: Antwort und Ergebnis in einer Zeile */
 .ans-line { display: flex; gap: 8px; }
+.ans-box.done .ans-line { flex: 1 1 220px; }
 .ans-line .ans-in { flex: 1; min-width: 0; font-size: 20px; }
 .ans-cands { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: thin; }
 .ans-cands .chip { flex: none; padding: 4px 12px; font-family: var(--font-kanji); font-size: 20px; }
