@@ -77,6 +77,26 @@
   };
   L.groupIndexOf = (groups, pos) => groups.findIndex((g) => pos >= g.from && pos < g.to);
 
+  // Ringe auf der Seite „Hören“: gehörte Minuten (alles vor der Position) und Gesamtminuten je Quelle
+  L.progress = (all, pos) => {
+    const out = { chienowa: { done: 0, total: 0 }, teppei: { done: 0, total: 0 } };
+    all.forEach((p, i) => {
+      const o = out[p.kind === 'video' ? 'chienowa' : 'teppei'];
+      const m = L.minutes(p);
+      o.total += m;
+      if (i < pos) o.done += m;
+    });
+    return out;
+  };
+  // Angefangen zeigt mindestens 1 %, 100 % erst, wenn wirklich alles gehört ist
+  L.pct = (done, total) => (!total || !done ? 0 : done >= total ? 100 : Math.min(99, Math.max(1, Math.round((done / total) * 100))));
+  L.dur = (min) => (min < 60 ? `${min} Min.` : `${Math.round(min / 60)} Std.`);
+  // „3 von 17 Std.“, „40 Min. von 17 Std.“, „0 von 107 Std.“ – die Einheit nur einmal, wenn beide gleich sind
+  L.durOf = (done, total) => {
+    const a = L.dur(done), b = L.dur(total);
+    return !done || a.split(' ')[1] === b.split(' ')[1] ? `${a.split(' ')[0]} von ${b}` : `${a} von ${b}`;
+  };
+
   // Was danach kommt (kurz), z. B. für den Hinweis beim Wechsel zu Teppei
   L.nextHint = (pos) => {
     const p = L.at(pos), q = L.at(pos + 1);

@@ -17,6 +17,20 @@
   };
   const lazy = {}; // key → Zeilen, für Blöcke, die erst beim Aufklappen gefüllt werden
 
+  // ---------- Ringe: wie viel schon gehört ist ----------
+  const ring = (pct, label, sub, zu) => `<button type="button" class="hr-ring" data-q-zu="${zu}" title="${zu ? 'Zu Japanese with Shun' : 'Zur Hör-Kette'}">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" class="bg"/>${pct ? `<circle cx="32" cy="32" r="26" class="fg" pathLength="100" stroke-dasharray="${pct} 100"/>` : ''}
+      <text x="32" y="37" text-anchor="middle">${pct} %</text></svg>
+      <b>${label}</b><span class="muted small">${sub}</span></button>`;
+  const rings = () => {
+    const c = L.progress(L.all(), App.store.settings.listenPos || 0);
+    const s = S.progress(App.store.settings.shunHeard);
+    const hours = (o) => L.durOf(o.done, o.total);
+    const eps = (o) => `${o.done} von ${o.total} Folgen`;
+    return `<div class="hr-rings">${ring(L.pct(c.chienowa.done, c.chienowa.total), 'Chienowa', hours(c.chienowa), '')}${ring(L.pct(c.teppei.done, c.teppei.total), 'Teppei', hours(c.teppei), '')}${ring(L.pct(s.genki.done, s.genki.total), 'Shun · Genki', eps(s.genki), 'shun')}${ring(L.pct(s.eps.done, s.eps.total), 'Shun · Folgen', eps(s.eps), 'shun')}</div>`;
+  };
+  const tabs = (tab) => `<div class="tabs hr-tabs">${[['', `${icon('listen')} Hör-Kette`], ['shun', 'Japanese with Shun']].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-q-zu="${k}">${l}</button>`).join('')}</div>`;
+
   // ---------- Hör-Kette ----------
   const chainRow = (p, i, pos) => `<div class="shun-row hr-row ${i < pos ? 'heard' : ''} ${i === pos ? 'now' : ''}">
       <button type="button" class="shun-play" data-listen-play data-pos="${i}" title="Anhören">${icon('play')}</button>
@@ -37,7 +51,7 @@
       const done = g.to <= pos;
       return block(key, gi === at, `<b>${esc(g.label)}</b> <span class="muted small">${g.to - g.from} ${g.to - g.from === 1 ? 'Stück' : 'Stücke'}${done ? ' · gehört' : ''}</span>`, rows);
     }).join('');
-    return `<section class="hr-sec"><h2>Hör-Kette</h2>
+    return `<section class="hr-sec">
       <p class="muted small">Jeden Tag ein Stück von etwa 5 Minuten: erst Chienowa Japanese, dann Nihongo con Teppei. „Ab hier“ setzt die Kette auf ein anderes Stück.</p>
       <div class="hr-now">${L.tile()}</div>${blocks}</section>`;
   };
@@ -59,6 +73,16 @@
       const ls = lessons.filter((n) => n >= from && n <= to);
       return ls.length ? `<h3>${name}</h3>${ls.map(lessonBlock).join('')}` : '';
     };
+    // Kästchen je Lektion: voll = alle Folgen gehört, hell = angefangen; Tippen klappt die Lektion unten auf
+    const box = (n) => {
+      const d = S.lessonDone(heard, n);
+      const st = d.done >= d.total ? 'full' : d.done ? 'part' : '';
+      return `<button type="button" class="hr-lesson ${st}" data-hr-lesson="${n}" title="Lektion ${n}: ${d.done} von ${d.total} ${d.total === 1 ? 'Folge' : 'Folgen'} gehört">${n}</button>`;
+    };
+    const grid = (name, from, to) => {
+      const ls = lessons.filter((n) => n >= from && n <= to);
+      return ls.length ? `<div class="hr-grid-row"><span class="muted small">${name}</span><div class="hr-grid">${ls.map(box).join('')}</div></div>` : '';
+    };
     const next = S.next(heard);
     const chunks = [];
     for (const e of eps) {
@@ -75,9 +99,10 @@
       const done = list.filter((e) => heard.includes(e.id)).length;
       return block(key, b === nextB, `<b>Ep ${b * EP_BLOCK + 1}–${b * EP_BLOCK + EP_BLOCK}</b> <span class="muted small">${list.length} ${list.length === 1 ? 'Folge' : 'Folgen'}${done ? ` · ${done} gehört` : ''}</span>`, rows);
     }).join('');
-    return `<section class="hr-sec" id="shun"><h2>Japanese with Shun</h2>
+    return `<section class="hr-sec" id="shun">
       <p class="muted small">Shun spricht langsam und benutzt nur Grammatik aus Genki. Die Genki-Folgen passen zu je einer Lektion.
         <a href="${SHOW_URL}" target="_blank" rel="noopener">Zur Podcast-Seite ${icon('link')}</a></p>
+      <div class="hr-lessons">${grid('Genki I', 1, 12)}${grid('Genki II', 13, 99)}</div>
       ${book('Genki I', 1, 12)}${book('Genki II', 13, 99)}
       <h3>Alle Folgen</h3>
       ${next ? `<div class="hr-next"><span class="muted small">Nächste</span>${App.shunUi.row(next)}</div>` : '<p class="muted small">Alle Folgen gehört.</p>'}
@@ -112,7 +137,8 @@
     const first = fresh;
     fresh = false;
     const anchors = first ? [] : visibleAnchors(view);
-    view.innerHTML =`<div class="${SEC.cls} hoeren">${App.pageHead(SEC, 'Deine Hör-Kette für jeden Tag und Shuns Podcast zur Genki-Grammatik.')}${chain()}${shun()}</div>`;
+    const tab = ((q && q.zu) || App.parseHash().query.zu) === 'shun' ? 'shun' : '';
+    view.innerHTML = `<div class="${SEC.cls} hoeren">${App.pageHead(SEC, 'Deine Hör-Kette für jeden Tag und Shuns Podcast zur Genki-Grammatik.')}${rings()}${tabs(tab)}${tab ? shun() : chain()}</div>`;
     view.querySelectorAll('details[data-fold]').forEach((d) => d.addEventListener('toggle', () => {
       const key = d.dataset.fold;
       // „toggle“ kommt auch für Blöcke, die schon offen gezeichnet wurden – nur echtes Auf-/Zuklappen merken
@@ -122,8 +148,13 @@
       const box = d.querySelector('.hr-rows');
       if (d.open && !box.innerHTML && lazy[key]) box.innerHTML = lazy[key]();
     }));
-    const zu = (q && q.zu) || App.parseHash().query.zu;
-    if (first && zu === 'shun') requestAnimationFrame(() => view.querySelector('#shun').scrollIntoView({ block: 'start' }));
+    // Lektions-Kästchen: Block der Lektion aufklappen und hinscrollen
+    view.querySelectorAll('[data-hr-lesson]').forEach((b) => b.addEventListener('click', () => {
+      const key = 'g' + b.dataset.hrLesson;
+      fold[key] = true;
+      App.render(true);
+      requestAnimationFrame(() => { const d = document.querySelector(`details[data-fold="${key}"]`); if (d) d.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+    }));
     // erst nach App.render, das danach noch die alte Scrollhöhe setzt
     if (anchors.length) requestAnimationFrame(() => restore(view, anchors));
   });

@@ -44,6 +44,13 @@
     const h = new Set(heard || []);
     return src.eps.find((e) => !h.has(e.id)) || null;
   };
+  // Ringe und Lektions-Kästchen auf der Seite „Hören“
+  const count = (list, h) => ({ done: list.filter((e) => h.has(e.id)).length, total: list.length });
+  S.progress = (heard, src = S.all()) => {
+    const h = new Set(heard || []);
+    return { genki: count(src.genki, h), eps: count(src.eps, h) };
+  };
+  S.lessonDone = (heard, lesson, src = S.all()) => count(S.forLesson(lesson, src), new Set(heard || []));
   S.toggle = (heard, id) => {
     const h = (heard || []).slice();
     const i = h.indexOf(id);
