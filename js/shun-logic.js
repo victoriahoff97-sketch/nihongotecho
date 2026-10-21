@@ -26,7 +26,7 @@
   };
 
   S.build = (data) => {
-    const genki = (data.genki || []).map(([id, serie, lesson, part, title, s, url]) => ({ id, serie, lesson, part, title, s, url }))
+    const genki = (data.genki || []).map(([id, serie, lesson, part, title, s, url, ja]) => ({ id, serie, lesson, part, title, s, url, ja: ja || '' }))
       .sort((a, b) => a.lesson - b.lesson || a.serie - b.serie || a.part - b.part);
     const eps = (data.eps || []).map(([id, n, title, s, url]) => ({ id, n, title, s, url })).sort((a, b) => a.n - b.n);
     return { genki, eps };

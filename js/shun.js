@@ -11,18 +11,28 @@
 
   U.row = (e) => `<div class="shun-row ${isHeard(e.id) ? 'heard' : ''}">
       <button type="button" class="shun-play" data-shun-play="${esc(e.id)}" title="Anhören">${icon('play')}</button>
-      <span class="grow">${e.n != null ? `<span class="muted small">Ep ${e.n}</span> ` : ''}${esc(e.title)}</span>
+      <span class="grow">${e.n != null ? `<span class="muted small">Ep ${e.n}</span> ` : ''}${e.ja ? `<span class="shun-ja" lang="ja">${esc(e.ja)}</span> · ` : ''}${esc(e.title)}</span>
       <span class="muted small">${S.minutes(e)} Min.</span>
       <button type="button" class="shun-tick" data-shun-heard="${esc(e.id)}" aria-pressed="${isHeard(e.id)}" title="${isHeard(e.id) ? 'Gehört – noch einmal tippen zum Zurücknehmen' : 'Als gehört abhaken'}">${icon('check')}</button>
     </div>`;
 
-  // Kasten unter „Genki I · Lektion N“ in der Grammatik-Liste
+  // Aufklappbares „Zum Hören“ unter „Genki I · Lektion N“ in der Grammatik-Liste – zu, bis man es selbst öffnet
+  const openLessons = new Set(); // bleibt beim Neuzeichnen (z. B. nach „Gehört“) offen
   U.lessonBox = (source, lesson) => {
     if (!/^Genki II?$/.test(source || '') || !(lesson > 0) || S.source(lesson) !== source) return '';
     const list = S.forLesson(lesson);
     if (!list.length) return '';
-    return `<div class="shun-box"><div class="shun-box-head">${icon('listen')} <b>Zum Hören · Shun</b><a class="small" href="#/hoeren?zu=shun">Alle Folgen</a></div>${list.map(U.row).join('')}</div>`;
+    const done = list.filter((e) => isHeard(e.id)).length;
+    return `<details class="shun-fold" data-shun-lesson="${lesson}" ${openLessons.has(lesson) ? 'open' : ''}><summary>${icon('listen')} Zum Hören <span class="muted">· Shun, ${list.length} ${list.length === 1 ? 'Folge' : 'Folgen'}${done ? `, ${done} gehört` : ''}</span></summary>
+      <div class="shun-fold-rows">${list.map(U.row).join('')}<a class="small" href="#/hoeren?zu=shun">Alle Folgen</a></div></details>`;
   };
+  // „toggle“ steigt nicht auf – darum in der Capture-Phase mithören
+  document.addEventListener('toggle', (ev) => {
+    const d = ev.target;
+    if (!d.matches || !d.matches('details[data-shun-lesson]')) return;
+    const n = +d.dataset.shunLesson;
+    if (d.open) openLessons.add(n); else openLessons.delete(n);
+  }, true);
 
   const setHeard = async (id, on, quiet) => {
     const before = heard();
@@ -54,7 +64,7 @@
       <p class="small shun-err" hidden>Die Folge lässt sich gerade nicht laden. Bist du online?</p>`;
     cur = { id, t: at, cnt: App.listening.playCounter() };
     const md = App.modal({
-      title: esc(e.title), body, cls: 'listen-modal shun-modal',
+      title: esc(e.ja ? `${e.ja} · ${e.title}` : e.title), body, cls: 'listen-modal shun-modal',
       foot: `<button class="btn" data-shun-close>Schließen</button><button class="btn btn-primary" data-shun-done>${icon('check')} Gehört</button>`,
       onClose: () => { const was = cur; remember(); if (cur) cur.cnt.done(); cur = null; if (was) App.dayCheck.check(); },
     });

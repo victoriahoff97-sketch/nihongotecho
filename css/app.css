@@ -526,14 +526,21 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .shun-row:first-of-type { border-top: 0; }
 .shun-row .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .shun-row.heard .grow { color: var(--muted); }
+.shun-ja { font-weight: 700; }
 .shun-play, .shun-tick { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0; }
 .shun-play svg, .shun-tick svg { width: 15px; height: 15px; }
 .shun-tick { color: var(--line-2); }
 .shun-tick[aria-pressed="true"] { background: var(--matcha); border-color: var(--matcha); color: #fff; }
-.shun-box { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 8px 12px; margin: 0 0 14px; }
-.shun-box-head { display: flex; align-items: center; gap: 8px; padding-bottom: 4px; }
-.shun-box-head svg { width: 17px; height: 17px; }
-.shun-box-head a { margin-left: auto; }
+.shun-fold { margin: -4px 0 12px; font-size: 13.5px; }
+.shun-fold > summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: var(--sora); padding: 2px 0; user-select: none; }
+.shun-fold > summary::-webkit-details-marker { display: none; }
+.shun-fold > summary::after { content: ""; width: 6px; height: 6px; margin: -3px 0 0 2px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
+.shun-fold[open] > summary::after { transform: rotate(-135deg); margin-top: 3px; }
+.shun-fold > summary .muted { font-weight: 400; }
+.shun-fold > summary svg { width: 15px; height: 15px; }
+.shun-fold-rows { margin: 4px 0 0 7px; padding-left: 14px; border-left: 2px solid var(--line); max-width: 640px; }
+.shun-fold-rows .shun-play, .shun-fold-rows .shun-tick { width: 28px; height: 28px; }
+.shun-fold-rows > a { display: inline-block; margin: 2px 0 2px 4px; color: var(--sora); }
 /* Seite „Hören“ */
 .hoeren .hr-sec { margin-top: 26px; }
 .hoeren .hr-sec h2 { font-size: 19px; font-weight: 800; margin-bottom: 4px; }
