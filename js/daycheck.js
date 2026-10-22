@@ -44,10 +44,11 @@
   };
 
   // Feuerwerk einmal am Tag, sobald alle drei Pflichtpunkte stehen – nie mitten im Hörstück:
-  // solange das Listening-Fenster offen ist, wartet es (js/listening.js prüft beim Schließen erneut)
+  // solange das Listening-Fenster offen ist, wartet es (js/listening.js prüft beim Schließen erneut).
+  // Ebenso nicht beim Schreiben in Anwenden: erst auf der nächsten Seite außerhalb
   let checking = false;
   const check = async () => {
-    if (checking || !S.settings || document.querySelector('.listen-modal')) return;
+    if (checking || !S.settings || document.querySelector('.listen-modal') || L.quiet(App.parseHash().path)) return;
     const m = main();
     if (!L.shouldCelebrate(log(), App.today(), m)) return;
     checking = true;

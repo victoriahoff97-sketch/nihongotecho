@@ -47,6 +47,9 @@
   // Das Feuerwerk gibt es einmal am Tag – im Moment, in dem alle drei Pflichtpunkte stehen
   D.shouldCelebrate = (log, today, main) => D.allMain(main) && !D.today(log, today).celebrated;
   D.celebrated = (log, today) => Object.assign({}, D.today(log, today), { celebrated: true });
+  // … aber nicht mitten im Schreiben: in Anwenden (Tagebuch, Smalltalk) und während einer Übergabe aus dem Browser wartet es,
+  // bis man den Bereich verlässt
+  D.quiet = (path) => /^\/anwenden(\/|$)/.test(path || '') || path === '/eingang';
 
   // Eine Karte ist neu, wenn sie noch nie bewertet wurde (zurückgefallene Karten haben Fehlversuche und zählen als Wiederholung)
   D.isNewCard = (s) => !s || (!s.reps && !s.lapses);

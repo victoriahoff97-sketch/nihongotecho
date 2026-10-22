@@ -612,6 +612,8 @@
       drawSide();
     };
     const linkLabel = isAnswer ? 'mit dieser Antwort' : 'mit diesem Eintrag';
+    // Vokabel aus der Browser-Erweiterung, während diese Seite offen ist: hier bleiben und mit dem Eintrag verknüpfen (js/inbox.js)
+    App.inboxHome = { hash: location.hash, defaultsFor: sheetDefaults(item), onLinked, alive: () => !!App.item(item.id) };
     if (tab === 'hand') {
       inkApi = App.inkArea(body, {
         sheets: App.filesFor({ itemId: item.id }).filter((f) => App.fileKind(f) === 'notebook'),

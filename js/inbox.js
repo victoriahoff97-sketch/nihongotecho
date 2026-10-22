@@ -66,23 +66,47 @@
     return best;
   };
 
-  const toVocab = async (p) => {
-    history.replaceState(history.state, '', '#/vokabeln');   // sofort: ein Neuzeichnen während des Nachschlagens darf nichts doppelt öffnen
+  // Seite vor der Übergabe – die Erweiterung ändert nur die Adresse, hashchange kennt die alte (läuft vor dem Zeichnen in main.js)
+  let before = '';
+  window.addEventListener('hashchange', (ev) => { before = ev.oldURL && ev.oldURL.includes('#') ? ev.oldURL.slice(ev.oldURL.indexOf('#')) : ''; });
+  // Kam die Übergabe aus einem Tagebucheintrag / einer Smalltalk-Antwort (js/apply.js), bleibt man dort
+  const writeHome = (hash) => {
+    const h = App.inboxHome;
+    return h && h.hash === hash && h.alive() ? h : null;
+  };
+
+  const toVocab = async (p, stay) => {
+    const back = stay || '#/vokabeln';
+    history.replaceState(history.state, '', back);   // sofort: ein Neuzeichnen während des Nachschlagens darf nichts doppelt öffnen
     const word = JP.plain(p.text).replace(/\s+/g, '');
     const forms = baseForms(word);
     const items = [...App.store.items.values()];
-    if (forms.some((f) => L.findExisting(items, f))) {
+    const own = forms.map((f) => L.findExisting(items, f)).find(Boolean);
+    if (own && stay) {
+      // schon vorhanden: nur mit dem Eintrag verknüpfen (wie „Vorhandenes verknüpfen“), Fundort und Lernschlange wie beim Erkennen
+      return land(back, async () => {
+        const h = writeHome(back);
+        if (!h) return;
+        await App.wordLinker(h.defaultsFor, h.onLinked)({ id: own.id });
+        App.toast(`„${App.itemPlain(own)}“ ist schon in deinen Vokabeln – mit dem Eintrag verknüpft`);
+      });
+    }
+    if (own) {
       App.toast('Schon in deinen Vokabeln – Satz als Beispiel zuordnen');
       return toSentences(p, p.satz || p.text);
     }
     const d = L.vocabDefaults(Object.assign({}, p, { text: p.text.replace(/\s+/g, '') }));
     const hit = await dictHit(word).catch(() => null);
-    land('#/vokabeln', () => {
+    land(back, () => {
+      // aus dem Schreibbereich: Vorgaben des Eintrags (Fundort, Quelle Tagebuch/Smalltalk), nach dem Speichern verknüpft
+      const h = stay && writeHome(back);
+      const home = h ? h.defaultsFor('vocab') : {};
+      const extra = Object.assign({}, home, { examples: d.examples, source: d.source || home.source || '', sourceRef: d.sourceRef });
+      const onSaved = h ? (it) => h.onLinked(it, true) : undefined;
       if (hit) {
         const sameWord = hit.base === word;
-        App.adoptDictEntry({ entry: hit.entry, surface: hit.base, base: sameWord ? d.kana : '' },
-          { extra: { examples: d.examples, source: d.source, sourceRef: d.sourceRef } });
-      } else App.editItem({ type: 'vocab', defaults: d });
+        App.adoptDictEntry({ entry: hit.entry, surface: hit.base, base: sameWord ? d.kana : '' }, { extra, onSaved });
+      } else App.editItem({ type: 'vocab', defaults: Object.assign({}, d, extra), onSaved, single: !!h });
     });
   };
 
@@ -161,6 +185,7 @@
     // nur Quellen, die es in den Einstellungen gibt – keine frei erfundenen Namen aus der Adresse
     if (!App.sources().some((s) => s.name === p.quelle)) p.quelle = '';
     if (p.gekuerzt) App.toast('Text war zu lang und wurde gekürzt');
-    (p.ziel === 'vokabel' ? toVocab(p) : toSentences(p, p.text)).catch((e) => { console.error(e); App.toast('Übergabe hat nicht geklappt'); land('#/'); });
+    const stay = writeHome(before) ? before : '';
+    (p.ziel === 'vokabel' ? toVocab(p, stay) : toSentences(p, p.text)).catch((e) => { console.error(e); App.toast('Übergabe hat nicht geklappt'); land('#/'); });
   });
 })(window.App);
