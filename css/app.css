@@ -1333,7 +1333,7 @@ body.ink-fit #view { padding-bottom: 16px; }
 .use-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 10px 14px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); }
 .use-jp { font-family: var(--font-jp); font-size: 19px; line-height: 1.9; }
 .use-de { color: var(--ink-2); font-size: 14px; }
-.prt { background: var(--fuji-soft); color: var(--fuji); border-radius: 6px; padding: 0 5px; margin: 0 2px; font-weight: 700; }
+.prt { background: var(--daidai-soft); color: var(--daidai); border-radius: 6px; padding: 0 5px; margin: 0 2px; font-weight: 700; }
 .use-list.compact { margin-top: 10px; gap: 4px; }
 .use-list.compact .use-row { padding: 4px 10px; justify-content: center; border: 0; background: transparent; }
 .use-list.compact .use-jp { font-size: 17px; }
