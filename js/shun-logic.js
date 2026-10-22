@@ -44,6 +44,11 @@
     const h = new Set(heard || []);
     return src.eps.find((e) => !h.has(e.id)) || null;
   };
+  // „Nächste Folge“ oben auf der Seite „Hören“: erst die Genki-Folgen der Reihe nach, danach die normalen
+  S.nextUp = (heard, src = S.all()) => {
+    const h = new Set(heard || []);
+    return src.genki.find((e) => !h.has(e.id)) || S.next(heard, src);
+  };
   // Ringe und Lektions-Kästchen auf der Seite „Hören“
   const count = (list, h) => ({ done: list.filter((e) => h.has(e.id)).length, total: list.length });
   S.progress = (heard, src = S.all()) => {

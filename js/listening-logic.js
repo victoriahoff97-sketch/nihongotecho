@@ -77,6 +77,24 @@
   };
   L.groupIndexOf = (groups, pos) => groups.findIndex((g) => pos >= g.from && pos < g.to);
 
+  // Etappen-Leiste oben auf der Seite „Hören“: je Chienowa-Art eine Etappe, Teppei als eine einzige.
+  // open = Gruppe, die ein Tipp auf die Etappe aufklappt (die mit der Position, sonst die erste)
+  const STAGE_SHORT = { intro: 'Intro', basics: 'Basics', slice: 'Slice of Life', thing: 'Talking', rest: 'Weitere', teppei: 'Teppei' };
+  L.stages = (groups, pos) => {
+    const out = [];
+    groups.forEach((g, gi) => {
+      const last = out[out.length - 1];
+      if (last && last.key === g.key) last.to = g.to;
+      else out.push({ key: g.key, short: STAGE_SHORT[g.key] || g.label, label: g.key === 'teppei' ? 'Nihongo con Teppei' : g.label, from: g.from, to: g.to, open: gi });
+      if (pos >= g.from && pos < g.to) out[out.length - 1].open = gi;
+    });
+    for (const s of out) {
+      s.total = s.to - s.from;
+      s.done = Math.min(s.total, Math.max(0, pos - s.from));
+    }
+    return out;
+  };
+
   // Ringe auf der Seite „Hören“: gehörte Minuten (alles vor der Position) und Gesamtminuten je Quelle
   L.progress = (all, pos) => {
     const out = { chienowa: { done: 0, total: 0 }, teppei: { done: 0, total: 0 } };

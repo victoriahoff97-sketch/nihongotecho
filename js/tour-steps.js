@@ -69,11 +69,10 @@
       { target: '#view [data-cal-today]', text: 'Ein paar Sätze reichen. Schreiben kannst du mit Stift oder Tastatur.' },
     ],
     '/hoeren': [
-      { target: '#view .hr-rings', text: 'So viel hast du schon gehört – je Quelle ein Ring. Ein Tipp auf einen Ring bringt dich zur passenden Liste.' },
-      { target: '#view .hr-tabs', text: 'Hier wechselst du zwischen deiner Hör-Kette und Shuns Podcast.' },
-      { target: '#view .hr-now', text: 'Dein Stück für heute – dasselbe wie auf der Startseite. Mit „Gehört“ geht die Hör-Kette ein Stück weiter.' },
+      { target: '#view .hr-half-chain', text: 'Deine Hör-Kette: Ringe für das schon Gehörte, dein Stück für heute (wie auf der Startseite) und die Etappen. „Gehört“ führt die Kette weiter, eine Etappe klappt sie unten auf.' },
+      { target: '#view .hr-half-shun', text: 'Shuns Podcast: die nächste Folge und ein Kästchen je Genki-Lektion – voll heißt alles gehört, hell angefangen. Ein Tipp klappt die Lektion auf.' },
+      { target: '#view .hr-tabs', text: 'Hier wechselst du zwischen der ganzen Liste der Hör-Kette und allen Folgen von Shun.' },
       { target: '#view .hr-block[open]', text: 'Die ganze Reihenfolge der Kette. ▶ spielt ein Stück zum Reinhören, „Ab hier“ setzt die Kette auf dieses Stück.' },
-      { target: '#view .hr-lessons', text: 'Shuns Folgen zu jeder Genki-Lektion: Ein volles Kästchen heißt alles gehört, ein helles angefangen. Ein Tipp klappt die Lektion auf. Den Haken setzt du selbst, wenn du eine Folge gehört hast.' },
     ],
     '/unterricht': [
       { target: '#view [data-action="new-session"]', text: 'Lege für jede Unterrichtsstunde eine Mitschrift an.' },
