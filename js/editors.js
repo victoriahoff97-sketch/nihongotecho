@@ -795,7 +795,8 @@
   // onRefItem(it) (optional): nach dem Einfügen eines Verweis-Chips („Verlinken“) aufgerufen
   // newPhrase: zusätzlich „＋ Ausdruck“ (wo auch Ausdrücke verknüpft werden, z. B. Unterricht)
   // markTitle: Hinweis am Markieren-Knopf (im Unterricht: landet in der Zusammenfassung)
-  App.rte = (host, html, onSave, { placeholder = 'Hier mitschreiben …', onNewItem, onLinkItem, onRefItem, contextInfo, linkLabel, newPhrase = false, markTitle = 'Markieren' } = {}) => {
+  // dictate: Sprache fürs Diktieren (z. B. 'ja-JP') – Knopf „Diktieren“, der Text landet an der Schreibmarke (js/dictate.js)
+  App.rte = (host, html, onSave, { placeholder = 'Hier mitschreiben …', onNewItem, onLinkItem, onRefItem, contextInfo, linkLabel, newPhrase = false, markTitle = 'Markieren', dictate } = {}) => {
     host.innerHTML = `<div class="editor-toolbar">
       <button class="icon-btn sm" data-cmd="h2" title="Überschrift">${icon('h')}</button>
       <button class="icon-btn sm" data-cmd="bold" title="Fett (Strg+B)">${icon('bold')}</button>
@@ -810,6 +811,7 @@
       <button class="icon-btn sm" data-cmd="ruby" title="Furigana über markiertes Kanji">${icon('ruby')}</button>
       <button class="icon-btn sm" data-cmd="ref" title="Eintrag verlinken (Grammatik, Vokabel …)">${icon('link')}</button>
       ${onNewItem ? `<button class="btn btn-sm" data-cmd="newvocab" title="Markierten Text als neue Vokabel speichern">${icon('plus')} Vokabel</button><button class="btn btn-sm" data-cmd="newgrammar">${icon('plus')} Grammatik</button>${newPhrase ? `<button class="btn btn-sm" data-cmd="newphrase" title="Markierten Text als neuen Ausdruck speichern">${icon('plus')} Ausdruck</button>` : ''}` : ''}
+      ${dictate && App.dictate.supported() ? `<span class="sep"></span><button class="btn btn-sm mic" data-cmd="mic" title="Auf Japanisch sprechen – der Text erscheint an der Schreibmarke">${icon('mic')} Diktieren</button>` : ''}
       <span class="grow"></span><span class="small muted" data-status></span></div>
       <div class="rte" contenteditable="true" spellcheck="false" data-placeholder="${esc(placeholder)}"></div>`;
     const ed = host.querySelector('.rte');
@@ -830,6 +832,7 @@
       const c = b.dataset.cmd;
       const selText = savedRange ? savedRange.toString() : '';
       restore();
+      if (c === 'mic') return App.dictate.toggle(ed, b, dictate);
       if (c === 'h2') document.execCommand('formatBlock', false, document.queryCommandValue('formatBlock') === 'h2' ? 'p' : 'h2');
       else if (c === 'bold' || c === 'italic' || c === 'underline') document.execCommand(c);
       else if (c === 'ul') document.execCommand('insertUnorderedList');

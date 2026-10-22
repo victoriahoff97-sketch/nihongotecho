@@ -135,11 +135,11 @@
   // ---------- Getippt ----------
   // opts: { html, onSave(html), newDefaults, onLinked, contextInfo() → ctx, placeholder, hint, linkLabel, linkRefs, newPhrase, markTitle }
   // linkRefs: per „Verlinken“ eingefügte Verweise zählen als verknüpft (onLinked(it, false)); Unterricht lässt es aus.
-  // newPhrase / markTitle: wie bei der Handschrift „＋ Ausdruck“ · Hinweis am Markieren-Knopf (siehe App.rte)
-  App.typedArea = (host, { html = '', onSave, newDefaults = {}, onLinked, contextInfo, placeholder, hint = '', linkLabel, linkRefs = false, newPhrase = false, markTitle } = {}) => {
+  // newPhrase / markTitle / dictate: wie bei der Handschrift „＋ Ausdruck“ · Hinweis am Markieren-Knopf · Diktieren (siehe App.rte)
+  App.typedArea = (host, { html = '', onSave, newDefaults = {}, onLinked, contextInfo, placeholder, hint = '', linkLabel, linkRefs = false, newPhrase = false, markTitle, dictate } = {}) => {
     host.innerHTML = `<div data-rte></div>${hint ? `<p class="small muted">${hint}</p>` : ''}`;
     return App.rte(host.querySelector('[data-rte]'), html, onSave, {
-      placeholder, linkLabel, newPhrase, markTitle,
+      placeholder, linkLabel, newPhrase, markTitle, dictate,
       onRefItem: linkRefs && onLinked ? (it) => onLinked(it, false) : undefined,
       onNewItem: (t, d, cb) => App.newLinked(t, Object.assign({}, newDefaults, d), async (it) => { cb && cb(it); if (onLinked) await onLinked(it, true); }),
       contextInfo,

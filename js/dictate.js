@@ -25,10 +25,44 @@
   // navigator.standalone gibt es nur bei Apple: true = vom Home-Bildschirm gestartet
   const homeScreenIos = () => !!window.navigator && window.navigator.standalone === true;
 
+  // Ziel des Diktats. Eingabefeld: Text hinter das, was schon drinsteht; danach change (Lesung, Übersetzung hängen daran).
+  // Schreibfläche (contenteditable): Text an der Schreibmarke – sonst ans Ende –, danach input (dort wird gespeichert).
+  const fieldTarget = (input, lang) => {
+    const before = input.value;
+    return {
+      put: (text) => { input.value = joined(before, text, lang); return input.value !== before; },
+      end: (got) => { if (got && input.isConnected) input.dispatchEvent(new Event('change', { bubbles: true })); },
+    };
+  };
+  const editTarget = (ed, lang) => {
+    const sel = getSelection();
+    let r;
+    if (sel.rangeCount && ed.contains(sel.anchorNode)) { r = sel.getRangeAt(0).cloneRange(); r.collapse(false); } else {
+      r = document.createRange();
+      const last = ed.lastElementChild && /^(P|DIV|H2|H3|LI)$/.test(ed.lastElementChild.tagName) ? ed.lastElementChild : ed;
+      r.selectNodeContents(last); r.collapse(false);
+    }
+    // Zwischenstand sichtbar in einer eigenen Spanne; am Ende wird daraus normaler Text
+    const span = document.createElement('span');
+    span.className = 'dictating';
+    r.insertNode(span);
+    return {
+      put: (text) => { span.textContent = joined('', text, lang); return !!span.textContent; },
+      end: (got) => {
+        if (!span.isConnected) return;
+        if (!got || !span.textContent) { span.remove(); return; }
+        const node = document.createTextNode(span.textContent);
+        span.replaceWith(node);
+        if (document.activeElement === ed) { const c = document.createRange(); c.setStartAfter(node); c.collapse(true); sel.removeAllRanges(); sel.addRange(c); }
+        ed.dispatchEvent(new Event('input', { bubbles: true }));
+      },
+    };
+  };
+
   App.dictate = {
     joined,
     supported: () => !!SR(),
-    // Startet das Diktat ins Feld; ein zweiter Aufruf fürs selbe Feld beendet es. btn bekommt solange die Klasse „active“.
+    // Startet das Diktat ins Feld (input oder contenteditable); ein zweiter Aufruf fürs selbe Feld beendet es. btn bekommt solange die Klasse „active“.
     toggle: (input, btn, lang) => {
       // iPad/iPhone, App vom Home-Bildschirm: die Spracherkennung startet dort, hört aber nichts und hält das Mikrofon besetzt –
       // stattdessen das Feld öffnen und aufs Mikrofon der Tastatur verweisen
@@ -39,8 +73,7 @@
       const was = active;
       if (was) { was.stop(); if (was.input === input) return; }
       const rec = new (SR())();
-      const before = input.value;
-      let got = false, done = false, timer = 0;
+      let tg = null, got = false, done = false, timer = 0;
       // Abschluss genau einmal – auch wenn der Browser das Ende nie meldet
       const finish = () => {
         if (done) return;
@@ -48,8 +81,7 @@
         clearTimeout(timer);
         btn.classList.remove('active');
         if (active && active.rec === rec) active = null;
-        // wie getippt: Folgeschritte (Lesung, Übersetzung) hängen am change-Ereignis
-        if (got && input.isConnected) input.dispatchEvent(new Event('change', { bubbles: true }));
+        if (tg) tg.end(got);
       };
       // Safari (iPad, iPhone) hört nach einer Sprechpause nicht von selbst auf und meldet das Ende oft gar nicht:
       // nach Stille selbst beenden, und bleibt die Meldung aus, abbrechen und aufräumen
@@ -66,13 +98,13 @@
       rec.continuous = false;
       rec.onresult = (e) => {
         if (done) return;
-        input.value = joined(before, Array.from(e.results).map((r) => r[0].transcript).join(''), lang);
-        got = input.value !== before;
+        got = tg.put(Array.from(e.results).map((r) => r[0].transcript).join(''));
         quiet(PAUSE);
       };
       rec.onerror = (e) => { if (!done && e.error !== 'aborted') App.toast(MSG[e.error] || 'Diktieren hat nicht geklappt (' + e.error + ').'); };
       rec.onend = finish;
       try { rec.start(); } catch (e) { console.error(e); return App.toast('Diktieren ließ sich nicht starten.'); }
+      tg = input.isContentEditable ? editTarget(input, lang) : fieldTarget(input, lang);
       active = { rec, input, stop };
       btn.classList.add('active');
       timer = setTimeout(() => { App.toast(MSG['no-speech']); stop(); }, NO_SPEECH);

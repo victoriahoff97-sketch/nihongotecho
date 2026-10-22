@@ -627,7 +627,7 @@
     } else {
       typedEd = App.typedArea(body, {
         html: item.html, onSave: async (h) => { if (!App.item(item.id)) return; /* inzwischen gelöscht: nicht wiederbeleben */ item.html = h; await App.saveItem(item, { silent: true }); },
-        newDefaults, onLinked, linkLabel, linkRefs: true,
+        newDefaults, onLinked, linkLabel, linkRefs: true, dictate: 'ja-JP',
         contextInfo: () => ({ itemId: item.id, label: source + ' · ' + App.fmtDate(item.date), date: item.date }),
         placeholder: `Auf Japanisch ${isAnswer ? 'antworten' : 'schreiben'} … neues Wort markieren → „＋ Vokabel“`,
       });

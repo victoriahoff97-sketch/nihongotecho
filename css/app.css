@@ -368,7 +368,8 @@ details.adv[open] summary { margin-bottom: 12px; }
 .mic-field.one .input { padding-right: 44px; }
 .field-btns { position: absolute; top: 4px; right: 4px; display: flex; }
 .mic-field .input:placeholder-shown ~ .field-btns .clr { display: none; }
-.icon-btn.mic.active { background: #fbe4e2; color: #b3261e; animation: mic-pulse 1.2s ease-in-out infinite; }
+.rte .dictating { background: #fbe4e2; border-radius: 4px; }
+.icon-btn.mic.active, .btn.mic.active { background: #fbe4e2; color: #b3261e; animation: mic-pulse 1.2s ease-in-out infinite; }
 @keyframes mic-pulse { 50% { box-shadow: 0 0 0 5px rgba(179, 38, 30, .18); } }
 .ex-note[hidden] { display: none; }
 .ex-note .row { display: inline-flex; gap: 6px; margin-left: 4px; vertical-align: middle; }
