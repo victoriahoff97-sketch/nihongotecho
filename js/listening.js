@@ -35,12 +35,12 @@
       <span class="listen-row"><button type="button" class="go" data-listen-play>${icon('play')} Anhören</button><button type="button" class="go ghost" data-listen-done>${icon('check')} Gehört</button></span></span></div>`;
   };
 
-  // Tagesliste: wirklich abgespielte Sekunden zählen; ab einer Minute (heute insgesamt) ist „Listening“ abgehakt.
+  // Tagesliste: wirklich abgespielte Sekunden zählen; ab den gewählten Minuten (heute insgesamt) ist „Listening“ abgehakt.
   // Auch für Shun (js/shun.js): tick(t) bei jeder neuen Abspielzeit, done() beim Schließen
   const D = App.dayCheckLogic;
   L.playCounter = () => {
     let played = 0, last = null, reached = false;
-    let need = D.listenNeed(App.store.settings.dayLog, App.today());
+    let need = App.dayCheck.listenNeed(); // gewählte Minuten (eigene Ziele), abzüglich des heute schon Gehörten
     const done = () => { if (played > 0) { App.dayCheck.listened(played); need = Math.max(0, need - played); played = 0; } };
     const tick = (t) => {
       played += D.step(last, t);
