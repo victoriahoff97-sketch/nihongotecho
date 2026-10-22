@@ -203,6 +203,9 @@
     // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
     // Blättern gibt es nur ohne „Nur Stift“ – sonst scrollt ohnehin der Finger
     if (st.tool === 'hand' && st.penOnly) st.tool = 'pen';
+    // Stift, Füller und Marker haben je ihre eigene Dicke; wIdx ist die des gerade gewählten
+    st.widths = PEN.penWidths(opts.widths, opts.wIdx);
+    if (PEN.PEN_TOOLS.includes(st.tool)) st.wIdx = st.widths[st.tool];
     st.eraser = st.tool === 'cut' || (st.tool !== 'eraser' && opts.eraser === 'cut') ? 'cut' : 'eraser';
     root.classList.add(embedded ? 'ink-embed' : 'viewer');
     root.innerHTML = `<div class="viewer-bar">
@@ -273,7 +276,7 @@
       pop.style.left = Math.max(8, r.left - rr.left - 80) + 'px';
       pop.style.top = r.bottom - rr.top + 6 + 'px';
       root.appendChild(pop);
-      pop.addEventListener('click', (e) => { const b = e.target.closest('[data-fpw]'); if (b) { st.wIdx = +b.dataset.fpw; drawColors(); rememberPen(); pop.remove(); } });
+      pop.addEventListener('click', (e) => { const b = e.target.closest('[data-fpw]'); if (b) { setWidth(+b.dataset.fpw); drawColors(); pop.remove(); } });
       pop.querySelector('[data-fpth]').addEventListener('change', (e) => App.saveSettings({ inkThinning: App.inkPen.clampThinning(e.target.value) }));
     };
 
@@ -1001,14 +1004,19 @@
     // Stift, Dicke und Farben fürs nächste Öffnen merken (auch nach Neustart, Einstellung inkPen)
     const rememberPen = () => {
       const tool = PEN.PEN_TOOLS.includes(st.tool) ? st.tool : (S.inkPen || {}).tool;
-      App.saveSettings({ inkPen: { tool, wIdx: st.wIdx, color: st.color, mcolor: st.mcolor } });
+      App.saveSettings({ inkPen: { tool, wIdx: st.wIdx, widths: { ...st.widths }, color: st.color, mcolor: st.mcolor } });
+    };
+    const setWidth = (i) => {
+      st.wIdx = i;
+      if (PEN.PEN_TOOLS.includes(st.tool)) st.widths[st.tool] = i;
+      rememberPen();
     };
     const setTool = (t) => {
       closeHw();
       if (t !== 'select') clearSel();
       st.tool = t;
       if (t === 'eraser' || t === 'cut') st.eraser = t;
-      if (PEN.PEN_TOOLS.includes(t)) rememberPen();
+      if (PEN.PEN_TOOLS.includes(t)) { st.wIdx = st.widths[t]; rememberPen(); }
       $$('[data-tool]', root).forEach((b) => b.classList.toggle('active', b.dataset.tool === t));
       drawColors();
       const fp = root.querySelector('.fp-pop'); if (fp) fp.remove();
@@ -1138,7 +1146,7 @@
     const destroy = () => {
       if (destroyed) return;
       destroyed = true;
-      INK.lastState = { fileId: f.id, defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx };
+      INK.lastState = { fileId: f.id, defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx, widths: { ...st.widths } };
       flushAll(); if (ty.flush) ty.flush(); io.disconnect(); ro.disconnect();
       // Bild-Cache dieser Datei freigeben (sonst wächst er mit jedem geöffneten Blatt)
       st.pages.forEach((p) => (p.images || []).forEach((im) => imgCache.delete(im.id)));
@@ -1211,7 +1219,7 @@
       if (a === 'fit') setZoom(1);
       if (a === 'width') {
         if (st.tool === 'fountain') { toggleFpPop(v); return; }
-        st.wIdx = (st.wIdx + 1) % 3; v.textContent = ['●', '●●', '●●●'][st.wIdx]; rememberPen();
+        setWidth((st.wIdx + 1) % 3); v.textContent = ['●', '●●', '●●●'][st.wIdx];
       }
       if (a === 'penonly') {
         st.penOnly = !st.penOnly; v.querySelector('[data-state]').textContent = st.penOnly ? 'an' : 'aus'; App.saveSettings({ penOnly: st.penOnly });
@@ -1330,7 +1338,7 @@
     ready = true;
     fillSpread();
     if (st.penOnly && !embedded) note('✍ Stift schreibt · Finger scrollt & zoomt');
-    return { flush: flushAll, destroy, dropLinks, state: () => ({ defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx }) };
+    return { flush: flushAll, destroy, dropLinks, state: () => ({ defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx, widths: { ...st.widths } }) };
   };
 
   // Markierungen eines Wortes von einem Blatt nehmen, das gerade nicht geöffnet ist (direkt im Speicher)
@@ -1342,7 +1350,7 @@
   };
 
   // ---------- Vollbild-Viewer ----------
-  // opts: Werkzeug-Zustand übernehmen (defaultTool, eraser, color, mcolor, wIdx)
+  // opts: Werkzeug-Zustand übernehmen (defaultTool, eraser, color, mcolor, wIdx, widths)
   // Gehört das Blatt zu einer Stunde, einer Antwort/einem Tagebucheintrag oder einer Buchaufgabe, kommen „Neue Vokabel …“ und
   // „Erkennen → verknüpfen“ von selbst mit (App.sheetLinkOpts, writearea.js) – außer der Aufrufer bringt sie schon mit
   INK.open = async (fileId, opts = {}) => {
