@@ -112,7 +112,7 @@
       return block(key, gi === at, `<b>${esc(g.label)}</b> <span class="muted small">${g.to - g.from} ${g.to - g.from === 1 ? 'Stück' : 'Stücke'}${done ? ' · gehört' : ''}</span>`, rows);
     }).join('');
     return `<section class="hr-sec">
-      <p class="muted small">Jeden Tag ein Stück von etwa 5 Minuten: erst Chienowa Japanese, dann Nihongo con Teppei. „Ab hier“ setzt die Kette auf ein anderes Stück.</p>
+      <p class="muted small">Jeden Tag ein Stück von etwa 5 Minuten: erst Chienowa Japanese, dann Nihongo con Teppei. Die Chienowa-Videos sind gut fürs Shadowing: laut nachsprechen. „Ab hier“ setzt die Kette auf ein anderes Stück.</p>
       ${blocks}</section>`;
   };
 

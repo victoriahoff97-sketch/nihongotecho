@@ -5,6 +5,9 @@
   const L = App.listening;
   const pos = () => App.store.settings.listenPos || 0;
   const resumeAt = (p) => L.resume(p, pos(), App.store.settings.listenAt);
+  // Chienowa-Videos eignen sich gut fürs Shadowing (Wunsch 2026-10-22): Hinweis an Kachel und Fenster
+  const SHADOW_TIP = 'Gut fürs Shadowing: laut nachsprechen – mit derselben Melodie und demselben Tempo.';
+  const shadowTag = (p) => (p.kind === 'video' ? ` <span class="listen-shadow" title="${esc(SHADOW_TIP)}">Shadowing</span>` : '');
 
   const ART = `<svg viewBox="0 0 92 84" aria-hidden="true"><g transform="rotate(-5 46 42)">
     <path d="M18 50V40a28 28 0 0156 0v10" fill="none" stroke="#1e6b6f" stroke-width="5" stroke-linecap="round"/>
@@ -27,7 +30,7 @@
     return `<div class="read-tile listen" data-listen-tile><span class="art">${ART}</span><span class="txt">
       <span class="kicker"><span lang="ja">今日のリスニング</span> · ca. ${L.minutes(p)} Min.</span>
       <b>${esc(L.head(p))}</b>
-      <span class="desc"><span ${p.kind === 'audio' ? 'lang="ja"' : ''}>${esc(L.detail(p))}</span> · ${L.source(p)}</span>
+      <span class="desc"><span ${p.kind === 'audio' ? 'lang="ja"' : ''}>${esc(L.detail(p))}</span> · ${L.source(p)}${shadowTag(p)}</span>
       <span class="listen-pos">Stück ${pos() + 1}${resumeAt(p) ? ` · weiter ab ${L.mmss(resumeAt(p))}` : ''}${hint ? ' · ' + hint : ''}<span class="listen-all"> · <a href="#/hoeren">Alle Folgen</a></span></span>
       <span class="listen-row"><button type="button" class="go" data-listen-play>${icon('play')} Anhören</button><button type="button" class="go ghost" data-listen-done>${icon('check')} Gehört</button></span></span></div>`;
   };
@@ -94,7 +97,8 @@
     cur = { pos: at0, t: at, free, cnt: L.playCounter() };
     const md = App.modal({
       title: esc(L.head(p)), body, wide: p.kind === 'video', cls: 'listen-modal',
-      foot: `<button class="btn" data-listen-close>Schließen</button>${free
+      // Shadowing-Tipp links im Fuß, damit das Fenster nicht höher wird
+      foot: `${p.kind === 'video' ? `<span class="listen-shadow-tip" title="${esc(SHADOW_TIP)}">Gut fürs Shadowing: laut nachsprechen</span>` : ''}<button class="btn" data-listen-close>Schließen</button>${free
         ? `<button class="btn btn-primary" data-listen-jump="${at0}">Ab hier weitermachen</button>`
         : `<button class="btn btn-primary" data-listen-done>${icon('check')} Gehört</button>`}`,
       onClose: () => { const was = cur; remember(); flush(); cur = null; if (was) App.dayCheck.check(); }, // Feuerwerk erst nach dem Schließen
