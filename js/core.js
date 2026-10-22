@@ -353,6 +353,8 @@ window.App = window.App || {};
     if ((it.type === 'answer' || it.type === 'journal') && App.filesFor) {
       for (const f of App.filesFor({ itemId: id })) await App.deleteFile(f.id);
     }
+    // Wird eine Unterrichtsstunde gelöscht: ihre Mitschriften, Hausaufgaben und Materialien mitlöschen (sonst stehen sie verwaist in der Bibliothek)
+    if (it.type === 'session') await App.deleteFiles(Array.from(S.files.values()).filter((f) => f.sessionId === id).map((f) => f.id));
     emit('items');
   };
 

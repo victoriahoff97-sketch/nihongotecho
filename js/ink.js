@@ -242,6 +242,7 @@
         <div class="more-item more-zoom">${icon('zoomIn')}<span>Zoom</span><button class="icon-btn sm" data-v="zout" title="Verkleinern">${icon('zoomOut')}</button><button class="btn btn-sm btn-ghost" data-v="fit" title="Einpassen">100%</button><button class="icon-btn sm" data-v="zin" title="Vergrößern">${icon('zoomIn')}</button></div>
         <button class="more-item" data-v="print">${icon('print')}<span>Drucken / als PDF</span></button>
         <button class="more-item" data-v="help">${icon('help')}<span>Hilfe</span></button>
+        ${embedded || f.bookId ? '' : `<button class="more-item danger" data-v="delete">${icon('trash')}<span>${kind === 'notebook' ? 'Blatt' : 'Datei'} löschen</span></button>`}
       </div></div>
       <div class="viewer-scroll">${embedded ? '' : `<div class="viewer-name" data-title>${esc(f.name)}</div>`}<div class="viewer-pages"></div></div>`;
     root.style.setProperty('--sec', 'var(--budo)'); // Datei-Betrachter gehört zur Bibliothek
@@ -1251,6 +1252,12 @@
       if (a === 'typed') setTyped(!st.typed);
       if (a === 'print') printAll();
       if (a === 'help') { morePop.hidden = true; App.tour.start('blatt'); }
+      if (a === 'delete' && await App.confirm(`„${f.name}“ endgültig löschen? Auch alles, was du darauf geschrieben hast.`)) {
+        dirty.clear(); ty.dirty = false; // beim Schließen nichts mehr zurückschreiben
+        close();
+        await App.deleteFile(f.id);
+        App.toast('Gelöscht');
+      }
       if (a === 'image') pickImage();
       if (a === 'sticker') toggleStickers(v);
       if (a === 'ruler') {

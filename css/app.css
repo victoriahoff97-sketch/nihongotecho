@@ -778,6 +778,7 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .more-title { padding: 6px 10px 8px; font-size: 12px; font-weight: 600; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .more-item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 9px; background: none; color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
 button.more-item:hover { background: var(--paper-2); }
+.more-item.danger { color: var(--shu); }
 .more-item > span:not(.ico) { flex: 1; }
 .more-item > b { font-size: 12px; color: var(--sec, var(--shu)); }
 .more-zoom { cursor: default; padding-right: 2px; gap: 2px; }

@@ -59,7 +59,10 @@
       if (isNew) App.go(App.link(saved)); else App.render(true);
     };
     const d = md.el.querySelector('[data-del]');
-    if (d) d.onclick = async () => { if (await App.confirm(`„${sessionTitle(s)}“ löschen? Verknüpfte Vokabeln & Grammatik bleiben erhalten.`)) { await App.deleteItem(s.id); md.close(); App.go('#/unterricht'); } };
+    if (d) d.onclick = async () => {
+      const n = App.filesFor({ sessionId: s.id }).length;
+      const files = n ? ` Mitgelöscht ${n === 1 ? 'wird 1 Datei' : `werden ${n} Dateien`} dieser Stunde (Mitschriften, Hausaufgaben, Materialien).` : '';
+      if (await App.confirm(`„${sessionTitle(s)}“ löschen?${files} Verknüpfte Vokabeln & Grammatik bleiben erhalten.`)) { await App.deleteItem(s.id); md.close(); App.go('#/unterricht'); } };
   };
   document.addEventListener('click', (e) => { if (e.target.closest('[data-action="new-session"]')) App.editSession(); });
 
