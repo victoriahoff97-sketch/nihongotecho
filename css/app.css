@@ -1230,7 +1230,7 @@ body.ink-fit #view { padding-bottom: 16px; }
 .fm-row .jp { font-family: var(--font-jp); font-size: 19px; }
 .fm-arrow { color: var(--muted); }
 
-/* Einstellungen: WaniKani-Level einzeln freischalten */
+/* Pakete: WaniKani-Level einzeln freischalten */
 .wk-levels { margin-top: 10px; max-height: 320px; overflow-y: auto; border-top: 1px solid var(--line); }
 .wk-level { gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
 .wk-level b { min-width: 68px; }
@@ -1407,12 +1407,6 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .welcome-link { color: inherit; text-decoration: underline; cursor: pointer; }
 .welcome-body .row + p { margin-top: 8px; }
 .welcome-dict { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
-/* Einladungslink erstellen (Karte Web-App) */
-.invite-make { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
-.invite-make h4 { margin: 0 0 8px; }
-.invite-make .row { gap: 8px; flex-wrap: wrap; }
-.invite-make .input { flex: 1; min-width: 12em; }
-.invite-make p { margin: 8px 0 0; }
 /* ---------- Tutorial: geführte Tour (js/tour.js) ---------- */
 .tour-block { position: fixed; inset: 0; z-index: 160; }
 .tour-block.dim { background: rgba(20, 16, 12, .55); }

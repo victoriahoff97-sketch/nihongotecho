@@ -1,7 +1,7 @@
 /* Nihongo Techō – Ansichten: Kanji & Kana, Bibliothek, Einstellungen */
 'use strict';
 (function (App) {
-  const { $, $$, esc, icon } = App;
+  const { $, esc, icon } = App;
   const JP = App.jp;
   const S = App.store;
 
@@ -353,32 +353,29 @@
     return { n, nf, skipped: skip.size };
   };
 
-  // Karte „Kanji schreiben“: Quelle der Schreib-Runde, WaniKani-Verbindung, Level einzeln freischalten
+  // Seite „Pakete“, Abschnitt WaniKani: Verbindung und Kanji-Level einzeln freischalten.
+  // Woher neue Schreib-Kanji kommen (Genki · N5 · WaniKani · alles), wählt man in den Einstellungen (writeSrcField).
   const wkCard = () => {
     const wk = App.wk, K = App.wkLogic, src = App.writeSource(), con = wk.connected(), on = wk.levels();
     const ids = new Map(App.itemsOf('kanji').map((k) => [k.char, k.id]));
-    const hint = src !== 'wk' ? '' : !con ? 'Erst WaniKani verbinden – bis dahin kommen keine neuen Kanji dazu.' : !on.length ? 'Schalte unten mindestens ein Level frei.' : '';
+    const hint = con && on.length && src !== 'wk' && src !== 'all' ? `Neue Kanji zum Schreiben kommen gerade nur aus ${src === 'genki' ? 'Genki' : 'JLPT N5'}. Damit diese Level drankommen, stell in den <a href="#/einstellungen">Einstellungen</a> unter „Lernen“ WaniKani oder „Alles zusammen“ ein.` : '';
     const rows = !con ? '' : Array.from({ length: (wk.state.user || {}).level || 0 }, (_, i) => i + 1).map((l) => {
       const c = K.levelStats(wk.state, l, (ch) => ids.has(ch), (ch) => S.srs.has('w:' + ids.get(ch)));
       const isOn = on.includes(l);
       return `<label class="row wk-level"><input type="checkbox" data-wk-level="${l}" ${isOn ? 'checked' : ''}><b>Level ${l}</b><span class="small muted grow">${c.total} Kanji · ${c.ready} ab Master</span><span class="small muted">${isOn ? c.written + ' geschrieben' : c.fresh ? c.fresh + ' neu in der App' : ''}</span></label>`;
     }).join('');
-    return `<div class="card" data-wk-card><h3>Kanji schreiben</h3>
-      <div class="field"><label>Welche Kanji kommen neu zum Schreiben dran</label>
-        <div class="seg" style="flex-wrap:wrap">${[['genki', 'Genki'], ['n5', 'JLPT N5'], ['wk', 'WaniKani'], ['all', 'Alles zusammen']].map(([k, l]) => `<button class="${src === k ? 'on' : ''}" data-wsrc="${k}">${l}</button>`).join('')}</div>
-        <p class="muted small" style="margin:6px 0 0">Gilt nur für einzelne Kanji, nicht für Vokabeln. Jedes Kanji kommt nur einmal dran, auch wenn es in mehreren Quellen steht. Was du schon schreibst, bleibt in der Wiederholung.</p>
-        ${hint ? `<p class="small" style="margin:6px 0 0;color:var(--shu)">${hint}</p>` : ''}</div>
-      <div class="field" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><label>WaniKani ${con ? `<span class="badge" style="color:var(--matcha)">● Verbunden · Level ${wk.state.user.level}</span>` : ''}</label>
+    return `<div class="card" data-wk-card><h3>WaniKani · Kanji schreiben ${con ? `<span class="badge" style="color:var(--matcha)">● Verbunden · Level ${wk.state.user.level}</span>` : ''}</h3>
       ${con ? `<p class="muted small" style="margin:0 0 8px">${esc(wk.state.user.username || '')} · zuletzt abgeglichen: ${new Date(wk.state.syncedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })}. Zum Schreiben kommen Kanji ab Stufe Master aus den Leveln, die du hier einschaltest.</p>
         <div class="row"><button class="btn btn-sm" data-wk-sync>Abgleichen</button><button class="btn btn-sm btn-ghost" data-wk-off>Verbindung trennen</button></div>
         <p class="small" data-wk-msg style="margin:6px 0 0;color:var(--shu)"></p>
+        ${hint ? `<p class="small" style="margin:6px 0 0;color:var(--shu)">${hint}</p>` : ''}
         <div class="wk-levels">${rows}</div>`
     : `<p class="muted small" style="margin:0 0 8px">Lernst du Kanji bei WaniKani lesen? Dann kannst du sie hier Level für Level schreiben üben. Erstelle bei WaniKani unter <a href="https://www.wanikani.com/settings/personal_access_tokens" target="_blank" rel="noopener">Settings → API Tokens</a> einen Schlüssel (Lesezugriff genügt) und trage ihn hier ein. Er bleibt auf diesem Gerät und kommt in kein Backup.</p>
         <div class="row"><input class="input grow" type="password" autocomplete="off" placeholder="WaniKani-Schlüssel" data-wk-token><button class="btn btn-sm btn-primary" data-wk-connect>Verbinden</button></div>
-        <p class="small" data-wk-msg style="margin:6px 0 0;color:var(--shu)"></p>`}</div></div>`;
+        <p class="small" data-wk-msg style="margin:6px 0 0;color:var(--shu)"></p>`}</div>`;
   };
 
-  // Karte „WaniKani-Vokabeln“: Level einzeln freischalten – abgefragt wird nur Deutsch → Japanisch, ab Master
+  // Seite „Pakete“, Abschnitt WaniKani: Vokabel-Level einzeln freischalten – abgefragt wird nur Deutsch → Japanisch, ab Master
   const wkVocabCard = () => {
     const wk = App.wk, con = wk.connected(), on = wk.vLevels(), stats = con ? wk.vStats() : null;
     const rows = !con ? '' : Array.from({ length: wk.state.user.level }, (_, i) => i + 1).map((l) => {
@@ -387,8 +384,48 @@
     }).join('');
     return `<div class="card" data-wkv-card><h3>WaniKani-Vokabeln <small class="muted" style="font-weight:400">Deutsch → Japanisch</small></h3>
       <p class="muted small" style="margin:0 0 8px">Vokabeln, die du bei WaniKani lesen gelernt hast, hier aus dem Deutschen heraus üben. Aus einem freigeschalteten Level kommt jedes Wort dazu, sobald es bei WaniKani Master ist, mit einem einfachen Beispielsatz – Japanisch → Deutsch wird dafür nie gefragt. Wörter, die es in der App schon gibt (Genki, JLPT, eigene), bleiben, wo sie sind.</p>
-      ${con ? `<p class="small" data-wkv-msg style="margin:0;color:var(--shu)">${wk.state.vSubjectsAt ? '' : 'Tippe in der Karte „Kanji schreiben“ einmal auf „Abgleichen“, damit die Vokabeln geholt werden.'}</p><div class="wk-levels">${rows}</div>`
-    : '<p class="small" style="margin:0;color:var(--shu)">Erst in der Karte „Kanji schreiben“ WaniKani verbinden.</p>'}</div>`;
+      ${con ? `<p class="small" data-wkv-msg style="margin:0;color:var(--shu)">${wk.state.vSubjectsAt ? '' : 'Tippe in der Karte „WaniKani · Kanji schreiben“ einmal auf „Abgleichen“, damit die Vokabeln geholt werden.'}</p><div class="wk-levels">${rows}</div>`
+    : '<p class="small" style="margin:0;color:var(--shu)">Erst in der Karte „WaniKani · Kanji schreiben“ verbinden.</p>'}</div>`;
+  };
+
+  // WaniKani-Abschnitt der Seite „Pakete“ (packs.js): die beiden Karten und ihre Knöpfe
+  App.wkPack = {
+    html: () => wkCard() + wkVocabCard(),
+    onChange: async (e, view) => {
+      const lv = e.target.closest('[data-wk-level]');
+      if (lv) { await App.wk.setLevel(+lv.dataset.wkLevel, lv.checked); App.toast(`WaniKani Level ${lv.dataset.wkLevel} ${lv.checked ? 'freigeschaltet' : 'ausgeschaltet'}`); App.render(true); }
+      const lvv = e.target.closest('[data-wkv-level]');
+      if (lvv) {
+        const msg = view.querySelector('[data-wkv-msg]'), n = +lvv.dataset.wkvLevel;
+        view.querySelectorAll('[data-wkv-level]').forEach((x) => (x.disabled = true));
+        try {
+          await App.wk.setVocabLevel(n, lvv.checked, (frac) => { if (msg.isConnected) msg.textContent = `Wörterbuch wird installiert … ${Math.round(frac * 100)} %`; });
+          App.toast(`WaniKani-Vokabeln Level ${n} ${lvv.checked ? 'freigeschaltet' : 'ausgeschaltet'}`);
+        } catch (er) { console.error(er); App.toast('Das hat nicht geklappt: ' + er.message); }
+        App.render(true);
+      }
+    },
+    onClick: async (e, view) => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.matches('[data-wk-connect], [data-wk-sync]')) {
+        const msg = view.querySelector('[data-wk-msg]'), inp = view.querySelector('[data-wk-token]');
+        if (inp && !inp.value.trim()) { msg.textContent = 'Trag zuerst deinen Schlüssel ein.'; return; }
+        b.disabled = true; msg.textContent = 'Abgleich läuft …';
+        try { await (inp ? App.wk.connect(inp.value) : App.wk.sync()); App.toast('WaniKani abgeglichen'); App.render(true); }
+        catch (er) { b.disabled = false; msg.textContent = er.code ? er.message : App.wk.MSG.other; if (!er.code) console.error(er); }
+      }
+      if (b.matches('[data-wk-off]') && await App.confirm('WaniKani-Verbindung trennen? Der Schlüssel und die abgerufenen Daten werden von diesem Gerät gelöscht. Kanji und Vokabeln, die du schon übst, bleiben erhalten.', { ok: 'Trennen', title: 'Verbindung trennen' })) { await App.wk.disconnect(); App.toast('WaniKani getrennt'); App.render(true); }
+    },
+  };
+
+  // Einstellungen > Lernen: woher neue Kanji zum Schreiben kommen (die WaniKani-Level selbst stehen unter Pakete)
+  const writeSrcField = () => {
+    const wk = App.wk, src = App.writeSource();
+    const hint = src !== 'wk' ? '' : !wk.connected() ? 'Erst WaniKani unter <a href="#/pakete">Pakete</a> verbinden – bis dahin kommen keine neuen Kanji dazu.' : !wk.levels().length ? 'Schalte unter <a href="#/pakete">Pakete</a> mindestens ein WaniKani-Level frei.' : '';
+    return `<div class="field"><label>Kanji zum Schreiben <small>welche neu drankommen</small></label>
+        <div class="seg" style="flex-wrap:wrap">${[['genki', 'Genki'], ['n5', 'JLPT N5'], ['wk', 'WaniKani'], ['all', 'Alles zusammen']].map(([k, l]) => `<button class="${src === k ? 'on' : ''}" data-wsrc="${k}">${l}</button>`).join('')}</div>
+        <p class="muted small" style="margin:6px 0 0">Gilt nur für einzelne Kanji, nicht für Vokabeln. Jedes Kanji kommt nur einmal dran, auch wenn es in mehreren Quellen steht. Was du schon schreibst, bleibt in der Wiederholung.</p>
+        ${hint ? `<p class="small" style="margin:6px 0 0;color:var(--shu)">${hint}</p>` : ''}</div>`;
   };
 
   // =========================================================
@@ -417,25 +454,27 @@
       <div class="card"><h3>Frei üben</h3><p class="small" style="margin:0">Geht jederzeit und ändert nichts an Lernstand und Terminen: „Meine Lernschlange üben“ nimmt alles, was du gerade lernst, auch wenn heute nichts fällig ist. „Frei üben“ bei den <a href="#/ueben/karten">Karteikarten</a> geht eine beliebige Auswahl durch – auch Grammatik.</p></div></div>`;
   });
 
+  // Einstellungen: wie die App sich verhält. Alles, was Inhalte bringt oder weitergibt (JLPT, WaniKani, Teilen), steht unter Pakete.
   App.route('/einstellungen', (view) => {
     const st = S.settings;
-    view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Einstellungen <span class="jp-title">設定</span></h1><p>Persönliches, Quellen, Sicherung und Teilen mit Freunden.</p></div></div>
+    view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Einstellungen <span class="jp-title">設定</span></h1><p>Persönliches, wie du lernst, Sicherung und deine Geräte. Inhalte holst und teilst du unter <a href="#/pakete">Pakete</a>.</p></div></div>
       <div class="grid cols-2">
       <div class="card"><h3>Persönlich</h3><div class="form">
         <div class="field"><label>Dein Name <small>für die Begrüßung</small></label><input class="input" data-s="name" value="${esc(st.name)}"></div>
         <div class="field"><label>Name deines Kurses</label><input class="input" data-s="course" value="${esc(st.course)}"></div>
         <div class="two"><div class="field"><label>Design</label><select class="input" data-s="theme">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<option value="${k}" ${st.theme === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Furigana</label><select class="input" data-s="furigana"><option value="on" ${st.furigana === 'on' ? 'selected' : ''}>Immer anzeigen</option><option value="hover" ${st.furigana === 'hover' ? 'selected' : ''}>Nur beim Antippen</option></select></div></div>
+        <div class="field"><label>Sprechtempo <small>${st.ttsRate}</small></label><div class="row"><input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}" class="grow">${App.speakBtn('こんにちは、日本語を勉強しています。')}</div></div>
+      </div></div>
+      <div class="card"><h3>Lernen</h3><div class="form">
         <div class="two"><div class="field"><label>Neue Karten pro Sitzung</label><input class="input" type="number" min="1" max="100" data-s="newPerDay" value="${st.newPerDay}"></div>
         ${App.checkOn() ? `<div class="field"><label>Wörter pro Einstufungs-Runde</label><input class="input" type="number" min="3" max="100" data-s="checkBatch" value="${st.checkBatch || 15}"></div>` : ''}</div>
         <div class="field"><label>Einstufen <small>Bekanntes aus Paketen aussortieren, bevor du es lernst. „Neue lernen“ gibt es immer – für Vokabeln und Ausdrücke blendet „Aus“ nur den Einstufen-Knopf aus</small></label><select class="input" data-s="check">${[['on', 'An – Neues erst einstufen'], ['off', 'Aus – ohne Einstufen (Kanji liegen direkt im Lernstapel)']].map(([k, l]) => `<option value="${k}" ${(App.checkOn() ? 'on' : 'off') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Kanji-Schwerpunkt <small>was Startseite und „fällig“ in den Vordergrund stellen</small></label><select class="input" data-s="kanjiFocus">${[['both', 'Lesen und Schreiben'], ['write', 'Schreiben – Lesen lerne ich woanders (z. B. WaniKani)'], ['read', 'Lesen – Schreiben brauche ich nicht']].map(([k, l]) => `<option value="${k}" ${App.writeLogic.focus(st) === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        ${writeSrcField()}
         <div class="field"><label>Furigana beim Abfragen <small>über Kanji, die du schon lesen kannst („Kann ich“ oder mit Karten gelernt)</small></label><select class="input" data-s="furiKnown">${[['hide', 'Ausblenden – nur über Kanji, die ich noch lerne'], ['show', 'Über allen Kanji anzeigen']].map(([k, l]) => `<option value="${k}" ${(st.furiKnown === 'show' ? 'show' : 'hide') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-        <div class="two">
-        <div class="field"><label>Sprechtempo <small>${st.ttsRate}</small></label><div class="row"><input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}" class="grow">${App.speakBtn('こんにちは、日本語を勉強しています。')}</div></div></div>
+        <div class="row between" style="padding-top:12px;border-top:1px solid var(--line)"><p class="muted small" style="margin:0">Wo neue Einträge landen und wann etwas als „kann ich“ gilt.</p><a class="btn btn-sm" href="#/lernweg">${icon('map')} So läuft das Lernen</a></div>
       </div></div>
-      ${wkCard()}
-      ${wkVocabCard()}
       <div class="card"><h3>Quellen</h3><p class="muted small">Damit du deine Inhalte nach Buch, App oder Kurs filtern kannst (z. B. nur Genki-Vokabeln).</p>
         <div class="stack" data-srcs style="gap:6px">${st.sources.map((s, i) => `<div class="row"><input type="color" value="${s.color}" data-sc="${i}" style="width:44px;height:40px;border:0;background:none"><input class="input grow" value="${esc(s.name)}" data-sn="${i}"><button class="icon-btn sm" data-sd="${i}">${icon('trash')}</button></div>`).join('')}</div>
         <button class="btn btn-sm" style="margin-top:10px" data-sadd>${icon('plus')} Quelle hinzufügen</button></div>
@@ -445,14 +484,8 @@
         <div class="stack"><button class="btn" data-exp>${icon('download')} Komplett-Backup (mit Dateien & Stiftnotizen)</button>
         <button class="btn" data-exp-light>${icon('download')} Backup ohne Dateien (klein)</button>
         <label class="btn">${icon('upload')} Backup einspielen<input type="file" accept=".json,.zip,application/json,application/zip" hidden data-imp></label></div></div>
-      <div class="card"><h3>Mit Freunden teilen</h3><p class="muted small">Erstelle ein Paket mit deinen eigenen Einträgen (z. B. alle Vokabeln aus NHK Easy oder deine Unterrichtsnotizen). Deine Freunde importieren es in ihre eigene App – ihr Lernstand bleibt getrennt.</p>
-        <div class="field"><label>Bereiche</label><div class="chips" data-share-sec>${[['vocab', 'Vokabeln'], ['grammar', 'Grammatik'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke'], ['session', 'Unterricht'], ['apply', 'Anwenden']].map(([k, l]) => `<label class="chip ${k === 'apply' ? '' : 'on'}"><input type="checkbox" value="${k}" ${k === 'apply' ? '' : 'checked'} hidden>${l}</label>`).join('')}</div></div>
-        <div class="field" style="margin-top:10px"><label>Quellen</label><div class="chips" data-share-src>${st.sources.map((s) => `<label class="chip on"><input type="checkbox" value="${esc(s.name)}" checked hidden><span class="sw" style="--c:${s.color}"></span>${esc(s.name)}</label>`).join('')}</div></div>
-        <label class="row small" style="margin:10px 0"><input type="checkbox" data-share-files checked> Zugehörige Dateien mitschicken</label>
-        <button class="btn btn-sec" style="--sec:var(--sakura)" data-share>${icon('download')} Teilen-Paket erstellen</button></div>
       ${App.extensionCard()}
       ${App.pwa.card()}
-      <div class="card row between"><div><h3 style="margin:0">So läuft das Lernen</h3><p class="muted small" style="margin:4px 0 0">Das Schaubild: wo neue Einträge landen, was Einstufen und „neue lernen“ tun und wann etwas als „kann ich“ gilt.</p></div><a class="btn" href="#/lernweg">${icon('map')} Schaubild öffnen</a></div>
       <div class="card"><h3>Über</h3><p class="small">Nihongo Techō 日本語手帳 · läuft komplett offline in deinem Browser.<br>Strichfolge-Daten: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, CC BY-SA 3.0. PDF-Anzeige: pdf.js (Mozilla).<br>Inhalte orientieren sich an Genki I (3. Aufl.) – bitte mit deinem Buch abgleichen.</p>
         <button class="btn btn-sm btn-ghost btn-danger" data-reset>${icon('trash')} Alle Daten löschen</button></div>
       </div></div>`;
@@ -464,19 +497,6 @@
       if (sn) { const i = +sn.dataset.sn; const old = st.sources[i].name; const nn = sn.value.trim(); if (nn && nn !== old) { st.sources[i].name = nn; for (const it of S.items.values()) if (it.source === old) { it.source = nn; await App.db.put('items', it); } for (const f of S.files.values()) if (f.source === old) { f.source = nn; await App.db.put('files', f); } await App.saveSettings({}); App.toast('Quelle umbenannt'); } }
       const sc = e.target.closest('[data-sc]');
       if (sc) { st.sources[+sc.dataset.sc].color = sc.value; await App.saveSettings({}); }
-      const ch = e.target.closest('.chip input'); if (ch) ch.parentElement.classList.toggle('on', ch.checked);
-      const lv = e.target.closest('[data-wk-level]');
-      if (lv) { await App.wk.setLevel(+lv.dataset.wkLevel, lv.checked); App.toast(`WaniKani Level ${lv.dataset.wkLevel} ${lv.checked ? 'freigeschaltet' : 'ausgeschaltet'}`); App.render(true); }
-const lvv = e.target.closest('[data-wkv-level]');
-      if (lvv) {
-        const msg = view.querySelector('[data-wkv-msg]'), n = +lvv.dataset.wkvLevel;
-        view.querySelectorAll('[data-wkv-level]').forEach((x) => (x.disabled = true));
-        try {
-          await App.wk.setVocabLevel(n, lvv.checked, (frac) => { if (msg.isConnected) msg.textContent = `Wörterbuch wird installiert … ${Math.round(frac * 100)} %`; });
-          App.toast(`WaniKani-Vokabeln Level ${n} ${lvv.checked ? 'freigeschaltet' : 'ausgeschaltet'}`);
-        } catch (er) { console.error(er); App.toast('Das hat nicht geklappt: ' + er.message); }
-        App.render(true);
-      }
       const imp = e.target.closest('[data-imp]');
       if (imp && imp.files[0]) { const file = imp.files[0]; imp.value = ''; try { const r = await App.paket.open(file); App.toast(r.text); App.render(); } catch (er) { App.toast(er.message); } }
     });
@@ -487,19 +507,6 @@ const lvv = e.target.closest('[data-wkv-level]');
       if (b.matches('[data-exp]')) App.backup.saveByHand();
       if (b.matches('[data-exp-light]')) App.exportData({ withFiles: false });
       if (b.matches('[data-wsrc]')) { await App.saveSettings({ writeSource: b.dataset.wsrc }); App.render(true); }
-      if (b.matches('[data-wk-connect], [data-wk-sync]')) {
-        const msg = view.querySelector('[data-wk-msg]'), inp = view.querySelector('[data-wk-token]');
-        if (inp && !inp.value.trim()) { msg.textContent = 'Trag zuerst deinen Schlüssel ein.'; return; }
-        b.disabled = true; msg.textContent = 'Abgleich läuft …';
-        try { await (inp ? App.wk.connect(inp.value) : App.wk.sync()); App.toast('WaniKani abgeglichen'); App.render(true); }
-        catch (er) { b.disabled = false; msg.textContent = er.code ? er.message : App.wk.MSG.other; if (!er.code) console.error(er); }
-      }
-      if (b.matches('[data-wk-off]') && await App.confirm('WaniKani-Verbindung trennen? Der Schlüssel und die abgerufenen Daten werden von diesem Gerät gelöscht. Kanji und Vokabeln, die du schon übst, bleiben erhalten.', { ok: 'Trennen', title: 'Verbindung trennen' })) { await App.wk.disconnect(); App.toast('WaniKani getrennt'); App.render(true); }
-      if (b.matches('[data-share]')) {
-        const sections = $$('[data-share-sec] input:checked', view).map((x) => x.value);
-        const sources = $$('[data-share-src] input:checked', view).map((x) => x.value);
-        App.exportData({ share: true, sections, sources, withFiles: view.querySelector('[data-share-files]').checked });
-      }
       if (b.matches('[data-reset]')) {
         if (await App.confirm('Wirklich ALLE Daten (Einträge, Dateien, Notizen, Lernstand) löschen? Das kann nicht rückgängig gemacht werden. Mach vorher ein Backup!', { ok: 'Alles löschen' })) {
           await App.backup.detach(); // die Sicherung im Ordner bleibt, wie sie ist

@@ -154,48 +154,10 @@
   const INVITE = {
     invalid: 'Dieser Einladungslink gilt nicht (mehr). Den Code kannst du auf der Startseite von Hand eingeben.',
     failed: 'Freischalten hat nicht geklappt – bitte den Code von Hand eingeben.',
-    wrong: 'Der Code stimmt nicht.',
-    unsupported: 'Dieser Browser kann Genki nicht prüfen – bitte Chrome oder Edge verwenden.',
-    check: 'Prüfen hat nicht geklappt – bitte noch einmal versuchen.',
-    copied: 'Einladungslink kopiert',
-    copyFailed: 'Link konnte nicht kopiert werden.',
   };
-
-  // Formular „Einladungslink erstellen“ (Karte Web-App in pwa.js): Code prüfen, Link in die Zwischenablage, Feld leeren.
-  // Der Link wird nie angezeigt; der Code bleibt nur im Feld und wird nach dem Kopieren geleert.
-  let making = false;
-  I.make = async (form) => {
-    if (making) return;
-    making = true;
-    const input = form.querySelector('[data-invite-code]');
-    const box = form.closest && form.closest('[data-invite]');
-    const err = box && box.querySelector('[data-invite-err]');
-    const show = (msg) => { if (err) { err.textContent = msg; err.hidden = !msg; } };
-    try {
-      show('');
-      const code = input ? input.value : '';
-      let ok;
-      try { ok = await App.genki.check(code); } catch (e) {
-        show(e && e.code === 'GENKI_UNSUPPORTED' ? INVITE.unsupported : INVITE.check);
-        return;
-      }
-      if (!ok) { show(INVITE.wrong); return; }
-      const link = App.inviteLogic.link(baseUrl(), code);
-      try { await nav.clipboard.writeText(link); App.toast(INVITE.copied); } catch (e) { App.toast(INVITE.copyFailed); }
-      if (input) input.value = '';
-    } finally {
-      making = false;
-    }
-  };
+  // Einladungslinks werden nicht mehr in der App erstellt – hier wird ein Link nur eingelöst.
 
   if (typeof document === 'undefined' || !document.addEventListener) return;
-
-  document.addEventListener('submit', (e) => {
-    const form = e.target.closest && e.target.closest('form[data-invite-form]');
-    if (!form) return;
-    e.preventDefault();
-    I.make(form);
-  });
 
   const copyLink = async () => {
     const link = W.pendingLink || (location.origin + location.pathname);

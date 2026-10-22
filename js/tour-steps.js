@@ -13,7 +13,7 @@
       { target: '[data-action="quick-add"]', title: 'Schnell etwas festhalten', text: 'Ein neues Wort, ein Kanji oder eine Regel legst du von jeder Seite aus hier an.' },
       { target: '#nav .sec-session', place: 'right', title: 'Mitschreiben', text: 'Für jede Stunde gibt es ein Blatt, auf dem du mit Stift oder Tastatur schreibst.' },
       { target: '#nav .sec-practice', place: 'right', title: 'Wiederholen', text: 'Karteikarten, Kanji-Quiz und Übersetzungen aus dem, was du gesammelt hast.' },
-      { target: '.foot-btn[href="#/pakete"]', place: 'right', title: 'Mehr Inhalte', text: 'Wörterbuch und JLPT-Wortlisten kannst du hier dazuholen. Das „?“ oben erklärt dir jede Seite einzeln.' },
+      { target: '.foot-btn[href="#/pakete"]', place: 'right', title: 'Mehr Inhalte', text: 'Wörterbuch, JLPT-Wortlisten und WaniKani holst du hier dazu. Das „?“ oben erklärt dir jede Seite einzeln.' },
     ],
     // nach „Jetzt nicht“
     hinweis: [
@@ -115,13 +115,12 @@
       { target: '#view .pack-card:has([data-id="dict-common"])', text: 'Mit dem Wörterbuch kann die App Wörter nachschlagen und beim Anlegen vorausfüllen.' },
       { target: '#view .pack-card:has([data-id="n5"])', text: 'Die JLPT-Pakete ergänzen Wörter, Kanji und Grammatik der jeweiligen Stufe. Du schaltest sie selbst frei, wenn du sie möchtest.' },
       { target: '#view [data-act="unlock"][data-id="n5"]', title: 'So schaltest du frei', text: 'Ein Tipp zeigt dir zuerst, wie viele Einträge dazukommen. Geladen wird erst, wenn du das bestätigst.' },
-      { target: '#view [data-storage]', text: 'Hier siehst du, wie viel Platz die App auf deinem Gerät belegt.' },
+      { target: '#view [data-wk-card] h3', title: 'WaniKani verknüpfen', text: 'Schlüssel bei WaniKani unter Settings → API Tokens erstellen (Lesezugriff genügt) und hier eintragen. Danach wählst du die Level für Kanji zum Schreiben und für Vokabeln.' },
     ],
     '/einstellungen': [
-      { target: '#view .card:has([data-s="name"]) h3', text: 'Name, Aussehen, Furigana und wie viele neue Karten du pro Tag möchtest.' },
+      { target: '#view .card:has([data-s="name"]) h3', text: 'Name, Aussehen und Furigana.' },
+      { target: '#view .card:has([data-s="newPerDay"]) h3', text: 'Wie du lernst: neue Karten pro Sitzung, Einstufen, Kanji-Schwerpunkt und woher die Kanji zum Schreiben kommen.' },
       { target: '#view .card:has([data-bk]) h3', text: 'Deine Daten liegen nur auf diesem Gerät. Hier sicherst du sie. Das „?“ daneben zeigt dir, wie das auf deinem Gerät geht.' },
-      { target: '#view [data-wk-token]', title: 'WaniKani verknüpfen', text: 'Erstelle bei WaniKani unter Settings → API Tokens einen Schlüssel (Lesezugriff genügt), trage ihn hier ein und tippe „Verbinden“.' },
-      { target: '#view [data-wk-card] h3', text: 'Danach wählst du hier die Level aus. Kanji, die du bei WaniKani bis Master gelernt hast, kommen dann zum Schreiben dran. Die Karte daneben schaltet WaniKani-Vokabeln für Deutsch → Japanisch frei.' },
       { target: EXT + ' h3', title: 'Text aus dem Browser', text: 'Mit der Erweiterung holst du japanischen Text von jeder Webseite in die App.', link: { label: 'Schritt für Schritt zeigen', tour: 'erweiterung' } },
     ],
     // Sicherungs-Hilfe („?“ an der Karte Sicherung) – je Gerät eine, gewählt in tour-logic.js (backupTourKey).

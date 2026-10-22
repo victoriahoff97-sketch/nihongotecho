@@ -1,4 +1,4 @@
-/* Nihongo Techō – Paket-Verwaltung (JLPT-Level, Wörterbuch) und Seiten „Pakete“ und „Lizenzen“ */
+/* Nihongo Techō – Paket-Verwaltung (JLPT-Level, Wörterbuch) und Seiten „Pakete“ (inkl. WaniKani und Teilen) und „Lizenzen“ */
 'use strict';
 (function (App) {
   const { esc, icon } = App;
@@ -283,10 +283,17 @@
     }
   }
 
+  // Teilen-Paket: eigene Einträge für Freunde (Gegenstück zu „Paket hochladen“)
+  const shareCard = () => `<div class="card" data-share-card><h3>Teilen-Paket erstellen</h3><p class="muted small">Ein Paket mit deinen eigenen Einträgen (z. B. alle Vokabeln aus NHK Easy oder deine Unterrichtsnotizen). Deine Freunde öffnen es oben unter „Paket hochladen“ – ihr Lernstand bleibt getrennt. Unveränderte Einträge aus JLPT, Genki und WaniKani gehen nicht mit, die schalten deine Freunde selbst frei.</p>
+    <div class="field"><label>Bereiche</label><div class="chips" data-share-sec>${[['vocab', 'Vokabeln'], ['grammar', 'Grammatik'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke'], ['session', 'Unterricht'], ['apply', 'Anwenden']].map(([k, l]) => `<label class="chip ${k === 'apply' ? '' : 'on'}"><input type="checkbox" value="${k}" ${k === 'apply' ? '' : 'checked'} hidden>${l}</label>`).join('')}</div></div>
+    <div class="field" style="margin-top:10px"><label>Quellen</label><div class="chips" data-share-src>${S.settings.sources.map((s) => `<label class="chip on"><input type="checkbox" value="${esc(s.name)}" checked hidden><span class="sw" style="--c:${s.color}"></span>${esc(s.name)}</label>`).join('')}</div></div>
+    <label class="row small" style="margin:10px 0"><input type="checkbox" data-share-files checked> Zugehörige Dateien mitschicken</label>
+    <button class="btn btn-sec" style="--sec:var(--sakura)" data-share>${icon('download')} Teilen-Paket erstellen</button></div>`;
+
   App.route('/pakete', (view) => {
     const packs = window.PACKS || [];
     view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Pakete <span class="jp-title">包</span></h1>
-      <p>JLPT-Wortschatz, Kanji und Grammatik freischalten und das Wörterbuch für den Satz-Scan installieren. Alles bleibt offline in diesem Browser.</p></div>
+      <p>Alle Inhalte an einem Ort: Lehrbuch, JLPT-Niveaus, WaniKani und Wörterbuch freischalten – und Pakete von Freunden öffnen oder selbst eins erstellen.</p></div>
       <a class="btn btn-sm" href="#/lizenzen">${icon('info')} Lizenzen</a></div>
       <div class="section-title">Paket hochladen</div>
       <div class="card" data-pack-upload><h3>Paket-Datei öffnen</h3>
@@ -297,18 +304,29 @@
       <div class="section-title">JLPT-Niveaus</div>
       <p class="small muted">Neue Versionen freigeschalteter Pakete kommen beim Start von selbst – dein Lernstand und deine Änderungen bleiben.</p>
       <div class="grid cols-3">${packs.filter((p) => p.kind === 'level').map(packCard).join('')}</div>
+      <div class="section-title">WaniKani</div>
+      <div class="grid cols-2">${App.wkPack.html()}</div>
       <div class="section-title">Wörterbuch</div>
       <div class="grid cols-2">${packs.filter((p) => p.kind === 'dict').map(packCard).join('')}</div>
+      <div class="section-title">Mit Freunden teilen</div>
+      <div class="grid cols-2">${shareCard()}</div>
       <div class="section-title">Speicher</div>
       <div class="card" data-storage><p class="muted small">Wird berechnet …</p></div></div>`;
     const root = view.firstElementChild;
     fillStorage(root.querySelector('[data-storage]'));
     root.addEventListener('click', (e) => {
+      App.wkPack.onClick(e, view);
+      if (e.target.closest('[data-share]')) {
+        const picked = (sel) => Array.from(root.querySelectorAll(sel + ' input:checked')).map((x) => x.value);
+        App.exportData({ share: true, sections: picked('[data-share-sec]'), sources: picked('[data-share-src]'), withFiles: root.querySelector('[data-share-files]').checked });
+      }
       const b = e.target.closest('[data-act]');
       if (!b || busy) return;
       onAction(b.dataset.act, b.dataset.id);
     });
     root.addEventListener('change', async (e) => {
+      App.wkPack.onChange(e, view);
+      const ch = e.target.closest('.chip input'); if (ch) ch.parentElement.classList.toggle('on', ch.checked);
       const imp = e.target.closest('[data-pack-imp]');
       if (!imp || !imp.files[0]) return;
       const file = imp.files[0]; imp.value = '';
