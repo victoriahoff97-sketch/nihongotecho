@@ -193,20 +193,27 @@
     const n = Math.max(1, Math.round((W - 2 * KJ.pad + KJ.gap) / (s + KJ.gap)));
     return { s, n, T: n * s + (n - 1) * KJ.gap };
   };
-  const kanji = (W, H) => {
+  // Farben: bg = Grund, cell = Kästchen und Felder, line = Rand, guide = Hilfslinien
+  const kanji = (bg, cell, line, guide) => (W, H) => {
     const { s, n, T } = kjFit(W, H), x0 = (W - T) / 2, y0 = KJ.pad + KJ.top + KJ.gap;
-    let out = p(rr(2, 2, W - 4, H - 4, 10), '#FFD9E6') + p(rr(x0, KJ.pad, T, KJ.top, 5), CREAM, '', 1.8) + p(rr(x0, y0 + s + KJ.gap, T, KJ.bot, 5), CREAM, '', 1.8);
+    const q = (d, fill, w) => `<path d="${d}" fill="${fill}" stroke="${line}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    let out = q(rr(2, 2, W - 4, H - 4, 10), bg, 2.5) + q(rr(x0, KJ.pad, T, KJ.top, 5), cell, 1.8) + q(rr(x0, y0 + s + KJ.gap, T, KJ.bot, 5), cell, 1.8);
     for (let i = 0; i < n; i++) {
       const x = n1(x0 + i * (s + KJ.gap));
-      out += `<rect x="${x}" y="${y0}" width="${n1(s)}" height="${n1(s)}" fill="${CREAM}" stroke="${O}" stroke-width="2"/><path d="M${n1(x + s / 2)} ${y0}v${n1(s)}M${x} ${n1(y0 + s / 2)}h${n1(s)}" fill="none" stroke="#FF9DB8" stroke-width="1.4" stroke-dasharray="4 4"/>`;
+      out += `<rect x="${x}" y="${y0}" width="${n1(s)}" height="${n1(s)}" fill="${cell}" stroke="${line}" stroke-width="2"/><path d="M${n1(x + s / 2)} ${y0}v${n1(s)}M${x} ${n1(y0 + s / 2)}h${n1(s)}" fill="none" stroke="${guide}" stroke-width="1.4" stroke-dasharray="4 4"/>`;
     }
     return out;
   };
 
   const MIN = { w: 0.06, h: 0.04 };
   const NOTES = [
-    { id: 'kanji', label: 'Kanji-Feld', draw: kanji, w: 0.112, h: 0.174, min: { w: 0.06, h: 0.118 } },
+    { id: 'kanji', label: 'Kanji-Feld', draw: kanji('#FFD9E6', CREAM, O, '#FF9DB8'), kj: true, w: 0.112, h: 0.174, min: { w: 0.06, h: 0.118 } },
     { id: 'kanji3', as: 'kanji', label: 'Kanji-Reihe', w: 0.312, h: 0.174 },
+    // ruhigere Kanji-Felder ohne Rosa
+    { id: 'kanji-papier', label: 'Kanji-Feld Papier', draw: kanji('#EFE6D6', CREAM, O, '#C4AE92'), kj: true, w: 0.112, h: 0.174, min: { w: 0.06, h: 0.118 } },
+    { id: 'kanji3-papier', as: 'kanji-papier', label: 'Kanji-Reihe Papier', w: 0.312, h: 0.174 },
+    { id: 'kanji-tinte', label: 'Kanji-Feld Tinte', draw: kanji('#DCE4EE', '#fff', '#4A5870', '#9DB0C6'), kj: true, w: 0.112, h: 0.174, min: { w: 0.06, h: 0.118 } },
+    { id: 'kanji3-tinte', as: 'kanji-tinte', label: 'Kanji-Reihe Tinte', w: 0.312, h: 0.174 },
     { id: 'zettel', label: 'Klebezettel', draw: note('#FFF1A8', '#F5D76E', '#FF9DB8'), w: 0.28, h: 0.2 },
     { id: 'zettel-rosa', label: 'Zettel rosa', draw: note('#FFD9E6', '#FFB3C7', MINT), w: 0.28, h: 0.2 },
     { id: 'zettel-mint', label: 'Zettel mint', draw: note('#DFF7EC', MINT, LILA), w: 0.28, h: 0.2 },
@@ -266,9 +273,9 @@
   // Bild-Eintrag { k, w, h } → Daten-URL; key ändert sich, sobald das Bild neu gezeichnet werden muss
   const src = (im) => { const s = svg(im.k, im.w, im.h); return s ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s) : ''; };
   const key = (im) => (free(im.k) ? im.k + ':' + Math.round(im.w * 1000) + 'x' + Math.round(im.h * 1000) : im.k);
-  // nach dem Ziehen: das Kanji-Feld schnappt auf ganze Kästchen
+  // nach dem Ziehen: Kanji-Felder (alle Farben) schnappen auf ganze Kästchen
   const snap = (id, w, h) => {
-    if (base(id) !== 'kanji') return { w, h };
+    if (!(notes.get(base(id)) || {}).kj) return { w, h };
     const f = kjFit(w * 1000, h * 1000);
     return { w: +((f.T + 2 * KJ.pad) / 1000).toFixed(4), h: +((f.s + 2 * KJ.pad + KJ.top + KJ.bot + 2 * KJ.gap) / 1000).toFixed(4) };
   };
