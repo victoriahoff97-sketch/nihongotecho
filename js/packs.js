@@ -142,6 +142,21 @@
       App.emit('items');
       return { removed: del.length, kept };
     },
+
+    // Installierte JLPT-Pakete beim Start von selbst auf die neue Version bringen – wie der Knopf „Aktualisieren“:
+    // Lernstand und eigene Änderungen bleiben. Scheitert ein Paket (z. B. offline), versucht es der nächste Start wieder.
+    autoUpdate: async () => {
+      const due = (window.PACKS || []).filter((p) => p.kind === 'level' && App.packs.status(p) === 'update');
+      const done = [];
+      for (const p of due) {
+        if (busy) break; // auf der Seite „Pakete“ läuft gerade etwas
+        busy = { id: p.id, pct: 0, text: 'Wird aktualisiert …' };
+        rerender();
+        try { await App.packs.install(p.id, setProgress); done.push(p); } catch (e) { console.error(e); } finally { busy = null; rerender(); }
+      }
+      if (done.length) App.toast(`JLPT-Pakete aktualisiert: ${done.map((p) => p.level).join(', ')} – dein Lernstand bleibt`);
+      return done.map((p) => p.id);
+    },
   };
 
   // ---------- Seite „Pakete“ ----------
@@ -280,6 +295,7 @@
       <div class="section-title">Lehrbuch</div>
       <div class="stack">${App.genki && App.genki.present() ? App.genki.card() : ''}${App.exercises.card()}</div>
       <div class="section-title">JLPT-Niveaus</div>
+      <p class="small muted">Neue Versionen freigeschalteter Pakete kommen beim Start von selbst – dein Lernstand und deine Änderungen bleiben.</p>
       <div class="grid cols-3">${packs.filter((p) => p.kind === 'level').map(packCard).join('')}</div>
       <div class="section-title">Wörterbuch</div>
       <div class="grid cols-2">${packs.filter((p) => p.kind === 'dict').map(packCard).join('')}</div>

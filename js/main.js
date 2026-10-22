@@ -143,5 +143,7 @@
     // PDF-Texte für die Suche im Hintergrund einlesen (nach dem ersten Anzeigen)
     setTimeout(() => App.pdfText.backfill(), 1500);
     setTimeout(() => App.wk.autoSync(), 2500);
+    // installierte JLPT-Pakete auf die neue Version bringen (Lernstand bleibt)
+    setTimeout(() => App.packs.autoUpdate().catch((e) => console.error(e)), 3000);
   })();
 })(window.App);
