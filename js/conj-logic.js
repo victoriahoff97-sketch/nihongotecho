@@ -45,7 +45,7 @@
   C.MIXES = [
     { id: 'te', label: 'Nur die て-Form', forms: ['v-te'], note: 'Genki Lektion 6' },
     { id: 'te-ta', label: 'て-, た- und たり-Form', forms: ['v-te', 'v-ta', 'v-tari'] },
-    { id: 'masu', label: 'ます-Formen', forms: ['v-stem', 'v-masu', 'v-mashita', 'v-mashou'], note: 'höflich' },
+    { id: 'masu', label: 'ます-Formen', forms: ['v-stem', 'v-masu', 'v-masen', 'v-mashita', 'v-masendeshita', 'v-mashou'], note: 'höflich' },
     { id: 'nai', label: 'ない-Formen', forms: ['v-nai', 'v-nakatta', 'v-naide'], note: 'verneint' },
     { id: 'kann', label: 'Können und wollen', forms: ['v-pot', 'v-vol', 'v-tai'] },
     { id: 'adj', label: 'Adjektive', forms: null, pos: ['i-adj', 'na-adj'] },
