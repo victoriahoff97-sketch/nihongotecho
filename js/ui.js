@@ -98,6 +98,12 @@
     if (!l || !/^N[1-5]$/.test(l)) return '';
     return `<span class="badge lvl lvl-${l.toLowerCase()}" title="JLPT-Niveau ${l}">${l}</span>`;
   };
+  // Verbklasse (it.v.cls) als Plakette: う-Verb / る-Verb / unregelmäßig
+  App.VERB_CLS = { u: 'う-Verb', ru: 'る-Verb', irr: 'unregelmäßig' };
+  App.verbClsBadge = (it) => {
+    const c = it && it.type === 'vocab' && it.v && App.VERB_CLS[it.v.cls];
+    return c ? `<span class="badge" title="Verbgruppe">${c}</span>` : '';
+  };
   App.srcBadge = (it) => {
     if (!it.source) return '';
     const l = it.lesson !== '' && it.lesson != null ? ` · L${esc(it.lesson)}` : '';

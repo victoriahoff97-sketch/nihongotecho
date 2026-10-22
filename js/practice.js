@@ -301,8 +301,9 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const ex = it.examples && it.examples[0];
     const extra = (it.type === 'vocab' ? App.accentHtml(it) + App.useHtml(it, true) : '') + (ex ? `<div style="margin-top:6px">${App.exampleHtml(ex)}</div>` : '') + (it.note ? `<div class="small muted">${esc(it.note)}</div>` : '');
     const speakTxt = it.type === 'vocab' ? (it.kanji || it.kana) : it.jp;
-    if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it)}</div>`, back: `<div class="ans jp" lang="ja">${jpHtml}</div>${App.levelBadge(it)}${extra}`, speak: speakTxt };
-    return { front: `<div class="front" lang="ja">${App.askHtml(it)}</div>`, back: `<div class="jp" lang="ja" style="font-size:20px;color:var(--muted)">${esc(reading)}</div><div class="ans">${App.meaningHtml(it)}</div>${App.levelBadge(it)}${extra}`, speak: speakTxt };
+    const badges = App.levelBadge(it) + (it.type === 'vocab' ? ' ' + App.verbClsBadge(it) : '');
+    if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it)}</div>`, back: `<div class="ans jp" lang="ja">${jpHtml}</div>${badges}${extra}`, speak: speakTxt };
+    return { front: `<div class="front" lang="ja">${App.askHtml(it)}</div>`, back: `<div class="jp" lang="ja" style="font-size:20px;color:var(--muted)">${esc(reading)}</div><div class="ans">${App.meaningHtml(it)}</div>${badges}${extra}`, speak: speakTxt };
   }
   const ivlLabel = (id, g, write) => {
     const s = S.srs.get(write ? W.id(id) : id) || { ivl: 0, ease: 2.5, reps: 0 };

@@ -5,7 +5,7 @@
   const JP = App.jp;
   const F = App.formMap;
   const C = App.conjLogic;
-  const VERB_CLS = { u: 'う-Verb', ru: 'る-Verb', irr: 'unregelmäßig' };
+  const VERB_CLS = App.VERB_CLS;
   const lineColor = (f) => F.LINES[f.line].color;
 
   // Kartenseiten für die Kartenrunde (practice.js): vorne Grundform + gesuchte Form, hinten Lösung, Verbgruppe und Regel.

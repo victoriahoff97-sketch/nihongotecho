@@ -32,9 +32,10 @@
   //  - nur die Schreibung eingetragen (Lesung fehlt) → das eine Wort mit dieser Schreibung
   //  - nur in Kana eingetragen → das eine Wort mit dieser Lesung; bei mehreren (橋/箸) das eine, dessen deutsche
   //    Bedeutung zur eingetragenen passt
-  const find = (index, it) => {
+  // findKey liefert den Schlüssel des Treffers (index.v[k][2] = deutsche Bedeutung) – so nutzt ihn auch der Verb-Index
+  const findKey = (index, it) => {
     if (!index || !index.v || !it) return null;
-    const out = (k) => (k && index.v[k] ? { jp: index.v[k][0], de: index.v[k][1] } : null);
+    const out = (k) => k || null;
     const exact = key(it);
     if (index.v[exact]) return out(exact);
     const t = tablesOf(index);
@@ -51,6 +52,10 @@
     const byDe = c.filter((k) => shares(it.de, index.v[k][2]));
     return byDe.length === 1 ? out(byDe[0]) : null;
   };
+  const find = (index, it) => {
+    const k = findKey(index, it);
+    return k ? { jp: index.v[k][0], de: index.v[k][1] } : null;
+  };
 
   const needs = (it) => !!it && it.type === 'vocab' && !(Array.isArray(it.examples) && it.examples.some((e) => e && String(e.jp ?? '').trim()));
 
@@ -63,7 +68,7 @@
     return true;
   };
 
-  const api = { key, find, needs, fill };
+  const api = { key, findKey, find, needs, fill };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.App.exampleLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

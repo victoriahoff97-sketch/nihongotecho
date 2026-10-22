@@ -298,6 +298,8 @@ window.App = window.App || {};
     const now = Date.now();
     // neue eigene Vokabel ohne Beispielsatz: den geprüften aus dem Satz-Index der Pakete eintragen (js/examples.js)
     if (!it.created && it.type === 'vocab' && App.exampleFill) await App.exampleFill(it);
+    // eigenes Verb ohne Partikel-Muster oder Verbklasse: aus dem Verb-Index der Pakete ergänzen (js/verbs.js)
+    if (it.type === 'vocab' && App.verbFill) await App.verbFill(it);
     if (!it.id) it.id = uid(it.type[0]);
     const isNew = !it.created;
     if (isNew) it.created = now;
