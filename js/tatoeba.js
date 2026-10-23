@@ -45,11 +45,14 @@
     return false;
   };
 
-  // Satz der Schnittstelle → { id, jp, kana, furi, de | en, src }; null ohne Übersetzung in der Sprache
+  // Satz der Schnittstelle → { id, jp, kana, furi, de | en, src }; null ohne Übersetzung in der Sprache.
+  // Lesung: die geprüfte, sonst die ungeprüfte – Tatoeba hat 2026 fast alle Lesungen neu erzeugt und als ungeprüft markiert;
+  // ohne sie kämen die Sätze ganz ohne Furigana in die App.
   const toExample = (s, lang) => {
     const tr = (s.translations || []).flat().find((t) => t && t.lang === lang && t.text);
     if (!tr) return null;
-    const hrkt = (s.transcriptions || []).find((t) => t.script === 'Hrkt' && !t.needsReview && t.text);
+    const hr = (s.transcriptions || []).filter((t) => t.script === 'Hrkt' && t.text);
+    const hrkt = hr.find((t) => !t.needsReview) || hr[0];
     const ex = { id: s.id, jp: s.text, kana: hrkt ? toKana(hrkt.text) : '', furi: hrkt ? toNotation(hrkt.text) : s.text };
     ex[lang === 'deu' ? 'de' : 'en'] = tr.text;
     ex.src = 'Tatoeba #' + s.id;

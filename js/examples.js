@@ -53,4 +53,18 @@
     }
     return puts.length;
   };
+
+  // Bestand: automatisch geholte Sätze ohne Lesung (Tatoeba mit ungeprüfter Lesung, WaniKani) bekommen Furigana
+  // aus eigenen Vokabeln + Offline-Wörterbuch – nur wenn jedes Wort eine Lesung findet. Läuft bei jedem Start,
+  // betrifft aber nur noch Sätze, für die es bisher keine Lesung gab (z. B. weil das Wörterbuch fehlte).
+  App.exampleFuriRepair = async () => {
+    const read = async (jp) => { const r = await App.sentenceReading(jp); return r.missing.length ? '' : r.furi; };
+    const now = Date.now(), puts = [];
+    for (const it of App.store.items.values()) {
+      if (!(it.examples || []).some(L.bare)) continue;
+      if (await L.addFuri(it, read)) { it.updated = now; puts.push(it); }
+    }
+    if (puts.length) { await App.db.putMany('items', puts); App.emit('items'); }
+    return puts.length;
+  };
 })(window.App);

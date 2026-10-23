@@ -134,6 +134,8 @@
     App.render();
     // eigene Vokabeln ohne Beispielsatz aus dem Satz-Index der Pakete auffüllen (einmal je Index-Version)
     if (App.exampleBackfill) App.exampleBackfill().catch((e) => console.error(e));
+    // Beispielsätze von Tatoeba/WaniKani ohne Lesung: Furigana nachtragen (js/examples.js)
+    if (App.exampleFuriRepair) App.exampleFuriRepair().catch((e) => console.error(e));
     // eigene Verben: Partikel-Muster und Verbklasse aus dem Verb-Index ergänzen (einmal je Index-Version)
     if (App.verbBackfill) App.verbBackfill().catch((e) => console.error(e));
     // Kleines Wörterbuch beim ersten Web-Start von selbst laden (nicht abgewartet)

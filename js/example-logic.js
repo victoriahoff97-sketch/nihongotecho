@@ -68,7 +68,22 @@
     return true;
   };
 
-  const api = { key, findKey, find, needs, fill };
+  // Automatisch geholter Satz (Tatoeba, WaniKani – erkennbar an src) mit Kanji, aber ohne jede Lesung:
+  // weder Notation 漢字[かんじ] noch Kana-Zeile. So kamen Tatoeba-Sätze mit ungeprüfter Lesung bis 2026-10 in die App.
+  const bare = (ex) => !!ex && !!ex.src && KANJI.test(String(ex.jp ?? '')) && !/\[[^\]]+\]/.test(ex.jp) && !ex.kana;
+
+  // Lesung in solche Sätze eintragen. read(jp) → Notation oder '' (async); true = geändert
+  const addFuri = async (it, read) => {
+    let changed = false;
+    for (const ex of (it && Array.isArray(it.examples) ? it.examples : [])) {
+      if (!bare(ex)) continue;
+      const furi = await read(ex.jp);
+      if (furi && furi !== ex.jp && /\[[^\]]+\]/.test(furi)) { ex.jp = furi; changed = true; }
+    }
+    return changed;
+  };
+
+  const api = { key, findKey, find, needs, fill, bare, addFuri };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.App.exampleLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);
