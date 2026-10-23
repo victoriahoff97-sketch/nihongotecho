@@ -644,6 +644,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
 
   // Woher ein Satz kommt: ein Grammatikpunkt oder ein Wort der Lernschlange (dann mit dessen eigenem Beispielsatz).
   // Vor der Lösung verrät die Marke das Wort nicht; hinterher steht es bei der Lösung.
+  // Diktieren ins Antwortfeld (js/dictate.js): Japanisch bei De → Jp, Deutsch bei Jp → De
+  const micBtn = (lang, title) => (App.dictate.supported() ? `<button class="btn btn-sm btn-ghost mic" data-mic="${lang}" title="${title}">${icon('mic')} Diktieren</button>` : '');
   const wordOf = (it) => it.kanji || it.kana || JP.plain(it.jp || '');
   const exBadge = (it) => `<a class="badge sec ${App.SECTIONS[it.type].cls}" href="${App.link(it)}" target="_blank" style="text-decoration:none">${it.type === 'grammar' ? '文 ' + esc(it.title) : it.type === 'phrase' ? '表 Ausdruck aus der Lernschlange' : '単 Wort aus der Lernschlange'}</a>`;
 
@@ -669,8 +671,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           : `<div class="small muted">${dir === 'de' ? 'Übersetze ins Japanische:' : 'Übersetze ins Deutsche:'}</div>
           <div class="ex-prompt ${dir === 'jp' ? 'jp' : ''}" ${dir === 'jp' ? 'lang="ja"' : ''}>${dir === 'de' ? esc(e.de) : JP.ruby(e.jp)} ${dir === 'jp' ? App.speakBtn(e.jp) : ''}</div>`}
           ${dir === 'de' ? `<input class="input answer-in" placeholder="Antwort (Romaji wird zu かな)" autocomplete="off" autocapitalize="off" spellcheck="false">
-            <div class="row" style="margin-top:8px"><label class="small row" style="gap:6px"><input type="checkbox" data-rj checked> Romaji → かな</label><button class="btn btn-sm btn-ghost" data-hand>${icon('pen')} Mit Stift schreiben</button></div><div data-handpad hidden style="margin-top:10px"></div>`
-          : `<textarea class="input" style="width:100%;font-size:19px" rows="2" placeholder="Deine Übersetzung …"></textarea>`}
+            <div class="row" style="margin-top:8px"><label class="small row" style="gap:6px"><input type="checkbox" data-rj checked> Romaji → かな</label><button class="btn btn-sm btn-ghost" data-hand>${icon('pen')} Mit Stift schreiben</button>${micBtn('ja-JP', 'Auf Japanisch sprechen – der Text erscheint im Antwortfeld')}</div><div data-handpad hidden style="margin-top:10px"></div>`
+          : `<textarea class="input" style="width:100%;font-size:19px" rows="2" placeholder="Deine Übersetzung …"></textarea>${App.dictate.supported() ? `<div class="row" style="margin-top:8px">${micBtn('de-DE', 'Auf Deutsch sprechen – der Text erscheint im Antwortfeld')}</div>` : ''}`}
           <div class="row" style="margin-top:14px"><button class="btn btn-primary" data-check>${icon('check')} ${dir === 'de' ? 'Prüfen' : 'Lösung zeigen'}</button><button class="btn btn-ghost" data-skip>Überspringen</button></div>
           <div data-sol></div></div></div>`;
       const inp = stage.querySelector('.answer-in, textarea');
@@ -679,11 +681,15 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         App.bindRomaji(inp, () => rj.checked);
         stage.querySelector('[data-hand]').onclick = () => { const h = stage.querySelector('[data-handpad]'); h.hidden = !h.hidden; if (!h.hidden && !h.dataset.init) { h.dataset.init = 1; App.stroke.pad(h, null, { template: false }); } };
       }
+      const mic = stage.querySelector('[data-mic]');
+      const micOn = () => mic && mic.classList.contains('active');
+      if (mic) mic.onclick = () => App.dictate.toggle(inp, mic, mic.dataset.mic);
       setTimeout(() => inp.focus(), 50);
       let checked = false;
       const check = () => {
         if (checked) return;
         checked = true;
+        if (micOn()) App.dictate.toggle(inp, mic, mic.dataset.mic); // Prüfen beendet ein laufendes Diktat
         const ans = inp.value.trim();
         let auto = null;
         if (dir === 'de' && ans) {
@@ -700,7 +706,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         stage.querySelector('[data-check]').hidden = true;
       };
       stage.querySelector('[data-check]').onclick = check;
-      stage.querySelector('[data-skip]').onclick = () => { wrong.push(e); i++; show(); };
+      stage.querySelector('[data-skip]').onclick = () => { if (micOn()) App.dictate.toggle(inp, mic, mic.dataset.mic); wrong.push(e); i++; show(); };
       inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); if (!checked) check(); else { const b = stage.querySelector('[data-res="1"]'); if (b && stage.querySelector('.verdict.ok')) b.click(); } } });
       stage.querySelector('[data-sol]').addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-res]'); if (!b) return;
