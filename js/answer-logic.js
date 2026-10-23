@@ -9,7 +9,7 @@
   const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   // Leerzeichen und Satzzeichen zählen nicht; Romaji wird zu Kana
-  A.clean = (s) => JP.romaji(String(s || '').trim()).replace(/[\s　。、．，,.!！?？「」『』・〜~]/g, '');
+  A.clean = (s) => JP.romaji(String(s || '').trim()).replace(/[\s　。、．，,.!！?？「」『』・〜～〰∼~]/g, '');
   const hira = (s) => JP.toHira(s);
 
   // ---------- Lesungen eines Kanji-Blocks auf die einzelnen Zeichen verteilen ----------

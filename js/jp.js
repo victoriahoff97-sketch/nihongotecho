@@ -104,7 +104,7 @@
   JP.looksRomaji = (s) => /^[a-z' \-]+$/i.test(s || '') && /[aeiou]/i.test(s);
 
   // ---------- Normalisierung für Suche / Antwortvergleich ----------
-  JP.norm = (s) => JP.toHira(JP.kana(String(s || ''))).replace(/[\s　。、．，,.!！?？「」『』・〜~]/g, '').toLowerCase();
+  JP.norm = (s) => JP.toHira(JP.kana(String(s || ''))).replace(/[\s　。、．，,.!！?？「」『』・〜～〰∼~]/g, '').toLowerCase();
   JP.lenient = (s) => JP.norm(s).replace(/は/g, 'わ').replace(/へ/g, 'え').replace(/を/g, 'お').replace(/ー/g, '');
 
   // ---------- Verbkonjugation ----------
