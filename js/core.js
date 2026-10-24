@@ -258,6 +258,7 @@ window.App = window.App || {};
     { name: 'JLPT', color: '#6741d9' },
     { name: 'Tagebuch', color: '#c8641e' },
     { name: 'Smalltalk', color: '#e0892f' },
+    { name: 'Eigene', color: '#9c6b30' },
     { name: 'Sonstiges', color: '#7d7f89' },
   ];
   const DEFAULT_SETTINGS = {

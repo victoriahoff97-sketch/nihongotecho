@@ -98,8 +98,10 @@
   App.qList = (v) => (v ? String(v).split('|').filter(Boolean) : []);
   // Prüft, ob ein Eintrag zum Niveau-Filter passt: lvl ist 'N5'…'N1', 'none' (= kein Niveau), mehrere davon oder leer (= kein Filter)
   App.levelMatch = (it, lvl) => !lvl || App.qList(lvl).some((l) => (l === 'none' ? !it.level : it.level === l));
+  // Quellen eines Eintrags: seine Quelle (Einträge ohne Quelle = „Eigene“) und weitere aus moreSources; Dateien nur ihre Quelle
+  App.srcsOf = (it) => [it.source || (it.type ? 'Eigene' : '')].concat(it.moreSources || []).filter(Boolean);
   // Prüft, ob ein Eintrag (oder eine Datei) zum Quellen-Filter passt
-  App.srcMatch = (it, src) => !src || App.qList(src).includes(it.source);
+  App.srcMatch = (it, src) => !src || App.qList(src).some((s) => App.srcsOf(it).includes(s));
   // Die Quelle, wenn genau eine gewählt ist (Vorbelegung für neue Einträge und Uploads), sonst ''
   App.oneSrc = (src) => { const l = App.qList(src); return l.length === 1 ? l[0] : ''; };
 

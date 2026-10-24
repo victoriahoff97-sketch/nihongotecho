@@ -106,9 +106,11 @@
     return c ? `<span class="badge" title="Verbgruppe">${c}</span>` : '';
   };
   App.srcBadge = (it) => {
-    if (!it.source) return '';
+    // weitere Quellen (moreSources, z. B. „Eigene“) als eigene Abzeichen ohne Lektion
+    const more = (it.moreSources || []).map((s) => `<span class="badge src" style="--c:${App.sourceColor(s)}">${esc(s)}</span>`).join(' ');
+    if (!it.source) return more;
     const l = it.lesson !== '' && it.lesson != null ? ` · L${esc(it.lesson)}` : '';
-    return `<span class="badge src" style="--c:${App.sourceColor(it.source)}">${esc(it.source)}${l}</span>`;
+    return `<span class="badge src" style="--c:${App.sourceColor(it.source)}">${esc(it.source)}${l}</span>${more ? ' ' + more : ''}`;
   };
   App.tagsHtml = (tags) => (tags || []).map((t) => `<a class="tag" href="#/suche?q=%23${encodeURIComponent(t)}">${esc(t)}</a>`).join(' ');
   // Schutz bei altem index.html (ohne js/accent.js): keine Kurve statt Absturz
@@ -365,7 +367,7 @@
   };
   App.sourceSelect = (items, active, param = 'src') => {
     const counts = {};
-    items.forEach((it) => { if (it.source) counts[it.source] = (counts[it.source] || 0) + 1; });
+    items.forEach((it) => App.srcsOf(it).forEach((s) => { counts[s] = (counts[s] || 0) + 1; }));
     const names = App.sources().map((s) => s.name).filter((n) => counts[n]);
     Object.keys(counts).forEach((n) => { if (!names.includes(n)) names.push(n); });
     if (names.length < 1) return '';

@@ -66,7 +66,8 @@
       oft: (n) => [[['年', 'ねん'], ['一年', 'いちねん']], 'に', num('kai', n)],
     },
     nacht: { dauer: (n) => [num('haku', n)], reise: (n) => (n < 10 ? [num('haku', n), num('nichi', n + 1)] : null) },
-    mal: { anzahl: (n) => [num('kai', n)], xte: (n) => [add('kai', n, '目', 'め')] },
+    // das erste Mal heißt im Alltag 初めて; 一回目 vor allem beim Aufzählen
+    mal: { anzahl: (n) => [num('kai', n)], xte: (n) => [(n === 1 ? [['初めて', 'はじめて']] : []).concat(add('kai', n, '目', 'め'))] },
   };
   // alle Kombinationen der Teile → Notationen, die erste = Musterlösung
   const combine = (parts) => {
@@ -125,7 +126,7 @@
     'min-dauer': 'Wie lange: 〜分（ふん / ぷん）, 間 kann dazu. Ohne Partikel.',
     'nacht-dauer': 'Nächte zählt man mit 〜泊（はく / ぱく）.',
     'nacht-reise': 'Reisedauer: Nächte + Tage, z. B. 二泊三日（にはくみっか）.',
-    'mal-xte': 'Das x-te Mal: 〜回目（かいめ）.',
+    'mal-xte': 'Das x-te Mal: 〜回目（かいめ）. Das erste Mal heißt meist 初めて（はじめて）.',
     dauer: 'Wie lange / für …: 〜間（かん）, ohne Partikel.',
     xte: 'Der x-te: 〜目（め）.',
     nach: 'Nach / in …: 〜後（ご）, meist mit に.',
@@ -149,7 +150,9 @@
     { form: 'reise', units: ['nacht'], nums: N(1, 4), style: 'reise', de: 'Die Reise dauert {X}.', jp: '旅行[りょこう]は＿＿です。' },
     { form: 'xte', units: ['tag', 'woche', 'monat', 'jahr'], style: 'der', de: 'Heute ist {X} in Japan.', jp: '今日[きょう]は日本[にほん]で＿＿です。' },
     { form: 'xte', units: ['tag'], style: 'am', de: '{X} bin ich nach Nara gefahren.', jp: '＿＿に奈良[なら]に行[い]きました。' },
-    { form: 'xte', units: ['mal'], nums: N(2, 10), style: 'der', de: 'Das ist {X} in Tokyo.', jp: '東京[とうきょう]は＿＿です。' },
+    { form: 'xte', units: ['mal'], nums: N(1, 6), style: 'der', de: 'Das ist {X} in Tokyo.', jp: '東京[とうきょう]は＿＿です。' },
+    { form: 'xte', units: ['mal'], nums: N(1, 5), style: 'der', de: 'Wir sind jetzt {X} hier.', jp: 'ここに来[く]るのは＿＿です。' },
+    { form: 'xte', units: ['mal'], nums: N(2, 5), style: 'am', de: '{X} hat es geklappt.', jp: '＿＿でできました。' },
     { form: 'nach', units: ['std', 'tag', 'woche', 'monat', 'jahr'], style: 'nach', de: '{X} bin ich nach Hause zurückgekommen.', jp: '＿＿にうちに帰[かえ]りました。' },
     { form: 'nach', units: ['tag', 'woche', 'monat', 'jahr'], style: 'in', de: '{X} fahre ich nach Japan.', jp: '＿＿に日本[にほん]に行[い]きます。' },
     { form: 'nach', units: ['min', 'std'], style: 'in', de: 'Der Zug kommt {X}.', jp: '電車[でんしゃ]は＿＿に来[き]ます。' },
@@ -159,6 +162,7 @@
     { form: 'punkt', units: ['monat'], style: 'punkt', de: '{X} fahre ich nach Japan.', jp: '＿＿に日本[にほん]に行[い]きます。' },
     { form: 'punkt', units: ['std'], nums: N(4, 10), style: 'punkt', de: 'Ich stehe {X} auf.', jp: '＿＿に起[お]きます。' },
     { form: 'anzahl', units: ['mal'], nums: N(1, 5), style: 'mal', de: 'Ich habe den Film {X} gesehen.', jp: 'その映画[えいが]を＿＿見[み]ました。' },
+    { form: 'anzahl', units: ['mal'], nums: N(1, 5), style: 'mal', de: 'Ich war schon {X} in Kyoto.', jp: '京都[きょうと]に＿＿行[い]ったことがあります。' },
     { form: 'oft', units: ['tag'], nums: N(1, 4), style: 'oft', de: 'Ich nehme die Medizin {X}.', jp: '薬[くすり]を＿＿飲[の]みます。' },
     { form: 'oft', units: ['woche', 'monat'], nums: N(1, 5), style: 'oft', de: 'Ich gehe {X} ins Café.', jp: '＿＿カフェに行[い]きます。' },
     { form: 'oft', units: ['jahr'], nums: N(1, 3), style: 'oft', de: 'Ich fahre {X} nach Japan.', jp: '＿＿日本[にほん]に行[い]きます。' },
@@ -177,7 +181,7 @@
     };
   };
 
-  // Eine Runde: Formen wechseln sich ab; mindestens einmal Monat (März ↔ drei Monate), Tag (Datum ↔ Dauer) und Nächte
+  // Eine Runde: Formen wechseln sich ab; mindestens einmal Monat (März ↔ drei Monate), Tag (Datum ↔ Dauer), Nächte und Mal
   Z.round = ({ n = 10, rnd = Math.random } = {}) => {
     const all = [];
     Z.FRAMES.forEach((f) => f.units.forEach((u) => numsOf(f).forEach((x) => all.push([f, u, x]))));
@@ -194,6 +198,7 @@
     take(all.filter(([f, u]) => u === 'monat' && /punkt|dauer/.test(f.form)));
     take(all.filter(([f, u]) => u === 'tag' && /punkt|dauer/.test(f.form)));
     take(all.filter(([f, u]) => u === 'nacht'));
+    take(all.filter(([f, u]) => u === 'mal'));
     const forms = Array.from(new Set(Z.FRAMES.map((f) => f.form)));
     for (let i = forms.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [forms[i], forms[j]] = [forms[j], forms[i]]; }
     for (let i = 0; out.length < n && i < n * 10; i++) take(all.filter(([f]) => f.form === forms[i % forms.length]));

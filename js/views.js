@@ -8,7 +8,17 @@
   const srcOrder = (name) => { const i = App.sources().findIndex((s) => s.name === name); return i < 0 ? 99 : i; };
   const byLesson = (a, b) => srcOrder(a.source) - srcOrder(b.source) || (+a.lesson || 0) - (+b.lesson || 0) || App.ord(a) - App.ord(b);
   const groupBy = (items, keyFn) => { const m = new Map(); items.forEach((it) => { const k = keyFn(it); if (!m.has(k)) m.set(k, []); m.get(k).push(it); }); return m; };
-  const lessonKey = (it) => (it.source || 'Eigene Einträge') + (it.lesson !== '' && it.lesson != null ? ' · Lektion ' + it.lesson : '');
+  const lessonKey = (it) => (it.source && it.source !== 'Eigene' ? it.source : 'Eigene Einträge') + (it.lesson !== '' && it.lesson != null ? ' · Lektion ' + it.lesson : '');
+  // Gruppen nach Quelle + Lektion; ein Eintrag mit weiteren Quellen (moreSources) steht zusätzlich in deren Gruppe.
+  // Mit Quellen-Filter (src) nur die Gruppen der gewählten Quellen.
+  const groupBySource = (items, src) => {
+    const m = new Map();
+    const on = App.qList(src);
+    const put = (k, it) => { if (!m.has(k)) m.set(k, []); m.get(k).push(it); };
+    items.forEach((it) => { if (!on.length || on.includes(it.source || 'Eigene')) put(lessonKey(it), it); });
+    items.forEach((it) => (it.moreSources || []).forEach((s) => { if (!on.length || on.includes(s)) put(s === 'Eigene' ? 'Eigene Einträge' : s, it); }));
+    return m;
+  };
   App.furiClass = () => (S.settings.furigana === 'hover' ? 'hide-furigana' : '');
   const pageHead = (sec, sub, actions = '') => `<div class="page-head"><div class="titles"><h1>${esc(sec.label)} <span class="jp-title">${sec.jp}</span></h1>${sub ? `<p>${sub}</p>` : ''}</div><div class="row">${actions}</div></div>`;
   App.pageHead = pageHead;
@@ -436,7 +446,7 @@
     if (q.tab === 'files') body.innerHTML = filesTab('vocab', q);
     else if (!items.length) body.innerHTML = `<div class="empty-state"><div class="big">単</div><h3>Keine Vokabeln gefunden</h3><p>Passe die Filter an oder lege ein neues Wort an.</p></div>`;
     else {
-      const groups = groupBy(items, lessonKey);
+      const groups = groupBySource(items, q.src);
       let html = '';
       groups.forEach((list, key) => {
         html += `<div class="group-head"><h2>${esc(key)}</h2><span class="badge">${list.length}</span><span class="line"></span></div>`;
@@ -554,9 +564,9 @@
     else if (!items.length) body.innerHTML = '<div class="empty-state"><div class="big">文</div><h3>Keine Grammatik gefunden</h3></div>';
     else {
       let html = '';
-      groupBy(items, lessonKey).forEach((list, key) => {
+      groupBySource(items, q.src).forEach((list, key) => {
         // Genki-Lektion: passende Folgen von Japanese with Shun (js/shun.js) unter der Überschrift
-        const shun = App.shunUi ? App.shunUi.lessonBox(list[0].source, +list[0].lesson) : '';
+        const shun = App.shunUi && key === lessonKey(list[0]) ? App.shunUi.lessonBox(list[0].source, +list[0].lesson) : '';
         html += `<div class="group-head"><h2>${esc(key)}</h2><span class="badge">${list.length}</span><span class="line"></span></div>${shun}<div class="grid cols-3">${list.map(App.grammarCard).join('')}</div>`;
       });
       body.innerHTML = html;
@@ -564,8 +574,8 @@
     App.hydrateThumbs(body);
     bindFilter(view);
   });
-  // Formen-Tabelle eines Grammatikpunkts (Feld table): Zelle = „Japanisch|Deutsch“, leer = gibt es so nicht
-  const grammarTable = (t) => (t && (t.rows || []).length ? `<div class="section-title">Übersicht</div><div class="gtable-wrap"><table class="gtable">
+  // Formen-Tabelle(n) eines Grammatikpunkts (Feld table, eine oder eine Liste mit title): Zelle = „Japanisch|Deutsch“, leer = gibt es so nicht
+  const grammarTable = (t) => (Array.isArray(t) ? t.map(grammarTable).join('') : t && (t.rows || []).length ? `<div class="section-title">${esc(t.title || 'Übersicht')}</div><div class="gtable-wrap"><table class="gtable${(t.cols || []).length <= 3 ? ' gtable-small' : ''}">
     <thead><tr>${(t.cols || []).map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>
     <tbody>${t.rows.map(([head, ...cells]) => `<tr><th>${esc(head)}</th>${cells.map((c) => {
       const [jp, de] = String(c || '').split('|');
@@ -685,7 +695,7 @@
         const list = (gm.get(g) || []).sort((a, b) => (a.order || 0) - (b.order || 0));
         return `<div class="card" style="margin-bottom:16px"><div class="row between" style="margin-bottom:8px"><h3 style="margin:0">${esc(g)} <span class="badge">${list.length}</span></h3>
           <div class="row">${list.length ? `<a class="btn btn-sm" href="#/ueben/karten?type=phrase&g=${encodeURIComponent(g)}">${icon('practice')} Lernen</a>` : ''}<button class="btn btn-sm btn-ghost" data-group="${esc(g)}" title="Ausdruck hinzufügen">${icon('plus')}</button><button class="btn btn-sm btn-ghost" data-edit-group="${esc(g)}" title="Gruppe umbenennen oder löschen">${icon('edit')}</button></div></div>
-          ${list.length ? `<div class="list" style="box-shadow:none">${list.map((it) => `<a class="list-row" href="${App.link(it)}" style="grid-template-columns:minmax(160px,1.2fr) minmax(140px,1fr) minmax(120px,1.2fr) auto"><span class="k" lang="ja">${JP.ruby(it.jp)}</span><span><b>${esc(it.de)}</b></span><span class="small muted">${esc(it.note || '')}</span><span class="row" style="gap:8px;flex-wrap:nowrap">${App.statusBadge(it.id)}${App.speakBtn(it.jp)}</span></a>`).join('')}</div>`
+          ${list.length ? `<div class="list" style="box-shadow:none">${list.map((it) => `<a class="list-row" href="${App.link(it)}" style="grid-template-columns:minmax(160px,1.2fr) minmax(140px,1fr) minmax(120px,1.2fr) auto"><span class="k" lang="ja">${JP.ruby(it.jp)}</span><span><b>${esc(it.de)}</b></span><span class="small muted">${esc(JP.plain(it.note || ''))}</span><span class="row" style="gap:8px;flex-wrap:nowrap">${App.statusBadge(it.id)}${App.speakBtn(it.jp)}</span></a>`).join('')}</div>`
           : `<div class="empty-state" style="padding:18px"><p style="margin:0 0 10px">Noch leer.</p><button class="btn btn-sec btn-sm" data-group="${esc(g)}">${icon('plus')} Ersten Ausdruck hinzufügen</button></div>`}</div>`;
       }).join('') || '<div class="empty-state"><div class="big">表</div><h3>Nichts gefunden</h3></div>';
     }

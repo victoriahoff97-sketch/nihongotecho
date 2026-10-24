@@ -432,7 +432,7 @@
     else { it.level = lv === 'ohne' ? '' : lv; it.levelManual = true; }
   };
   const commonFields = (it) => `<div class="three">
-      <div class="field"><label>Quelle</label><select class="input" name="source">${App.sourceOptions(it.source ?? lastSrc())}</select></div>
+      <div class="field"><label>Quelle</label><select class="input" name="source">${App.sourceOptions(it.source ?? (it.type === 'grammar' ? 'Eigene' : lastSrc()))}</select></div>
       <div class="field full-only"><label>Lektion / Kapitel</label><input class="input" name="lesson" value="${esc(it.lesson ?? '')}" placeholder="z. B. 3"></div>
       <div class="field full-only"><label>Fundstelle / Link</label><input class="input" name="sourceRef" value="${esc(it.sourceRef || '')}" placeholder="URL oder Seite"></div></div>
     <div class="field full-only"><label>Schlagwörter <small>mit Komma trennen</small></label><input class="input" name="tags" value="${esc((it.tags || []).join(', '))}" placeholder="z. B. essen, alltag"></div>`;

@@ -459,6 +459,7 @@ details.adv[open] summary { margin-bottom: 12px; }
 /* Formen-Tabelle eines Grammatikpunkts: auf schmalen Bildschirmen scrollt nur die Tabelle */
 .gtable-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
 .gtable { border-collapse: collapse; width: 100%; min-width: 560px; }
+.gtable.gtable-small { min-width: 0; }
 .gtable th, .gtable td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .gtable tr:last-child th, .gtable tr:last-child td { border-bottom: 0; }
 .gtable thead th { font-size: 13px; color: var(--ink-2); font-weight: 600; background: var(--sec-soft); }
