@@ -349,6 +349,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
   // cram = freies Üben: nichts wird bewertet, der Lernstand bleibt unberührt – nicht Gewusstes kommt nur in dieser Runde noch einmal
   // Gemischte Runde: Einträge { it, kind: 'read' | 'active' | 'write', dir, pad } bringen Richtung und Lernstand selbst mit; pad = Kanji mit dem Stift schreiben
   // resume = geparkte Runde (park-logic.js): Stand übernehmen, die offene Karte liegt wieder aufgedeckt da
+  // Für andere Seiten (Auffrischen): label statt „freies Üben“ oben, onEnd() beim Abschlussbild, noAgain = ohne „Weitere Runde“
   function runCards(stage, queue, opts, resume) {
     const { dir, cram, write, active, more, left, nextChunk } = opts;
     const home = location.hash, from = App.origin();
@@ -364,7 +365,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     // „neue lernen“ bei Vokabeln und Ausdrücken: beim ersten Zeigen lässt sich Bekanntes gleich aussortieren – danach nicht mehr
     const canSkip = () => !cram && ent.kind !== 'write' && W.direct(cur.type) && W.firstShow(S.srs.get(srsKey()));
     const undoBtn = () => (last ? ` <button class="btn btn-sm btn-ghost" data-undo-card title="Letzte Bewertung zurücknehmen (Strg+Z)">${icon('undo')} Rückgängig</button>` : '');
-    const head = () => `<div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${cram ? ' · freies Üben' : ''}${undoBtn()}</span><span>${App.srcBadge(cur)}</span></div>
+    const head = () => `<div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${opts.label ? ' · ' + esc(opts.label) : cram ? ' · freies Üben' : ''}${undoBtn()}</span><span>${App.srcBadge(cur)}</span></div>
         <div class="progress" style="margin-bottom:10px"><i style="width:${(done / Math.max(1, total)) * 100}%"></i></div>`;
     const next = () => {
       ent = queue.shift();
@@ -374,10 +375,12 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       if (ans && ans.pad) ans.pad.stop();
       ans = null; suggest = null;
       if (!cur) {
+        if (opts.onEnd) opts.onEnd();
         const rest = left ? left() : 0; // Lernschlange in Häppchen: so viel ist noch nicht dran gewesen
         stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${cram ? `Frei geübt – an deinem Lernstand hat sich nichts geändert.${left && !rest ? ' Damit war alles einmal dran.' : ''}` : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>${opts.endHtml ? opts.endHtml() : ''}
-          <div class="row" style="justify-content:center">${undoBtn()}${App.backBtn('Zur Übersicht')}${cram ? (rest ? `<button class="btn" data-again>Zur Auswahl</button><button class="btn btn-primary" data-next-chunk>${icon('play')} Nächste Runde (noch ${rest})</button>` : '<button class="btn btn-primary" data-again>Weitere Runde</button>') : roundEnd(more())}</div></div></div>`;
-        if (cram) stage.querySelector('[data-again]').onclick = () => App.render();
+          <div class="row" style="justify-content:center">${undoBtn()}${App.backBtn('Zur Übersicht')}${cram ? (rest ? `<button class="btn" data-again>Zur Auswahl</button><button class="btn btn-primary" data-next-chunk>${icon('play')} Nächste Runde (noch ${rest})</button>` : opts.noAgain ? '' : '<button class="btn btn-primary" data-again>Weitere Runde</button>') : roundEnd(more())}</div></div></div>`;
+        const again = stage.querySelector('[data-again]');
+        if (cram && again) again.onclick = () => App.render();
         if (rest) stage.querySelector('[data-next-chunk]').onclick = () => nextChunk();
         bindRoundEnd(stage);
         App.backup.nudge();

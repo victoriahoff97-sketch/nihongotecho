@@ -274,6 +274,7 @@ window.App = window.App || {};
     listenPos: 0, // 今日のリスニング: Stelle in der Hör-Kette (js/listening-logic.js)
     dayLog: null, // Tagesliste „今日“ auf der Startseite: was heute erledigt ist (js/daycheck-logic.js)
     dayGoals: null, // Tagesliste: eigene Ziele – Ziel / Mag / Aus pro Punkt, Zahlen, eigene Punkte (js/daycheck-logic.js D.goals)
+    refresh: null, // Auffrischen der Zahlen-Ausdrücke alle 14 Tage: { last, seen, miss } (js/refresh-logic.js)
     listenAt: null, // 今日のリスニング: gemerkte Stelle im offenen Stück { pos, t } (Sekunde)
     shunHeard: [], // Seite „Hören“: gehörte Folgen von Japanese with Shun (Folgen-IDs, js/shun-logic.js)
     shunAt: null, // Seite „Hören“: gemerkte Stelle in der zuletzt offenen Shun-Folge { id, t } (Sekunde)
