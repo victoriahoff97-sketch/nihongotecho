@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-24-2', date: '24. Oktober',
+      items: [
+        { t: 'Diktieren mit Zeit zum Überlegen', d: 'Im Tagebuch und beim Smalltalk (Getippt › Diktieren) hört die App jetzt weiter zu, auch wenn du kurz nachdenkst – bis du auf „Fertig“ tippst.' },
+      ],
+    },
+    {
       id: '2026-10-24', date: '24. Oktober',
       items: [
         { t: 'Zeitangaben mit Zahlen', d: 'Neuer Grammatikeintrag: wann man „drei Tage“, „dreimal pro Woche“ oder „das dritte Mal“ sagt – mit Tabelle und der Übung „Welche Form?“.' },

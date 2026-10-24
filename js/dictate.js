@@ -10,10 +10,11 @@
     network: 'Diktieren braucht Internet.',
     'language-not-supported': 'Diese Sprache kann der Browser hier nicht erkennen.',
   };
-  let active = null; // { rec, input, stop }
+  let active = null; // { input, stop }
   const NO_SPEECH = 8000; // so lange darf nach dem Antippen nichts kommen
   const PAUSE = 2500;     // Sprechpause, nach der das Diktat endet
   const END_WAIT = 1200;  // so lange aufs Ende warten, dann abbrechen
+  const SILENCE = 60000;  // langes Diktat: so lange ganz still, dann aus (hält sonst das Mikrofon besetzt)
 
   // Erkannter Text hinter dem, was schon im Feld steht; Japanisch ohne Leerzeichen (Safari trennt die Wörter)
   const joined = (before, text, lang) => {
@@ -24,21 +25,23 @@
 
   // navigator.standalone gibt es nur bei Apple: true = vom Home-Bildschirm gestartet
   const homeScreenIos = () => !!window.navigator && window.navigator.standalone === true;
+  // Chrome auf Android wiederholt im Dauerbetrieb (continuous) schon Erkanntes – dort Satz für Satz neu starten
+  const android = () => !!window.navigator && /Android/i.test(window.navigator.userAgent || '');
 
   // Ziel des Diktats. Eingabefeld: Text hinter das, was schon drinsteht; danach change (Lesung, Übersetzung hängen daran).
-  // Schreibfläche (contenteditable): Text an der Schreibmarke – sonst ans Ende –, danach input (dort wird gespeichert).
+  // Schreibfläche (contenteditable): Text an der Schreibmarke – sonst ans Ende, oder direkt hinter after –, danach input (dort wird gespeichert).
+  // end() übernimmt den Text und gibt den neuen Textknoten zurück (dort geht ein langes Diktat weiter).
   const fieldTarget = (input, lang) => {
     const before = input.value;
     return {
-      put: (text) => { input.value = joined(before, text, lang); return input.value !== before; },
-      end: (got) => { if (got && input.isConnected) input.dispatchEvent(new Event('change', { bubbles: true })); },
+      put: (text) => { input.value = joined(before, text, lang); },
+      end: () => { if (input.value !== before && input.isConnected) input.dispatchEvent(new Event('change', { bubbles: true })); },
     };
   };
-  const editTarget = (ed, lang) => {
+  const editTarget = (ed, lang, after) => {
     const sel = getSelection();
-    let r;
-    if (sel.rangeCount && ed.contains(sel.anchorNode)) { r = sel.getRangeAt(0).cloneRange(); r.collapse(false); } else {
-      r = document.createRange();
+    let r = document.createRange();
+    if (after && after.isConnected) { r.setStartAfter(after); r.collapse(true); } else if (sel.rangeCount && ed.contains(sel.anchorNode)) { r = sel.getRangeAt(0).cloneRange(); r.collapse(false); } else {
       const last = ed.lastElementChild && /^(P|DIV|H2|H3|LI)$/.test(ed.lastElementChild.tagName) ? ed.lastElementChild : ed;
       r.selectNodeContents(last); r.collapse(false);
     }
@@ -47,14 +50,15 @@
     span.className = 'dictating';
     r.insertNode(span);
     return {
-      put: (text) => { span.textContent = joined('', text, lang); return !!span.textContent; },
-      end: (got) => {
-        if (!span.isConnected) return;
-        if (!got || !span.textContent) { span.remove(); return; }
+      put: (text) => { span.textContent = joined('', text, lang); },
+      end: () => {
+        if (!span.isConnected) return null;
+        if (!span.textContent) { span.remove(); return null; }
         const node = document.createTextNode(span.textContent);
         span.replaceWith(node);
         if (document.activeElement === ed) { const c = document.createRange(); c.setStartAfter(node); c.collapse(true); sel.removeAllRanges(); sel.addRange(c); }
         ed.dispatchEvent(new Event('input', { bubbles: true }));
+        return node;
       },
     };
   };
@@ -62,8 +66,12 @@
   App.dictate = {
     joined,
     supported: () => !!SR(),
+    // Läuft gerade ein Diktat in dieses Feld, beenden (z. B. beim Verlassen der Seite)
+    stopFor: (input) => { if (active && active.input === input) active.stop(); },
     // Startet das Diktat ins Feld (input oder contenteditable); ein zweiter Aufruf fürs selbe Feld beendet es. btn bekommt solange die Klasse „active“.
-    toggle: (input, btn, lang) => {
+    // long: bleibt an, bis man wieder antippt (Tagebuch: Zeit zum Überlegen) – erst nach SILENCE ganz ohne Sprache geht es von selbst aus.
+    // Ohne long endet es nach einem Satz (Sprechpause). Ein .mic-label im Knopf zeigt solange „Fertig“.
+    toggle: (input, btn, lang, { long = false } = {}) => {
       // iPad/iPhone, App vom Home-Bildschirm: die Spracherkennung startet dort, hört aber nichts und hält das Mikrofon besetzt –
       // stattdessen das Feld öffnen und aufs Mikrofon der Tastatur verweisen
       if (homeScreenIos()) {
@@ -72,42 +80,82 @@
       }
       const was = active;
       if (was) { was.stop(); if (was.input === input) return; }
-      const rec = new (SR())();
-      let tg = null, got = false, done = false, timer = 0;
-      // Abschluss genau einmal – auch wenn der Browser das Ende nie meldet
-      const finish = () => {
-        if (done) return;
-        done = true;
-        clearTimeout(timer);
+      const label = btn.querySelector && btn.querySelector('.mic-label');
+      const labelText = label && label.textContent;
+      let on = true, tg = null, last = null, cur = null, idle = 0, fails = 0;
+      // Bisher Erkanntes übernehmen; weiter geht es direkt dahinter
+      const commit = () => { if (tg) { last = tg.end() || last; tg = null; } };
+      const target = () => tg || (tg = input.isContentEditable ? editTarget(input, lang, last) : fieldTarget(input, lang));
+      const off = () => {
+        on = false;
+        clearTimeout(idle);
         btn.classList.remove('active');
-        if (active && active.rec === rec) active = null;
-        if (tg) tg.end(got);
+        if (label) label.textContent = labelText;
+        if (active && active.input === input) active = null;
       };
-      // Safari (iPad, iPhone) hört nach einer Sprechpause nicht von selbst auf und meldet das Ende oft gar nicht:
-      // nach Stille selbst beenden, und bleibt die Meldung aus, abbrechen und aufräumen
-      const stop = () => {
-        if (done) return;
-        clearTimeout(timer);
-        try { rec.stop(); } catch (e) { /* schon beendet */ }
-        if (done) return;
-        timer = setTimeout(() => { try { rec.abort(); } catch (e) { /* egal */ } finish(); }, END_WAIT);
+      const stopAll = () => { on = false; if (cur) cur.stop(); };
+      const stillness = () => { clearTimeout(idle); idle = setTimeout(() => { App.toast('Diktieren ist aus – eine Minute lang nichts gehört.'); stopAll(); }, SILENCE); };
+
+      // Eine Runde der Spracherkennung; im langen Diktat startet nach ihrem Ende gleich die nächste
+      const round = () => {
+        const rec = new (SR())();
+        let done = false, timer = 0, from = 0, heard = false;
+        const t0 = Date.now();
+        // Abschluss genau einmal – auch wenn der Browser das Ende nie meldet
+        const finish = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          commit();
+          if (!on || !long) return off();
+          // Endet jede Runde sofort ohne Ergebnis, stimmt etwas nicht – nicht endlos neu starten
+          fails = heard || Date.now() - t0 > 1500 ? 0 : fails + 1;
+          if (fails >= 3) { App.toast('Diktieren hat nicht geklappt.'); return off(); }
+          round();
+        };
+        // Safari (iPad, iPhone) hört nach einer Sprechpause nicht von selbst auf und meldet das Ende oft gar nicht:
+        // nach Stille selbst beenden, und bleibt die Meldung aus, abbrechen und aufräumen
+        const stop = () => {
+          if (done) return;
+          clearTimeout(timer);
+          try { rec.stop(); } catch (e) { /* schon beendet */ }
+          if (done) return;
+          timer = setTimeout(() => { try { rec.abort(); } catch (e) { /* egal */ } finish(); }, END_WAIT);
+        };
+        rec.lang = lang;
+        rec.interimResults = true;
+        rec.continuous = long && !android();
+        rec.onresult = (e) => {
+          if (done) return;
+          // Fertige Sätze gleich als Text übernehmen (wird gespeichert), der Rest bleibt Zwischenstand
+          let fin = '', rest = '';
+          for (let i = from; i < e.results.length; i++) {
+            const t = e.results[i][0].transcript;
+            if (e.results[i].isFinal && !rest) { fin += t; from = i + 1; } else rest += t;
+          }
+          heard = true;
+          if (fin) { target().put(fin); commit(); }
+          if (rest || tg) target().put(rest);
+          if (long) stillness();
+          if (!rec.continuous) { clearTimeout(timer); timer = setTimeout(stop, PAUSE); }
+        };
+        rec.onerror = (e) => {
+          if (done || e.error === 'aborted') return;
+          if (long && e.error === 'no-speech') return; // langes Diktat: Stille ist erlaubt, die nächste Runde hört weiter zu
+          App.toast(MSG[e.error] || 'Diktieren hat nicht geklappt (' + e.error + ').');
+          if (long) { on = false; stop(); }
+        };
+        rec.onend = finish;
+        try { rec.start(); } catch (e) { console.error(e); App.toast('Diktieren ließ sich nicht starten.'); return off(); }
+        cur = { stop };
+        if (!long) timer = setTimeout(() => { App.toast(MSG['no-speech']); stop(); }, NO_SPEECH);
       };
-      const quiet = (ms) => { clearTimeout(timer); timer = setTimeout(stop, ms); };
-      rec.lang = lang;
-      rec.interimResults = true;
-      rec.continuous = false;
-      rec.onresult = (e) => {
-        if (done) return;
-        got = tg.put(Array.from(e.results).map((r) => r[0].transcript).join(''));
-        quiet(PAUSE);
-      };
-      rec.onerror = (e) => { if (!done && e.error !== 'aborted') App.toast(MSG[e.error] || 'Diktieren hat nicht geklappt (' + e.error + ').'); };
-      rec.onend = finish;
-      try { rec.start(); } catch (e) { console.error(e); return App.toast('Diktieren ließ sich nicht starten.'); }
-      tg = input.isContentEditable ? editTarget(input, lang) : fieldTarget(input, lang);
-      active = { rec, input, stop };
+
+      active = { input, stop: stopAll };
       btn.classList.add('active');
-      timer = setTimeout(() => { App.toast(MSG['no-speech']); stop(); }, NO_SPEECH);
+      if (label) label.textContent = 'Fertig';
+      round();
+      if (long && on) stillness();
     },
   };
 })(window.App);

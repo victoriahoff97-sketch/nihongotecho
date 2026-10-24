@@ -811,7 +811,7 @@
       <button class="icon-btn sm" data-cmd="ruby" title="Furigana über markiertes Kanji">${icon('ruby')}</button>
       <button class="icon-btn sm" data-cmd="ref" title="Eintrag verlinken (Grammatik, Vokabel …)">${icon('link')}</button>
       ${onNewItem ? `<button class="btn btn-sm" data-cmd="newvocab" title="Markierten Text als neue Vokabel speichern">${icon('plus')} Vokabel</button><button class="btn btn-sm" data-cmd="newgrammar">${icon('plus')} Grammatik</button>${newPhrase ? `<button class="btn btn-sm" data-cmd="newphrase" title="Markierten Text als neuen Ausdruck speichern">${icon('plus')} Ausdruck</button>` : ''}` : ''}
-      ${dictate && App.dictate.supported() ? `<span class="sep"></span><button class="btn btn-sm mic" data-cmd="mic" title="Auf Japanisch sprechen – der Text erscheint an der Schreibmarke">${icon('mic')} Diktieren</button>` : ''}
+      ${dictate && App.dictate.supported() ? `<span class="sep"></span><button class="btn btn-sm mic" data-cmd="mic" title="Auf Japanisch sprechen – der Text erscheint an der Schreibmarke. Bleibt an, bis du auf „Fertig“ tippst.">${icon('mic')} <span class="mic-label">Diktieren</span></button>` : ''}
       <span class="grow"></span><span class="small muted" data-status></span></div>
       <div class="rte" contenteditable="true" spellcheck="false" data-placeholder="${esc(placeholder)}"></div>`;
     const ed = host.querySelector('.rte');
@@ -823,7 +823,7 @@
     const keepSel = () => { const s = getSelection(); if (s.rangeCount && ed.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange(); };
     ed.addEventListener('keyup', keepSel); ed.addEventListener('mouseup', keepSel); ed.addEventListener('touchend', keepSel);
     document.addEventListener('selectionchange', keepSel);
-    App.onLeave(() => document.removeEventListener('selectionchange', keepSel));
+    App.onLeave(() => { document.removeEventListener('selectionchange', keepSel); if (dictate) App.dictate.stopFor(ed); });
     const restore = () => { ed.focus(); if (savedRange) { const s = getSelection(); s.removeAllRanges(); s.addRange(savedRange); } };
     const insertHtml = (h) => { restore(); document.execCommand('insertHTML', false, h); doSave(); };
     host.querySelector('.editor-toolbar').addEventListener('pointerdown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
@@ -832,7 +832,7 @@
       const c = b.dataset.cmd;
       const selText = savedRange ? savedRange.toString() : '';
       restore();
-      if (c === 'mic') return App.dictate.toggle(ed, b, dictate);
+      if (c === 'mic') return App.dictate.toggle(ed, b, dictate, { long: true });
       if (c === 'h2') document.execCommand('formatBlock', false, document.queryCommandValue('formatBlock') === 'h2' ? 'p' : 'h2');
       else if (c === 'bold' || c === 'italic' || c === 'underline') document.execCommand(c);
       else if (c === 'ul') document.execCommand('insertUnorderedList');
