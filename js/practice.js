@@ -673,30 +673,34 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <div class="ex-prompt jp" lang="ja">${JP.ruby(e.q)} ${App.speakBtn(e.q)}</div><div class="muted" style="margin:-4px 0 8px">Hinweis: ${esc(e.de)}</div>`
           : `<div class="small muted">${dir === 'de' ? 'Übersetze ins Japanische:' : 'Übersetze ins Deutsche:'}</div>
           <div class="ex-prompt ${dir === 'jp' ? 'jp' : ''}" ${dir === 'jp' ? 'lang="ja"' : ''}>${dir === 'de' ? esc(e.de) : JP.ruby(e.jp)} ${dir === 'jp' ? App.speakBtn(e.jp) : ''}</div>`}
-          ${dir === 'de' ? `<input class="input answer-in" placeholder="Antwort (Romaji wird zu かな)" autocomplete="off" autocapitalize="off" spellcheck="false">
-            <div class="row" style="margin-top:8px"><label class="small row" style="gap:6px"><input type="checkbox" data-rj checked> Romaji → かな</label><button class="btn btn-sm btn-ghost" data-hand>${icon('pen')} Mit Stift schreiben</button>${micBtn('ja-JP', 'Auf Japanisch sprechen – der Text erscheint im Antwortfeld')}</div><div data-handpad hidden style="margin-top:10px"></div>`
+          ${dir === 'de' ? '<div data-ansfield></div>'
           : `<textarea class="input" style="width:100%;font-size:19px" rows="2" placeholder="Deine Übersetzung …"></textarea>${App.dictate.supported() ? `<div class="row" style="margin-top:8px">${micBtn('de-DE', 'Auf Deutsch sprechen – der Text erscheint im Antwortfeld')}</div>` : ''}`}
           <div class="row" style="margin-top:14px"><button class="btn btn-primary" data-check>${icon('check')} ${dir === 'de' ? 'Prüfen' : 'Lösung zeigen'}</button><button class="btn btn-ghost" data-skip>Überspringen</button></div>
           <div data-sol></div></div></div>`;
-      const inp = stage.querySelector('.answer-in, textarea');
-      if (dir === 'de') {
-        const rj = stage.querySelector('[data-rj]');
-        App.bindRomaji(inp, () => rj.checked);
-        stage.querySelector('[data-hand]').onclick = () => { const h = stage.querySelector('[data-handpad]'); h.hidden = !h.hidden; if (!h.hidden && !h.dataset.init) { h.dataset.init = 1; App.stroke.pad(h, null, { template: false }); } };
-      }
+      // Deutsch → Japanisch: Antwortfeld wie auf den Karteikarten (Stift oder Tastatur, App.answerField), Mikrofon daneben
+      let checked = false, waiting = false;
+      const enter = () => { if (!checked) check(); else { const b = stage.querySelector('[data-res="1"]'); if (b && stage.querySelector('.verdict.ok')) b.click(); } };
+      const field = dir === 'de' ? App.answerField(stage.querySelector('[data-ansfield]'), { onEnter: enter, extra: micBtn('ja-JP', 'Auf Japanisch sprechen – der Text erscheint im Antwortfeld') }) : null;
+      const ta = stage.querySelector('textarea');
+      const inp = () => (field ? field.inp() : ta);
       const mic = stage.querySelector('[data-mic]');
       const micOn = () => mic && mic.classList.contains('active');
-      if (mic) mic.onclick = () => App.dictate.toggle(inp, mic, mic.dataset.mic);
-      setTimeout(() => inp.focus(), 50);
-      let checked = false;
-      const check = () => {
+      if (mic) mic.onclick = () => App.dictate.toggle(inp(), mic, mic.dataset.mic);
+      if (ta) setTimeout(() => ta.focus(), 50);
+      const check = async () => {
+        if (checked || waiting) return;
+        if (micOn()) App.dictate.toggle(inp(), mic, mic.dataset.mic); // Prüfen beendet ein laufendes Diktat
+        waiting = true;
+        const ans = (field ? await field.value() : ta.value).trim();
+        waiting = false;
         if (checked) return;
         checked = true;
-        if (micOn()) App.dictate.toggle(inp, mic, mic.dataset.mic); // Prüfen beendet ein laufendes Diktat
-        const ans = inp.value.trim();
+        if (field) field.lock();
         let auto = null;
         if (dir === 'de' && ans) {
-          const r = App.drillLogic.sameAnswer(ans, App.drillLogic.solutionsOf(e), App.kanjiReadings());
+          // Stift: unverändert übernommen = auch die nächsten Vorschläge der Erkennung zählen
+          const rs = field.cands().map((s) => App.drillLogic.sameAnswer(s, App.drillLogic.solutionsOf(e), App.kanjiReadings()));
+          const r = rs.find((x) => x && x.ok) || rs[0];
           auto = r ? r.ok : null;
         }
         const words = (e.words || []).filter(Boolean);
@@ -709,8 +713,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
         stage.querySelector('[data-check]').hidden = true;
       };
       stage.querySelector('[data-check]').onclick = check;
-      stage.querySelector('[data-skip]').onclick = () => { if (micOn()) App.dictate.toggle(inp, mic, mic.dataset.mic); wrong.push(e); i++; show(); };
-      inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); if (!checked) check(); else { const b = stage.querySelector('[data-res="1"]'); if (b && stage.querySelector('.verdict.ok')) b.click(); } } });
+      stage.querySelector('[data-skip]').onclick = () => { if (micOn()) App.dictate.toggle(inp(), mic, mic.dataset.mic); if (field) field.lock(); wrong.push(e); i++; show(); };
+      if (ta) ta.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enter(); } });
       stage.querySelector('[data-sol]').addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-res]'); if (!b) return;
         if (b.dataset.res === '1') score++; else wrong.push(e);

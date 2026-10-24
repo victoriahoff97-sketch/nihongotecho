@@ -76,18 +76,15 @@
         <div class="card pad-lg">
           <div class="small muted">${esc(kind.how)}</div>
           ${kind.prompt(t)}
-          <input class="input answer-in" placeholder="Antwort (Romaji wird zu かな)" autocomplete="off" autocapitalize="off" spellcheck="false">
-          <div class="row" style="margin-top:8px"><label class="small row" style="gap:6px"><input type="checkbox" data-rj checked> Romaji → かな</label><button class="btn btn-sm btn-ghost" data-hand>${icon('pen')} Mit Stift schreiben</button></div><div data-handpad hidden style="margin-top:10px"></div>
+          <div data-ansfield></div>
           <div class="row" style="margin-top:14px"><button class="btn btn-primary" data-check>${icon('check')} Prüfen</button><button class="btn btn-ghost" data-skip>Lösung zeigen</button></div>
           <div data-sol></div></div></div>`;
-      const inp = stage.querySelector('.answer-in');
-      const rj = stage.querySelector('[data-rj]');
-      App.bindRomaji(inp, () => rj.checked);
-      stage.querySelector('[data-hand]').onclick = () => { const h = stage.querySelector('[data-handpad]'); h.hidden = !h.hidden; if (!h.hidden && !h.dataset.init) { h.dataset.init = 1; App.stroke.pad(h, null, { template: false }); } };
-      setTimeout(() => inp.focus(), 50);
-      let done = false;
+      let done = false, waiting = false;
+      // Antwortfeld wie auf den Karteikarten (App.answerField): Stift mit Vorschlägen oder Tastatur
+      const field = App.answerField(stage.querySelector('[data-ansfield]'), { onEnter: () => { if (!done) check(); else { i++; show(); } } });
       const finish = (r) => {
         done = true;
+        field.lock();
         const ok = !!(r && r.ok);
         if (ok && !retry) right++;
         if (!ok) { if (!missed.includes(t)) missed.push(t); if (!retry) list.push({ t, retry: true }); }
@@ -100,19 +97,22 @@
         stage.querySelector('[data-skip]').hidden = true;
         stage.querySelector('[data-next]').onclick = () => { i++; show(); };
       };
-      const check = () => {
+      const check = async () => {
+        if (done || waiting) return;
+        waiting = true;
+        const val = await field.value();
+        waiting = false;
         if (done) return;
-        const r = kind.check(inp.value, t);
-        if (!r) return inp.focus(); // leer: nichts prüfen
+        if (!val.trim()) { if (field.mode() === 'pen') field.hint('Nichts erkannt – schreib noch einmal oder tippe die Antwort.'); else field.inp().focus(); return; }
+        // Stift: unverändert übernommen = auch die nächsten Vorschläge der Erkennung zählen
+        const rs = field.cands().map((s) => kind.check(s, t));
+        const r = rs.find((x) => x && x.ok) || rs[0];
+        if (!r) return;
+        if (r.ok) field.inp().value = r.answer;
         finish(r);
       };
       stage.querySelector('[data-check]').onclick = check;
       stage.querySelector('[data-skip]').onclick = () => { if (!done) finish(null); };
-      inp.addEventListener('keydown', (ev) => {
-        if (ev.key !== 'Enter' || ev.shiftKey || ev.isComposing) return;
-        ev.preventDefault();
-        if (!done) check(); else { i++; show(); }
-      });
     };
     show();
   }

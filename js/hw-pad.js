@@ -73,4 +73,59 @@
     };
     return { clear, pending, flush, stop: () => { clearTimeout(timer); run++; } };
   };
+
+  // Antwortfeld der Übungen (Umformen, Welche Form?, Übersetzen) wie auf den Karteikarten: zwei kleine Symbole wählen
+  // Stift (kleines Schreibfeld + Vorschläge) oder Tastatur (Romaji wird zu かな); gemerkt pro Gerät (answerMode, wie die Karten).
+  // onEnter() bei Enter im Feld. Rückgabe: inp() = aktuelles Eingabefeld, value() = Antwort (Stift: wartet auf die Erkennung),
+  // cands() = Vorschläge des Stifts, wenn das Feld noch den besten zeigt, lock() = nach dem Prüfen sperren
+  const AMODES = [['pen', 'pen', 'Antwort mit dem Stift schreiben'], ['key', 'keyboard', 'Antwort tippen']];
+  App.answerField = (host, { onEnter, extra = '' } = {}) => {
+    const { esc } = App;
+    host.innerHTML = `<div class="row between" style="margin-top:4px"><span class="row" style="gap:8px">${extra}</span><span class="seg ans-mode" title="Wie möchtest du antworten?">${AMODES.map(([k, ic, t]) => `<button type="button" data-amode="${k}" title="${t}" aria-label="${t}">${icon(ic)}</button>`).join('')}</span></div>
+      <div class="ans-box" data-answer></div>`;
+    const box = host.querySelector('[data-answer]');
+    let st = null, locked = false;
+    const mode = () => (App.lsGet('answerMode') === 'pen' ? 'pen' : 'key');
+    const render = () => {
+      if (st && st.pad) st.pad.stop();
+      const m = mode();
+      host.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b.dataset.amode === m));
+      box.innerHTML = `${m === 'pen' ? '<div data-hwpad></div>' : ''}
+        <input class="input ans-in" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${m === 'pen' ? 'Erkannt wird hier eingetragen' : 'Auf Japanisch (Romaji wird zu かな)'}">
+        ${m === 'pen' ? '<div class="ans-cands" hidden></div>' : ''}`;
+      const inp = box.querySelector('.ans-in'), cands = box.querySelector('.ans-cands');
+      st = { mode: m, inp, cands, list: [] };
+      if (m === 'key') { App.bindRomaji(inp); setTimeout(() => { if (inp.isConnected && !locked) inp.focus(); }, 50); }
+      else {
+        const s = st;
+        s.pad = App.hwPad(box.querySelector('[data-hwpad]'), {
+          onMsg: (t) => { cands.innerHTML = `<span class="muted small">${esc(t)}</span>`; cands.hidden = false; },
+          onClear: () => { s.list = []; inp.value = ''; cands.innerHTML = ''; cands.hidden = true; },
+          onResult: (ja) => {
+            s.list = ja; inp.value = ja[0];
+            cands.innerHTML = ja.map((t, i) => `<button type="button" class="chip${i ? '' : ' on'}" data-acand="${esc(t)}" lang="ja">${esc(t)}</button>`).join('');
+            cands.hidden = false;
+          },
+        });
+        cands.onclick = (e) => { const c = e.target.closest('[data-acand]'); if (!c) return; inp.value = c.dataset.acand; cands.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === c)); };
+      }
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (onEnter) onEnter(); } });
+    };
+    host.querySelector('.ans-mode').onclick = (e) => { const b = e.target.closest('[data-amode]'); if (b && !locked) { App.lsSet('answerMode', b.dataset.amode); render(); } };
+    render();
+    return {
+      inp: () => st.inp,
+      mode: () => st.mode,
+      // Stift: Schreibpause bzw. Erkennung noch nicht vorbei – erst abwarten, sonst wäre das Feld noch leer
+      value: async () => { if (st.pad && st.pad.pending()) await st.pad.flush(); return st.inp.value; },
+      cands: () => (st.mode === 'pen' && st.list.length && st.inp.value === st.list[0] ? st.list.slice(0, 3) : [st.inp.value]),
+      hint: (t) => { if (st.cands) { st.cands.innerHTML = `<span class="muted small">${esc(t)}</span>`; st.cands.hidden = false; } },
+      lock: () => {
+        locked = true;
+        if (st.pad) { st.pad.stop(); box.querySelector('[data-hwpad]').hidden = true; }
+        if (st.cands) st.cands.hidden = true;
+        st.inp.readOnly = true;
+      },
+    };
+  };
 })(window.App);
