@@ -118,7 +118,7 @@
       { target: '#view [data-wk-card] h3', title: 'WaniKani verknüpfen', text: 'Schlüssel bei WaniKani unter Settings → API Tokens erstellen (Lesezugriff genügt) und hier eintragen. Danach wählst du die Level für Kanji zum Schreiben und für Vokabeln.' },
     ],
     '/einstellungen': [
-      { target: '#view .card:has([data-s="name"]) h3', text: 'Name, Aussehen und Furigana.' },
+      { target: '#view .card:has([data-s="name"]) h3', text: 'Name, Aussehen, Furigana und die Stimme, die vorliest.' },
       { target: '#view .card:has([data-s="newPerDay"]) h3', text: 'Wie du lernst: neue Karten pro Sitzung, Einstufen, Kanji-Schwerpunkt und woher die Kanji zum Schreiben kommen.' },
       { target: '#view .card:has([data-bk]) h3', text: 'Deine Daten liegen nur auf diesem Gerät. Hier sicherst du sie. Das „?“ daneben zeigt dir, wie das auf deinem Gerät geht.' },
       { target: EXT + ' h3', title: 'Text aus dem Browser', text: 'Mit der Erweiterung holst du japanischen Text von jeder Webseite in die App.', link: { label: 'Schritt für Schritt zeigen', tour: 'erweiterung' } },

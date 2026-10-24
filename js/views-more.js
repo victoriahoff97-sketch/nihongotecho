@@ -428,6 +428,19 @@
         ${hint ? `<p class="small" style="margin:6px 0 0;color:var(--shu)">${hint}</p>` : ''}</div>`;
   };
 
+  // Vorlese-Stimme: Auswahl pro Gerät (localStorage), „Automatisch“ nimmt die natürlichste (voice-logic.js)
+  const voiceField = () => {
+    if (!JP.canSpeak()) return '';
+    const vs = JP.voices(), saved = App.lsGet('ttsVoice') || '', cur = JP.voice();
+    const savedOk = vs.some((v) => v.voiceURI === saved);
+    const weak = !vs.length || App.voiceLogic.score(vs[0]) <= 10;
+    const tip = !vs.length ? 'Auf diesem Gerät ist keine japanische Stimme installiert (Windows: Einstellungen › Zeit & Sprache › Sprache › Japanisch hinzufügen).'
+      : weak ? 'Natürlicher klingt es in Edge (Nanami) oder Chrome („Google 日本語“). iPad: Einstellungen › Bedienungshilfen › Gesprochene Inhalte › Stimmen › Japanisch.' : '';
+    return `<div class="field"><label>Stimme <small>zum Vorlesen, gilt nur für dieses Gerät</small></label>
+        <select class="input" data-voice ${vs.length ? '' : 'disabled'}><option value="" ${savedOk ? '' : 'selected'}>Automatisch${!savedOk && cur ? ' – ' + esc(App.voiceLogic.label(cur)) : ''}</option>${vs.map((v) => `<option value="${esc(v.voiceURI)}" ${savedOk && v.voiceURI === saved ? 'selected' : ''}>${esc(App.voiceLogic.label(v))}</option>`).join('')}</select>
+        ${tip ? `<p class="muted small" style="margin:6px 0 0">${tip}</p>` : ''}</div>`;
+  };
+
   // =========================================================
   // So läuft das Lernen – das Schaubild zum Lernweg (Einstellungen, Üben)
   // =========================================================
@@ -464,6 +477,7 @@
         <div class="field"><label>Name deines Kurses</label><input class="input" data-s="course" value="${esc(st.course)}"></div>
         <div class="two"><div class="field"><label>Design</label><select class="input" data-s="theme">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<option value="${k}" ${st.theme === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Furigana</label><select class="input" data-s="furigana"><option value="on" ${st.furigana === 'on' ? 'selected' : ''}>Immer anzeigen</option><option value="hover" ${st.furigana === 'hover' ? 'selected' : ''}>Nur beim Antippen</option></select></div></div>
+        ${voiceField()}
         <div class="field"><label>Sprechtempo <small>${st.ttsRate}</small></label><div class="row"><input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}" class="grow">${App.speakBtn('こんにちは、日本語を勉強しています。')}</div></div>
       </div></div>
       <div class="card"><h3>Lernen</h3><div class="form">
@@ -491,6 +505,8 @@
       </div></div>`;
     const root = view.firstElementChild;
     root.addEventListener('change', async (e) => {
+      const vo = e.target.closest('[data-voice]');
+      if (vo) { JP.setVoice(vo.value); JP.speak('こんにちは、日本語を勉強しています。'); return; }
       const s = e.target.closest('[data-s]');
       if (s) { let v = s.value; if (s.type === 'number' || s.type === 'range') v = +v; await App.saveSettings({ [s.dataset.s]: v }); if (s.dataset.s === 'theme') App.applyTheme(); if (s.dataset.s === 'ttsRate' || s.dataset.s === 'check') App.render(true); }
       const sn = e.target.closest('[data-sn]');

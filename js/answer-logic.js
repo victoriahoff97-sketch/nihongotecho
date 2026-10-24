@@ -8,6 +8,19 @@
   const reSegs = new RegExp('[' + KANJI + ']+|[^' + KANJI + ']+', 'g');
   const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+  // Deutsche Seite einer Karte: das gesuchte Wort durch 〜 ersetzen, damit Hinweise wie „nein danke (結構です)“ die Lösung
+  // nicht verraten. Bei Okurigana zählt auch der Kanji-Teil (対する: „(〜に対して)“ → „(〜に〜して)“); Kana erst ab 2 Zeichen.
+  A.hideAnswer = (text, it) => {
+    let s = String(text ?? '');
+    if (!it) return s;
+    const word = String(it.kanji || it.char || '').replace(/^[〜～]+|[〜～]+$/g, '');
+    const stem = (word.match(new RegExp('^[' + KANJI + ']+')) || [''])[0];
+    const kana = String(it.kana || '').replace(/^[〜～]+|[〜～]+$/g, '');
+    const parts = [word, stem, kana.length >= 2 ? kana : ''].filter(Boolean).sort((a, b) => b.length - a.length);
+    for (const p of parts) s = s.split(p).join('〜');
+    return s.replace(/[〜～]{2,}/g, '〜');
+  };
+
   // Leerzeichen und Satzzeichen zählen nicht; Romaji wird zu Kana
   A.clean = (s) => JP.romaji(String(s || '').trim()).replace(/[\s　。、．，,.!！?？「」『』・〜～〰∼~]/g, '');
   const hira = (s) => JP.toHira(s);

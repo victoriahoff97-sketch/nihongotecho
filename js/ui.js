@@ -88,9 +88,10 @@
 
   // ---------- Kleine Renderer ----------
   // Bedeutung als HTML: deutsch bevorzugt, englische Bedeutung mit „EN“-Marke
-  App.meaningHtml = (it) => {
+  // hide: deutsche Seite als Frage – das gesuchte Wort selbst wird zu 〜 (siehe answerLogic.hideAnswer)
+  App.meaningHtml = (it, hide) => {
     const m = App.meaning(it);
-    return esc(m.text) + (m.lang === 'en' ? ' <span class="en-tag" title="Englische Bedeutung – noch keine deutsche Übersetzung">EN</span>' : '');
+    return esc(hide && App.answerLogic ? App.answerLogic.hideAnswer(m.text, it) : m.text) + (m.lang === 'en' ? ' <span class="en-tag" title="Englische Bedeutung – noch keine deutsche Übersetzung">EN</span>' : '');
   };
   // JLPT-Niveau als Badge (leer, wenn kein Niveau)
   App.levelBadge = (it) => {

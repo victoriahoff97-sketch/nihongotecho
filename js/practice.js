@@ -293,7 +293,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       return { front: `<div class="front" lang="ja">${JP.ruby(it.jp || '')}</div><div class="muted">Was bedeutet das, wie benutzt man es?</div>`, back: `<div class="ans">${esc(it.title)}</div><div class="muted">${esc(it.summary || '')}</div>${App.levelBadge(it)}${struct}${exHtml}`, speak: '' };
     }
     if (it.type === 'kanji') {
-      if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it)}</div><div class="muted">Wie schreibt man das Kanji?</div>`, back: `<div class="ans" style="font-family:var(--font-kanji);font-size:80px;font-weight:400">${esc(it.char)}</div><div lang="ja">${esc((it.on || []).join('、'))} · ${esc((it.kun || []).map(App.kanjiLogic.kunText).join('、'))}</div>`, speak: '' };
+      if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it, true)}</div><div class="muted">Wie schreibt man das Kanji?</div>`, back: `<div class="ans" style="font-family:var(--font-kanji);font-size:80px;font-weight:400">${esc(it.char)}</div><div lang="ja">${esc((it.on || []).join('、'))} · ${esc((it.kun || []).map(App.kanjiLogic.kunText).join('、'))}</div>`, speak: '' };
       return { front: `<div class="front kanji-front">${esc(it.char)}</div>`, back: `<div class="ans">${App.meaningHtml(it)}${App.levelBadge(it)}</div><div lang="ja" style="font-size:18px">On: ${esc((it.on || []).join('、') || '–')} · Kun: ${esc((it.kun || []).map(App.kanjiLogic.kunText).join('、') || '–')}</div>${(it.words || []).slice(0, 3).map((w) => `<div lang="ja">${JP.ruby(w.jp)} – ${App.meaningHtml(w)}</div>`).join('')}`, speak: '' };
     }
     const jpHtml = it.type === 'vocab' ? JP.wordRuby(it) : JP.ruby(it.jp);
@@ -302,7 +302,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const extra = (it.type === 'vocab' ? App.accentHtml(it) + App.useHtml(it, true) : '') + (ex ? `<div style="margin-top:6px">${App.exampleHtml(ex)}</div>` : '') + (it.note ? `<div class="small muted">${esc(it.note)}</div>` : '');
     const speakTxt = it.type === 'vocab' ? (it.kanji || it.kana) : it.jp;
     const badges = App.levelBadge(it) + (it.type === 'vocab' ? ' ' + App.verbClsBadge(it) : '');
-    if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it)}</div>`, back: `<div class="ans jp" lang="ja">${jpHtml}</div>${badges}${extra}`, speak: speakTxt };
+    if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it, true)}</div>`, back: `<div class="ans jp" lang="ja">${jpHtml}</div>${badges}${extra}`, speak: speakTxt };
     return { front: `<div class="front" lang="ja">${App.askHtml(it)}</div>`, back: `<div class="jp" lang="ja" style="font-size:20px;color:var(--muted)">${esc(reading)}</div><div class="ans">${App.meaningHtml(it)}</div>${badges}${extra}`, speak: speakTxt };
   }
   const ivlLabel = (id, g, write) => {
@@ -460,7 +460,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     };
     // Kanji schreiben in der gemischten Runde: mit dem Stift schreiben, auflösen, selbst bewerten – wie im Kanji-Quiz
     const padCard = () => {
-      stage.innerHTML = `<div class="sec-kanji">${head()}<div class="card pad-lg"><div class="small muted">Schreibe das Kanji:${W.isFirst(S.srs, cur.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
+      stage.innerHTML = `<div class="sec-kanji">${head()}<div class="card pad-lg"><div class="small muted">Schreibe das Kanji:${W.isFirst(S.srs, cur.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur, true)}</div>
           <div class="muted" lang="ja">${esc((cur.kun || []).map(App.kanjiLogic.kunText).concat(cur.on || []).slice(0, 4).join('、'))}</div>
           <div class="kanji-stage quiz-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
           <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div></div>`;
@@ -784,7 +784,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       }
       const cur = qs[i];
       if (mode === 'write') {
-        stage.innerHTML = `<div class="card pad-lg"><div class="row between"><div><div class="small muted">${undoBtn()} Kanji ${i + 1} / ${qs.length}${queue ? '' : ' · freies Üben'} – schreibe:${queue && W.isFirst(S.srs, cur.id) ?' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur)}</div>
+        stage.innerHTML = `<div class="card pad-lg"><div class="row between"><div><div class="small muted">${undoBtn()} Kanji ${i + 1} / ${qs.length}${queue ? '' : ' · freies Üben'} – schreibe:${queue && W.isFirst(S.srs, cur.id) ?' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur, true)}</div>
           <div class="muted" lang="ja">${esc((cur.kun || []).map(App.kanjiLogic.kunText).concat(cur.on || []).slice(0, 4).join('、'))}</div></div></div>
           <div class="kanji-stage quiz-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
           <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div>`;

@@ -332,23 +332,31 @@
   };
 
   // ---------- Sprachausgabe ----------
-  let voice = null;
-  const pickVoice = () => {
-    const vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
-    const ja = vs.filter((v) => /^ja/i.test(v.lang));
-    voice = ja.find((v) => /natural|online|nanami/i.test(v.name)) || ja[0] || null;
+  // Welche Stimme: voice-logic.js (natürliche zuerst, z. B. Nanami in Edge, „Google 日本語“ in Chrome); eigene Wahl pro Gerät
+  const allVoices = () => (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+  JP.voices = () => App.voiceLogic.rank(allVoices());
+  JP.voice = () => App.voiceLogic.pick(allVoices(), App.lsGet && App.lsGet('ttsVoice'));
+  JP.setVoice = (uri) => App.lsSet('ttsVoice', uri || '');
+  // Chrome liefert die Stimmen erst nach dem Start: offene Einstellungen bekommen die Auswahl nachgereicht
+  let voiceSig = '';
+  const voicesChanged = () => {
+    const sig = JP.voices().map((v) => v.voiceURI).join('|');
+    if (sig === voiceSig) return;
+    voiceSig = sig;
+    if (document.querySelector('[data-voice]')) App.render(true);
   };
-  if (window.speechSynthesis) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+  if (window.speechSynthesis) { voiceSig = JP.voices().map((v) => v.voiceURI).join('|'); speechSynthesis.onvoiceschanged = voicesChanged; }
   JP.canSpeak = () => !!window.speechSynthesis;
   JP.speak = (text) => {
     if (!window.speechSynthesis) return App.toast('Sprachausgabe wird von diesem Browser nicht unterstützt');
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(JP.plain(text));
     u.lang = 'ja-JP';
+    const voice = JP.voice();
     if (voice) u.voice = voice;
     u.rate = (App.store.settings && App.store.settings.ttsRate) || 0.9;
     speechSynthesis.speak(u);
-    if (!voice) setTimeout(() => { if (!voice) App.toast('Tipp: Installiere in Windows eine japanische Stimme (Einstellungen › Zeit & Sprache › Sprache).'); }, 400);
+    if (!voice) setTimeout(() => { if (!JP.voice()) App.toast('Tipp: Installiere in Windows eine japanische Stimme (Einstellungen › Zeit & Sprache › Sprache).'); }, 400);
   };
 
   // ---------- Mini-Markdown für Erklärungen ----------

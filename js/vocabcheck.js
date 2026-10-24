@@ -334,7 +334,7 @@
     const row = (e, i) => {
       const v = e.item, d = decided.get(key(e));
       return `<div class="check-row ${d ? 'done ' + d : ''}" data-i="${i}">
-        ${e.de ? `<div class="check-word" data-reveal style="font-family:var(--font-ui);font-size:20px;font-weight:800">${App.meaningHtml(v)}</div>`
+        ${e.de ? `<div class="check-word" data-reveal style="font-family:var(--font-ui);font-size:20px;font-weight:800">${App.meaningHtml(v, true)}</div>`
         : `<div class="check-word" data-reveal lang="ja" ${isK ? 'style="font-family:var(--font-kanji);font-size:48px"' : ''}>${isK ? esc(v.char) : App.askHtml(v)}</div>`}
         <div class="check-ans" data-reveal>${d || shown.has(key(e)) ? answer(e) : '<span class="muted small">antippen zum Aufdecken</span>'}</div>
         <div class="check-btns">${d ? `<span class="verdict ${d === 'known' ? 'ok' : ''}" style="${d === 'learn' ? 'background:var(--ai-soft);color:var(--ai)' : ''}">${d === 'known' ? '✓ Kann ich' : '＋ Lernschlange'}</span><button class="btn btn-sm btn-ghost" data-undo>ändern</button>`
