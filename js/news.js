@@ -7,7 +7,7 @@
   const open = (list) => {
     if (!list.length) return;
     const body = list.map((n) => `<section class="news-entry"><h3>${esc(n.date)}</h3>
-      <ul>${n.items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></section>`).join('');
+      <ul>${n.items.map((x) => `<li><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`).join('')}</ul></section>`).join('');
     const md = App.modal({
       title: '<span class="jp">新</span> Was ist neu', cls: 'news-modal', body,
       foot: '<button class="btn btn-primary" data-ok autofocus>Alles klar</button>',

@@ -1602,9 +1602,10 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .heft-empty { margin-top: 1em; display: flex; flex-direction: column; align-items: flex-start; gap: .6em; }
 
 /* „Was ist neu“ nach einem Update (js/news.js) */
-.modal.news-modal { width: min(480px, 100%); }
+.modal.news-modal { width: min(540px, 100%); }
 .news-modal .modal-head h2 .jp { color: var(--shu); margin-right: 4px; }
-.news-entry + .news-entry { margin-top: 14px; }
+.news-entry + .news-entry { margin-top: 16px; }
 .news-entry h3 { font-size: 13px; font-weight: 700; color: var(--muted); margin: 0 0 4px; }
 .news-entry ul { margin: 0; padding-left: 20px; }
-.news-entry li { margin: 3px 0; line-height: 1.4; }
+.news-entry li { margin: 6px 0; line-height: 1.4; }
+.news-entry li span { display: block; color: var(--ink-2); font-size: 14px; }

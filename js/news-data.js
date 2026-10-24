@@ -1,35 +1,36 @@
 /* Nihongo Techō – „Was ist neu“: kurze Notizen zu jedem Update (Anzeige: js/news.js)
    Bei jedem Update, das veröffentlicht wird, OBEN einen Eintrag ergänzen – neueste zuerst.
    id: eindeutig und nie wieder ändern (Datum, zweites Update am selben Tag z. B. „2026-10-24-2“).
-   items: höchstens 5 kurze Zeilen, nur was man in der App merkt, in Alltagssprache. */
+   items: höchstens 5, je { t: kurzer Titel, d: ein Satz – was es ist und wo man es findet }.
+   Geschrieben für Leute, die die Idee nicht hatten: Alltagssprache, kein App-Jargon. */
 'use strict';
 (function (App) {
   App.NEWS = [
     {
       id: '2026-10-24', date: '24. Oktober',
       items: [
-        'Zeitangaben mit Zahlen: neuer Grammatikeintrag mit Tabelle und Übung „Welche Form?“',
-        'Auffrischen: Zahlen-Ausdrücke alle 14 Tage über den Knopf auf der Startseite',
-        'Deutsch → Japanisch-Karten verraten das gesuchte Wort nicht mehr (〜)',
-        'Vorlesen mit der natürlichsten japanischen Stimme – wählbar unter Einstellungen',
-        'Übungen: Antwort mit Stift oder Tastatur wie bei den Karteikarten',
+        { t: 'Zeitangaben mit Zahlen', d: 'Neuer Grammatikeintrag: wann man „drei Tage“, „dreimal pro Woche“ oder „das dritte Mal“ sagt – mit Tabelle und der Übung „Welche Form?“.' },
+        { t: 'Auffrischen', d: 'Alle 14 Tage erscheint auf der Startseite der Knopf „Auffrischen“: 10 Karten zu Zahlen, Uhrzeit und Zählwörtern, damit nichts verblasst.' },
+        { t: 'Kein Verraten mehr', d: 'Auf Deutsch → Japanisch-Karten steht das gesuchte Wort nicht mehr in der deutschen Bedeutung, es wird zu 〜.' },
+        { t: 'Bessere Aussprache', d: 'Vorlesen nimmt die natürlichste japanische Stimme deines Geräts. Eine andere wählst du unter Einstellungen › Persönlich › Stimme.' },
+        { t: 'Antwort schreiben in Übungen', d: 'Bei Umformen, „Welche Form?“ und Übersetzen schreibst du die Antwort wie bei den Karteikarten mit dem Stift oder tippst sie.' },
       ],
     },
     {
       id: '2026-10-23', date: '23. Oktober',
       items: [
-        'Übersetzen: Antwort per Mikrofon diktieren',
-        'Beispielsätze von Tatoeba haben jetzt Furigana',
+        { t: 'Übersetzen per Stimme', d: 'Unter Üben › Übersetzen gibt es „Diktieren“: Antwort einfach einsprechen statt schreiben.' },
+        { t: 'Furigana bei Beispielsätzen', d: 'Automatisch geholte Beispielsätze zeigen jetzt die Lesung über den Kanji – auch die schon gespeicherten.' },
       ],
     },
     {
       id: '2026-10-22', date: '22. Oktober',
       items: [
-        'Tagesliste: eigene Ziele über den Stift in der Karte',
-        'Alle Verben mit Partikel-Muster, Beispielsatz und う/る-Gruppe',
-        'Konjugieren: ません, ませんでした und Adjektive höflich',
-        'Diktieren auf Japanisch in Tagebuch und Smalltalk',
-        'WaniKani und andere Inhalte stehen jetzt unter „Pakete“',
+        { t: 'Eigene Tagesziele', d: 'In der Karte „今日 · Heute“ auf der Startseite den Stift antippen: Ziele an- und ausschalten, Zahlen ändern, eigene Punkte ergänzen.' },
+        { t: 'Verben mit Partikel und Gruppe', d: 'Jedes Verb zeigt seine Partikel (z. B. ベッドで寝る), einen Beispielsatz und ob es ein う-, る- oder unregelmäßiges Verb ist.' },
+        { t: 'Mehr Formen beim Konjugieren', d: 'Unter Üben › Konjugieren jetzt auch ません/ませんでした und Adjektive in kurzer und höflicher Form.' },
+        { t: 'Diktieren im Tagebuch', d: 'Im Tagebuch und beim Smalltalk kannst du unter „Getippt“ Japanisch einsprechen.' },
+        { t: 'Pakete aufgeräumt', d: 'Alles, was Inhalte bringt (JLPT, WaniKani, Wörterbuch, Teilen), steht jetzt unter „Pakete“ – das Würfel-Symbol unten links.' },
       ],
     },
   ];
