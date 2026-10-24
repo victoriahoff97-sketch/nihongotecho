@@ -456,6 +456,15 @@ details.adv[open] summary { margin-bottom: 12px; }
 .prose .jp, .prose ruby { font-family: var(--font-jp); }
 .structure { display: flex; flex-direction: column; gap: 8px; }
 .structure div { font-family: var(--font-jp); font-size: 17px; background: var(--sec-soft); color: var(--ink); border-left: 4px solid var(--sec); padding: 10px 14px; border-radius: 8px; }
+/* Formen-Tabelle eines Grammatikpunkts: auf schmalen Bildschirmen scrollt nur die Tabelle */
+.gtable-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.gtable { border-collapse: collapse; width: 100%; min-width: 560px; }
+.gtable th, .gtable td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.gtable tr:last-child th, .gtable tr:last-child td { border-bottom: 0; }
+.gtable thead th { font-size: 13px; color: var(--ink-2); font-weight: 600; background: var(--sec-soft); }
+.gtable tbody th { font-size: 13px; color: var(--sec); white-space: nowrap; }
+.gtable td .jp { display: block; font-family: var(--font-jp); font-size: 17px; }
+.drill-gap { display: inline-block; min-width: 3.5em; border-bottom: 2px solid var(--sec); color: transparent; margin: 0 2px; }
 .pitfall { background: var(--shu-soft); border-left: 4px solid var(--shu); padding: 10px 14px; border-radius: 8px; margin-top: 8px; }
 
 .rel-box h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }

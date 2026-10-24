@@ -564,6 +564,13 @@
     App.hydrateThumbs(body);
     bindFilter(view);
   });
+  // Formen-Tabelle eines Grammatikpunkts (Feld table): Zelle = „Japanisch|Deutsch“, leer = gibt es so nicht
+  const grammarTable = (t) => (t && (t.rows || []).length ? `<div class="section-title">Übersicht</div><div class="gtable-wrap"><table class="gtable">
+    <thead><tr>${(t.cols || []).map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+    <tbody>${t.rows.map(([head, ...cells]) => `<tr><th>${esc(head)}</th>${cells.map((c) => {
+      const [jp, de] = String(c || '').split('|');
+      return jp ? `<td><span class="jp" lang="ja">${JP.ruby(jp)}</span>${de ? `<span class="small muted">${esc(de)}</span>` : ''}</td>` : '<td class="muted">–</td>';
+    }).join('')}</tr>`).join('')}</tbody></table></div>` : '');
   App.route('/grammatik/:id', (view, p) => {
     const it = App.item(p.id);
     if (!it) { view.innerHTML = '<div class="empty-state"><h3>Nicht gefunden</h3></div>'; return; }
@@ -586,13 +593,14 @@
           <div class="row" style="margin-top:14px;align-items:center"><span class="small muted">Lernstand</span><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
             <span class="small muted">${App.vocabStatus(it.id) === 'known' ? 'zählt für deinen Lernstand bei Genki und JLPT' : 'Setz den Haken selbst, wenn du den Punkt kannst – Grammatik wird nicht abgefragt'}</span></div></div>
         ${it.structure && it.structure.length ? `<div class="section-title">Aufbau</div><div class="structure">${it.structure.map((s) => `<div>${JP.ruby(s)}</div>`).join('')}</div>` : ''}
+        ${grammarTable(App.drillLogic.field(it, 'table'))}
         ${it.explanation ? `<div class="section-title">Erklärung</div><div class="card prose">${JP.md(it.explanation)}</div>` : ''}
         ${it.examples && it.examples.length ? `<div class="section-title">Beispiele</div>${it.examples.map(App.exampleHtml).join('')}` : ''}
         ${it.pitfalls && it.pitfalls.length ? `<div class="section-title">Stolperfallen</div>${it.pitfalls.map((x) => `<div class="pitfall">${JP.ruby(x)}</div>`).join('')}` : ''}
         ${it.notes ? `<div class="section-title">Notizen</div><div class="card prose">${JP.md(it.notes)}</div>` : ''}
         <div class="section-title">Üben</div>
         <div class="row"><a class="btn btn-sec" href="#/ueben/saetze?g=${encodeURIComponent(it.id)}">${icon('sparkle')} Übersetzungsübung zu diesem Thema</a>
-        ${App.drillLogic.field(it, 'drill') ? `<a class="btn btn-sec" href="#/ueben/umformen?g=${encodeURIComponent(it.id)}">${icon('edit')} Umformen üben</a>` : ''}
+        ${App.drillLogic.field(it, 'drill') ? `<a class="btn btn-sec" href="#/ueben/umformen?g=${encodeURIComponent(it.id)}">${icon('edit')} ${App.drillLogic.field(it, 'drill') === 'zeit' ? 'Welche Form? üben' : 'Umformen üben'}</a>` : ''}
         <span class="small muted">${(it.patterns || []).length ? `${it.patterns.length} Satzmuster + Beispielsätze` : 'Nutzt die Beispielsätze dieses Punktes'}</span></div>
         ${App.exercises.grammarBlock(it)}
         ${App.attachmentsHtml(it)}
