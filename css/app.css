@@ -1600,3 +1600,11 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .heft-ch { gap: 6px; flex-wrap: nowrap; }
 .heft-ch .kb-no { min-width: 1.6em; text-align: right; }
 .heft-empty { margin-top: 1em; display: flex; flex-direction: column; align-items: flex-start; gap: .6em; }
+
+/* „Was ist neu“ nach einem Update (js/news.js) */
+.modal.news-modal { width: min(480px, 100%); }
+.news-modal .modal-head h2 .jp { color: var(--shu); margin-right: 4px; }
+.news-entry + .news-entry { margin-top: 14px; }
+.news-entry h3 { font-size: 13px; font-weight: 700; color: var(--muted); margin: 0 0 4px; }
+.news-entry ul { margin: 0; padding-left: 20px; }
+.news-entry li { margin: 3px 0; line-height: 1.4; }

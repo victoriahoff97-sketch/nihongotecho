@@ -501,6 +501,7 @@
       ${App.extensionCard()}
       ${App.pwa.card()}
       <div class="card"><h3>Über</h3><p class="small">Nihongo Techō 日本語手帳 · läuft komplett offline in deinem Browser.<br>Strichfolge-Daten: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, CC BY-SA 3.0. PDF-Anzeige: pdf.js (Mozilla).<br>Inhalte orientieren sich an Genki I (3. Aufl.) – bitte mit deinem Buch abgleichen.</p>
+        <button class="btn btn-sm btn-ghost" data-news-open>Was ist neu?</button>
         <button class="btn btn-sm btn-ghost btn-danger" data-reset>${icon('trash')} Alle Daten löschen</button></div>
       </div></div>`;
     const root = view.firstElementChild;

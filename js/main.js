@@ -132,6 +132,8 @@
     // Teilen-Menü (?text=…&url=…) in die Eingangs-Adresse umsetzen – synchron, wirft nie
     if (App.inbox) App.inbox.bootShare();
     App.render();
+    // nach einem Update kurz zeigen, was neu ist (js/news.js)
+    if (App.news) App.news.boot();
     // eigene Vokabeln ohne Beispielsatz aus dem Satz-Index der Pakete auffüllen (einmal je Index-Version)
     if (App.exampleBackfill) App.exampleBackfill().catch((e) => console.error(e));
     // Beispielsätze von Tatoeba/WaniKani ohne Lesung: Furigana nachtragen (js/examples.js)
