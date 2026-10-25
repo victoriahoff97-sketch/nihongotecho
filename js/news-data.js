@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-stifte', date: '25. Oktober',
+      items: [
+        { t: 'Meine Stifte', d: 'Im Schreibblatt legst du eigene Stifte an: Tippe einen Stift zweimal an und stell Art, Dicke, Deckkraft und Farbe genau ein. „Neu“ legt einen weiteren an.' },
+        { t: 'Pinsel und Feder', d: 'Zwei neue Stiftarten: Der Pinsel wird bei Druck breit, die Feder schreibt schräg wie eine Kalligrafie-Feder.' },
+        { t: 'Standard-Stift', d: 'Mach im Stift-Fenster einen Stift zum Standard (★) – mit ihm startet dann jedes Blatt.' },
+      ],
+    },
+    {
       id: '2026-10-25', date: '25. Oktober',
       items: [
         { t: 'Kacheln „Heute lesen und hören“ wählen', d: 'Unter „Startseite anpassen“ (ganz unten) nimmst du NHK Easy, WaniKani oder Listening mit ✕ weg oder holst Shun und die Genki-Trainer dazu.' },

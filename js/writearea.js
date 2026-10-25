@@ -122,7 +122,7 @@
     const last = App.ink.lastState && App.ink.lastState.fileId === active.id ? App.ink.lastState : {};
     const extraTools = linkTools(defaultsFor, onLinked, newPhrase);
     App.ink.mount(inkEl, active.id, {
-      embedded: true, defaultTool: 'fountain', ...last,
+      embedded: true, ...last,
       extraTools,
       onLinkWord: linkWord, onUnlinkWord: onUnlinked,
       // Vollbild: eingebettete Fläche abbauen, damit sie nach dem Schließen frisch geladen wird.

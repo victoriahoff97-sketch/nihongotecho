@@ -55,6 +55,8 @@ window.App = window.App || {};
     pen: '<path d="M12 19l7-7 3 3-7 7z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18z"/><path d="M2 2l7.6 7.6"/><circle cx="11" cy="11" r="2"/>',
     ballpen: '<path d="M17.5 3.5l3 3L9 18l-4.5 1.5L6 15z"/><path d="M15.5 5.5l3 3"/><path d="M19 2l3 3"/>',
     fountain: '<path d="M12 21.5l-5.5-9.5L9 4.5h6l2.5 7.5z"/><path d="M12 21.5V13"/><circle cx="12" cy="11.5" r="1.4"/><path d="M9 4.5V2h6v2.5"/>',
+    brush: '<path d="M20.5 3.5c-3 1.6-7.4 5.4-9.6 8.6l1.9 1.9c3.2-2.2 7-6.6 8.6-9.6z"/><path d="M10.4 12.6c-2.4.1-3.9 1.6-4 3.7-.1 1.8-1.1 3-2.9 3.7 3.6 1.2 7.6.2 8.6-3.3.4-1.5-.1-2.9-1.7-4.1z"/>',
+    nib: '<path d="M12 21.5l-6-8 3.5-9h5l3.5 9z"/><path d="M12 21.5V14"/><circle cx="12" cy="12.5" r="1.4"/><path d="M8.5 7.5h7"/>',
     highlighter: '<path d="M14 3l7 7-6.5 6.5-7-7z"/><path d="M8 9.5L4.5 17l2.5 2.5L14.5 16"/><path d="M3 21.5h8"/>',
     lasso: '<path stroke-dasharray="3 2.6" d="M12 3.5c-4.7 0-8.5 2.6-8.5 5.9s3.8 5.9 8.5 5.9 8.5-2.6 8.5-5.9S16.7 3.5 12 3.5z"/><path d="M7.5 14.6c-.6 1.4.9 2.2.9 3.9 0 1.2-.8 2-1.9 2"/>',
     pointer: '<path d="M5 3l6.5 17 2.6-7.2L21 10.2z"/><path d="M14.3 13l5.2 5.2"/>',
@@ -278,7 +280,8 @@ window.App = window.App || {};
     listenAt: null, // 今日のリスニング: gemerkte Stelle im offenen Stück { pos, t } (Sekunde)
     shunHeard: [], // Seite „Hören“: gehörte Folgen von Japanese with Shun (Folgen-IDs, js/shun-logic.js)
     shunAt: null, // Seite „Hören“: gemerkte Stelle in der zuletzt offenen Shun-Folge { id, t } (Sekunde)
-    inkPen: null, // Schreibblatt: zuletzt gewählter Stift { tool, wIdx, color, mcolor } (js/ink-pen.js penPref)
+    inkPen: null, // Schreibblatt, alt: zuletzt gewählter Stift { tool, wIdx, widths, color, mcolor } – nur noch Vorlage für die ersten eigenen Stifte
+    inkPens: null, // Schreibblatt: Meine Stifte { list, def, last } (js/ink-pen.js normPens)
   };
 
   App.onChange = (fn) => S.listeners.add(fn);

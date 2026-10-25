@@ -982,7 +982,32 @@ body.ink-fit #view { padding-bottom: 16px; }
 .vpage .ink-ssel { position: absolute; z-index: 5; border: 1.5px dashed var(--sec, var(--shu)); border-radius: 4px; background: color-mix(in srgb, var(--sec, var(--shu)) 5%, transparent); pointer-events: none; box-sizing: border-box; }
 .vpage .ink-sel .ink-sel-del, .vpage .ink-ssel .ink-sel-del { position: absolute; right: -8px; top: -40px; width: 30px; height: 30px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--sec, var(--shu)); color: #fff; pointer-events: auto; touch-action: none; cursor: pointer; }
 .vpage .ink-sel .ink-sel-del svg, .vpage .ink-ssel .ink-sel-del svg { width: 16px; height: 16px; }
-.fp-pop { position: absolute; z-index: 5; width: 230px; padding: 12px; }
+/* Meine Stifte: Knöpfe mit Probestrich in der Leiste + Einstellfenster */
+.pen-slot { min-width: 44px; min-height: 44px; align-self: stretch; padding: 5px 4px 3px; display: inline-flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--muted); cursor: pointer; font: inherit; }
+.pen-slot:hover { background: var(--paper-2); }
+.pen-slot.active { background: var(--sec-soft, var(--shu-soft)); border-color: var(--sec, var(--shu)); }
+.pen-slot .pen-sample { display: block; flex: none; }
+.pen-slot.pen-new { border: 1px dashed var(--line-2); }
+.pen-slot.pen-new svg { width: 18px; height: 18px; }
+.pen-slot .tool-lbl { text-align: center; font-size: 11px; line-height: 1.1; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.pen-slot.active .tool-lbl { color: var(--sec, var(--shu)); }
+@container (max-width: 720px) { .pen-slot .tool-lbl { display: none; } }
+.pen-pop { position: absolute; z-index: 6; width: 330px; max-width: calc(100% - 16px); padding: 12px 14px; box-sizing: border-box; }
+.pen-pop .pen-preview { display: block; width: 100%; height: 56px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+.pen-pop .pp-lbl { display: flex; justify-content: space-between; margin: 12px 0 5px; font-size: 13px; color: var(--muted); }
+.pen-pop .pp-lbl b { color: var(--ink); font-weight: 700; }
+.pen-pop .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.pen-pop .chip { min-height: 32px; padding: 4px 10px; font-size: 13px; gap: 4px; }
+.pen-pop .chip svg { width: 15px; height: 15px; }
+.pen-pop input[type=range] { width: 100%; margin: 0; accent-color: var(--sec, var(--shu)); }
+.pen-pop .pp-colors { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pen-pop .color { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--card); box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; padding: 0; }
+.pen-pop .color.on { box-shadow: 0 0 0 2px var(--ink); }
+.pen-pop .pp-own { position: relative; overflow: hidden; background: conic-gradient(#e03131, #f59f00, #fcc419, #37b24d, #1c7ed6, #9c36b5, #e03131); }
+.pen-pop .pp-own input { position: absolute; inset: -8px; width: 44px; height: 44px; opacity: 0; cursor: pointer; }
+.pen-pop .pp-foot { display: flex; gap: 6px; margin-top: 14px; }
+.pen-pop .pp-foot .btn { flex: 1; justify-content: center; padding-left: 6px; padding-right: 6px; }
+.pen-pop .pp-foot svg { width: 15px; height: 15px; }
 .stk-pop { position: absolute; z-index: 5; width: min(600px, calc(100% - 16px)); max-height: min(70%, 440px); overflow: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 4px; }
 .stk-pop .stk { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px 4px; border: 0; border-radius: 10px; background: none; color: var(--ink); cursor: pointer; font: inherit; }
 .stk-pop .stk:hover { background: var(--sec-soft, var(--shu-soft)); }

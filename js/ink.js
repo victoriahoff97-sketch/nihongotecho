@@ -22,7 +22,6 @@
 
   const PEN_COLORS = ['#1f2430', '#1c4fd8', '#c8402a', '#2f7d32', '#9c36b5'];
   const MARK_COLORS = ['#ffe066', '#8ce99a', '#fcc2d7', '#a5d8ff'];
-  const WIDTHS = { pen: [0.0022, 0.0038, 0.006], marker: [0.012, 0.02, 0.03] };
   const A4 = 842 / 595;
   const BOOK_PAPER = INK.BOOK_PAPER = '#fbf8f0'; // cremefarbenes Papier im Buchlayout
 
@@ -68,21 +67,53 @@
   });
 
   // ---------- Striche zeichnen ----------
+  // halb durchsichtige Stift-/Feder-Striche bestehen aus vielen überlappenden Stücken: erst deckend auf ein Hilfsblatt, dann als Ganzes durchsichtig
+  let scratch = null;
   function drawStroke(ctx, s, W) {
     const pts = s.pts;
     if (!pts.length) return;
+    const a = App.inkPen.alpha(s);
+    if (a < 1 && (s.t === 'pen' || s.t === 'nib') && !App.inkPen.isDot(pts, s.w)) {
+      const m = s.w * W * 1.6 + 2;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      pts.forEach((q) => { x0 = Math.min(x0, q[0] * W); y0 = Math.min(y0, q[1] * W); x1 = Math.max(x1, q[0] * W); y1 = Math.max(y1, q[1] * W); });
+      x0 = Math.floor(x0 - m); y0 = Math.floor(y0 - m);
+      const w = Math.ceil(x1 + m) - x0, h = Math.ceil(y1 + m) - y0;
+      if (!scratch) scratch = document.createElement('canvas');
+      if (scratch.width < w) scratch.width = w;
+      if (scratch.height < h) scratch.height = h;
+      const sc = scratch.getContext('2d');
+      sc.clearRect(0, 0, w, h);
+      sc.save(); sc.translate(-x0, -y0); drawStroke(sc, { ...s, o: 1 }, W); sc.restore();
+      ctx.save(); ctx.globalAlpha = a; ctx.drawImage(scratch, 0, 0, w, h, x0, y0, w, h); ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (s.t !== 'marker') ctx.globalAlpha = a;
+    const fillOutline = (o) => { if (o.length) { ctx.beginPath(); ctx.moveTo(o[0][0], o[0][1]); for (let i = 1; i < o.length; i++) ctx.lineTo(o[i][0], o[i][1]); ctx.closePath(); ctx.fill(); } };
     // Tipper (Punkt, kurzes Strichlein): voller Punkt statt eines Strichs, der fast nur aus Auslauf besteht
     if (s.t !== 'marker' && App.inkPen.isDot(pts, s.w)) {
       const d = App.inkPen.dot(pts, s.w);
       ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(d.x * W, d.y * W, d.r * W, 0, 7); ctx.fill();
     } else if (s.t === 'fp') {
       ctx.fillStyle = s.c;
-      const o = App.inkPen.fountainOutline(pts, W, s);
-      if (o.length) { ctx.beginPath(); ctx.moveTo(o[0][0], o[0][1]); for (let i = 1; i < o.length; i++) ctx.lineTo(o[i][0], o[i][1]); ctx.closePath(); ctx.fill(); }
+      fillOutline(App.inkPen.fountainOutline(pts, W, s));
+    } else if (s.t === 'brush') {
+      ctx.fillStyle = s.c;
+      fillOutline(App.inkPen.brushOutline(pts, W, s));
+    } else if (s.t === 'nib') {
+      // Vierecke je Abschnitt in einem Pfad (gleich orientiert → keine Löcher) + haarfeine Mittellinie für Striche längs zur Spitze
+      ctx.fillStyle = s.c; ctx.strokeStyle = s.c;
+      ctx.beginPath();
+      App.inkPen.nibQuads(pts, W, s).forEach((q) => { ctx.moveTo(q[0][0], q[0][1]); for (let i = 1; i < 4; i++) ctx.lineTo(q[i][0], q[i][1]); ctx.closePath(); });
+      ctx.fill('nonzero');
+      ctx.lineWidth = Math.max(1, s.w * W * 0.14);
+      ctx.beginPath(); ctx.moveTo(pts[0][0] * W, pts[0][1] * W);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * W, pts[i][1] * W);
+      ctx.stroke();
     } else if (s.t === 'marker') {
-      ctx.globalAlpha = 0.38; ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = a; ctx.globalCompositeOperation = 'multiply';
       ctx.strokeStyle = s.c; ctx.lineWidth = s.w * W; ctx.lineCap = 'square';
       ctx.beginPath(); ctx.moveTo(pts[0][0] * W, pts[0][1] * W);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * W, pts[i][1] * W);
@@ -196,32 +227,41 @@
     // Buchaufgabe: Aufgabe (Seite 1) und Schreibblatt nebeneinander, die Aufgabe bleibt beim Scrollen stehen
     const XL = App.exercisesLogic;
     const splittable = !embedded && !!f.exerciseId;
-    const TOOLS = ['hand', 'select', 'lasso', 'pen', 'fountain', 'marker', 'eraser', 'cut'];
-    // zuletzt gewählter Stift samt Dicke und Farbe – außer der Aufrufer reicht den Zustand eines gerade offenen Blatts weiter (der hat immer wIdx)
-    if (opts.wIdx === undefined) opts = { ...opts, ...PEN.penPref(S.inkPen) };
-    const st = { tool: TOOLS.includes(opts.defaultTool) ? opts.defaultTool : 'pen', color: opts.color || PEN_COLORS[0], mcolor: opts.mcolor || MARK_COLORS[0], wIdx: opts.wIdx ?? 1, zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, ruler: false, stamp: null, book: bookable && !!S.inkBook, spread: 0, split: splittable && S.exSplit !== false, side: S.exSide === 'r' ? 'r' : 'l', cols: null, exOff: 0 };
+    // 'ink' = einer der eigenen Stifte (st.penId); alte Werkzeugnamen Stift/Füller/Marker zählen als 'ink'
+    const TOOLS = ['hand', 'select', 'lasso', 'ink', 'eraser', 'cut'];
+    // Meine Stifte (Einstellung inkPens); beim ersten Start entstehen sie aus der alten Einstellung inkPen
+    const pens = PEN.normPens(S.inkPens, S.inkPen, S.inkThinning);
+    // Standard-Stift (sonst der zuletzt benutzte) – außer der Aufrufer reicht den Zustand eines gerade offenen Blatts weiter (der hat penId)
+    const handed = opts.penId !== undefined;
+    const tool0 = PEN.PEN_TOOLS.includes(opts.defaultTool) ? 'ink' : opts.defaultTool;
+    const st = { tool: handed && TOOLS.includes(tool0) ? tool0 : 'ink', penId: handed && pens.list.some((p) => p.id === opts.penId) ? opts.penId : PEN.startPen(pens), color: PEN_COLORS[0], mcolor: MARK_COLORS[0], zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, ruler: false, stamp: null, book: bookable && !!S.inkBook, spread: 0, split: splittable && S.exSplit !== false, side: S.exSide === 'r' ? 'r' : 'l', cols: null, exOff: 0 };
     // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
     // Blättern gibt es nur ohne „Nur Stift“ – sonst scrollt ohnehin der Finger
-    if (st.tool === 'hand' && st.penOnly) st.tool = 'pen';
-    // Stift, Füller und Marker haben je ihre eigene Dicke; wIdx ist die des gerade gewählten
-    st.widths = PEN.penWidths(opts.widths, opts.wIdx);
-    if (PEN.PEN_TOOLS.includes(st.tool)) st.wIdx = st.widths[st.tool];
+    if (st.tool === 'hand' && st.penOnly) st.tool = 'ink';
     st.eraser = st.tool === 'cut' || (st.tool !== 'eraser' && opts.eraser === 'cut') ? 'cut' : 'eraser';
+    const curPen = () => pens.list.find((p) => p.id === st.penId) || pens.list[0];
+    // Sticker nehmen Stift- und Markerfarbe: die des gewählten Stifts, sonst die des ersten passenden
+    const syncColors = () => {
+      const c = curPen(), pen = c.t !== 'marker' ? c : pens.list.find((p) => p.t !== 'marker'), mk = c.t === 'marker' ? c : pens.list.find((p) => p.t === 'marker');
+      st.color = pen ? pen.c : PEN_COLORS[0]; st.mcolor = mk ? mk.c : MARK_COLORS[0];
+    };
+    syncColors();
     root.classList.add(embedded ? 'ink-embed' : 'viewer');
     root.innerHTML = `<div class="viewer-bar">
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
       <div class="grp"><button class="icon-btn" data-v="undo" title="Rückgängig">${icon('undo')}</button><button class="icon-btn" data-v="redo" title="Wiederholen">${icon('redo')}</button></div>
       <div class="grp">
         ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen, dann verschieben oder an den Ecken skalieren; Bilder ebenso'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
-          ['pen', 'ballpen', 'Stift', 'Stift'], ['fountain', 'fountain', 'Füller', 'Füller (druckempfindlich)'], ['marker', 'highlighter', 'Marker', 'Textmarker'],
-          ['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}"${t === 'hand' && st.penOnly ? ' hidden' : ''}>${icon(ic)}${['pen', 'fountain', 'marker'].includes(t) ? `<span class="tool-swatch ${t === 'marker' ? 'mk' : ''}" data-sw="${t}"></span>` : '<span class="tool-swatch"></span>'}<span class="tool-lbl">${lbl}</span></button>`).join('')}
-        <button class="icon-btn tool-btn" data-v="ruler" title="Lineal: Stift, Füller und Marker ziehen gerade Linien">${icon('ruler')}<span class="tool-swatch"></span><span class="tool-lbl">Lineal</span></button>
+        ].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}"${t === 'hand' && st.penOnly ? ' hidden' : ''}>${icon(ic)}<span class="tool-swatch"></span><span class="tool-lbl">${lbl}</span></button>`).join('')}
+      </div>
+      <div class="grp pen-slots" data-pens></div>
+      <div class="grp">
+        ${[['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}">${icon(ic)}<span class="tool-swatch"></span><span class="tool-lbl">${lbl}</span></button>`).join('')}
+        <button class="icon-btn tool-btn" data-v="ruler" title="Lineal: alle Stifte ziehen gerade Linien">${icon('ruler')}<span class="tool-swatch"></span><span class="tool-lbl">Lineal</span></button>
         <button class="icon-btn tool-btn" data-v="image" title="Bild einfügen (Strg+V)">${icon('imagePlus')}<span class="tool-swatch"></span><span class="tool-lbl">Bild</span></button>
         <button class="icon-btn tool-btn" data-v="sticker" title="Sticker: Symbol wählen, dann auf die Stelle im Blatt tippen">${icon('sticker')}<span class="tool-swatch"></span><span class="tool-lbl">Sticker</span></button>
         <button class="icon-btn tool-btn" data-v="lookup" title="Nachschlagen (Wörterbuch)">${icon('search')}<span class="tool-swatch"></span><span class="tool-lbl">Nachschlagen</span></button>
       </div>
-      <div class="grp" data-colors></div>
-      <div class="grp"><button class="btn btn-sm btn-ghost" data-v="width" title="Strichstärke">●●</button></div>
       <div class="grp grp-end">
         ${bookable ? `<button class="btn btn-sm ${st.book ? 'btn-sec' : ''}" data-v="book" title="Buchlayout: zwei Seiten nebeneinander wie in einem Notizbuch">📖 Buch</button>` : ''}
         ${splittable ? `<button class="btn btn-sm ${st.split ? 'btn-sec' : ''}" data-v="split" title="Aufgabe und Schreibblatt nebeneinander (im Querformat)">◫ Nebeneinander</button>` : ''}
@@ -251,35 +291,107 @@
     const pagesEl = root.querySelector('.viewer-pages');
     const note = (t, ms = 2200) => { const n = document.createElement('div'); n.className = 'viewer-note'; n.textContent = t; scroller.appendChild(n); setTimeout(() => n.remove(), ms); };
 
-    // Farben
-    const drawColors = () => {
-      const cs = st.tool === 'marker' ? MARK_COLORS : PEN_COLORS;
-      const cur = st.tool === 'marker' ? st.mcolor : st.color;
-      $$('[data-sw]', root).forEach((s) => { s.style.background = s.dataset.sw === 'marker' ? st.mcolor : st.color; });
-      root.querySelector('[data-colors]').innerHTML = cs.map((c) => `<button class="color ${c === cur ? 'on' : ''}" style="background:${c}" data-color="${c}"></button>`).join('');
-      root.querySelector('[data-colors]').style.display = st.tool === 'pen' || st.tool === 'fountain' || st.tool === 'marker' ? '' : 'none';
-      root.querySelector('[data-v=width]').textContent = st.tool === 'fountain' ? ['fein', 'mittel', 'breit'][st.wIdx] : ['●', '●●', '●●●'][st.wIdx];
+    // ---------- Meine Stifte: Leiste + Einstellfenster ----------
+    // Probestrich im Knopf: Dicke grob sichtbar, Farbe und Deckkraft echt
+    const sample = (p) => {
+      const sw = Math.min(9, Math.max(1.3, 1 + p.mm * (p.t === 'marker' ? 0.6 : 1.5)));
+      return `<svg class="pen-sample" width="30" height="14" viewBox="0 0 30 14" aria-hidden="true"><path d="M3 9.5C9 2.5 15 13 27 4.5" fill="none" stroke="${p.c}" stroke-width="${sw.toFixed(1)}" stroke-linecap="${p.t === 'marker' ? 'butt' : 'round'}" opacity="${p.t === 'marker' ? Math.max(0.35, p.o) : p.o}"/></svg>`;
     };
-    drawColors();
-
-    // Füller: Stärke + Druckempfindlichkeit
-    const toggleFpPop = (btn) => {
-      const old = root.querySelector('.fp-pop');
-      if (old) { old.remove(); return; }
+    const drawPens = () => {
+      root.querySelector('[data-pens]').innerHTML = pens.list.map((p) => {
+        const T = PEN.TYPE[p.t], on = st.tool === 'ink' && p.id === st.penId;
+        return `<button class="pen-slot ${on ? 'active' : ''}" data-pen="${p.id}" title="${T.label}, ${PEN.mmLabel(p.mm)}${on ? ' – nochmal tippen zum Einstellen' : ''}">${sample(p)}<span class="tool-lbl">${T.label}${pens.def === p.id ? ' ★' : ''}</span></button>`;
+      }).join('') + (pens.list.length < PEN.MAX_PENS ? `<button class="pen-slot pen-new" data-pen-new title="Neuen Stift anlegen (Kopie des gewählten)">${icon('plus')}<span class="tool-lbl">Neu</span></button>` : '');
+    };
+    drawPens();
+    const savePens = () => { pens.last = st.penId; App.saveSettings({ inkPens: { list: pens.list.map((p) => ({ ...p })), def: pens.def, last: pens.last } }); };
+    const closePenPop = () => { const o = root.querySelector('.pen-pop'); if (o) o.remove(); };
+    const togglePenPop = () => {
+      if (root.querySelector('.pen-pop')) { closePenPop(); return; }
       const pop = document.createElement('div');
-      pop.className = 'fp-pop card';
-      const th = App.inkPen.clampThinning(S.inkThinning);
-      pop.innerHTML = `<div class="chips">${['fein', 'mittel', 'breit'].map((l, i) => `<button class="chip ${i === st.wIdx ? 'on' : ''}" data-fpw="${i}">${l}</button>`).join('')}</div>
-        <label class="small muted" style="display:block;margin-top:10px">Druckempfindlichkeit</label>
-        <input type="range" min="0.3" max="0.9" step="0.05" value="${th}" data-fpth style="width:100%">
-        <div class="row between small muted"><span>gleichmäßig</span><span>stark</span></div>`;
+      pop.className = 'pen-pop card';
+      const pctx = () => pop.querySelector('canvas').getContext('2d');
+      // Probestrich wie auf dem Blatt (Ausschnitt von 70 mm Seitenbreite), Druck steigt an und fällt wieder ab
+      const preview = () => {
+        const cv = pop.querySelector('canvas'), dpr = window.devicePixelRatio || 1;
+        cv.width = Math.round(cv.clientWidth * dpr); cv.height = Math.round(cv.clientHeight * dpr);
+        const W = (cv.width * PEN.PAGE_MM) / 70, wN = cv.width / W, hN = cv.height / W, c = pctx();
+        c.clearRect(0, 0, cv.width, cv.height);
+        const pts = [];
+        for (let i = 0; i <= 60; i++) { const t = i / 60; pts.push([wN * (0.07 + 0.86 * t), hN * (0.5 - 0.28 * Math.sin(t * Math.PI * 2)), 0.2 + 0.7 * Math.sin(t * Math.PI)]); }
+        drawStroke(c, { ...PEN.stroke(curPen(), pts[0], false), pts }, W);
+      };
+      const fill = () => {
+        const p = curPen(), T = PEN.TYPE[p.t], pal = PEN.palette(p.t);
+        pop.innerHTML = `<canvas class="pen-preview"></canvas>
+          <div class="pp-lbl"><span>Stiftart</span></div>
+          <div class="chips">${PEN.TYPES.map((x) => `<button class="chip ${x.t === p.t ? 'on' : ''}" data-ptype="${x.t}">${icon(x.icon)} ${x.label}</button>`).join('')}</div>
+          <div class="pp-lbl"><span>Dicke</span><b data-ppv="mm">${PEN.mmLabel(p.mm)}</b></div>
+          <input type="range" min="0" max="${PEN.SLIDER}" step="1" value="${PEN.toSlider(p.t, p.mm)}" data-pp="mm">
+          <div class="pp-lbl"><span>Deckkraft</span><b data-ppv="o">${Math.round(p.o * 100)} %</b></div>
+          <input type="range" min="10" max="100" step="5" value="${Math.round(p.o * 100)}" data-pp="o">
+          ${T.press ? `<div class="pp-lbl"><span>Druckempfindlichkeit</span><b data-ppv="pr">${Math.round(p.pr * 100)} %</b></div>
+          <input type="range" min="0" max="100" step="5" value="${Math.round(p.pr * 100)}" data-pp="pr">
+          <div class="row between small muted"><span>gleichmäßig</span><span>stark</span></div>` : ''}
+          <div class="pp-lbl"><span>Farbe</span></div>
+          <div class="pp-colors">${pal.concat(pal.includes(p.c) ? [] : [p.c]).map((c) => `<button class="color ${c === p.c ? 'on' : ''}" style="background:${c}" data-pcolor="${c}" title="${c}"></button>`).join('')}
+            <label class="color pp-own" title="Eigene Farbe wählen"><input type="color" value="${p.c}" data-pp-own></label></div>
+          <div class="pp-foot">
+            <button class="btn btn-sm" data-ppa="del">${icon('trash')} Löschen</button>
+            <button class="btn btn-sm ${pens.def === p.id ? 'btn-sec' : ''}" data-ppa="def" title="Mit diesem Stift startet jedes Blatt">${icon(pens.def === p.id ? 'starFill' : 'star')} ${pens.def === p.id ? 'Standard' : 'Als Standard'}</button>
+            <button class="btn btn-sm btn-primary" data-ppa="done">Fertig</button>
+          </div>`;
+        preview();
+      };
+      // Änderung am gewählten Stift: Leiste und Probestrich sofort, gespeichert wird beim Loslassen (save)
+      const change = (patch, save) => {
+        const i = pens.list.findIndex((p) => p.id === st.penId);
+        pens.list[i] = PEN.normPen({ ...pens.list[i], ...patch }, i);
+        syncColors(); drawPens(); preview();
+        if (save) savePens();
+      };
+      fill();
+      const btn = root.querySelector(`[data-pen="${st.penId}"]`) || root.querySelector('[data-pens]');
       const r = btn.getBoundingClientRect(), rr = root.getBoundingClientRect();
-      pop.style.left = Math.max(8, r.left - rr.left - 80) + 'px';
-      pop.style.top = r.bottom - rr.top + 6 + 'px';
       root.appendChild(pop);
-      pop.addEventListener('click', (e) => { const b = e.target.closest('[data-fpw]'); if (b) { setWidth(+b.dataset.fpw); drawColors(); pop.remove(); } });
-      pop.querySelector('[data-fpth]').addEventListener('change', (e) => App.saveSettings({ inkThinning: App.inkPen.clampThinning(e.target.value) }));
+      pop.style.left = Math.max(8, Math.min(r.left - rr.left - 40, rr.width - pop.offsetWidth - 8)) + 'px';
+      pop.style.top = r.bottom - rr.top + 6 + 'px';
+      preview();
+      pop.addEventListener('input', (e) => {
+        const k = e.target.dataset.pp, p = curPen();
+        if (e.target.dataset.ppOwn !== undefined) { change({ c: e.target.value }, false); return; }
+        if (!k) return;
+        const v = k === 'mm' ? PEN.fromSlider(p.t, e.target.value) : +e.target.value / 100;
+        pop.querySelector(`[data-ppv="${k}"]`).textContent = k === 'mm' ? PEN.mmLabel(v) : Math.round(v * 100) + ' %';
+        change({ [k]: v }, false);
+      });
+      pop.addEventListener('change', (e) => {
+        // eigene Farbe: erst nach der Wahl in die Farbreihe übernehmen (während des Ziehens bleibt das Fenster stehen)
+        if (e.target.dataset.ppOwn !== undefined) { change({ c: e.target.value }, true); fill(); return; }
+        if (e.target.dataset.pp) savePens();
+      });
+      pop.addEventListener('click', async (e) => {
+        const ty = e.target.closest('[data-ptype]');
+        if (ty) { const i = pens.list.findIndex((p) => p.id === st.penId); pens.list[i] = PEN.retype(pens.list[i], ty.dataset.ptype); syncColors(); drawPens(); savePens(); fill(); return; }
+        const c = e.target.closest('[data-pcolor]');
+        if (c) { change({ c: c.dataset.pcolor }, true); fill(); return; }
+        const a = e.target.closest('[data-ppa]');
+        if (!a) return;
+        if (a.dataset.ppa === 'done') closePenPop();
+        if (a.dataset.ppa === 'def') { pens.def = pens.def === st.penId ? null : st.penId; drawPens(); savePens(); fill(); }
+        if (a.dataset.ppa === 'del') {
+          if (pens.list.length < 2) { note('Ein Stift muss bleiben'); return; }
+          const p = curPen();
+          if (!(await App.confirm(`Den Stift „${PEN.TYPE[p.t].label}“ (${PEN.mmLabel(p.mm)}) löschen? Was du damit geschrieben hast, bleibt.`, { title: 'Stift löschen?' }))) return;
+          const i = pens.list.indexOf(p);
+          pens.list.splice(i, 1);
+          if (pens.def === p.id) pens.def = null;
+          closePenPop();
+          setPen(pens.list[Math.max(0, i - 1)].id);
+        }
+      });
     };
+    root.addEventListener('pointerdown', (e) => { if (!e.target.closest('.pen-pop, [data-pen], .modal-back')) closePenPop(); }, true);
 
     // ---------- Seiten vorbereiten ----------
     let pdf = null, img = null;
@@ -614,13 +726,11 @@
       const erasing = st.tool === 'eraser' || st.tool === 'cut' || (e.pointerType === 'pen' && (e.buttons & 32));
       if (erasing && (st.tool === 'cut' || (st.tool !== 'eraser' && st.eraser === 'cut'))) { drawing = { p, cut: true, last: null, before: p.strokes }; cutAt(p, norm(p, e)); return; }
       if (erasing) { drawing = { p, erase: true, act: { type: 'erase', pi: p.i, removed: [] } }; eraseAt(p, norm(p, e), drawing.act); return; }
-      const marker = st.tool === 'marker', pt = norm(p, e);
-      // Lineal: gleichmäßiger Druck, auch beim Füller
-      const s = st.tool === 'fountain'
-        ? { t: 'fp', c: st.color, w: PEN.FOUNTAIN_WIDTHS[st.wIdx], th: PEN.clampThinning(S.inkThinning), sim: !st.ruler && e.pointerType !== 'pen', pts: [pt] }
-        : { t: marker ? 'marker' : 'pen', c: marker ? st.mcolor : st.color, w: WIDTHS[marker ? 'marker' : 'pen'][st.wIdx], pts: [pt] };
+      const pt = norm(p, e);
+      // Lineal: gleichmäßiger Druck, auch bei Füller und Pinsel
+      const s = PEN.stroke(curPen(), pt, !st.ruler && e.pointerType !== 'pen');
       // dot: solange der Strich ein Tipper ist, steht er als Punkt auf der Live-Ebene – sofort beim Aufsetzen sichtbar
-      drawing = { p, s, pid: e.pointerId, line: st.ruler ? pt : null, dot: !marker };
+      drawing = { p, s, pid: e.pointerId, line: st.ruler ? pt : null, dot: s.t !== 'marker' };
       if (drawing.dot) drawStroke(p.live.getContext('2d'), s, p.live.width);
     });
     scroller.addEventListener('pointermove', (e) => {
@@ -669,17 +779,19 @@
       const evs = ce.length ? ce : [e];
       const c = p.ink.getContext('2d');
       evs.forEach((ev) => drawing.s.pts.push(norm(p, ev)));
+      // deckender Stift: Stück für Stück direkt aufs Blatt; alle anderen jedes Mal ganz auf der Live-Ebene
+      const piecewise = drawing.s.t === 'pen' && PEN.alpha(drawing.s) >= 1;
       if (drawing.dot) {
         clearLive(p);
         if (PEN.isDot(drawing.s.pts, drawing.s.w)) { drawStroke(lc, drawing.s, p.live.width); return; }
         drawing.dot = false;
         // aus dem Tipper wird ein Strich: das bisherige Stück nachholen
-        if (drawing.s.t === 'pen') { drawStroke(c, drawing.s, p.ink.width); return; }
+        if (piecewise) { drawStroke(c, drawing.s, p.ink.width); return; }
       }
-      // live zeichnen (nur letzte Abschnitte)
-      if (drawing.s.t === 'fp') { clearLive(p); drawStroke(lc, drawing.s, p.live.width); }
-      else if (drawing.s.t === 'marker') { drawInk(p); drawStroke(c, drawing.s, p.ink.width); }
-      else { const n = drawing.s.pts.length; drawStroke(c, { ...drawing.s, pts: drawing.s.pts.slice(Math.max(0, n - evs.length - 2)) }, p.ink.width); }
+      // live zeichnen (beim deckenden Stift nur die letzten Abschnitte)
+      if (drawing.s.t === 'marker') { drawInk(p); drawStroke(c, drawing.s, p.ink.width); }
+      else if (piecewise) { const n = drawing.s.pts.length; drawStroke(c, { ...drawing.s, pts: drawing.s.pts.slice(Math.max(0, n - evs.length - 2)) }, p.ink.width); }
+      else { clearLive(p); drawStroke(lc, drawing.s, p.live.width); }
     });
     const up = (e) => {
       if (touches.has(e.pointerId)) {
@@ -1002,26 +1114,25 @@
       const none = !ja.length && !de.length ? '<div class="small muted">Nicht erkannt</div>' : '';
       pop.innerHTML = `<div class="hw-list">${none}${chips(ja, 'hw-ja')}${chips(de, 'hw-de')}<div class="hw-row hw-self"><button class="chip" data-hw="">${icon('edit')} Selbst eingeben</button></div></div><button class="icon-btn sm" data-hwclose title="Schließen">${icon('close')}</button>`;
     };
-    // Stift, Dicke und Farben fürs nächste Öffnen merken (auch nach Neustart, Einstellung inkPen)
-    const rememberPen = () => {
-      const tool = PEN.PEN_TOOLS.includes(st.tool) ? st.tool : (S.inkPen || {}).tool;
-      App.saveSettings({ inkPen: { tool, wIdx: st.wIdx, widths: { ...st.widths }, color: st.color, mcolor: st.mcolor } });
-    };
-    const setWidth = (i) => {
-      st.wIdx = i;
-      if (PEN.PEN_TOOLS.includes(st.tool)) st.widths[st.tool] = i;
-      rememberPen();
-    };
     const setTool = (t) => {
       closeHw();
       if (t !== 'select') clearSel();
       st.tool = t;
       if (t === 'eraser' || t === 'cut') st.eraser = t;
-      if (PEN.PEN_TOOLS.includes(t)) { st.wIdx = st.widths[t]; rememberPen(); }
       $$('[data-tool]', root).forEach((b) => b.classList.toggle('active', b.dataset.tool === t));
-      drawColors();
-      const fp = root.querySelector('.fp-pop'); if (fp) fp.remove();
+      drawPens(); closePenPop();
       setStamp(null);
+    };
+    // eigenen Stift wählen und als zuletzt benutzten merken (auch nach Neustart, Einstellung inkPens.last)
+    const setPen = (id) => {
+      st.penId = id; syncColors(); setTool('ink'); savePens();
+    };
+    // neuer Stift = Kopie des gewählten, gleich daneben, und sofort zum Einstellen offen
+    const newPen = () => {
+      if (pens.list.length >= PEN.MAX_PENS) return;
+      const p = PEN.copyPen(pens.list, curPen());
+      pens.list.splice(pens.list.indexOf(curPen()) + 1, 0, p);
+      setPen(p.id); togglePenPop();
     };
     // ---------- Sticker: wählen, dann aufs Blatt tippen ----------
     // „Normal“ landet als Striche in Stift- und Markerfarbe, „Kawaii“ (st.stamp = 'k:…') als buntes Bild, das sich wie ein eingefügtes Bild verschieben und skalieren lässt
@@ -1147,7 +1258,7 @@
     const destroy = () => {
       if (destroyed) return;
       destroyed = true;
-      INK.lastState = { fileId: f.id, defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx, widths: { ...st.widths } };
+      INK.lastState = { fileId: f.id, defaultTool: st.tool, eraser: st.eraser, penId: st.penId };
       flushAll(); if (ty.flush) ty.flush(); io.disconnect(); ro.disconnect();
       // Bild-Cache dieser Datei freigeben (sonst wächst er mit jedem geöffneten Blatt)
       st.pages.forEach((p) => (p.images || []).forEach((im) => imgCache.delete(im.id)));
@@ -1201,8 +1312,10 @@
     root.querySelector('.viewer-bar').addEventListener('click', async (e) => {
       const t = e.target.closest('[data-tool]');
       if (t) { setTool(t.dataset.tool); return; }
-      const c = e.target.closest('[data-color]');
-      if (c) { if (st.tool === 'marker') st.mcolor = c.dataset.color; else st.color = c.dataset.color; drawColors(); rememberPen(); return; }
+      // eigener Stift: antippen wählt ihn, nochmal antippen öffnet das Einstellfenster
+      const pn = e.target.closest('[data-pen]');
+      if (pn) { if (st.tool === 'ink' && st.penId === pn.dataset.pen) togglePenPop(); else { closePenPop(); setPen(pn.dataset.pen); } return; }
+      if (e.target.closest('[data-pen-new]')) { closePenPop(); newPen(); return; }
       const x = e.target.closest('[data-x]');
       if (x) { const t = (opts.extraTools || []).find((y) => y.id === x.dataset.x); morePop.hidden = true; if (t) t.onClick(); return; }
       const v = e.target.closest('[data-v]'); if (!v) return;
@@ -1218,14 +1331,10 @@
       if (a === 'zin') setZoom(st.zoom * 1.2);
       if (a === 'zout') setZoom(st.zoom / 1.2);
       if (a === 'fit') setZoom(1);
-      if (a === 'width') {
-        if (st.tool === 'fountain') { toggleFpPop(v); return; }
-        setWidth((st.wIdx + 1) % 3); v.textContent = ['●', '●●', '●●●'][st.wIdx];
-      }
       if (a === 'penonly') {
         st.penOnly = !st.penOnly; v.querySelector('[data-state]').textContent = st.penOnly ? 'an' : 'aus'; App.saveSettings({ penOnly: st.penOnly });
         root.querySelector('[data-tool=hand]').hidden = st.penOnly;
-        if (st.penOnly && st.tool === 'hand') setTool('pen');
+        if (st.penOnly && st.tool === 'hand') setTool('ink');
         note(st.penOnly ? 'Nur der Stift schreibt – mit dem Finger scrollen & zoomen' : 'Finger schreibt jetzt auch');
       }
       if (a === 'addpage') addPage();
@@ -1262,8 +1371,8 @@
       if (a === 'sticker') toggleStickers(v);
       if (a === 'ruler') {
         st.ruler = !st.ruler; v.classList.toggle('active', st.ruler);
-        if (st.ruler && !['pen', 'fountain', 'marker'].includes(st.tool)) setTool('pen');
-        if (st.ruler) note('Lineal an: Stift, Füller und Marker ziehen gerade Linien');
+        if (st.ruler && st.tool !== 'ink') setTool('ink');
+        if (st.ruler) note('Lineal an: alle Stifte ziehen gerade Linien');
       }
       if (a === 'lookup') App.lookup.open(root, '', lookupOpts());
       if (a === 'vocab') App.importVocab({ fileId: f.id });
@@ -1345,7 +1454,7 @@
     ready = true;
     fillSpread();
     if (st.penOnly && !embedded) note('✍ Stift schreibt · Finger scrollt & zoomt');
-    return { flush: flushAll, destroy, dropLinks, state: () => ({ defaultTool: st.tool, eraser: st.eraser, color: st.color, mcolor: st.mcolor, wIdx: st.wIdx, widths: { ...st.widths } }) };
+    return { flush: flushAll, destroy, dropLinks, state: () => ({ defaultTool: st.tool, eraser: st.eraser, penId: st.penId }) };
   };
 
   // Markierungen eines Wortes von einem Blatt nehmen, das gerade nicht geöffnet ist (direkt im Speicher)
@@ -1357,7 +1466,7 @@
   };
 
   // ---------- Vollbild-Viewer ----------
-  // opts: Werkzeug-Zustand übernehmen (defaultTool, eraser, color, mcolor, wIdx, widths)
+  // opts: Werkzeug-Zustand übernehmen (defaultTool, eraser, penId)
   // Gehört das Blatt zu einer Stunde, einer Antwort/einem Tagebucheintrag oder einer Buchaufgabe, kommen „Neue Vokabel …“ und
   // „Erkennen → verknüpfen“ von selbst mit (App.sheetLinkOpts, writearea.js) – außer der Aufrufer bringt sie schon mit
   INK.open = async (fileId, opts = {}) => {

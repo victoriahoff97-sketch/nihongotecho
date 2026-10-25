@@ -81,7 +81,7 @@
     ],
     // Schreibblatt: „?“ auf einer Unterrichtsstunde und „⋯ > Hilfe“ in jedem Blatt
     blatt: [
-      { target: '.viewer-bar [data-tool="pen"]', until: '.viewer-bar [data-tool="marker"]', text: 'Wähle, womit du schreibst. Farbe und Strichstärke stellst du rechts daneben ein.' },
+      { target: '.viewer-bar [data-pens]', title: 'Meine Stifte', text: 'Tippe einen Stift an, um zu schreiben. Nochmal antippen: Stiftart, Dicke, Deckkraft und Farbe einstellen oder ihn zum Standard machen. „Neu“ legt einen weiteren Stift an.' },
       { target: '.viewer-bar [data-tool="lasso"]', title: 'Erkennen', text: 'Kreise ein handgeschriebenes Wort ein. Die App schlägt vor, was dort steht – tippe den passenden Vorschlag an.' },
       { target: '.viewer-bar [data-tool="lasso"]', title: 'Verknüpfen', text: 'Im Nachschlagen-Fenster tippst du „Mit dem Wort verknüpfen“. Gibt es die Vokabel oder Grammatik noch nicht, legst du sie dort gleich an.' },
       { target: '.viewer-bar [data-tool="lasso"]', title: 'Wiederfinden', text: 'Verknüpfte Stellen sind farbig markiert: Vokabeln lila, Grammatik orange. Ein Tipp darauf zeigt den Eintrag.' },
