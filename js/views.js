@@ -32,6 +32,8 @@
     return out;
   };
   const filterInput = (q, ph) => `<div class="search-wrap" style="max-width:340px">${icon('search')}<input class="input" style="padding-left:44px;width:100%" data-filter placeholder="${esc(ph)}" value="${esc(q.f || '')}"></div>`;
+  // „Gemerkt“-Filter als Stern ohne Text: spart Platz, damit Suche und Filter in eine Zeile passen
+  const starChip = (q) => `<button class="chip chip-icon ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}" title="${q.star ? 'Wieder alle zeigen' : 'Nur gemerkte zeigen'}" aria-label="Nur gemerkte" aria-pressed="${q.star ? 'true' : 'false'}">${icon(q.star ? 'starFill' : 'star')}</button>`;
   const bindFilter = (view) => {
     const f = view.querySelector('[data-filter]');
     if (!f) return;
@@ -456,12 +458,12 @@
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Alle Wörter mit Lesung, Kanji, Übersetzung und Beispielsätzen – nach Quelle und Lektion sortiert.',
       `<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a>${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>`)}
       ${tabsHtml(q, items.length, files.length)}
-      <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}<span class="grow"></span><div class="seg"><button class="${mode === 'cards' ? 'on' : ''}" data-mode="cards">${icon('cards')}</button><button class="${mode === 'list' ? 'on' : ''}" data-mode="list">${icon('list')}</button></div>
+      <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
         <select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
         ${App.levelSelect(q.lvl)}
         <select class="input" data-q-select="st"><option value="">Lernstand</option>${Object.entries(App.WORD_STATE).map(([k, x]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${x.dot} ${x.label}</option>`).join('')}</select>
-        <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Gemerkt</button></div></div>
+        ${starChip(q)}<div class="seg"><button class="${mode === 'cards' ? 'on' : ''}" data-mode="cards" title="Als Karten">${icon('cards')}</button><button class="${mode === 'list' ? 'on' : ''}" data-mode="list" title="Als Liste">${icon('list')}</button></div></div></div>
       <div data-body style="margin-top:14px"></div></div>`;
     const body = view.querySelector('[data-body]');
     if (q.tab === 'files') body.innerHTML = filesTab('vocab', q);
@@ -578,7 +580,7 @@
       ${tabsHtml(q, items.length, files.length)}
       <div class="toolbar">${filterInput(q, 'Grammatik suchen, z. B. て-Form, Vergleich …')}<div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
       ${App.levelSelect(q.lvl)}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusChoices({ type: 'grammar' }).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>
-      <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Gemerkt</button></div></div>
+      ${starChip(q)}</div></div>
       <div data-body style="margin-top:14px"></div></div>`;
     const body = view.querySelector('[data-body]');
     if (q.tab === 'files') body.innerHTML = filesTab('grammar', q);

@@ -301,6 +301,7 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 .chip.on { background: var(--sec, var(--shu)); border-color: var(--sec, var(--shu)); color: #fff; }
 .chip .sw { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
 .chip.on .sw { background: #fff; }
+.chip.chip-icon { width: 44px; height: 44px; padding: 0; justify-content: center; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chips.scroll { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
 .tag { font-size: 12px; color: var(--muted); text-decoration: none; font-weight: 700; }
@@ -320,11 +321,13 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 /* Toolbar / Filter */
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
 .toolbar .field-inline { position: relative; }
-/* Oben die Suche, darunter alle Filter in genau einer Zeile: wird es eng, werden die Felder schmaler statt umzubrechen */
-.toolbar > .search-wrap { flex: 1 1 220px; min-width: 180px; }
+/* Suche und alle Filter in einer Zeile. Reicht der Platz nicht (Tablet hochkant, Handy), rutschen die Filter als Ganzes
+   unter die Suche; dort werden die Felder schmaler statt umzubrechen */
+.toolbar > .search-wrap { flex: 1 1 200px; min-width: 180px; }
 .filter-row { display: flex; gap: 10px; align-items: center; flex: 1 1 100%; min-width: 0; }
+.toolbar > .search-wrap ~ .filter-row { flex: 0 1 auto; }
 .filter-row > * { flex: 0 1 auto; min-width: 0; }
-.filter-row > select.input { text-overflow: ellipsis; padding: 0 8px 0 12px; min-width: 5em; }
+.filter-row > select.input { text-overflow: ellipsis; padding: 0 8px 0 12px; min-width: 5em; field-sizing: content; }
 .filter-row > .msel { flex-shrink: 0; max-width: 14em; }
 .filter-row > .msel > summary { padding: 0 12px; }
 .filter-row > .chip, .filter-row > .seg, .filter-row > .btn { flex: none; }
@@ -428,6 +431,10 @@ details.adv[open] summary { margin-bottom: 12px; }
 .group-head .line { flex: 1; height: 1px; background: var(--line); }
 
 /* Kanji-Kacheln */
+/* Kanji-Liste: Markierungen (wischbar) und rechts daneben die Legende; wird es eng, steht die Legende darunter */
+.kanji-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-bottom: 8px; }
+.kanji-marks > .chips { flex: 1 1 420px; min-width: 0; }
+.kanji-legend { flex: none; white-space: nowrap; padding-bottom: 4px; }
 .kanji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; }
 .kanji-tile {
   aspect-ratio: 1 / 1.08; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-filter', date: '25. Oktober',
+      items: [
+        { t: 'Schlankere Filter', d: 'Bei Grammatik, Vokabeln und Kanji stehen Suche und Filter in einer Zeile. „Gemerkt“ ist jetzt der Stern – antippen zeigt nur deine gemerkten Einträge.' },
+      ],
+    },
+    {
       id: '2026-10-25-reihen', date: '25. Oktober',
       items: [
         { t: 'Startseite auf jedem Gerät ordentlich', d: 'Auf Tablet und MacBook bleiben die Kacheln der Startseite nebeneinander und werden etwas kleiner, statt einzeln umzubrechen. Nur am Handy stehen sie untereinander.' },

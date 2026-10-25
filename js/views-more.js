@@ -64,10 +64,10 @@
       App.hydrateThumbs(body);
     } else {
       body.innerHTML = `<div class="toolbar"><div class="search-wrap" style="max-width:340px">${icon('search')}<input class="input" style="padding-left:44px;width:100%" data-kf placeholder="Kanji, Bedeutung oder Lesung …" value="${esc(q.f || '')}"></div>
-        <span class="small muted">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernstapel · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span><span class="grow"></span><button class="btn btn-sm btn-sec" data-kvg-all hidden></button>
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all, q.l)}${App.levelSelect(q.lvl)}
         <select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st)}</select></div></div>
-        <div class="chips scroll" style="margin-bottom:8px"><button class="chip ${!q.mark ? 'on' : ''}" data-q-mark="">Alle Markierungen</button>${App.kanjiMarks().map((m) => { const n = all.filter((k) => App.hasMark(k, m)).length; return `<button class="chip ${q.mark === m ? 'on' : ''}" data-q-mark="${esc(m)}">${esc(m)} <span class="small" style="opacity:.7">${n}</span></button>`; }).join('')}<button class="chip" data-new-mark>${icon('plus')} Markierung</button></div>
+        <div class="kanji-marks"><div class="chips scroll"><button class="chip ${!q.mark ? 'on' : ''}" data-q-mark="">Alle Markierungen</button>${App.kanjiMarks().map((m) => { const n = all.filter((k) => App.hasMark(k, m)).length; return `<button class="chip ${q.mark === m ? 'on' : ''}" data-q-mark="${esc(m)}">${esc(m)} <span class="small" style="opacity:.7">${n}</span></button>`; }).join('')}<button class="chip" data-new-mark>${icon('plus')} Markierung</button></div>
+        <span class="small muted kanji-legend">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernstapel · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span><button class="btn btn-sm btn-sec" data-kvg-all hidden></button></div>
         <div data-grid style="margin-top:14px"></div>`;
       body.querySelector('[data-new-mark]').onclick = async () => { const m = await App.addKanjiMark(); if (m) App.setQuery({ mark: m }); };
       // Eigene Kanji ohne Strichfolge finden → Sammel-Download anbieten
