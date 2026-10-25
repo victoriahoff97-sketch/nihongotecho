@@ -714,11 +714,16 @@
       const gs = groupsOrder.filter((g) => gm.has(g) || (showEmpty && custom.includes(g) && (!q.g || q.g === g)));
       body.innerHTML = gs.map((g) => {
         const list = (gm.get(g) || []).sort((a, b) => (a.order || 0) - (b.order || 0));
-        return `<div class="card" style="margin-bottom:16px"><div class="row between" style="margin-bottom:8px"><h3 style="margin:0">${esc(g)} <span class="badge">${list.length}</span></h3>
-          <div class="row">${list.length ? `<a class="btn btn-sm" href="#/ueben/karten?type=phrase&g=${encodeURIComponent(g)}">${icon('practice')} Lernen</a>` : ''}<button class="btn btn-sm btn-ghost" data-group="${esc(g)}" title="Ausdruck hinzufügen">${icon('plus')}</button><button class="btn btn-sm btn-ghost" data-edit-group="${esc(g)}" title="Gruppe umbenennen oder löschen">${icon('edit')}</button></div></div>
-          ${list.length ? `<div class="list" style="box-shadow:none">${list.map((it) => `<a class="list-row" href="${App.link(it)}" style="grid-template-columns:minmax(160px,1.2fr) minmax(140px,1fr) minmax(120px,1.2fr) auto"><span class="k" lang="ja">${JP.ruby(it.jp)}</span><span><b>${esc(it.de)}</b></span><span class="small muted">${esc(JP.plain(it.note || ''))}</span><span class="row" style="gap:8px;flex-wrap:nowrap">${App.statusBadge(it.id)}${App.speakBtn(it.jp)}</span></a>`).join('')}</div>`
+        const rows = (l) => `<div class="list" style="box-shadow:none">${l.map((it) => `<a class="list-row" href="${App.link(it)}" style="grid-template-columns:minmax(160px,1.2fr) minmax(140px,1fr) minmax(120px,1.2fr) auto"><span class="k" lang="ja">${JP.ruby(it.jp)}</span><span><b>${esc(it.de)}</b></span><span class="small muted">${esc(JP.plain(it.note || ''))}</span><span class="row" style="gap:8px;flex-wrap:nowrap">${App.statusBadge(it.id)}${App.speakBtn(it.jp)}</span></a>`).join('')}</div>`;
+        // Zähler: aufklappbare Tabellen je Zähler, die Lernkarten stecken im passenden Zähler (nicht bei einer Textsuche)
+        const ctr = g === 'Zähler' && !q.f;
+        return `<div class="card${ctr ? ' ctr-card' : ''}" style="margin-bottom:16px"><div class="row between" style="margin-bottom:8px"><h3 style="margin:0">${esc(g)} <span class="badge">${list.length}</span></h3>
+          <div class="row">${ctr ? '<button class="btn btn-sm btn-ghost" data-ctr-all>Alle aufklappen</button>' : ''}${list.length ? `<a class="btn btn-sm" href="#/ueben/karten?type=phrase&g=${encodeURIComponent(g)}">${icon('practice')} Lernen</a>` : ''}<button class="btn btn-sm btn-ghost" data-group="${esc(g)}" title="Ausdruck hinzufügen">${icon('plus')}</button><button class="btn btn-sm btn-ghost" data-edit-group="${esc(g)}" title="Gruppe umbenennen oder löschen">${icon('edit')}</button></div></div>
+          ${ctr ? App.counterBody(list, rows)
+          : list.length ? rows(list)
           : `<div class="empty-state" style="padding:18px"><p style="margin:0 0 10px">Noch leer.</p><button class="btn btn-sec btn-sm" data-group="${esc(g)}">${icon('plus')} Ersten Ausdruck hinzufügen</button></div>`}</div>`;
       }).join('') || '<div class="empty-state"><div class="big">表</div><h3>Nichts gefunden</h3></div>';
+      App.counterBind(body);
     }
     App.hydrateThumbs(body);
     bindFilter(view);

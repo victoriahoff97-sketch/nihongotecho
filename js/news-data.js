@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-zaehler', date: '25. Oktober',
+      items: [
+        { t: 'Zähler zum Aufklappen', d: 'Unter Ausdrücke › Zähler hat jeder Zähler (Dinge, runde Dinge, Menschen, Nächte …) eine Tabelle von 1 bis 10. Rot = unregelmäßig, Antippen liest vor.' },
+      ],
+    },
+    {
       id: '2026-10-25-spalte', date: '25. Oktober',
       items: [
         { t: 'Rechte Spalte einklappen', d: 'Bei Grammatik, Vokabeln und Ausdrücken schiebt „Einklappen“ oben rechts die verwandten Einträge weg – die Seite wird breiter. „Verwandtes“ holt sie zurück.' },
