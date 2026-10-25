@@ -6,7 +6,7 @@
   const PAD = 6;            // Luft zwischen Ziel und Rahmen
   const MOBILE = 860;       // darunter liegt die Seitenleiste verborgen (css/app.css)
   const BACKUP = ['sicherungOrdner', 'sicherungIpad', 'sicherungAndroid', 'sicherungHand'];
-  const NO_ROUND = ['rundgang', 'hinweis', 'erweiterung'].concat(BACKUP); // ohne „Ganzen Rundgang zeigen“ am Ende
+  const NO_ROUND = ['start', 'rundgang', 'hinweis', 'erweiterung'].concat(BACKUP); // ohne „Ganzen Rundgang zeigen“ am Ende
   const HOME = { erweiterung: '/einstellungen' };          // Touren, die auf einer bestimmten Seite laufen
   BACKUP.forEach((k) => (HOME[k] = '/einstellungen'));
 
@@ -74,15 +74,17 @@
     if (i >= cur.steps.length) return stop();
     cur.i = i;
     const step = cur.steps[i], n = cur.steps.length, last = i === n - 1;
-    const link = last ? step.link || (NO_ROUND.includes(cur.key) ? null : { label: 'Ganzen Rundgang zeigen', tour: 'rundgang' }) : null;
+    const choices = last && step.choices ? step.choices : null; // Auswahl statt „Weiter“ (Tour „start“)
+    const link = choices ? null : last ? step.link || (NO_ROUND.includes(cur.key) ? null : { label: 'Ganzen Rundgang zeigen', tour: 'rundgang' }) : null;
     cur.link = link;
     cur.els.bubble.innerHTML = `<button class="tour-x" data-t="x" aria-label="Hilfe schließen">×</button>
       ${step.title ? `<b class="tour-title">${esc(step.title)}</b>` : ''}
       <p>${esc(step.text)}</p>
       ${link ? `<button class="tour-link" data-t="link">${esc(link.label)}</button>` : ''}
-      <div class="tour-foot">${n > 1 ? `<span class="tour-count">${i + 1} von ${n}</span>` : ''}<span class="grow"></span>
+      ${choices ? `<div class="tour-foot tour-choices">${choices.map((c, k) => `<button class="btn btn-sm ${k === choices.length - 1 ? 'btn-primary' : 'btn-ghost'}" data-t="choice" data-i="${k}">${esc(c.label)}</button>`).join('')}</div>`
+        : `<div class="tour-foot">${n > 1 ? `<span class="tour-count">${i + 1} von ${n}</span>` : ''}<span class="grow"></span>
         ${i > 0 ? '<button class="btn btn-sm btn-ghost" data-t="back">Zurück</button>' : ''}
-        <button class="btn btn-sm btn-primary" data-t="next">${last ? 'Fertig' : 'Weiter'}</button></div>`;
+        <button class="btn btn-sm btn-primary" data-t="next">${last ? 'Fertig' : 'Weiter'}</button></div>`}`;
     const el = step.target ? find(step.target) : null;
     const inSidebar = !!(el && el.closest('#sidebar'));
     sidebar(inSidebar);
@@ -96,7 +98,7 @@
     // die Seitenleiste fährt mit einer kurzen Bewegung auf – danach noch einmal ausrichten
     clearTimeout(cur.timer);
     cur.timer = setTimeout(place, 260);
-    const next = cur.els.bubble.querySelector('[data-t="next"]');
+    const next = cur.els.bubble.querySelector('[data-t="next"]') || cur.els.bubble.querySelector('.btn-primary[data-t="choice"]');
     if (next) next.focus({ preventScroll: true });
   };
 
@@ -109,6 +111,7 @@
     if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('.tour-bubble button:not([data-t="next"])')) return;
     e.preventDefault();
     if (e.key === 'Escape') stop();
+    else if (cur.steps[cur.i].choices) return; // eine Auswahl wird nicht mit Pfeil oder Enter übersprungen
     else if (e.key === 'ArrowRight' || e.key === 'Enter') show(cur.i + 1, 1);
     else if (e.key === 'ArrowLeft') show(cur.i - 1, -1);
   };
@@ -125,6 +128,12 @@
     else if (t === 'next') show(cur.i + 1, 1);
     else if (t === 'back') show(cur.i - 1, -1);
     else if (t === 'link') { const to = cur.link.tour; stop(); start(to); }
+    else if (t === 'choice') {
+      const c = cur.steps[cur.i].choices[+b.dataset.i];
+      cur.opts = {}; // gewählt ist nicht abgebrochen: kein onEnd
+      stop();
+      start(c.tour, c.resume ? { onEnd: resumeBar } : {});
+    }
   };
 
   const stop = () => {
@@ -165,6 +174,26 @@
     return true;
   };
 
+  // Nach der Sicherungs-Hilfe beim ersten Start: Leiste unten, bis die Sicherung eingerichtet ist – dann weiter zum Rundgang
+  const resumeBar = () => {
+    if ($('.tour-resume')) return;
+    const d = document.createElement('div');
+    d.className = 'tour-resume';
+    d.setAttribute('role', 'status');
+    d.innerHTML = '<span>Sicherung eingerichtet?</span><button class="btn btn-sm btn-primary" data-go>Weiter mit dem Rundgang</button><button class="tour-x" data-x aria-label="Leiste schließen">×</button>';
+    d.querySelector('[data-go]').onclick = (e) => { e.stopPropagation(); d.remove(); start('rundgang'); };
+    d.querySelector('[data-x]').onclick = (e) => { e.stopPropagation(); d.remove(); };
+    $('#overlay-root').appendChild(d);
+  };
+
+  // Erster Start, direkt nach dem Willkommensbrief (hallo.js): Tutorial beginnt mit der Sicherung.
+  // Mit ✕ weggeklickt: nur der Hinweis, wo die Hilfe liegt. Nicht in In-App-Browsern (dort bleibt nichts gespeichert).
+  const firstRun = () => {
+    App.saveSettings({ tourAsked: true });
+    if (inAppBrowser()) return;
+    start('start', { onEnd: () => start('hinweis') });
+  };
+
   // ---------- Frage beim ersten Start ----------
   let asking = false, askTimer = 0;
   const inAppBrowser = () => {
@@ -202,7 +231,8 @@
     if (cur) { if (path !== cur.path) stop(); else show(cur.i); }
     if (pending && !cur) {
       const p = pending; pending = null;
-      if (path === HOME[p.key]) start(p.key, p.opts);
+      // erst nach dem Zeichnen starten: render() rollt nach dem Melden des Seitenwechsels noch nach oben
+      if (path === HOME[p.key]) setTimeout(() => { if (!cur) start(p.key, p.opts); }, 0);
     }
     // kurz nach dem Anzeigen der Startseite fragen (auch wenn man zuerst auf einer Unterseite gelandet ist)
     askSoon();
@@ -215,7 +245,7 @@
   });
 
   App.tour = {
-    start, stop, askOnce, askSoon,
+    start, stop, askOnce, askSoon, firstRun,
     active: () => !!cur,
     startForPage: () => start(L.tourKeyFor(App.parseHash().path)),
   };

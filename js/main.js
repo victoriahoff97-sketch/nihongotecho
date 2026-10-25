@@ -132,6 +132,8 @@
     // Teilen-Menü (?text=…&url=…) in die Eingangs-Adresse umsetzen – synchron, wirft nie
     if (App.inbox) App.inbox.bootShare();
     App.render();
+    // allererstes Öffnen auf diesem Gerät: Willkommensbrief, danach das Tutorial (js/hallo.js)
+    if (App.hallo) App.hallo.boot();
     // nach einem Update kurz zeigen, was neu ist (js/news.js)
     if (App.news) App.news.boot();
     // eigene Vokabeln ohne Beispielsatz aus dem Satz-Index der Pakete auffüllen (einmal je Index-Version)

@@ -48,6 +48,9 @@
   // Sicherungs-Hilfe je Gerät: mit Ordnerzugriff (Chrome/Edge am PC) automatisch, sonst von Hand – iPad und Android eigens
   const backupTourKey = ({ os, folder }) => (folder ? 'sicherungOrdner' : os === 'ios' ? 'sicherungIpad' : os === 'android' ? 'sicherungAndroid' : 'sicherungHand');
 
-  const T = { GAP, MARGIN, tourKeyFor, visibleSteps, placeBubble, shouldAsk, backupTourKey };
+  // Willkommensbrief (hallo.js): einmal je Gerät, und nur für Neue – wer schon eigene Daten hat, kennt die App
+  const showHello = ({ seen, fresh }) => !seen && !!fresh;
+
+  const T = { GAP, MARGIN, tourKeyFor, visibleSteps, placeBubble, shouldAsk, backupTourKey, showHello };
   if (typeof module !== 'undefined' && module.exports) module.exports = T; else root.App.tourLogic = T;
 })(this);

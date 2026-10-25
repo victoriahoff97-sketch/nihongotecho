@@ -1477,6 +1477,10 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .tour-foot { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
 .tour-foot .grow { flex: 1; }
 .tour-count { color: var(--muted); font-size: 13px; }
+.tour-choices { flex-wrap: wrap; justify-content: flex-end; }
+/* nach der Sicherungs-Hilfe beim ersten Start: zurück zum Rundgang */
+.tour-resume { position: fixed; z-index: 90; left: 50%; bottom: 16px; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 44px 10px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); font-size: 14px; }
+.tour-resume .tour-x { top: 50%; transform: translateY(-50%); }
 @media (prefers-reduced-motion: reduce) { .tour-ring { transition: none; } }
 
 /* Startseite: Lernstand-Karten – grün = kann ich, blau = in der Lernschlange, leer = wartet noch */
@@ -1706,6 +1710,11 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 
 /* „Was ist neu“ nach einem Update (js/news.js) */
 .modal.news-modal { width: min(540px, 100%); }
+/* Willkommensbrief (js/hallo.js) */
+.modal.hallo-modal { width: min(600px, 100%); }
+.hallo p { margin: 0 0 10px; line-height: 1.55; }
+.hallo h3 { font-size: 15px; margin: 18px 0 6px; color: var(--shu); }
+.hallo-sign { margin: 14px 0 0 !important; font-family: var(--font-kanji); font-size: 22px; text-align: right; }
 .news-modal .modal-head h2 .jp { color: var(--shu); margin-right: 4px; }
 .news-entry + .news-entry { margin-top: 16px; }
 .news-entry h3 { font-size: 13px; font-weight: 700; color: var(--muted); margin: 0 0 4px; }

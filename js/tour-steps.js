@@ -7,6 +7,12 @@
   const BK = '#view .card:has([data-backup-auto])';
 
   const TOURS = {
+    // Erster Start, direkt nach dem Willkommensbrief: zuerst die Sicherung. choices ersetzen „Weiter“;
+    // resume: nach der Sicherungs-Hilfe führt eine Leiste unten zum Rundgang zurück.
+    start: [
+      { target: '#backup-top', title: 'Zuerst: deine Sicherung', text: 'Alles, was du in der App anlegst, liegt nur auf diesem Gerät. Eine Sicherung schützt es. Willst du direkt eine Sicherung einrichten?',
+        choices: [{ label: 'Erst mal nur angucken', tour: 'rundgang' }, { label: 'Ja, einrichten', tour: 'sicherung', resume: true }] },
+    ],
     // Angebot beim ersten Start
     rundgang: [
       { target: '#nav .sec-grammar', until: '#nav .sec-phrase', place: 'right', title: 'Deine Sammlungen', text: 'Hier liegt alles, was du lernst, nach Art sortiert: Grammatik, Vokabeln, Kanji und Ausdrücke. Genki I ist schon drin.' },

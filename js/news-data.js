@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-hallo', date: '25. Oktober',
+      items: [
+        { t: 'Ein paar Worte von Vicky', d: 'Wie die App entstanden ist und wie die Inhalte mit KI erstellt wurden: nachzulesen unter Einstellungen › Über › „Über diese App“.' },
+        { t: 'Tutorial beginnt mit der Sicherung', d: 'Wer die App neu öffnet, wird zuerst gefragt, ob die Sicherung gleich eingerichtet werden soll oder ob man sich erst mal nur umschaut.' },
+      ],
+    },
+    {
       id: '2026-10-25-import-dubletten', date: '25. Oktober',
       items: [
         { t: 'Import: vielleicht schon vorhanden', d: 'Steht ein Wort in der Liste nur in Kana (きらい) und gibt es schon 嫌い, fragt die Vorschau: dasselbe Wort oder neu anlegen?' },
