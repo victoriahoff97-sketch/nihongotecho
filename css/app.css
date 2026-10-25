@@ -1478,6 +1478,10 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .tour-foot .grow { flex: 1; }
 .tour-count { color: var(--muted); font-size: 13px; }
 .tour-choices { flex-wrap: wrap; justify-content: flex-end; }
+/* Herzstück: Funktionen, die der App am wichtigsten sind (Schritte mit heart in tour-steps.js) */
+.tour-bubble.heart { border: 2px solid var(--shu); }
+.tour-ring.heart { border-width: 3px; }
+.tour-heart { display: inline-flex; align-items: center; gap: 4px; margin: 0 28px 6px 0; padding: 2px 10px; border-radius: 999px; background: var(--shu-soft); color: var(--shu); font-size: 12px; font-weight: 700; }
 /* nach der Sicherungs-Hilfe beim ersten Start: zurück zum Rundgang */
 .tour-resume { position: fixed; z-index: 90; left: 50%; bottom: 16px; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 44px 10px 16px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); font-size: 14px; }
 .tour-resume .tour-x { top: 50%; transform: translateY(-50%); }

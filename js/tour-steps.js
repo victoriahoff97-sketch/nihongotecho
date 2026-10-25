@@ -1,10 +1,13 @@
 /* Nihongo Techō – Tutorial: Texte und Ziele aller Touren (nur Daten). Browser: App.TOURS, Node: module.exports
    Je Schritt: target (CSS-Selektor, fehlt = Blase mittig), until (Rahmen reicht bis zu diesem Element), title, text, place ('right' für Ziele in der Seitenleiste),
-   link { label, tour } (im letzten Schritt statt „Ganzen Rundgang zeigen“). Höchstens fünf Schritte je Tour. */
+   link { label, tour } (im letzten Schritt statt „Ganzen Rundgang zeigen“),
+   unless (Schritt fällt weg, wenn dieses Element da ist), heart (als Herzstück hervorgehoben). Höchstens fünf Schritte je Tour. */
 'use strict';
 (function (root) {
   const EXT = '[data-ext-card]';
   const BK = '#view .card:has([data-backup-auto])';
+  // Richtungswahl der Karteikarten – nur bei Vokabeln und Ausdrücken, dort gibt es das Schreibfeld
+  const DIRSEG = '#view [data-setup]:not(:has(.on[data-q-type="kanji"], .on[data-q-type="grammar"])) .seg:has([data-q-dir])';
 
   const TOURS = {
     // Erster Start, direkt nach dem Willkommensbrief: zuerst die Sicherung. choices ersetzen „Weiter“;
@@ -68,6 +71,15 @@
       { target: '#view a.mode-card[href="#/ueben/kanji"]', text: 'Kanji mit dem Stift schreiben oder Lesungen erkennen.' },
       { target: '#view a.mode-card[href="#/ueben/saetze"]', text: 'Ganze Sätze, gebaut nur aus Wörtern und Grammatik, die du schon hast.' },
       { target: '#view a.mode-card[href="#/ueben/konjugieren"]', text: 'Formen bilden: Du wählst eine Mischung, zum Beispiel nur die て-Form, bildest die Formen im Kopf oder auf Papier und deckst auf.' },
+    ],
+    // Karteikarten und „Jetzt wiederholen“ (Auswahl oder laufende Runde). heart: als Herzstück hervorgehoben.
+    // Das Schreibfeld steht je nach Lage an drei Stellen – gezeigt wird immer nur einer der drei ersten Schritte.
+    karten: [
+      { target: '#view .ans-mode', heart: true, title: 'Antwort selbst schreiben', text: 'Nicht nur umdrehen und „ungefähr gewusst“: Tippe den Stift an und schreib das Wort selbst. Die App prüft, ob jedes Zeichen stimmt – Kanji, Kana und Mischungen wie 勉きょう.' },
+      { target: DIRSEG, heart: true, title: 'Antwort selbst schreiben', text: 'Wähle „Deutsch → Japanisch“. Dann steht unter jeder Karte ein Stift-Knopf: Damit schreibst du das Wort selbst, und die App prüft, ob jedes Zeichen stimmt.' },
+      { unless: '#view .ans-mode, ' + DIRSEG, heart: true, title: 'Antwort selbst schreiben', text: 'Bei Karten Deutsch → Japanisch steht unter der Karte ein Stift-Knopf: Damit schreibst du das Wort selbst, und die App prüft, ob jedes Zeichen stimmt.' },
+      { target: '#view .flash', text: 'Tippen oder Leertaste dreht die Karte um. Mit Schreibfeld drückst du „Prüfen“: Die Karte deckt sich auf und zeigt, was nicht stimmt.' },
+      { title: 'Bewerten', text: 'Danach sagst du, wie gut du es wusstest – nach dem Prüfen ist die passende Bewertung schon vorgewählt. Beim Wiederholen kommt die Karte wieder, kurz bevor du sie vergessen würdest.' },
     ],
     '/anwenden': [
       { target: '#view .tabs', text: 'Zwei Wege, Japanisch selbst zu benutzen: ein Tagebuch und Fragen zum Beantworten.' },

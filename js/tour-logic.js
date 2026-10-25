@@ -17,11 +17,14 @@
     if (base === '/unterricht' && parts[1] === 'buch') return 'notizbuch';
     // eine einzelne Unterrichtsstunde ist vor allem ihr Schreibblatt
     if (base === '/unterricht' && parts.length > 1) return 'blatt';
+    // Karteikarten und „Jetzt wiederholen“: eigene Hilfe mit dem Schreibfeld
+    if (base === '/ueben' && (parts[1] === 'karten' || parts[1] === 'heute')) return 'karten';
     return PAGES.includes(base) ? base : 'rundgang';
   };
 
-  // Schritte, deren Ziel gerade nicht auf der Seite ist, fallen weg; Schritte ohne Ziel stehen mittig und bleiben
-  const visibleSteps = (steps, hasTarget) => (steps || []).filter((s) => !s.target || hasTarget(s.target));
+  // Schritte, deren Ziel gerade nicht auf der Seite ist, fallen weg; Schritte ohne Ziel stehen mittig und bleiben.
+  // unless: der Schritt fällt weg, wenn dieses Element da ist (Ersatz für einen Schritt, dessen Ziel gerade fehlt)
+  const visibleSteps = (steps, hasTarget) => (steps || []).filter((s) => (!s.target || hasTarget(s.target)) && (!s.unless || !hasTarget(s.unless)));
 
   const clamp = (v, lo, hi) => Math.round(Math.max(lo, Math.min(v, Math.max(lo, hi))));
 

@@ -77,7 +77,11 @@
     const choices = last && step.choices ? step.choices : null; // Auswahl statt „Weiter“ (Tour „start“)
     const link = choices ? null : last ? step.link || (NO_ROUND.includes(cur.key) ? null : { label: 'Ganzen Rundgang zeigen', tour: 'rundgang' }) : null;
     cur.link = link;
+    // Herzstück: Abzeichen über dem Titel, kräftigerer Rahmen an Blase und Ziel
+    cur.els.bubble.classList.toggle('heart', !!step.heart);
+    cur.els.ring.classList.toggle('heart', !!step.heart);
     cur.els.bubble.innerHTML = `<button class="tour-x" data-t="x" aria-label="Hilfe schließen">×</button>
+      ${step.heart ? '<span class="tour-heart"><span aria-hidden="true">♥</span> Herzstück</span>' : ''}
       ${step.title ? `<b class="tour-title">${esc(step.title)}</b>` : ''}
       <p>${esc(step.text)}</p>
       ${link ? `<button class="tour-link" data-t="link">${esc(link.label)}</button>` : ''}

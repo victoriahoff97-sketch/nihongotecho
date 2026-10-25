@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-karten-hilfe', date: '25. Oktober',
+      items: [
+        { t: 'Hilfe zu den Karteikarten', d: 'Das „?“ oben erklärt jetzt die Karteikarten – zuerst das Schreibfeld: Tippe unter der Karte den Stift an, schreib das Wort selbst, und die App prüft jedes Zeichen.' },
+      ],
+    },
+    {
       id: '2026-10-25-hallo', date: '25. Oktober',
       items: [
         { t: 'Ein ehrliches Wort zu den Inhalten', d: 'Wozu die App da ist und dass viele Inhalte mit KI erstellt wurden: nachzulesen unter Einstellungen › Über › „Über diese App“.' },
