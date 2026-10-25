@@ -283,6 +283,38 @@
     return out;
   };
 
+  // Seed-Einträge kommen nach einem Teilen-Paket (Genki-Freischaltung nach Duolingo, Wortliste): dasselbe Wort soll
+  // nicht doppelt stehen. Gleiche Regel wie beim Import (App.paketLogic.shareSkip: dupes-Treffer „same“). Ergebnis:
+  //   map  – ID des importierten Worts → Seed-ID; es geht im Seed-Eintrag auf (Lernstand + Verweise: planSeedCleanup)
+  //   tag  – Seed-ID → { packs }: Paket-Kennungen, die das importierte Wort schon trug
+  //   skip – Seed-IDs, die nicht angelegt werden, weil der Nutzer das importierte Wort bearbeitet oder markiert hat
+  // Eigene Wörter (ohne imported) bleiben unberührt – dort hat schon das Vokabel-Formular gewarnt.
+  // Ältere Bearbeitungen kennen _edited noch nicht: dann steht updated deutlich nach imported
+  const importTouched = (it) => !!it._edited || !!it.star || (Array.isArray(it.marks) && it.marks.length > 0)
+    || (it.updated || 0) - (it.imported || 0) > 60000;
+  App.planImportAbsorb = (freshSeeds, existing, dupes) => {
+    const out = { map: {}, skip: [], tag: new Map() };
+    const imported = existing.filter((it) => it && it.type === 'vocab' && it.imported && !it._seed && !it._pack && !it._wk);
+    if (!imported.length) return out;
+    const taken = new Set();
+    for (const s of freshSeeds) {
+      if (!s || s.type !== 'vocab') continue;
+      // genau die Import-Regel, als wäre der Seed-Eintrag zuerst da gewesen: ein Wort nur in Kana geht nicht in einem
+      // Kanji-Eintrag gleicher Lesung auf (かける / 掛ける)
+      const hits = imported.filter((h) => !taken.has(h.id) && dupes([s], h).some((d) => d.kind === 'same'));
+      if (!hits.length) continue;
+      hits.forEach((h) => taken.add(h.id));
+      if (hits.some(importTouched)) { out.skip.push(s.id); continue; }
+      const packs = [];
+      hits.forEach((h) => {
+        out.map[h.id] = s.id;
+        (Array.isArray(h.packs) ? h.packs : []).forEach((p) => { if (!packs.includes(p)) packs.push(p); });
+      });
+      if (packs.length) out.tag.set(s.id, { packs });
+    }
+    return out;
+  };
+
   // Bereinigung nach dem Zusammenlegen doppelter Seed-Einträge (map: alte ID → verbleibende ID, siehe SEED_MERGED).
   // Liefert, was zu löschen/speichern ist, ohne items oder srs zu verändern. Der Lernstand (Lesen und Schreiben)
   // geht auf den verbleibenden Eintrag über; haben beide einen, gewinnt der weiter fortgeschrittene.
@@ -324,7 +356,7 @@
     const gone = new Map();
     for (const [old, kept] of Object.entries(map || {})) {
       const o = byId.get(old);
-      if (o && (o._seed || o._pack) && !o._edited && byId.has(kept)) gone.set(old, kept);
+      if (o && (o._seed || o._pack || o.imported) && !o._edited && byId.has(kept)) gone.set(old, kept);
     }
     // Den zweiten Lernstand („w:“) gibt es nur für Vokabeln (aktiv) und Kanji (schreiben). Geht eine Vokabel in einem
     // Ausdruck auf, entfällt er – auch einer, der bei einer früheren Bereinigung noch mitgewandert ist.

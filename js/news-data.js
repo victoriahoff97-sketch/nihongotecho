@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-genki-duolingo', date: '25. Oktober',
+      items: [
+        { t: 'Genki nach Duolingo ohne Dopplungen', d: 'Wer erst Duolingo hatte und dann Genki freischaltet, bekommt gleiche Wörter nur einmal – der Lernstand zieht mit auf die Genki-Karte.' },
+      ],
+    },
+    {
       id: '2026-10-25-schreibfeld-glatt', date: '25. Oktober',
       items: [
         { t: 'Schöner schreiben im Antwortfeld', d: 'Das kleine Schreibfeld unter den Karteikarten und bei den Übungen zeichnet jetzt so glatt wie das Schreibblatt – runde Striche, und fester Druck macht sie dicker.' },

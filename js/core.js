@@ -312,7 +312,7 @@ window.App = window.App || {};
     const isNew = !it.created;
     if (isNew) it.created = now;
     it.updated = now;
-    if (it._seed || it._pack || it._wk) it._edited = true; // Nutzeränderung: Seed-/Paket-Updates überschreiben den Eintrag nicht mehr (_wk: wird nicht mehr automatisch entfernt)
+    if (it._seed || it._pack || it._wk || it.imported) it._edited = true; // Nutzeränderung: Seed-/Paket-Updates überschreiben den Eintrag nicht mehr (_wk: wird nicht mehr automatisch entfernt; imported: geht nicht in einem Genki-Eintrag auf)
     if ((it.type === 'vocab' || it.type === 'kanji') && !it.levelManual && App.levelFor) it.level = App.levelFor(it);
     S.items.set(it.id, it);
     await App.db.put('items', it);
@@ -461,6 +461,7 @@ window.App = window.App || {};
     let created = 0;
     (window.SEED || []).forEach((raw, i) => { if (raw) ORD.set(raw.id, i); });
     const absorbed = await absorbPackItems(deleted);
+    const fromImport = await absorbImported(deleted);
     for (const raw of (window.SEED || [])) {
       if (!raw || !raw.id || deleted.has(raw.id)) continue;
       const h = hash(raw);
@@ -477,13 +478,15 @@ window.App = window.App || {};
         it.packs = [...new Set([...(Array.isArray(it.packs) ? it.packs : []), ...t.packs])];
         if (!it.levelManual && t.level !== undefined) it.level = t.level;
       }
+      const ti = fromImport.tag.get(raw.id);
+      if (ti) it.packs = [...new Set([...(Array.isArray(it.packs) ? it.packs : []), ...ti.packs])];
       if (!cur) created++;
       S.items.set(it.id, it);
       puts.push(it);
     }
     if (puts.length) await App.db.putMany('items', puts);
-    const cleaned = await cleanupMergedSeeds();
-    stat.changed = !!(puts.length || absorbed.changed || cleaned);
+    const cleaned = await cleanupMergedSeeds(fromImport.map);
+    stat.changed = !!(puts.length || absorbed.changed || fromImport.changed || cleaned);
     return created;
   }
 
@@ -503,11 +506,7 @@ window.App = window.App || {};
     // worauf Tagebuch, Antworten oder Verknüpfungen zeigen und woran eine Datei hängt (App.allRefs)
     const all = Array.from(S.items.values());
     const r = App.planSeedAbsorb(fresh, all, { srs: S.srs, sessionRefs: App.allRefs(all, S.files.values()) });
-    if (r.skip.length) {
-      const m = (await App.db.get('meta', 'deletedSeeds')) || { key: 'deletedSeeds', value: [] };
-      r.skip.forEach((id) => { deleted.add(id); if (!m.value.includes(id)) m.value.push(id); });
-      await App.db.put('meta', m);
-    }
+    await skipSeeds(deleted, r.skip);
     if (r.del.length) {
       // nicht über App.deleteItem: der Nutzer hat nichts gelöscht (kein Eintrag in meta.deletedPackItems)
       // erst die Datenbank, dann der Speicher: scheitert das Löschen, bleiben beide gleich
@@ -523,6 +522,27 @@ window.App = window.App || {};
     return { tag: r.tag, changed: !!(r.skip.length || r.del.length) };
   }
 
+  // Seed-Einträge gelten als gelöscht (meta.deletedSeeds), weil ein Eintrag des Nutzers das Wort schon führt
+  async function skipSeeds(deleted, ids) {
+    if (!ids.length) return;
+    const m = (await App.db.get('meta', 'deletedSeeds')) || { key: 'deletedSeeds', value: [] };
+    ids.forEach((id) => { deleted.add(id); if (!m.value.includes(id)) m.value.push(id); });
+    await App.db.put('meta', m);
+  }
+
+  // Seed-Einträge kommen nach einem Teilen-Paket (Genki-Freischaltung nach Duolingo): unberührte importierte Wörter
+  // gehen im Seed-Eintrag auf (map → cleanupMergedSeeds, mit Lernstand und Verweisen), bearbeitete bleiben und der
+  // Seed-Eintrag wird übersprungen. Regeln: App.planImportAbsorb
+  async function absorbImported(deleted) {
+    const none = { map: {}, tag: new Map(), changed: false };
+    if (!App.planImportAbsorb || !App.autofillLogic) return none;
+    const fresh = (window.SEED || []).filter((raw) => raw && raw.id && !deleted.has(raw.id) && !S.items.has(raw.id));
+    if (!fresh.length) return none;
+    const r = App.planImportAbsorb(fresh, Array.from(S.items.values()), App.autofillLogic.dupes);
+    await skipSeeds(deleted, r.skip);
+    return { map: r.map, tag: r.tag, changed: r.skip.length > 0 };
+  }
+
   // Seed erneut einspielen (nach dem Freischalten von Genki): liefert die Zahl der neu angelegten Einträge
   App.reseed = async () => {
     const stat = {};
@@ -532,11 +552,11 @@ window.App = window.App || {};
   };
 
   // Früher doppelt geführte Seed-Einträge (SEED_MERGED) aus dem Bestand entfernen, Lernstand und Verweise umhängen –
-  // ebenso Paket-Vokabeln, die es als Ausdruck gibt (App.packPhraseMap)
-  async function cleanupMergedSeeds() {
+  // ebenso Paket-Vokabeln, die es als Ausdruck gibt (App.packPhraseMap) und importierte Wörter aus absorbImported (extra)
+  async function cleanupMergedSeeds(extra) {
     if (!App.planSeedCleanup) return false;
     const all = Array.from(S.items.values());
-    const map = Object.assign({}, window.SEED_MERGED, App.packPhraseMap ? App.packPhraseMap(all) : null);
+    const map = Object.assign({}, window.SEED_MERGED, App.packPhraseMap ? App.packPhraseMap(all) : null, extra);
     const r = App.planSeedCleanup(map, all, S.srs);
     if (!r.delItems.length && !r.delSrs.length) return false;
     r.putSrs.forEach((s) => S.srs.set(s.id, s));
