@@ -48,8 +48,8 @@
     const t = App.store.settings.theme;
     const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    const b = $('[data-action="toggle-theme"]');
-    if (b) b.innerHTML = icon(dark ? 'sun' : 'moon');
+    // zwei Knöpfe: obere Leiste (Tablet/PC) und Seitenmenü (Handy)
+    $$('[data-action="toggle-theme"]').forEach((b) => { b.innerHTML = icon(dark ? 'sun' : 'moon'); });
   };
 
   document.addEventListener('click', (e) => {
@@ -62,6 +62,7 @@
     if (act === 'toggle-sidebar') { document.body.classList.toggle('sidebar-collapsed'); App.saveSettings({ sidebarCollapsed: document.body.classList.contains('sidebar-collapsed') }); }
     if (act === 'open-sidebar') document.body.classList.toggle('sidebar-open');
     if (act === 'help') App.tour.startForPage();
+    if (act === 'forum') App.forum.open();
     if (act === 'back') history.back();
   });
   document.addEventListener('keydown', (e) => {

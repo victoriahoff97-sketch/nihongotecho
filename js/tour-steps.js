@@ -167,6 +167,13 @@
       { title: 'Ablegen', text: 'Die Datei landet in „Downloads“. Schieb sie z. B. in Google Drive.' },
       { target: BK + ' label:has([data-imp])', title: 'Zurückholen', text: 'Hier spielst du die Datei wieder ein.' },
     ],
+    // Gruppenfenster hinter der Gedankenwolke: „⋯ › Hilfe“
+    gruppe: [
+      { target: '.forum-modal [data-new] textarea', title: 'Gedanken festhalten', text: 'Hier hältst du schnell fest, was du mit der Gruppe besprechen oder zeigen willst. Ein Bild kannst du auch anhängen.' },
+      { target: '.forum-modal .forum-kinds', title: 'Reden oder zeigen', text: '💬 heißt: darüber möchte ich reden. 💡 heißt: wollte ich euch nur zeigen.' },
+      { target: '.forum-modal [data-list]', title: 'Eure Themen', text: 'Offene Themen stehen oben. Was ihr besprochen habt, landet unten unter „Besprochen“. Neues von den anderen ist rot markiert.' },
+      { target: '.forum-modal .forum-more', title: 'Mehr', text: 'Hier findest du den Gruppencode für neue Mitglieder und kannst deinen Namen ändern.' },
+    ],
     // Browser-Erweiterung: läuft immer auf der Karte in den Einstellungen
     erweiterung: [
       { target: EXT + ' h3', title: 'Wozu?', text: 'Du liest etwas auf Japanisch im Netz, etwa bei NHK Easy, markierst ein Wort oder einen Satz und hast es mit einem Klick in der App. Geht nur mit Chrome oder Edge am PC, nicht auf Handy oder Tablet.' },

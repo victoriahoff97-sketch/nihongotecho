@@ -27,6 +27,7 @@
       <div class="foot-row">
         <button class="foot-btn" data-action="toggle-sidebar" data-tip="Einklappen" aria-label="Seitenleiste ein-/ausklappen"><span class="ico" data-ico="sidebar"></span></button>
         <span class="grow"></span>
+        <button class="foot-btn only-mobile" data-action="toggle-theme" data-tip="Hell/Dunkel" aria-label="Hell/Dunkel"><span class="ico" data-ico="moon"></span></button>
         <a class="foot-btn" href="#/pakete" data-tip="Pakete" aria-label="Pakete"><span class="ico" data-ico="package"></span></a>
         <a class="foot-btn" href="#/einstellungen" data-tip="Einstellungen" aria-label="Einstellungen"><span class="ico" data-ico="settings"></span></a>
       </div>
@@ -45,7 +46,8 @@
       <button class="btn btn-primary" data-action="quick-add"><span class="ico" data-ico="plus"></span><span class="hide-mobile">Speichern</span></button>
       <button class="icon-btn backup-top" id="backup-top" data-bk="top" title="Sichern" aria-label="Sichern"><span class="ico" data-ico="backup"></span></button>
       <button class="icon-btn" data-action="help" title="Hilfe zu dieser Seite" aria-label="Hilfe zu dieser Seite"><span class="ico" data-ico="help"></span></button>
-      <button class="icon-btn" data-action="toggle-theme" title="Hell/Dunkel"><span class="ico" data-ico="moon"></span></button>
+      <button class="icon-btn forum-btn" data-action="forum" title="Gruppe – Gedanken teilen" aria-label="Gruppe – Gedanken teilen"><span class="ico" data-ico="thought"></span><span class="forum-dot" hidden></span></button>
+      <button class="icon-btn hide-mobile" data-action="toggle-theme" title="Hell/Dunkel"><span class="ico" data-ico="moon"></span></button>
     </header>
     <div id="park-bar" hidden></div>
     <main id="view" tabindex="-1"></main>
@@ -161,6 +163,10 @@
 <script src="js/inbox.js"></script>
 <script src="js/paket.js"></script>
 <script src="js/welcome.js"></script>
+<script src="js/forum-config.js"></script>
+<script src="js/forum-logic.js"></script>
+<script src="js/forum-db.js"></script>
+<script src="js/forum.js"></script>
 <script src="js/tour-steps.js"></script>
 <script src="js/tour-logic.js"></script>
 <script src="js/tour.js"></script>

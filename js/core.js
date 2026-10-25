@@ -34,6 +34,7 @@ window.App = window.App || {};
     plus: '<path d="M12 5v14M5 12h14"/>',
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 114 2c-.9.7-1.6 1.2-1.6 2.4"/><path d="M12 17h.01"/>',
     moon: '<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',
+    thought: '<path d="M7 15.5a3.5 3.5 0 0 1-.6-6.95A4.5 4.5 0 0 1 15 6.6a3.6 3.6 0 0 1 2.6 6.4 2.8 2.8 0 0 1-2.6 2.5z"/><circle cx="6" cy="19" r="1.3"/><circle cx="3.3" cy="21.8" r=".7"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
     sidebar: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',

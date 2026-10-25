@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-gruppe', date: '25. Oktober',
+      items: [
+        { t: 'Gedankenwolke für eure Gruppe', d: 'Die Wolke oben rechts sammelt, worüber ihr reden wollt und was ihr euch zeigen möchtet. Nur dieser Bereich wird geteilt. Den Code gibt dir, wer die Gruppe gründet.' },
+      ],
+    },
+    {
       id: '2026-10-25-genki-duolingo', date: '25. Oktober',
       items: [
         { t: 'Genki nach Duolingo ohne Dopplungen', d: 'Wer erst Duolingo hatte und dann Genki freischaltet, bekommt gleiche Wörter nur einmal – der Lernstand zieht mit auf die Genki-Karte.' },
