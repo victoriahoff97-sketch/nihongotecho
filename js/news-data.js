@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25', date: '25. Oktober',
+      items: [
+        { t: 'Kacheln „Heute lesen und hören“ wählen', d: 'Unter „Startseite anpassen“ (ganz unten) nimmst du NHK Easy, WaniKani oder Listening mit ✕ weg oder holst Shun und die Genki-Trainer dazu.' },
+      ],
+    },
+    {
       id: '2026-10-24-2', date: '24. Oktober',
       items: [
         { t: 'Diktieren mit Zeit zum Überlegen', d: 'Im Tagebuch und beim Smalltalk (Getippt › Diktieren) hört die App jetzt weiter zu, auch wenn du kurz nachdenkst – bis du auf „Fertig“ tippst.' },

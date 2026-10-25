@@ -65,6 +65,8 @@
       <span class="desc">${where}</span>
       <span class="listen-row"><button type="button" class="go" data-shun-play="${esc(e.id)}">${icon('play')} Anhören</button><button type="button" class="go ghost" data-shun-heard="${esc(e.id)}">${icon('check')} Gehört</button></span></span></div>`;
   };
+  // Auch als Kachel für die Startseite (Leiste „Heute lesen und hören“)
+  App.shunTile = () => shunTile(App.store.settings.shunHeard || []);
   // Kästchen je Lektion: voll = alle Folgen gehört, hell = angefangen; Tippen klappt die Lektion im Reiter Shun auf
   const lessonGrid = (heard) => {
     const lessons = [...new Set(S.all().genki.map((e) => e.lesson))];

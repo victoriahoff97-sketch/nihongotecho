@@ -1572,6 +1572,10 @@ button.day-box:hover { border-color: var(--matcha); }
 .home-act[data-quick] .grow { flex: 1; min-width: 0; }
 .quick-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
 .home-empty { padding: 10px 4px; }
+/* Leiste „Heute lesen und hören“ im Bearbeiten-Modus: Kachel nur ansehen, ✕ oben rechts nimmt sie weg */
+.read-pick { position: relative; display: flex; min-width: 0; }
+.read-pick > .read-tile { flex: 1; pointer-events: none; }
+.read-pick > .read-off { position: absolute; top: 6px; right: 6px; background: var(--card); box-shadow: var(--shadow); }
 .drag-ph { border: 2px dashed var(--shu); border-radius: 18px; background: var(--shu-soft); }
 .dragging { box-shadow: var(--shadow-lg); opacity: .94; pointer-events: none; }
 .dragging .home-grip { cursor: grabbing; }

@@ -27,9 +27,14 @@
     <text x="48" y="48" text-anchor="middle" font-size="20" fill="#534AB7" style="font-family:var(--font-kanji)">単語</text>
     <path d="M34 58h28" stroke="#CECBF6" stroke-width="3" stroke-linecap="round"/></g>
     <circle cx="10" cy="18" r="3" fill="#ED93B1"/><circle cx="84" cy="70" r="2.5" fill="#FAC775"/></svg>`;
+  // Die beiden Kacheln lassen sich auch auf die Startseite holen (Leiste „Heute lesen und hören“)
+  App.externTile = {
+    verb: () => App.readTile('verb', 'https://ocamejp.com/Web-App/Verbformen/GENKI_ALL/index.html', VERB_SVG, '動詞の活用', 'Verbformen (Genki)', 'Alle Genki-Verben nach Lektion: ない-, ます-, て-, た-Form und mehr zum Aufdecken. Auf Englisch.', 'Zum Verbformen-Trainer'),
+    vocab: () => App.readTile('vocab', 'https://ocamejp.com/Web-App/genki-vokabeln/index.html', VOCAB_SVG, '単語', 'Genki-Vokabeln', 'Vokabeltrainer zu den Genki-Lektionen, Japanisch ⇔ Englisch.', 'Zum Vokabeltrainer'),
+  };
   const externStrip = () => `<div class="section-title">Extern üben</div><div class="read-strip" style="margin-top:0">
-      ${App.readTile('verb', 'https://ocamejp.com/Web-App/Verbformen/GENKI_ALL/index.html', VERB_SVG, '動詞の活用', 'Verbformen (Genki)', 'Alle Genki-Verben nach Lektion: ない-, ます-, て-, た-Form und mehr zum Aufdecken. Auf Englisch.', 'Zum Verbformen-Trainer')}
-      ${App.readTile('vocab', 'https://ocamejp.com/Web-App/genki-vokabeln/index.html', VOCAB_SVG, '単語', 'Genki-Vokabeln', 'Vokabeltrainer zu den Genki-Lektionen, Japanisch ⇔ Englisch.', 'Zum Vokabeltrainer')}</div>`;
+      ${App.externTile.verb()}
+      ${App.externTile.vocab()}</div>`;
 
   // =========================================================
   // Übersicht

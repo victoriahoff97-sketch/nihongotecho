@@ -74,10 +74,25 @@
   const readTile = (cls, href, art, kicker, title, text, go) => `<a class="read-tile ${cls}" href="${href}" target="_blank" rel="noopener">
       <span class="art">${art}</span><span class="txt"><span class="kicker" lang="ja">${kicker}</span><b>${title}</b><span class="desc">${text}</span><span class="go">${go} →</span></span></a>`;
   App.readTile = readTile;
-  const readStrip = () => `<div class="read-strip">
-      ${readTile('news', 'https://news.web.nhk/news/easy/', NEWS_SVG, '今日のニュース', 'NHK Easy lesen', 'Eine kurze Nachricht in einfachem Japanisch – mit Furigana.', 'Zur heutigen Nachricht')}
-      ${readTile('wani', 'https://www.wanikani.com/', KANJI_SVG, '今日の漢字', 'WaniKani', 'Deine Kanji- und Vokabel-Reviews von heute erledigen.', 'Zu den Reviews')}
-      ${App.listening.tile()}</div>`;
+  // Welche Kacheln dastehen, wählt man unter „Startseite anpassen“ (✕ / ＋), gemerkt pro Gerät (localStorage „homeRead“).
+  // Die Kacheln teilen sich die Zeile: zwei nehmen je die Hälfte, eine die ganze Breite.
+  const READ = {
+    news: ['NHK Easy', () => readTile('news', 'https://news.web.nhk/news/easy/', NEWS_SVG, '今日のニュース', 'NHK Easy lesen', 'Eine kurze Nachricht in einfachem Japanisch – mit Furigana.', 'Zur heutigen Nachricht')],
+    wani: ['WaniKani', () => readTile('wani', 'https://www.wanikani.com/', KANJI_SVG, '今日の漢字', 'WaniKani', 'Deine Kanji- und Vokabel-Reviews von heute erledigen.', 'Zu den Reviews')],
+    listen: ['Listening (Chienowa · Teppei)', () => App.listening.tile()],
+    shun: ['Listening (Shun)', () => (App.shunTile ? App.shunTile() : '')],
+    verb: ['Verbformen (Genki)', () => (App.externTile ? App.externTile.verb() : '')],
+    gvocab: ['Genki-Vokabeln', () => (App.externTile ? App.externTile.vocab() : '')],
+  };
+  const READ_DEFAULT = ['news', 'wani', 'listen'];
+  const readList = () => { const s = App.homeOrderLogic.parse(App.lsGet('homeRead')); return (s || READ_DEFAULT).filter((k) => READ[k]); };
+  const readStrip = () => {
+    const list = readList();
+    if (!homeEdit) return list.length ? `<div class="read-strip">${list.map((k) => READ[k][1]()).join('')}</div>` : '';
+    const rest = Object.keys(READ).filter((k) => !list.includes(k));
+    return `<div class="home-live"><div class="read-strip">${list.map((k) => `<div class="read-pick">${READ[k][1]()}<button type="button" class="icon-btn read-off" data-read-off="${k}" title="Von der Startseite nehmen" aria-label="${READ[k][0]} entfernen">${icon('close')}</button></div>`).join('') || '<p class="small muted">Keine Kachel gewählt – such dir unten welche aus.</p>'}</div>
+      ${rest.length ? `<div class="quick-more"><span class="small muted">Weitere Kacheln:</span>${rest.map((k) => `<button type="button" class="chip" data-read-on="${k}">${icon('plus')} ${READ[k][0]}</button>`).join('')}</div>` : ''}</div>`;
+  };
 
   // ---------- Startseite: Lernstand-Karten einklappen ----------
   // Ein Klick auf die Überschrift klappt die Karte darunter ein; eingeklappt steht die Kurzfassung neben dem Titel.
@@ -314,11 +329,17 @@
     saveList(list);
   });
   document.addEventListener('click', (e) => {
-    const t = e.target.closest && e.target.closest('[data-home-edit], [data-home-done], [data-home-reset], [data-quick-on], [data-quick-off]');
+    const t = e.target.closest && e.target.closest('[data-home-edit], [data-home-done], [data-home-reset], [data-quick-on], [data-quick-off], [data-read-on], [data-read-off]');
     if (!t) return;
     if (t.matches('[data-home-edit]')) { homeEdit = true; App.render(); return; }
     if (t.matches('[data-home-done]')) { homeEdit = false; App.render(); return; }
-    if (t.matches('[data-home-reset]')) { App.lsSet('homeOrder', ''); App.lsSet('homeActions', ''); App.render(true); App.toast && App.toast('Startseite wie am Anfang'); return; }
+    if (t.matches('[data-home-reset]')) { App.lsSet('homeOrder', ''); App.lsSet('homeActions', ''); App.lsSet('homeRead', ''); App.render(true); App.toast && App.toast('Startseite wie am Anfang'); return; }
+    if (t.dataset.readOn || t.dataset.readOff) {
+      const rl = readList();
+      App.lsSet('homeRead', JSON.stringify(t.dataset.readOn ? rl.concat(t.dataset.readOn) : rl.filter((k) => k !== t.dataset.readOff)));
+      App.render(true);
+      return;
+    }
     const list = quickList();
     if (t.dataset.quickOn) App.lsSet('homeActions', JSON.stringify(list.concat(t.dataset.quickOn)));
     else App.lsSet('homeActions', JSON.stringify(list.filter((k) => k !== t.dataset.quickOff)));
