@@ -234,6 +234,17 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 .grid.cols-4 { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
 .split > aside { position: sticky; top: calc(var(--topbar-h) + 20px); display: flex; flex-direction: column; gap: 14px; }
+/* Rechte Spalte einklappen (App.sideAside, Zustand an <html class="side-closed">) */
+.side-toggle { align-self: flex-end; display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700; padding: 4px 12px; min-height: 34px; cursor: pointer; }
+.side-toggle:hover { color: var(--ink); background: var(--card); }
+.side-toggle .side-lbl-closed, .side-closed .side-toggle .side-lbl-open { display: none; }
+.side-closed .side-toggle .side-lbl-closed { display: inline; }
+.side-closed .side-toggle .ico { transform: rotate(180deg); }
+.side-closed .split > aside.side-fold > :not(.side-toggle) { display: none; }
+@media (min-width: 1101px) {
+  .side-closed .split:has(> aside.side-fold) { grid-template-columns: minmax(0, 1fr) 40px; }
+  .side-closed .side-toggle { writing-mode: vertical-rl; width: 40px; padding: 12px 0; gap: 8px; border-radius: 12px; background: var(--card); }
+}
 
 /* Buttons */
 .btn {

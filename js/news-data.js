@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-spalte', date: '25. Oktober',
+      items: [
+        { t: 'Rechte Spalte einklappen', d: 'Bei Grammatik, Vokabeln und Ausdrücken schiebt „Einklappen“ oben rechts die verwandten Einträge weg – die Seite wird breiter. „Verwandtes“ holt sie zurück.' },
+      ],
+    },
+    {
       id: '2026-10-25-stifte', date: '25. Oktober',
       items: [
         { t: 'Meine Stifte', d: 'Im Schreibblatt legst du eigene Stifte an: Tippe einen Stift zweimal an und stell Art, Dicke, Deckkraft und Farbe genau ein. „Neu“ legt einen weiteren an.' },

@@ -353,6 +353,17 @@
     if (!gs.length) return '';
     return gs.map((g) => `<div class="card rel-box"><h4>${esc(g.title)}</h4><div class="rel-list">${g.items.map(App.relItem).join('')}</div>${g.more > 0 ? `<div class="small muted" style="margin-top:6px">… und ${g.more} weitere</div>` : ''}</div>`).join('');
   };
+  // Rechte Spalte der Detailseiten (Verwandtes) lässt sich einklappen – gemerkt pro Gerät (localStorage „nt-sideClosed“),
+  // gilt für Grammatik, Vokabeln und Ausdrücke gleich. Zu = schmaler Streifen am rechten Rand, die Seite wird breiter.
+  App.sideAside = (inner) => `<aside class="side-fold"><button type="button" class="side-toggle" data-side-toggle title="Rechte Spalte ein- oder ausklappen">${icon('next')}<span class="side-lbl-open">Einklappen</span><span class="side-lbl-closed">Verwandtes</span></button>${inner}</aside>`;
+  const sideClosed = () => { try { return localStorage.getItem('nt-sideClosed') === '1'; } catch (e) { return false; } };
+  if (document.documentElement) document.documentElement.classList.toggle('side-closed', sideClosed());
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-side-toggle]')) return;
+    const on = !document.documentElement.classList.contains('side-closed');
+    document.documentElement.classList.toggle('side-closed', on);
+    try { localStorage.setItem('nt-sideClosed', on ? '1' : '0'); } catch (err) { /* egal */ }
+  });
 
   // ---------- Filter-Leiste (Quelle / Lektion) ----------
   // Auswahlfeld mit Häkchen (Mehrfachauswahl). Ohne Häkchen = kein Filter; die Auswahl steht mit | getrennt im Query-Parameter.
