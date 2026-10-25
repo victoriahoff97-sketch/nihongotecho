@@ -9,7 +9,7 @@
     {
       id: '2026-10-25-hallo', date: '25. Oktober',
       items: [
-        { t: 'Ein paar Worte von Vicky', d: 'Wie die App entstanden ist und wie die Inhalte mit KI erstellt wurden: nachzulesen unter Einstellungen › Über › „Über diese App“.' },
+        { t: 'Ein ehrliches Wort zu den Inhalten', d: 'Wozu die App da ist und dass viele Inhalte mit KI erstellt wurden: nachzulesen unter Einstellungen › Über › „Über diese App“.' },
         { t: 'Tutorial beginnt mit der Sicherung', d: 'Wer die App neu öffnet, wird zuerst gefragt, ob die Sicherung gleich eingerichtet werden soll oder ob man sich erst mal nur umschaut.' },
       ],
     },

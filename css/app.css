@@ -1713,7 +1713,10 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 /* Willkommensbrief (js/hallo.js) */
 .modal.hallo-modal { width: min(600px, 100%); }
 .hallo p { margin: 0 0 10px; line-height: 1.55; }
-.hallo h3 { font-size: 15px; margin: 18px 0 6px; color: var(--shu); }
+.hallo h3 { font-size: 15px; margin: 0 0 6px; color: var(--shu); }
+.hallo > * + h3, .hallo-note + h3 { margin-top: 18px; }
+.hallo b { font-weight: 800; }
+.hallo-note { margin-top: 16px; padding: 12px 14px 4px; background: var(--paper-2); border-left: 4px solid var(--shu); border-radius: 10px; }
 .hallo-sign { margin: 14px 0 0 !important; font-family: var(--font-kanji); font-size: 22px; text-align: right; }
 .news-modal .modal-head h2 .jp { color: var(--shu); margin-right: 4px; }
 .news-entry + .news-entry { margin-top: 16px; }
