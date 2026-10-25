@@ -5,7 +5,8 @@
   // seen = wann ein Begriff zuletzt drankam, miss = beim letzten Mal nicht gewusst.
   // Lernstand, Termine und „kann ich“ bleiben unberührt: das Auffrischen kennt nur diesen eigenen Stand.
   const R = App.refreshLogic = {};
-  R.GROUPS = ['Zahlen', 'Zähler', 'Tage des Monats', 'Uhrzeit', 'Minuten', 'Zeitdauer', 'Häufigkeit'];
+  // Zähler kommen nicht als Karten, sondern aus den Zähler-Tabellen – nur Zähler auf „Kann ich“ (js/counter-data.js C.cards)
+  R.GROUPS = ['Zahlen', 'Tage des Monats', 'Uhrzeit', 'Minuten', 'Zeitdauer', 'Häufigkeit'];
   R.SIZE = 10;
   R.EVERY_DAYS = 14;
 
@@ -18,8 +19,8 @@
     };
   };
 
-  // Alle Ausdrücke der Gruppen – egal ob ungeprüft, in der Lernschlange oder „kann ich“
-  R.pool = (items) => Array.from(items).filter((it) => it && it.type === 'phrase' && R.GROUPS.includes(it.group));
+  // Alle Ausdrücke der Gruppen – egal ob ungeprüft, in der Lernschlange oder „kann ich“ – plus die Tabellen-Karten der gekonnten Zähler
+  R.pool = (items, counterCards = []) => Array.from(items).filter((it) => it && it.type === 'phrase' && R.GROUPS.includes(it.group)).concat(counterCards);
 
   // Noch nie aufgefrischt: gleich fällig. Sonst ab dem 14. Kalendertag nach der letzten Runde – tagesgenau wie
   // „fällig“ in der Lernschlange; setDate statt fester Millisekunden, damit die Zeitumstellung nichts verschiebt

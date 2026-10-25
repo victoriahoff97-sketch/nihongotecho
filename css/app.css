@@ -1750,3 +1750,7 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
   .ctr-r { display: none; }
   .ctr-k { min-width: 3.4em; font-size: 20px; }
 }
+.ctr-known-pill { font-size: 12px; font-weight: 800; color: var(--matcha); white-space: nowrap; }
+.ctr.known .ctr-k { font-weight: 700; }
+.ctr-acts { gap: 8px; align-items: center; flex-wrap: wrap; }
+.ctr-known-btn.on { background: var(--matcha-soft); border-color: var(--matcha); color: var(--matcha); }

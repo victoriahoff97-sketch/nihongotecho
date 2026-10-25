@@ -30,6 +30,7 @@
     if (!it) return '#/';
     if (it.type === 'kanji') return '#/kanji/' + encodeURIComponent(it.char || it.id);
     if (it.type === 'notebook') return App.heftLink(it.id);
+    if (it._ctr) return '#/ausdruecke?g=' + encodeURIComponent('Zähler'); // Zelle einer Zähler-Tabelle, kein eigener Eintrag
     return App.SECTIONS[it.type].route + '/' + encodeURIComponent(it.id);
   };
   App.kanjiByChar = (c) => { for (const it of App.store.items.values()) if (it.type === 'kanji' && it.char === c) return it; return null; };

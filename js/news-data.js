@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-zaehler-2', date: '25. Oktober',
+      items: [
+        { t: 'Zähler üben und abhaken', d: 'In jedem aufgeklappten Zähler (Ausdrücke › Zähler) übt „Üben“ alle Zahlen der Tabelle. Mit „Kann ich“ kommt der Zähler zum Auffrischen alle 14 Tage.' },
+      ],
+    },
+    {
       id: '2026-10-25-filter', date: '25. Oktober',
       items: [
         { t: 'Schlankere Filter', d: 'Bei Grammatik, Vokabeln und Kanji stehen Suche und Filter in einer Zeile. „Gemerkt“ ist jetzt der Stern – antippen zeigt nur deine gemerkten Einträge.' },

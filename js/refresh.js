@@ -4,7 +4,7 @@
   const { icon } = App;
   const S = App.store;
   const R = App.refreshLogic;
-  const pool = () => R.pool(App.itemsOf('phrase'));
+  const pool = () => R.pool(App.itemsOf('phrase'), App.counterRefreshCards());
   const save = (refresh) => App.saveSettings({ refresh });
 
   // Startseite: nur an Auffrisch-Tagen ein kleiner Knopf neben „Jetzt wiederholen“ – sonst nichts

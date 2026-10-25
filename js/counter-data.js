@@ -172,4 +172,24 @@
     });
     return { by, rest };
   };
+
+  // ---------- Lernen: „Kann ich“ je Zähler, Üben und Auffrischen aus der Tabelle ----------
+  // Selbst gesetzt (settings.counters[id] = true/false) gilt; sonst „kann ich“, sobald alle alten Karten des Zählers „kann ich“ sind
+  C.known = (c, explicit, cardStates) => {
+    const e = explicit && explicit[c.id];
+    if (typeof e === 'boolean') return e;
+    return cardStates.length > 0 && cardStates.every((s) => s === 'known');
+  };
+
+  // Frage auf der Karte, wenn nicht „wie viele?“ passt
+  const ASK = { ji: 'wie viel Uhr?', fun: 'wie viele Minuten?', nichi: 'der Wievielte? / wie viele Tage?', gatsu: 'welcher Monat?',
+    en: 'wie viel (kostet das)?', 'kai-stock': 'welcher Stock?', ban: 'welche Nummer?', sai: 'wie alt?', tsu: 'wie viele (Stück)?' };
+  // Jede Zelle der Tabelle als Karte (nur für Üben und Auffrischen – keine echten Einträge, keine Lernschlange)
+  C.cards = (c) => C.rows(c).map((r) => ({
+    id: `ctr-${c.id}-${r.ask ? 'q' : r.n}`, type: 'phrase', group: 'Zähler', _ctr: c.id,
+    jp: App.jp.notate(r.jp, r.kana),
+    also: r.alt.map((kana) => ({ kanji: r.jp, kana })),
+    de: `${r.ask ? ASK[c.id] || 'wie viele?' : r.n} · ${c.de} · 〜${c.k}`,
+    note: c.rule,
+  }));
 })(window.App = window.App || {});
