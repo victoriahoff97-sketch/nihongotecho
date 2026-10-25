@@ -15,17 +15,13 @@
       const W = pad.clientWidth, k = window.devicePixelRatio || 1;
       if (!W) return;
       if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(pad.clientHeight * k); }
-      const c = cv.getContext('2d'), u = W * k;
+      const c = cv.getContext('2d'), u = W * k, col = getComputedStyle(pad).color;
       c.clearRect(0, 0, cv.width, cv.height);
-      c.strokeStyle = getComputedStyle(pad).color; c.lineWidth = 3 * k; c.lineCap = c.lineJoin = 'round';
-      strokes.concat(cur || []).forEach((s) => {
-        c.beginPath();
-        s.pts.forEach((q, i) => (i ? c.lineTo(q[0] * u, q[1] * u) : c.moveTo(q[0] * u, q[1] * u)));
-        if (s.pts.length === 1) c.lineTo(s.pts[0][0] * u + 0.1, s.pts[0][1] * u); // Punkt
-        c.stroke();
-      });
+      // wie der Stift auf dem Schreibblatt: geglättet, Dicke nach Druck, rund 3 px
+      strokes.concat(cur || []).forEach((s) => App.ink.drawStroke(c, { t: 'pen', w: 3 / W, c: col, o: 1, pts: s.pts }, u));
     };
-    const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width]; };
+    // [x, y, Druck] wie auf dem Schreibblatt; die Erkennung nutzt nur x und y
+    const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width, e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5]; };
     const clear = () => { clearTimeout(timer); run++; strokes = []; cur = null; fresh = false; draw(); if (onClear) onClear(); };
     const recognize = () => { job = recognizeNow(); jobRun = run; return job; };
     const recognizeNow = async () => {
@@ -49,7 +45,13 @@
       cur = { id: e.pointerId, pts: [pt(e)] };
       draw();
     });
-    cv.addEventListener('pointermove', (e) => { if (cur && e.pointerId === cur.id) { cur.pts.push(pt(e)); draw(); } });
+    cv.addEventListener('pointermove', (e) => {
+      if (!cur || e.pointerId !== cur.id) return;
+      // alle Zwischenpunkte des Stifts, nicht nur einen pro Bild – sonst werden schnelle Striche eckig
+      const ce = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+      (ce.length ? ce : [e]).forEach((ev) => cur.pts.push(pt(ev)));
+      draw();
+    });
     const end = (e) => {
       if (!cur || e.pointerId !== cur.id) return;
       strokes.push({ pts: cur.pts }); cur = null;

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-schreibfeld-glatt', date: '25. Oktober',
+      items: [
+        { t: 'Schöner schreiben im Antwortfeld', d: 'Das kleine Schreibfeld unter den Karteikarten und bei den Übungen zeichnet jetzt so glatt wie das Schreibblatt – runde Striche, und fester Druck macht sie dicker.' },
+      ],
+    },
+    {
       id: '2026-10-25-karten-hilfe', date: '25. Oktober',
       items: [
         { t: 'Hilfe zu den Karteikarten', d: 'Das „?“ oben erklärt jetzt die Karteikarten – zuerst das Schreibfeld: Tippe unter der Karte den Stift an, schreib das Wort selbst, und die App prüft jedes Zeichen.' },

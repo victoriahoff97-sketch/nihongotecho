@@ -135,6 +135,7 @@
     }
     ctx.restore();
   }
+  INK.drawStroke = drawStroke; // auch fürs kleine Schreibfeld der Abfrage (hw-pad.js)
 
   // Bilder: einmal dekodieren, pro id zwischenspeichern (modulweit, damit auch INK.preview darauf zugreifen kann)
   const imgCache = new Map();
