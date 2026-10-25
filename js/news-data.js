@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-import-dubletten', date: '25. Oktober',
+      items: [
+        { t: 'Import: vielleicht schon vorhanden', d: 'Steht ein Wort in der Liste nur in Kana (きらい) und gibt es schon 嫌い, fragt die Vorschau: dasselbe Wort oder neu anlegen?' },
+      ],
+    },
+    {
       id: '2026-10-25-pdf-liste', date: '25. Oktober',
       items: [
         { t: 'Vokabellisten aus dem Unterricht (PDF)', d: 'Der Vokabel-Import liest Listen mit Furigana und Beispielsätzen jetzt richtig. Fehlt das Deutsch, ergänzt die App es; bekannte Wörter bekommen den Satz dazu.' },

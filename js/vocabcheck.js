@@ -446,10 +446,15 @@
   };
   // Ohne Deutsch (Spalte leer, z. B. eine Liste aus dem Unterricht) zählt die Zeile trotzdem: enrich() ergänzt die Bedeutung.
   // Gibt es das Wort schon, kommt sein Beispielsatz zum vorhandenen Eintrag (addEx), wenn er dort noch fehlt.
+  // „Vielleicht schon vorhanden“ (maybe): wie die Warnung im Vokabel-Formular (autofillLogic.dupes) – in der Liste nur Kana
+  // (きらい), in der App mit Kanji (嫌い), oder gleiche Kanji mit anderer Lesung. Was damit passiert, steht in opts.choice
+  // (Schlüssel des Listenworts → Id des vorhandenen Worts oder 'new'); ohne Wahl gilt der erste Treffer als dasselbe Wort.
   const buildItems = (st, map, opts) => {
-    const existing = new Map(App.itemsOf('vocab').map((v) => [App.vocabKey(v), v]));
+    const vocab = App.itemsOf('vocab');
+    const existing = new Map(vocab.map((v) => [App.vocabKey(v), v]));
     const seen = new Set();
-    const out = { items: [], addEx: [], dup: 0, bad: 0, noReading: 0 };
+    const out = { items: [], addEx: [], maybe: [], dup: 0, bad: 0, noReading: 0 };
+    const exTo = (old, ex) => { if (ex && !(old.examples || []).some((e) => JP.plain(e.jp) === JP.plain(ex.jp)) && !out.addEx.some((a) => a.id === old.id)) out.addEx.push({ id: old.id, ex }); };
     for (const r of st.rows) {
       const get = (f) => { const i = map.indexOf(f); return i >= 0 ? clean(r[i]) : ''; };
       let { kanji, kana, na } = get('jp') ? splitJp(get('jp')) : { kanji: get('kanji'), kana: get('kana') };
@@ -466,7 +471,7 @@
       const old = existing.get(key);
       if (old || seen.has(key)) {
         out.dup++;
-        if (old && ex && !(old.examples || []).some((e) => JP.plain(e.jp) === JP.plain(ex.jp)) && !out.addEx.some((a) => a.id === old.id)) out.addEx.push({ id: old.id, ex });
+        if (old) exTo(old, ex);
         continue;
       }
       seen.add(key);
@@ -474,6 +479,14 @@
       it.level = App.levelFor(it); // JLPT-Niveau aus dem Index (Import speichert direkt, ohne saveItem)
       if (it.lesson !== '' && !isNaN(+it.lesson)) it.lesson = +it.lesson;
       if (ex) it.examples.push(ex);
+      const cands = App.autofillLogic.dupes(vocab, { kanji, kana }).map((d) => d.it).slice(0, 4);
+      if (cands.length) {
+        const pick = (opts.choice && opts.choice.get(key)) || cands[0].id;
+        const same = cands.find((c) => c.id === pick);
+        out.maybe.push({ key, it, cands, pick: same ? same.id : 'new', ex });
+        if (same) { out.dup++; const n = out.addEx.length; exTo(same, ex); if (out.addEx[n]) out.addEx[n].maybe = 1; continue; }
+        it._maybe = 1;
+      }
       out.items.push(it);
     }
     return out;
@@ -499,7 +512,7 @@
     return r;
   };
   const unmark = (r) => {
-    r.items.forEach((it) => { delete it._fill; it.examples.forEach((e) => delete e._mt); });
+    r.items.forEach((it) => { delete it._fill; delete it._maybe; it.examples.forEach((e) => delete e._mt); });
     r.addEx.forEach((a) => delete a.ex._mt);
   };
   const translateMany = async (texts, out) => {
@@ -514,6 +527,9 @@
   };
   const enrich = async (r, cache) => {
     const AL = App.autofillLogic;
+    // wie im Vokabel-Formular: leichte JLPT-Wörter zuerst – nur in Kana (きらい) soll 嫌い gewinnen, nicht 機雷
+    const LV = { N5: 6, N4: 5, N3: 4, N2: 3, N1: 2 };
+    const bonus = (e) => (LV[App.jlptOf({ type: 'vocab', kanji: (e.k || [])[0] || '', kana: (e.r || [])[0] || '' })] || 0) + (e.de ? 1 : 0);
     const todo = r.items.filter((it) => !it.de && !cache.word.has(wordKey(it)));
     if (todo.length && App.dict.installed()) {
       let hits = new Map();
@@ -521,7 +537,7 @@
       todo.forEach((it) => {
         const typed = { kanji: it.kanji, kana: it.kana };
         const hira = JP.toHira(it.kana);
-        const list = AL.rank([].concat(hits.get(it.kanji) || [], hits.get(it.kana) || []), typed)
+        const list = AL.rank([].concat(hits.get(it.kanji) || [], hits.get(it.kana) || []), typed, bonus)
           .filter((e) => (!it.kanji || (e.k || []).includes(it.kanji)) && (e.r || []).some((x) => JP.toHira(x) === hira));
         const e = list[0];
         if (e && (e.de || e.en)) cache.word.set(wordKey(it), { src: 'dict', de: App.firstGloss(e.de), en: App.firstGloss(e.en), pos: App.mapPos(e.p || [], it.kanji || it.kana).pos });
@@ -656,9 +672,18 @@
       const draw = (r, busy) => {
         const noDe = r.items.filter((v) => !v.de && !v.en).length;
         const filled = r.items.filter((v) => v._fill).length;
-        s2.querySelector('[data-prev]').innerHTML = `<div class="row small" style="margin-bottom:8px"><span class="badge" style="background:var(--matcha-soft);color:var(--matcha)">${r.items.length} neu</span>${r.dup ? `<span class="badge">${r.dup} schon vorhanden – werden übersprungen${r.addEx.length ? `, ${r.addEx.length === 1 ? 'ein Beispielsatz kommt' : r.addEx.length + ' Beispielsätze kommen'} dort dazu` : ''}</span>` : ''}${r.bad ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${r.bad} ohne Japanisch</span>` : ''}${r.noReading ? `<span class="badge">${r.noReading} ohne Lesung</span>` : ''}${busy ? '<span class="badge">Deutsch wird ergänzt …</span>' : filled ? `<span class="badge">${filled}× Deutsch ergänzt</span>` : ''}${!busy && noDe ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${noDe} ohne Deutsch – später ergänzen</span>` : ''}</div>
-          <div class="list" style="max-height:340px;overflow:auto">${r.items.map((v) => { const ex = v.examples[0]; return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr"><span class="k" lang="ja">${JP.wordRuby(v)}</span><span>${v.de || v.en ? App.meaningHtml(v) : '<span class="muted">–</span>'}${v._fill ? `<div class="small muted">${FILL[v._fill]}</div>` : ''}</span><span class="small">${ex ? `<span lang="ja">${JP.ruby(ex.jp)}</span>${ex.de ? `<div class="muted">${esc(ex.de)}${ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}` : ''}</span></div>`; }).join('')
-            + r.addEx.map((a) => { const old = S.items.get(a.id); return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr"><span class="k" lang="ja">${JP.wordRuby(old)}</span><span class="small muted">schon vorhanden – bekommt diesen Beispielsatz</span><span class="small"><span lang="ja">${JP.ruby(a.ex.jp)}</span>${a.ex.de ? `<div class="muted">${esc(a.ex.de)}${a.ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}</span></div>`; }).join('')
+        // ohne die „vielleicht“-Wörter, die oben mit Auswahl stehen
+        const dupN = r.dup - r.maybe.filter((m) => m.pick !== 'new').length, exN = r.addEx.filter((a) => !a.maybe).length;
+        const exCell = (ex, note) => (ex ? `<span lang="ja">${JP.ruby(ex.jp)}</span>${ex.de ? `<div class="muted">${esc(ex.de)}${ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}${note ? `<div class="muted"><i>${note}</i></div>` : ''}` : '');
+        const candLabel = (c) => `Dasselbe wie ${c.kanji ? c.kanji + ' (' + c.kana + ')' : c.kana}${c.de ? ' – ' + App.firstGloss(c.de) : ''}${c.source ? ' · ' + c.source : ''}`;
+        // „vielleicht schon vorhanden“ zuerst – dort wählt man je Wort: dasselbe (Satz kommt dorthin) oder neu anlegen
+        const maybeRows = r.maybe.map((m) => { const v = m.it, isNew = m.pick === 'new', old = S.items.get(m.pick);
+          return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr;background:var(--shu-soft)"><span class="k" lang="ja">${JP.wordRuby(v)}${isNew && (v.de || v.en) ? `<div class="small">${App.meaningHtml(v)}</div>` : ''}</span>
+            <span><select class="input" data-maybe="${esc(m.key)}" style="height:auto;font-size:13px;white-space:normal">${m.cands.map((c) => `<option value="${c.id}" ${m.pick === c.id ? 'selected' : ''}>${esc(candLabel(c))}</option>`).join('')}<option value="new" ${isNew ? 'selected' : ''}>Anderes Wort – neu anlegen</option></select></span>
+            <span class="small">${exCell(m.ex, !m.ex ? '' : isNew ? '' : r.addEx.some((a) => a.id === m.pick) ? 'Satz kommt zu ' + esc(old.kanji || old.kana) : 'Satz ist dort schon')}</span></div>`; }).join('');
+        s2.querySelector('[data-prev]').innerHTML = `<div class="row small" style="margin-bottom:8px"><span class="badge" style="background:var(--matcha-soft);color:var(--matcha)">${r.items.length} neu</span>${r.maybe.length ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${r.maybe.length} vielleicht schon vorhanden – bitte ansehen</span>` : ''}${dupN ? `<span class="badge">${dupN} schon vorhanden – werden übersprungen${exN ? `, ${exN === 1 ? 'ein Beispielsatz kommt' : exN + ' Beispielsätze kommen'} dort dazu` : ''}</span>` : ''}${r.bad ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${r.bad} ohne Japanisch</span>` : ''}${r.noReading ? `<span class="badge">${r.noReading} ohne Lesung</span>` : ''}${busy ? '<span class="badge">Deutsch wird ergänzt …</span>' : filled ? `<span class="badge">${filled}× Deutsch ergänzt</span>` : ''}${!busy && noDe ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${noDe} ohne Deutsch – später ergänzen</span>` : ''}</div>
+          <div class="list" style="max-height:340px;overflow:auto">${maybeRows + r.items.filter((v) => !v._maybe).map((v) => { const ex = v.examples[0]; return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr"><span class="k" lang="ja">${JP.wordRuby(v)}</span><span>${v.de || v.en ? App.meaningHtml(v) : '<span class="muted">–</span>'}${v._fill ? `<div class="small muted">${FILL[v._fill]}</div>` : ''}</span><span class="small">${ex ? `<span lang="ja">${JP.ruby(ex.jp)}</span>${ex.de ? `<div class="muted">${esc(ex.de)}${ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}` : ''}</span></div>`; }).join('')
+            + r.addEx.filter((a) => !a.maybe).map((a) => { const old = S.items.get(a.id); return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr"><span class="k" lang="ja">${JP.wordRuby(old)}</span><span class="small muted">schon vorhanden – bekommt diesen Beispielsatz</span><span class="small"><span lang="ja">${JP.ruby(a.ex.jp)}</span>${a.ex.de ? `<div class="muted">${esc(a.ex.de)}${a.ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}</span></div>`; }).join('')
             || '<div class="list-row">Nichts zu importieren – Zuordnung prüfen.</div>'}</div>`;
         const n = r.items.length;
         nextB.disabled = busy || !(n || r.addEx.length);
@@ -666,26 +691,30 @@
       };
       const prev = async () => {
         const my = ++run;
-        const r = buildItems(st, $$('[data-col]', s2).map((x) => x.value), { source: '', lesson: '', tags: [] });
+        const r = buildItems(st, $$('[data-col]', s2).map((x) => x.value), { source: '', lesson: '', tags: [], choice });
         const need = r.items.some((v) => !v.de) || sentences(r).length > 0;
         draw(applyCache(r, cache), need);
         if (!need) return;
         await enrich(r, cache);
         if (my === run && s2.isConnected) draw(r, false);
       };
-      s2.addEventListener('change', (e) => { if (e.target.matches('[data-col]')) prev(); });
+      s2.addEventListener('change', (e) => {
+        if (e.target.matches('[data-maybe]')) choice.set(e.target.dataset.maybe, e.target.value);
+        if (e.target.matches('[data-col], [data-maybe]')) prev();
+      });
       s2.querySelector('[data-st]').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) $$('[data-v]', s2).forEach((x) => x.classList.toggle('on', x === b)); });
       prev();
       nextB.onclick = doImport;
     };
     const cache = newCache();
+    const choice = new Map(); // „vielleicht schon vorhanden“: Schlüssel des Listenworts → Id des vorhandenen Worts oder 'new'
     const doImport = async () => {
       const s2 = body.querySelector('[data-step2]');
       const map = $$('[data-col]', s2).map((x) => x.value);
       const source = s2.querySelector('[data-src]').value;
       App.lsSet('importSource', source);
       const tags = s2.querySelector('[data-tags]').value.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
-      const r = applyCache(buildItems(st, map, { source, lesson: s2.querySelector('[data-lesson]').value.trim(), tags }), cache);
+      const r = applyCache(buildItems(st, map, { source, lesson: s2.querySelector('[data-lesson]').value.trim(), tags, choice }), cache);
       unmark(r);
       const status = s2.querySelector('[data-st] .on').dataset.v;
       nextB.disabled = true; nextB.textContent = 'Importiere …';
