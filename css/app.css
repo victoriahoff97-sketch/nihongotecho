@@ -207,6 +207,9 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 .small { font-size: 13px; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .row.between { justify-content: space-between; }
+/* Brotkrumen + Vor/Zurück über einer Detailseite: etwas Luft zum Inhalt darunter */
+.detail-nav { margin-bottom: 16px; }
+.detail-nav .crumbs { margin-bottom: 0; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .grow { flex: 1; }
 .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 800; margin: 26px 0 10px; display: flex; align-items: center; gap: 10px; }
