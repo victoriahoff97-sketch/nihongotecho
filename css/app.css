@@ -1590,13 +1590,66 @@ button.day-box:hover { border-color: var(--matcha); }
 /* Startseite unten: Unterrichtsstunden, Zuletzt gespeichert und die Tagesliste 今日 nebeneinander (ganz rechts) */
 .home-bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 22px; align-items: start; }
 
+/* Kachel-Reihen ohne Umbruch (fitRow in views.js setzt --cols): auf Surface, MacBook und Tablet bleiben alle nebeneinander,
+   schmalere Kacheln verkleinern Bild, Symbol und Schrift (Container-Abfragen je Kachel). Nur das Handy stapelt. */
+.fit-row { grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); }
+.fit-row > * { container-type: inline-size; min-width: 0; }
+@media (max-width: 1100px) {
+  .fit-row { gap: 10px; }
+  .fit-row > .read-tile, .fit-row > .read-pick > .read-tile { padding: 12px 14px; gap: 10px; }
+  .fit-row > .home-act { padding: 12px; gap: 10px; }
+  .fit-row > .stat { padding: 14px; }
+  .fit-row > .card { padding: 14px; }
+}
+@media (max-width: 640px) { .fit-row { grid-template-columns: minmax(0, 1fr); } }
+/* Lese-Kacheln */
+@container (max-width: 300px) {
+  .read-tile .art { width: 64px; height: 58px; }
+  .read-tile.listen .art { width: 54px; height: 50px; }
+  .read-tile b { font-size: 16px; }
+}
+/* ganz schmal: Bildchen klein oben, Text darunter in voller Breite – so bleibt der Knopf einzeilig
+   (die Kachel ist selbst der Container und kann ihr eigenes Layout nicht abfragen, darum bricht der Textteil per flex-wrap um) */
+.fit-row .read-tile { flex-wrap: wrap; }
+.fit-row .read-tile .txt { flex: 1 1 0; }
+@container (max-width: 240px) {
+  .read-tile .art, .read-tile.listen .art { width: 40px; height: 36px; align-self: flex-start; }
+  .fit-row .read-tile .txt { flex-basis: 100%; }
+  .read-tile b { font-size: 15px; }
+  .read-tile .desc { font-size: 12.5px; line-height: 1.4; }
+  .read-tile .go, .read-tile.listen .go { font-size: 12px; padding: 2px 9px; }
+}
+@container (max-width: 180px) { .read-tile .art { display: none; } }
+/* Tagesliste 今日: Knopf bzw. Ziel/Mag/Aus rutschen unter den Text statt ihn zu überdecken */
+@container (max-width: 270px) {
+  .day-row { flex-wrap: wrap; row-gap: 6px; }
+  .day-row:not(.day-opt) > .grow { flex: 1 1 calc(100% - 36px); }
+  .day-row:not(.day-opt):not(.day-set) > .grow ~ * { margin-left: 36px; }
+  .day-set > .grow { flex-basis: 100%; }
+}
+/* Schnellaktionen */
+@container (max-width: 230px) {
+  .home-act .i { width: 34px; height: 34px; border-radius: 10px; }
+  .home-act .i svg { width: 18px; height: 18px; }
+  .home-act b { font-size: 14.5px; }
+  .home-act small { font-size: 12px; }
+}
+@container (max-width: 160px) { .home-act .i { display: none; } }
+/* Sammlung */
+@container (max-width: 170px) {
+  .stat .n { font-size: 26px; }
+  .stat .l { font-size: 14px; }
+  .stat .s { font-size: 12px; }
+  .stat .bg { font-size: 58px; bottom: -10px; }
+}
+
 /* Startseite anpassen: Leisten und Schnellaktionen am Griff ziehen (pro Gerät gemerkt) */
 .home-block + .home-block { margin-top: 18px; }
 .home-block > :first-child, .home-block > .home-grip + * { margin-top: 0; }
 .home-block > :last-child { margin-bottom: 0; }
 .home-block .home-actions { margin-bottom: 0; }
 .home-block .read-strip { margin-top: 0; }
-.home-block .stat-grid { margin-bottom: 0; }
+.home-block .stat-grid { margin: 0; }
 .home-edit-foot { display: flex; justify-content: center; margin-top: 26px; }
 .home-editbar { position: sticky; top: calc(var(--topbar-h, 56px) + 8px); z-index: 40; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; margin-bottom: 16px; border-radius: 14px; background: var(--card); border: 2px solid var(--shu); box-shadow: var(--shadow-lg); }
 .home-editing .home-block { position: relative; padding: 12px 12px 12px 54px; border: 2px dashed var(--line); border-radius: 18px; background: var(--paper-2); }

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-reihen', date: '25. Oktober',
+      items: [
+        { t: 'Startseite auf jedem Gerät ordentlich', d: 'Auf Tablet und MacBook bleiben die Kacheln der Startseite nebeneinander und werden etwas kleiner, statt einzeln umzubrechen. Nur am Handy stehen sie untereinander.' },
+      ],
+    },
+    {
       id: '2026-10-25-zaehler', date: '25. Oktober',
       items: [
         { t: 'Zähler zum Aufklappen', d: 'Unter Ausdrücke › Zähler hat jeder Zähler (Dinge, runde Dinge, Menschen, Nächte …) eine Tabelle von 1 bis 10. Rot = unregelmäßig, Antippen liest vor.' },

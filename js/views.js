@@ -86,11 +86,18 @@
   };
   const READ_DEFAULT = ['news', 'wani', 'listen'];
   const readList = () => { const s = App.homeOrderLogic.parse(App.lsGet('homeRead')); return (s || READ_DEFAULT).filter((k) => READ[k]); };
+  // Kachel-Reihen der Startseite brechen nicht um: alle Kacheln bleiben nebeneinander und werden auf schmalen Geräten kleiner.
+  // Erst ab mehr als „max“ Kacheln gibt es eine zweite Reihe – dann gleichmäßig verteilt (6 → 3 + 3, 7 → 4 + 3), nie eine allein.
+  // Nur auf dem Handy stehen sie untereinander (CSS .fit-row).
+  const fitRow = (cls, items, max) => {
+    const list = items.filter(Boolean), cols = Math.ceil(list.length / (Math.ceil(list.length / max) || 1)) || 1;
+    return `<div class="${cls} fit-row" style="--cols:${cols}">${list.join('')}</div>`;
+  };
   const readStrip = () => {
     const list = readList();
-    if (!homeEdit) return list.length ? `<div class="read-strip">${list.map((k) => READ[k][1]()).join('')}</div>` : '';
+    if (!homeEdit) return list.length ? fitRow('read-strip', list.map((k) => READ[k][1]()), 4) : '';
     const rest = Object.keys(READ).filter((k) => !list.includes(k));
-    return `<div class="home-live"><div class="read-strip">${list.map((k) => `<div class="read-pick">${READ[k][1]()}<button type="button" class="icon-btn read-off" data-read-off="${k}" title="Von der Startseite nehmen" aria-label="${READ[k][0]} entfernen">${icon('close')}</button></div>`).join('') || '<p class="small muted">Keine Kachel gewählt – such dir unten welche aus.</p>'}</div>
+    return `<div class="home-live">${list.length ? fitRow('read-strip', list.map((k) => `<div class="read-pick">${READ[k][1]()}<button type="button" class="icon-btn read-off" data-read-off="${k}" title="Von der Startseite nehmen" aria-label="${READ[k][0]} entfernen">${icon('close')}</button></div>`), 4) : '<div class="read-strip"><p class="small muted">Keine Kachel gewählt – such dir unten welche aus.</p></div>'}
       ${rest.length ? `<div class="quick-more"><span class="small muted">Weitere Kacheln:</span>${rest.map((k) => `<button type="button" class="chip" data-read-on="${k}">${icon('plus')} ${READ[k][0]}</button>`).join('')}</div>` : ''}</div>`;
   };
 
@@ -244,8 +251,9 @@
   const quickAct = (k) => { const [cls, attrs, ico, title, sub] = QUICK[k]; const tag = attrs.startsWith('href') ? 'a' : 'button'; return `<${tag} class="home-act ${cls}" ${attrs}><span class="i">${icon(ico)}</span><span><b>${title}</b><small>${sub}</small></span></${tag}>`; };
   const quickHtml = () => {
     const list = quickList();
-    if (!homeEdit) return list.length ? `<div class="home-actions">${list.map(quickAct).join('')}</div>` : '';
+    if (!homeEdit) return list.length ? fitRow('home-actions', list.map(quickAct), 5) : '';
     const rest = Object.keys(QUICK).filter((k) => !list.includes(k));
+    // Beim Anpassen tragen die Schnellaktionen zusätzlich Griff und ✕ – hier dürfen sie wie früher umbrechen
     return `<div class="home-live"><div class="home-actions" data-quick-list>${list.map((k) => { const [cls, , ico, title, sub] = QUICK[k]; return `<div class="home-act ${cls}" data-quick="${k}">${grip(title)}<span class="i">${icon(ico)}</span><span class="grow"><b>${title}</b><small>${sub}</small></span><button type="button" class="icon-btn" data-quick-off="${k}" title="Von der Startseite nehmen" aria-label="${title} entfernen">${icon('close')}</button></div>`; }).join('') || '<p class="small muted">Keine Schnellaktion gewählt – such dir unten welche aus.</p>'}</div>
       ${rest.length ? `<div class="quick-more"><span class="small muted">Weitere Schnellaktionen:</span>${rest.map((k) => `<button type="button" class="chip" data-quick-on="${k}">${icon('plus')} ${QUICK[k][3]}</button>`).join('')}</div>` : ''}</div>`;
   };
@@ -386,13 +394,7 @@
       actions: quickHtml(),
       read: readStrip(),
       sammlung: `<div class="section-title">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>
-      <div class="stat-grid" style="margin-top:0">
-        ${stat('grammar', count('grammar'), 'Grammatikpunkte')}
-        ${stat('vocab', count('vocab'), 'Wörter')}
-        ${stat('session', count('session'), 'Stunden mitgeschrieben')}
-        ${stat('kanji', count('kanji'), 'Kanji')}
-        ${stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')}
-      </div>`,
+      ${fitRow('stat-grid', [stat('grammar', count('grammar'), 'Grammatikpunkte'), stat('vocab', count('vocab'), 'Wörter'), stat('session', count('session'), 'Stunden mitgeschrieben'), stat('kanji', count('kanji'), 'Kanji'), stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')], 5)}`,
       vocab: (() => { // Jedes Wort zählt einmal: „kann ich“ erst, wenn Lesen und Deutsch → Japanisch sitzen – wie beim JLPT- und Genki-Lernstand
         const c = progOf({ vocab }).tot;
         const num = (n, color, label, st, title) => `<a href="#/vokabeln?st=${st}" style="text-decoration:none" title="${title}"><b style="font-size:26px;color:${color}">${n}</b> ${label}</a>`;
@@ -418,13 +420,11 @@
           <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
           <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}</div></div>`; })()}</div>`; })(),
-      bottom: `<div class="home-bottom">
-        <div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
-          <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>
-        <div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
-          <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>
-        ${App.dayCheck.card()}
-      </div>`,
+      bottom: fitRow('home-bottom', [`<div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
+          <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>`,
+        `<div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
+          <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>`,
+        App.dayCheck.card()], 3),
     };
     view.innerHTML = `<div class="sec-home${homeEdit ? ' home-editing' : ''}">
       ${App.welcome.card()}
