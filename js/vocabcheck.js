@@ -388,16 +388,8 @@
   const hasLatin = (s) => /[a-zäöüß]{2,}/i.test(s);
   // Anki-Furigana „ 日本[にほん]語[ご]“ → Notation ohne Leerzeichen
   const ankiFuri = (s) => s.replace(/\s+(?=[㐀-鿿々]+\[)/g, '').replace(/^\s+/, '');
-  const splitJp = (raw) => {
-    let s = clean(raw);
-    if (!s) return { kanji: '', kana: '' };
-    if (/\[[^\]]+\]/.test(s)) { s = ankiFuri(s); return { kanji: JP.hasKanji(s) ? JP.plain(s).replace(/\s/g, '') : '', kana: JP.kana(s).replace(/\s/g, '') }; }
-    const m = s.match(/^(.+?)\s*[（(【]\s*([぀-ヿー・\s]+)\s*[）)】]\s*$/);
-    if (m) return { kanji: m[1].trim(), kana: m[2].replace(/\s/g, '') };
-    const m2 = s.match(/^([^\s]+)\s+([぀-ヿー]+)$/);
-    if (m2 && JP.hasKanji(m2[1])) return { kanji: m2[1], kana: m2[2] };
-    return JP.hasKanji(s) ? { kanji: s, kana: '' } : { kanji: '', kana: s };
-  };
+  const IL = App.importLogic;
+  const splitJp = (raw) => IL.splitWord(clean(raw));
   const parseCsvLine = (line, d) => {
     if (d !== ',' && d !== ';') return line.split(d);
     const out = []; let cur = '', q = false;
@@ -417,18 +409,21 @@
     for (const d of ['\t', ';', '|', ' = ', '=', ' - ', ' – ', ',']) { if (sample.filter((l) => l.includes(d)).length >= sample.length * 0.7) { delim = d; break; } }
     const rows = lines.map((l) => parseCsvLine(l, delim).map((c) => c.trim()));
     const ncol = Math.max(1, ...rows.slice(0, 40).map((r) => r.length));
-    // Kopfzeile: erste Zeile ohne Japanisch, die anderen mit
-    const header = rows.length > 1 && rows[0].length >= 2 && !rows[0].some(isJp) && rows.slice(1, 6).some((r) => r.some(isJp));
+    // Kopfzeile: erste Zeile ohne Japanisch, die anderen mit – oder lauter bekannte Spaltennamen (言葉 · ドイツ語 · 例)
+    const named = rows.length > 1 && IL.isHeadRow(rows[0]);
+    const header = named || (rows.length > 1 && rows[0].length >= 2 && !rows[0].some(isJp) && rows.slice(1, 6).some((r) => r.some(isJp)));
     const body = header ? rows.slice(1) : rows;
     const map = [];
     let deUsed = false, exjp = -1;
     for (let c = 0; c < ncol; c++) {
       const vals = body.slice(0, 40).map((r) => clean(r[c] || '')).filter(Boolean);
       const h = header ? (rows[0][c] || '').toLowerCase() : '';
+      const hf = named ? IL.headField(rows[0][c] || '') : null;
       const jpShare = vals.filter(isJp).length / Math.max(1, vals.length);
       const avgLen = vals.reduce((a, v) => a + v.length, 0) / Math.max(1, vals.length);
       let f = 'skip';
-      if (/lektion|lesson|kapitel/.test(h)) f = 'lesson';
+      if (hf && (hf === 'skip' || !map.includes(hf))) { f = hf; if (f === 'de') deUsed = true; if (f === 'exjp') exjp = c; }
+      else if (/lektion|lesson|kapitel/.test(h)) f = 'lesson';
       else if (/tag/.test(h)) f = 'tags';
       else if (jpShare > 0.6) {
         if (avgLen > 9 && map.some((x) => x === 'jp' || x === 'kanji' || x === 'kana')) { f = 'exjp'; exjp = c; }
@@ -449,31 +444,100 @@
     if (/い$/.test(kana) && !/^(der|die|das) /i.test(de) && /^[a-zäöüß]+$/.test(de.split(/[,;]/)[0].trim()) && de[0] === de[0].toLowerCase()) return 'i-adj';
     return '';
   };
+  // Ohne Deutsch (Spalte leer, z. B. eine Liste aus dem Unterricht) zählt die Zeile trotzdem: enrich() ergänzt die Bedeutung.
+  // Gibt es das Wort schon, kommt sein Beispielsatz zum vorhandenen Eintrag (addEx), wenn er dort noch fehlt.
   const buildItems = (st, map, opts) => {
-    const existing = new Set(App.itemsOf('vocab').map(App.vocabKey));
+    const existing = new Map(App.itemsOf('vocab').map((v) => [App.vocabKey(v), v]));
     const seen = new Set();
-    const out = { items: [], dup: 0, bad: 0, noReading: 0 };
+    const out = { items: [], addEx: [], dup: 0, bad: 0, noReading: 0 };
     for (const r of st.rows) {
       const get = (f) => { const i = map.indexOf(f); return i >= 0 ? clean(r[i]) : ''; };
-      let { kanji, kana } = get('jp') ? splitJp(get('jp')) : { kanji: get('kanji'), kana: get('kana') };
+      let { kanji, kana, na } = get('jp') ? splitJp(get('jp')) : { kanji: get('kanji'), kana: get('kana') };
       if (map.includes('jp') && get('kanji')) kanji = get('kanji');
       if (map.includes('jp') && get('kana')) kana = get('kana');
       if (kana && JP.looksRomaji(kana)) kana = JP.romaji(kana);
       const de = get('de');
-      if ((!kanji && !kana) || !de) { out.bad++; continue; }
+      if (!kanji && !kana) { out.bad++; continue; }
       if (!kana) { out.noReading++; kana = kanji; }
       if (kanji === kana) kanji = '';
+      const exjp = get('exjp');
+      const ex = exjp ? { jp: /\[/.test(exjp) ? ankiFuri(exjp) : exjp, de: get('exde') } : null;
       const key = App.vocabKey({ kanji, kana });
-      if (existing.has(key) || seen.has(key)) { out.dup++; continue; }
+      const old = existing.get(key);
+      if (old || seen.has(key)) {
+        out.dup++;
+        if (old && ex && !(old.examples || []).some((e) => JP.plain(e.jp) === JP.plain(ex.jp)) && !out.addEx.some((a) => a.id === old.id)) out.addEx.push({ id: old.id, ex });
+        continue;
+      }
       seen.add(key);
-      const it = { id: App.uid('v'), type: 'vocab', kana, kanji, de, pos: guessPos(kana, de), cat: [], source: opts.source, lesson: get('lesson') || opts.lesson, tags: opts.tags.concat(get('tags') ? get('tags').split(/[\s,]+/).map((t) => t.toLowerCase()).filter(Boolean) : []), level: '', examples: [], imported: Date.now() };
+      const it = { id: App.uid('v'), type: 'vocab', kana, kanji, de, pos: na ? 'na-adj' : guessPos(kana, de), cat: [], source: opts.source, lesson: get('lesson') || opts.lesson, tags: opts.tags.concat(get('tags') ? get('tags').split(/[\s,]+/).map((t) => t.toLowerCase()).filter(Boolean) : []), level: '', examples: [], imported: Date.now() };
       it.level = App.levelFor(it); // JLPT-Niveau aus dem Index (Import speichert direkt, ohne saveItem)
       if (it.lesson !== '' && !isNaN(+it.lesson)) it.lesson = +it.lesson;
-      const exjp = get('exjp');
-      if (exjp) { const n = /\[/.test(exjp) ? ankiFuri(exjp) : exjp; it.examples.push({ jp: n, de: get('exde') }); }
+      if (ex) it.examples.push(ex);
       out.items.push(it);
     }
     return out;
+  };
+
+  // ---------- Fehlendes Deutsch ergänzen ----------
+  // Bedeutung: zuerst das Offline-Wörterbuch, sonst der Google-Übersetzer; Beispielsätze ohne Deutsch: Übersetzer.
+  // Ergebnisse bleiben im cache (je Import-Fenster), damit Vorschau und Import nicht doppelt nachschlagen.
+  const newCache = () => ({ word: new Map(), sent: new Map() });
+  const wordKey = (it) => App.vocabKey(it);
+  const sentences = (r) => r.items.flatMap((it) => it.examples).concat(r.addEx.map((a) => a.ex)).filter((e) => !String(e.de || '').trim());
+  // trägt ein, was der cache schon weiß (r ist frisch aus buildItems); _fill/_mt markieren Ergänztes für die Vorschau
+  const applyCache = (r, cache) => {
+    r.items.forEach((it) => {
+      const w = !it.de && cache.word.get(wordKey(it));
+      if (!w) return;
+      it._fill = w.src;
+      it.de = w.de || '';
+      if (w.en) it.en = w.en;
+      if (w.pos && !it.pos) it.pos = w.pos;
+    });
+    sentences(r).forEach((e) => { const de = cache.sent.get(JP.plain(e.jp)); if (de) { e.de = de; e._mt = 1; } });
+    return r;
+  };
+  const unmark = (r) => {
+    r.items.forEach((it) => { delete it._fill; it.examples.forEach((e) => delete e._mt); });
+    r.addEx.forEach((a) => delete a.ex._mt);
+  };
+  const translateMany = async (texts, out) => {
+    const T = App.exfillLogic;
+    for (let i = 0; i < texts.length; i += 25) {
+      const part = texts.slice(i, i + 25);
+      // mehrere Zeilen in einer Anfrage; kommt nicht genau eine Übersetzung je Zeile zurück, einzeln
+      const res = (await T.translate(part.join('\n'), fetch)).split('\n').map((s) => s.trim());
+      if (res.length === part.length && res.every(Boolean)) part.forEach((t, j) => out.set(t, res[j]));
+      else for (const t of part) out.set(t, await T.translate(t, fetch));
+    }
+  };
+  const enrich = async (r, cache) => {
+    const AL = App.autofillLogic;
+    const todo = r.items.filter((it) => !it.de && !cache.word.has(wordKey(it)));
+    if (todo.length && App.dict.installed()) {
+      let hits = new Map();
+      try { hits = await App.dict.lookup([...new Set(todo.flatMap((it) => [it.kanji, it.kana].filter(Boolean)))]); } catch (e) { console.error(e); }
+      todo.forEach((it) => {
+        const typed = { kanji: it.kanji, kana: it.kana };
+        const hira = JP.toHira(it.kana);
+        const list = AL.rank([].concat(hits.get(it.kanji) || [], hits.get(it.kana) || []), typed)
+          .filter((e) => (!it.kanji || (e.k || []).includes(it.kanji)) && (e.r || []).some((x) => JP.toHira(x) === hira));
+        const e = list[0];
+        if (e && (e.de || e.en)) cache.word.set(wordKey(it), { src: 'dict', de: App.firstGloss(e.de), en: App.firstGloss(e.en), pos: App.mapPos(e.p || [], it.kanji || it.kana).pos });
+      });
+    }
+    const rest = todo.filter((it) => !cache.word.has(wordKey(it)));
+    const sents = [...new Set(sentences(r).map((e) => JP.plain(e.jp)).filter((s) => !cache.sent.has(s)))];
+    try {
+      if (rest.length) {
+        const m = new Map();
+        await translateMany([...new Set(rest.map((it) => it.kanji || it.kana))], m);
+        rest.forEach((it) => { const de = m.get(it.kanji || it.kana); if (de) cache.word.set(wordKey(it), { src: 'mt', de }); });
+      }
+      if (sents.length) await translateMany(sents, cache.sent);
+    } catch (e) { console.error(e); } // ohne Internet bleibt es beim Wörterbuch
+    return applyCache(r, cache);
   };
 
   // ---------- PDF → Text (Zeilen & Spalten aus der Position auf der Seite) ----------
@@ -501,54 +565,16 @@
     let chars = 0;
     for (const n of list) {
       const page = await pdf.getPage(n);
-      const vp = page.getViewport({ scale: 1 });
       const tc = await page.getTextContent();
       const items = tc.items.filter((i) => i.str && i.str.trim()).map((i) => ({
         // NFKC: Kangxi-Radikale (⾷) → normale Kanji (食), Halbbreiten-Katakana → normale Katakana
         s: i.str.normalize('NFKC'), x: i.transform[4], y: i.transform[5], w: i.width || 0, h: Math.abs(i.transform[3]) || i.height || 10,
       }));
       chars += items.reduce((a, i) => a + i.s.length, 0);
-      const pageLines = [];
-      for (const half of [items]) {
-        // nach Zeilen gruppieren (gleiche Höhe auf der Seite)
-        const rows = [];
-        half.sort((a, b) => b.y - a.y || a.x - b.x).forEach((it) => {
-          const r = rows.find((row) => Math.abs(row.y - it.y) < Math.max(3, Math.min(row.h, it.h) * 0.5));
-          if (r) r.items.push(it); else rows.push({ y: it.y, h: it.h, items: [it] });
-        });
-        rows.sort((a, b) => b.y - a.y);
-        for (const r of rows) {
-          r.items.sort((a, b) => a.x - b.x);
-          let s = '';
-          r.items.forEach((it, k) => {
-            if (k) {
-              const prev = r.items[k - 1];
-              const gap = it.x - (prev.x + prev.w);
-              const latin = /[A-Za-zÄÖÜäöüß0-9]$/.test(prev.s) && /^[A-Za-zÄÖÜäöüß0-9]/.test(it.s);
-              if (gap > Math.max(prev.h, it.h) * 1.1) s += '\t';
-              else if (latin && gap > prev.h * 0.12) s += ' ';
-            }
-            s += it.s;
-          });
-          s = s.replace(/[ 　]{2,}/g, '\t').replace(/\t{2,}/g, '\t').trim();
-          if (s) pageLines.push(s.split('\t'));
-        }
-      }
-      // Zwei Wortlisten nebeneinander? (Muster wiederholt sich: 日本語 | かな | Deutsch | 日本語 | かな | Deutsch)
-      const kind = (c) => (/[぀-ヿ㐀-鿿]/.test(c) ? 'j' : /[A-Za-zÄÖÜäöüß]/.test(c) ? 'l' : 'o');
-      const isDouble = (cells) => {
-        if (cells.length < 4 || cells.length % 2) return false;
-        const h = cells.length / 2;
-        return cells.slice(0, h).map(kind).join('') === cells.slice(h).map(kind).join('') && cells.slice(0, h).some((c) => kind(c) === 'j');
-      };
-      const multi = pageLines.filter((c) => c.length >= 4);
-      const split = twoCols === true || (twoCols === 'auto' && multi.length >= 2 && multi.filter(isDouble).length >= multi.length * 0.6);
-      if (split) {
-        const left = [], right = [];
-        pageLines.forEach((c) => { if (c.length >= 4 && c.length % 2 === 0) { left.push(c.slice(0, c.length / 2)); right.push(c.slice(c.length / 2)); } else left.push(c); });
-        left.concat(right).forEach((c) => lines.push(c.join('\t')));
-        splitPages++;
-      } else pageLines.forEach((c) => lines.push(c.join('\t')));
+      // Zeilen und Spalten nach der Lage auf der Seite, Furigana an ihr Kanji, Überschriften als „# …“ (importlist-logic.js)
+      const r = App.importLogic.pageLines(items, { twoCols });
+      lines.push(...r.lines);
+      if (r.split) splitPages++;
     }
     return { text: lines.join('\n'), pages: list.length, total: pdf.numPages, chars, splitPages };
   };
@@ -624,35 +650,56 @@
           <div class="field"><label>Lektion <small>falls keine Spalte</small></label><input class="input" data-lesson value="${esc(body.dataset.lesson || '')}"></div>
           <div class="field"><label>Schlagwörter</label><input class="input" data-tags placeholder="z. B. import"></div></div>
           <div class="field"><label>Lernstand der neuen Wörter</label><div class="seg" data-st><button class="on" data-v="unchecked">Ungeprüft (empfohlen)</button><button data-v="learn">Direkt in die Lernschlange</button><button data-v="known">Kann ich schon</button></div></div></div></div>`;
-      const prev = () => {
-        const map = $$('[data-col]', s2).map((x) => x.value);
-        const r = buildItems(st, map, { source: '', lesson: '', tags: [] });
-        s2.querySelector('[data-prev]').innerHTML = `<div class="row small" style="margin-bottom:8px"><span class="badge" style="background:var(--matcha-soft);color:var(--matcha)">${r.items.length} neu</span>${r.dup ? `<span class="badge">${r.dup} schon vorhanden – werden übersprungen</span>` : ''}${r.bad ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${r.bad} ohne Japanisch oder Deutsch</span>` : ''}${r.noReading ? `<span class="badge">${r.noReading} ohne Lesung</span>` : ''}</div>
-          <div class="list">${r.items.slice(0, 6).map((v) => `<div class="list-row" style="grid-template-columns:1fr 1fr 1.5fr"><span class="k" lang="ja">${JP.wordRuby(v)}</span><span>${App.meaningHtml(v)}</span><span class="small muted" lang="ja">${v.examples[0] ? JP.ruby(v.examples[0].jp) : ''}</span></div>`).join('') || '<div class="list-row">Nichts zu importieren – Zuordnung prüfen.</div>'}</div>`;
-        nextB.disabled = !r.items.length;
-        nextB.innerHTML = `${icon('download')} ${r.items.length} importieren`;
+      // Vorschau: alle Zeilen; fehlendes Deutsch wird nachgeschlagen (Wörterbuch, sonst Übersetzer) – Ergänztes ist markiert
+      let run = 0;
+      const FILL = { dict: 'aus dem Wörterbuch', mt: 'übersetzt – bitte prüfen' };
+      const draw = (r, busy) => {
+        const noDe = r.items.filter((v) => !v.de && !v.en).length;
+        const filled = r.items.filter((v) => v._fill).length;
+        s2.querySelector('[data-prev]').innerHTML = `<div class="row small" style="margin-bottom:8px"><span class="badge" style="background:var(--matcha-soft);color:var(--matcha)">${r.items.length} neu</span>${r.dup ? `<span class="badge">${r.dup} schon vorhanden – werden übersprungen${r.addEx.length ? `, ${r.addEx.length === 1 ? 'ein Beispielsatz kommt' : r.addEx.length + ' Beispielsätze kommen'} dort dazu` : ''}</span>` : ''}${r.bad ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${r.bad} ohne Japanisch</span>` : ''}${r.noReading ? `<span class="badge">${r.noReading} ohne Lesung</span>` : ''}${busy ? '<span class="badge">Deutsch wird ergänzt …</span>' : filled ? `<span class="badge">${filled}× Deutsch ergänzt</span>` : ''}${!busy && noDe ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${noDe} ohne Deutsch – später ergänzen</span>` : ''}</div>
+          <div class="list" style="max-height:340px;overflow:auto">${r.items.map((v) => { const ex = v.examples[0]; return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr"><span class="k" lang="ja">${JP.wordRuby(v)}</span><span>${v.de || v.en ? App.meaningHtml(v) : '<span class="muted">–</span>'}${v._fill ? `<div class="small muted">${FILL[v._fill]}</div>` : ''}</span><span class="small">${ex ? `<span lang="ja">${JP.ruby(ex.jp)}</span>${ex.de ? `<div class="muted">${esc(ex.de)}${ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}` : ''}</span></div>`; }).join('')
+            + r.addEx.map((a) => { const old = S.items.get(a.id); return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr"><span class="k" lang="ja">${JP.wordRuby(old)}</span><span class="small muted">schon vorhanden – bekommt diesen Beispielsatz</span><span class="small"><span lang="ja">${JP.ruby(a.ex.jp)}</span>${a.ex.de ? `<div class="muted">${esc(a.ex.de)}${a.ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}</span></div>`; }).join('')
+            || '<div class="list-row">Nichts zu importieren – Zuordnung prüfen.</div>'}</div>`;
+        const n = r.items.length;
+        nextB.disabled = busy || !(n || r.addEx.length);
+        nextB.innerHTML = busy ? 'Deutsch wird ergänzt …' : `${icon('download')} ${n ? `${n} importieren` : 'Beispielsätze ergänzen'}`;
+      };
+      const prev = async () => {
+        const my = ++run;
+        const r = buildItems(st, $$('[data-col]', s2).map((x) => x.value), { source: '', lesson: '', tags: [] });
+        const need = r.items.some((v) => !v.de) || sentences(r).length > 0;
+        draw(applyCache(r, cache), need);
+        if (!need) return;
+        await enrich(r, cache);
+        if (my === run && s2.isConnected) draw(r, false);
       };
       s2.addEventListener('change', (e) => { if (e.target.matches('[data-col]')) prev(); });
       s2.querySelector('[data-st]').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) $$('[data-v]', s2).forEach((x) => x.classList.toggle('on', x === b)); });
       prev();
       nextB.onclick = doImport;
     };
+    const cache = newCache();
     const doImport = async () => {
       const s2 = body.querySelector('[data-step2]');
       const map = $$('[data-col]', s2).map((x) => x.value);
       const source = s2.querySelector('[data-src]').value;
       App.lsSet('importSource', source);
       const tags = s2.querySelector('[data-tags]').value.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
-      const r = buildItems(st, map, { source, lesson: s2.querySelector('[data-lesson]').value.trim(), tags });
+      const r = applyCache(buildItems(st, map, { source, lesson: s2.querySelector('[data-lesson]').value.trim(), tags }), cache);
+      unmark(r);
       const status = s2.querySelector('[data-st] .on').dataset.v;
       nextB.disabled = true; nextB.textContent = 'Importiere …';
       const now = Date.now();
       r.items.forEach((it, i) => { it.created = now + i; it.updated = now + i; S.items.set(it.id, it); });
       await App.db.putMany('items', r.items);
+      // Beispielsatz aus der Liste bei schon vorhandenen Wörtern: vorne, damit er in den Abfragen erscheint
+      const changed = r.addEx.map((a) => { const it = S.items.get(a.id); it.examples = [a.ex].concat(it.examples || []); it.updated = now; return it; });
+      if (changed.length) await App.db.putMany('items', changed);
       if (status !== 'unchecked') for (const it of r.items) await App.setCheck(it.id, status);
       md.close();
       App.emit('items');
-      App.toast(`${r.items.length} Vokabeln importiert`, status === 'unchecked' ? { label: 'Jetzt einstufen', fn: () => App.go('#/ueben/einstufen?src=' + encodeURIComponent(source)) } : null);
+      const exMsg = changed.length ? `${changed.length} ${changed.length === 1 ? 'Beispielsatz' : 'Beispielsätze'} bei vorhandenen Wörtern ergänzt` : '';
+      App.toast(r.items.length ? `${r.items.length} Vokabeln importiert${exMsg ? ' · ' + exMsg : ''}` : exMsg, status === 'unchecked' && r.items.length ? { label: 'Jetzt einstufen', fn: () => App.go('#/ueben/einstufen?src=' + encodeURIComponent(source)) } : null);
     };
     nextB.onclick = step2;
   };

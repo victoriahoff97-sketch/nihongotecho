@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-25-pdf-liste', date: '25. Oktober',
+      items: [
+        { t: 'Vokabellisten aus dem Unterricht (PDF)', d: 'Der Vokabel-Import liest Listen mit Furigana und Beispielsätzen jetzt richtig. Fehlt das Deutsch, ergänzt die App es; bekannte Wörter bekommen den Satz dazu.' },
+      ],
+    },
+    {
       id: '2026-10-25-zaehler-2', date: '25. Oktober',
       items: [
         { t: 'Zähler üben und abhaken', d: 'In jedem aufgeklappten Zähler (Ausdrücke › Zähler) übt „Üben“ alle Zahlen der Tabelle. Mit „Kann ich“ kommt der Zähler zum Auffrischen alle 14 Tage.' },
