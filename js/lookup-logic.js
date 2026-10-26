@@ -51,7 +51,9 @@
   const key = (r) => r.jp + '|' + r.kana;
   const dedupe = (own, dict) => { const seen = new Set(own.map(key)); return dict.filter((r) => !seen.has(key(r))); };
 
-  const uniq = (list) => { const seen = new Set(); return list.filter((r) => !seen.has(key(r)) && seen.add(key(r))); };
+  // kind 'kanji': das eigene Kanji 雨 bleibt neben der Vokabel 雨 (gleiche Schreibung und Lesung) stehen
+  const uniqKey = (r) => (r.kind === 'kanji' ? 'k|' : '') + key(r);
+  const uniq = (list) => { const seen = new Set(); return list.filter((r) => !seen.has(uniqKey(r)) && seen.add(uniqKey(r))); };
 
   // Eigener Eintrag passt nur über Bedeutung, Lesung oder Schreibung (App.search findet auch Beispielsätze und Notizen)
   const hira = (s) => String(s || '').replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));

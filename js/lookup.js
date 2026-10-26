@@ -32,7 +32,7 @@
   // id = eigener Eintrag (zum Verknüpfen); Wörterbuch-Treffer tragen stattdessen entry
   // form (optional) = { surface, note }: die gebeugte Form im Text und ihr Name (いけます · Potenzialform + ます-Form)
   const ownResult = (it) => {
-    if (it.type === 'kanji') return { id: it.id, jp: it.char, kana: App.kanjiLogic.kunText((it.kun || [])[0]) || (it.on || [])[0] || '', meaning: App.meaning(it).text };
+    if (it.type === 'kanji') return { id: it.id, kind: 'kanji', jp: it.char, kana: App.kanjiLogic.kunText((it.kun || [])[0]) || (it.on || [])[0] || '', meaning: App.meaning(it).text };
     if (it.type === 'phrase') return { id: it.id, jp: JP.plain(it.jp), kana: JP.kana(it.jp), meaning: App.meaning(it).text };
     return { id: it.id, jp: it.kanji || it.kana || '', kana: it.kana || '', meaning: App.meaning(it).text };
   };
@@ -99,7 +99,7 @@
   const formHtml = (r) => (r.form ? `<span class="lk-form">im Text: <span lang="ja">${esc(r.form.surface)}</span> · ${esc(r.form.note)}</span>` : '');
   const rowHtml = (r, i, grp) => r.grammar
     ? `<button class="lk-row lk-gram ${App.SECTIONS.grammar.cls}" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-de">${esc(r.title)}</span></span></button>`
-    : `<button class="lk-row" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</span><span class="lk-de">${r.lang === 'en' ? '<span class="badge">EN</span> ' : ''}${esc(r.meaning)}</span>${formHtml(r)}</span></button>`;
+    : `<button class="lk-row" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-kana">${r.kind === 'kanji' ? `<span class="badge sec ${App.SECTIONS.kanji.cls}">Kanji</span> ` : ''}${esc(r.kana !== r.jp ? r.kana : '')}</span><span class="lk-de">${r.lang === 'en' ? '<span class="badge">EN</span> ' : ''}${esc(r.meaning)}</span>${formHtml(r)}</span></button>`;
 
   // Ein Fenster pro Schreibfläche; erneutes Öffnen holt das vorhandene nach vorn
   // onLink(r) (optional): Treffer mit dem zuletzt eingekreisten Wort verknüpfen – zeigt in der Detailansicht „Verknüpfen“;
@@ -174,7 +174,7 @@
       const chars = Array.from(r.jp.replace(/\s/g, '')).slice(0, MAX_CHARS);
       body.innerHTML = `<button class="btn btn-sm btn-ghost" data-lkback>${icon('back')} Treffer</button>
         <div class="lk-big">${esc(r.jp)}</div><div class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</div><div class="lk-de">${esc(r.meaning)}</div>${formHtml(r)}
-        ${onLink ? `<button class="btn btn-sm btn-primary lk-link" data-lklink>${icon('link')} ${r.id ? 'Mit dem Wort verknüpfen' : 'Als Vokabel speichern & verknüpfen'}</button>` : ''}
+        ${onLink ? `<button class="btn btn-sm btn-primary lk-link" data-lklink>${icon('link')} ${r.kind === 'kanji' ? 'Mit dem Kanji verknüpfen' : r.id ? 'Mit dem Wort verknüpfen' : 'Als Vokabel speichern & verknüpfen'}</button>` : ''}
         ${onLink && newKanji(r.jp) ? `<button class="btn btn-sm lk-link ${App.SECTIONS.kanji.cls}" data-lknew="kanji" data-q="${esc(newKanji(r.jp))}">${icon('plus')} Als Kanji anlegen & verknüpfen</button>` : ''}
         <div class="lk-strokes">${chars.map(() => '<div class="lk-stroke"></div>').join('')}</div>`;
       body.scrollTop = 0;
