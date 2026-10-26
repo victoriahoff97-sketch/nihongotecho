@@ -252,7 +252,7 @@
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
       <div class="grp"><button class="icon-btn" data-v="undo" title="Rückgängig">${icon('undo')}</button><button class="icon-btn" data-v="redo" title="Wiederholen">${icon('redo')}</button></div>
       <div class="grp">
-        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen, dann verschieben oder an den Ecken skalieren; Bilder ebenso'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
+        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen (auch auf Zetteln), dann verschieben oder an den Ecken skalieren; Bilder und Sticker antippen'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
         ].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}"${t === 'hand' && st.penOnly ? ' hidden' : ''}>${icon(ic)}<span class="tool-swatch"></span><span class="tool-lbl">${lbl}</span></button>`).join('')}
       </div>
       <div class="grp pen-slots" data-pens></div>
@@ -730,6 +730,8 @@
         const im = h ? cur : II.hit(p.images, pt);
         // freie Stelle: Schrift einkreisen
         if (!im) { clearSel(); drawing = { p, lasso: [pt], pick: true }; return; }
+        // Schrift auf einem Sticker/Zettel: einkreisen wie auf freiem Papier – Antippen wählt den Sticker, ein gewählter lässt sich gleich ziehen
+        if (!h && im !== cur && II.inkOn(im, p.strokes)) { clearSel(); drawing = { p, lasso: [pt], pick: true, tapImg: im }; return; }
         select(p, im.id);
         drawing = { p, img: im, handle: h, start: pt, before: { x: im.x, y: im.y, w: im.w, h: im.h, r: im.r || 0 } };
         return;
@@ -847,9 +849,10 @@
       if (drawing.lasso) {
         const poly = drawing.lasso;
         p.live.getContext('2d').clearRect(0, 0, p.live.width, p.live.height);
-        const pick = drawing.pick;
+        const { pick, tapImg } = drawing;
         drawing = null;
-        if (pick) pickStrokes(p, poly); else recognize(p, poly);
+        if (tapImg && SEL.isTap(poly, 0.01 / st.zoom)) select(p, tapImg.id);
+        else if (pick) pickStrokes(p, poly); else recognize(p, poly);
         return;
       }
       if (drawing.mv) { dropMove(); return; }

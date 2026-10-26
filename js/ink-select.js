@@ -26,6 +26,8 @@
     if (minX === Infinity) return null;
     return { x: r4(minX - pad), y: r4(minY - pad), w: r4(maxX - minX + 2 * pad), h: r4(maxY - minY + 2 * pad) };
   };
+  // Lasso, das kaum vom Startpunkt wegkommt = Antippen
+  const isTap = (poly, tol) => !!poly && poly.length > 0 && poly.every((q) => Math.abs(q[0] - poly[0][0]) <= tol && Math.abs(q[1] - poly[0][1]) <= tol);
   const inBox = (b, pt, pad = 0) => pt[0] >= b.x - pad && pt[0] <= b.x + b.w + pad && pt[1] >= b.y - pad && pt[1] <= b.y + b.h + pad;
 
   // Versatz so begrenzen, dass der Rahmen im Bereich { x0, x1, y0, y1 } bleibt (eine Seite oder die Doppelseite)
@@ -79,6 +81,6 @@
     links.forEach((l, i) => Object.assign(l, sn.l[i]));
   };
 
-  const P = { PAD, pick, pickLinks, bounds, inBox, clampDelta, overOther, shift, shiftBoxes, handleAt, scaleAt, scale, scaleBoxes, snap, restore };
+  const P = { PAD, pick, pickLinks, bounds, isTap, inBox, clampDelta, overOther, shift, shiftBoxes, handleAt, scaleAt, scale, scaleBoxes, snap, restore };
   if (node) module.exports = P; else root.App.inkSelect = P;
 })(this);

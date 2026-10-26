@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-26-auswahl', date: '26. Oktober',
+      items: [
+        { t: 'Schrift auf Zetteln auswählen', d: 'Mit „Auswahl“ kreist du Schrift jetzt auch dann ein, wenn sie auf einem Zettel oder Sticker steht. Den Sticker selbst tippst du kurz an und ziehst ihn dann.' },
+      ],
+    },
+    {
       id: '2026-10-26-unterricht-notizbuch', date: '26. Oktober',
       items: [
         { t: 'Notizbücher in deinen Farben', d: 'Buch und Reiter passen jetzt farblich zusammen und lassen sich einzeln umfärben. Wer lieber normale Seiten statt Buch mag, stellt das pro Notizbuch um.' },

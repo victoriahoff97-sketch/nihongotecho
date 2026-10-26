@@ -35,6 +35,8 @@
     for (let i = images.length - 1; i >= 0; i--) if (inside(images[i], pt)) return images[i];
     return null;
   };
+  // Liegt Schrift auf dem Bild? (ein Punkt eines Strichs im – auch gedrehten – Bild genügt)
+  const inkOn = (im, strokes) => (strokes || []).some((s) => (s.pts || []).some((q) => inside(im, q)));
 
   const CORNERS = { nw: [0, 0], ne: [1, 0], sw: [0, 1], se: [1, 1] };
   // rotOff > 0: zusätzlich der Dreh-Griff ('rot') mittig über dem Bild
@@ -95,6 +97,6 @@
   const hasInk = (row) => !!((row.strokes && row.strokes.length) || (row.images && row.images.length));
   const newId = () => 'im_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-  const P = { MAX_PX, MIN_W, fitSize, place, hit, handleAt, resize, resizeFree, resizeTurned, angle, turn, move, hasInk, newId };
+  const P = { MAX_PX, MIN_W, fitSize, place, hit, inkOn, handleAt, resize, resizeFree, resizeTurned, angle, turn, move, hasInk, newId };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.inkImages = P;
 })(this);
