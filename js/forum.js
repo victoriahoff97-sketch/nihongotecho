@@ -174,6 +174,7 @@
       <div class="forum-row">
         ${kinds ? `<div class="forum-kinds">${Object.keys(KIND).map((k) => `<button type="button" class="chip" data-kind="${k}">${KIND[k]}</button>`).join('')}</div>` : ''}
         <label class="btn btn-sm forum-pick">${icon('imagePlus')}<span>Bild</span><input type="file" accept="image/*" hidden></label>
+        ${navigator.clipboard && navigator.clipboard.read ? `<button type="button" class="btn btn-sm" data-clip title="Screenshot oder Bild aus der Zwischenablage einfügen (am PC auch Strg+V)">${icon('copy')}<span>Einfügen</span></button>` : ''}
         <button type="button" class="btn btn-sm" data-link>${icon('link')}<span>Eintrag</span></button>
         <span class="grow"></span>
         ${onCancel ? '<button type="button" class="btn btn-sm" data-cancel>Abbrechen</button>' : ''}
@@ -233,12 +234,32 @@
       if (un) { refs.splice(Number(un.dataset.unref), 1); drawRefs(); }
       if (e.target.closest('[data-here]')) { const it = pageItem(); if (it) { refs.push(toRef(it)); setErr(''); drawRefs(); } }
     });
+    const takeImage = async (file) => {
+      setErr('');
+      setClosed(false);
+      try { setImage(await shrinkImage(file)); } catch (x) { setErr('Dieses Bild ist zu groß. Probier einen Ausschnitt.'); }
+    };
     el.querySelector('input[type=file]').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       e.target.value = '';
-      if (!file) return;
-      setErr('');
-      try { setImage(await shrinkImage(file)); } catch (x) { setErr('Dieses Bild ist zu groß. Probier einen Ausschnitt.'); }
+      if (file) takeImage(file);
+    });
+    // Screenshot aus der Zwischenablage: Strg+V im Textfeld oder der Knopf „Einfügen“ (fragt beim ersten Mal nach Erlaubnis)
+    ta.addEventListener('paste', (e) => {
+      const it = Array.from((e.clipboardData && e.clipboardData.items) || []).find((x) => x.type.startsWith('image/'));
+      if (!it) return;
+      e.preventDefault();
+      takeImage(it.getAsFile());
+    });
+    const clip = el.querySelector('[data-clip]');
+    if (clip) clip.addEventListener('click', async () => {
+      try {
+        for (const it of await navigator.clipboard.read()) {
+          const t = it.types.find((x) => x.startsWith('image/'));
+          if (t) { takeImage(await it.getType(t)); return; }
+        }
+        setErr('In der Zwischenablage ist gerade kein Bild.');
+      } catch (x) { setErr('Die Zwischenablage ließ sich nicht lesen – erlaub den Zugriff oder nimm „Bild“.'); }
     });
     el.querySelector('[data-send]').addEventListener('click', async () => {
       if (busy) return;

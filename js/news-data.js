@@ -21,6 +21,7 @@
       items: [
         { t: 'Suchen in der Gruppe', d: 'Über der Themenliste der Gedankenwolke gibt es ein Suchfeld – es findet Text, Namen und angehängte Wörter, auch in besprochenen Themen.' },
         { t: 'Kanji rechts daneben', d: 'Angehängte Kanji stehen groß rechts neben dem Beitrag, mit Bedeutung und Lesungen. Fehlt dir eins, holst du es mit „Als Kanji übernehmen“ zu dir.' },
+        { t: 'Screenshots einfügen', d: 'Beim Schreiben in der Gruppe holst du ein Bild aus der Zwischenablage mit „Einfügen“ – am PC geht auch Strg+V.' },
         { t: 'Dein Avatar', d: 'Über „⋯ › Mein Avatar“ wählst du ein niedliches Motiv mit Farbe oder ein Kanji als Namensstempel – er steht neben deinem Namen.' },
       ],
     },
