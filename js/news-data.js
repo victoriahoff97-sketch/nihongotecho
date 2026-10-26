@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-26-auswahl-2', date: '26. Oktober',
+      items: [
+        { t: 'Zettel samt Schrift verschieben', d: 'Kreise mit „Auswahl“ einen Zettel oder Sticker ganz ein: Schrift und Sticker werden zusammen verschoben, vergrößert oder gelöscht.' },
+      ],
+    },
+    {
       id: '2026-10-26-auswahl', date: '26. Oktober',
       items: [
         { t: 'Schrift auf Zetteln auswählen', d: 'Mit „Auswahl“ kreist du Schrift jetzt auch dann ein, wenn sie auf einem Zettel oder Sticker steht. Den Sticker selbst tippst du kurz an und ziehst ihn dann.' },

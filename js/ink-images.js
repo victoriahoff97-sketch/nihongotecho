@@ -37,6 +37,14 @@
   };
   // Liegt Schrift auf dem Bild? (ein Punkt eines Strichs im – auch gedrehten – Bild genügt)
   const inkOn = (im, strokes) => (strokes || []).some((s) => (s.pts || []).some((q) => inside(im, q)));
+  // Punkte des Bildes auf dem Blatt (gedreht): die vier Ecken bzw. ein Raster n × n aus Feldmitten
+  const onPage = (im, q) => (im.r ? turn(q, mid(im), im.r) : q);
+  const corners = (im) => [[im.x, im.y], [im.x + im.w, im.y], [im.x + im.w, im.y + im.h], [im.x, im.y + im.h]].map((q) => onPage(im, q));
+  const samples = (im, n = 5) => {
+    const out = [];
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) out.push(onPage(im, [im.x + (im.w * (i + 0.5)) / n, im.y + (im.h * (j + 0.5)) / n]));
+    return out;
+  };
 
   const CORNERS = { nw: [0, 0], ne: [1, 0], sw: [0, 1], se: [1, 1] };
   // rotOff > 0: zusätzlich der Dreh-Griff ('rot') mittig über dem Bild
@@ -97,6 +105,6 @@
   const hasInk = (row) => !!((row.strokes && row.strokes.length) || (row.images && row.images.length));
   const newId = () => 'im_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-  const P = { MAX_PX, MIN_W, fitSize, place, hit, inkOn, handleAt, resize, resizeFree, resizeTurned, angle, turn, move, hasInk, newId };
+  const P = { MAX_PX, MIN_W, fitSize, place, hit, inkOn, corners, samples, handleAt, resize, resizeFree, resizeTurned, angle, turn, move, hasInk, newId };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.inkImages = P;
 })(this);

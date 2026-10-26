@@ -164,7 +164,8 @@
     ctx.drawImage(el, (-im.w / 2) * W, (-im.h / 2) * W, im.w * W, im.h * W);
     ctx.restore();
   };
-  const drawImages = (ctx, p, W) => p.images.forEach((im) => { const el = imgEl(im); if (el) drawImg(ctx, el, im, W); });
+  // skip: Bilder, die gerade verschoben/skaliert werden (stehen auf der Live-Ebene)
+  const drawImages = (ctx, p, W, skip) => p.images.forEach((im) => { if (skip && skip.includes(im)) return; const el = imgEl(im); if (el) drawImg(ctx, el, im, W); });
 
   // ---------- Vorschau: eine Seite verkleinert, schreibgeschützt ----------
   // opts: { page = 0, maxH = 220, crop = true, bg, always } – zeichnet Papier + Bilder + Striche in Canvas-Breite (canvas.clientWidth).
@@ -252,7 +253,7 @@
       ${embedded ? '' : `<button class="icon-btn" data-v="close" title="Schließen">${icon('back')}</button>`}
       <div class="grp"><button class="icon-btn" data-v="undo" title="Rückgängig">${icon('undo')}</button><button class="icon-btn" data-v="redo" title="Wiederholen">${icon('redo')}</button></div>
       <div class="grp">
-        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift einkreisen (auch auf Zetteln), dann verschieben oder an den Ecken skalieren; Bilder und Sticker antippen'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
+        ${[['hand', 'hand', 'Blättern', 'Blättern/Scrollen'], ['select', 'pointer', 'Auswahl', 'Auswahl: Schrift und Sticker einkreisen, dann zusammen verschieben oder an den Ecken skalieren; einzelne Sticker antippen'], ['lasso', 'lasso', 'Erkennen', 'Erkennen: Wort einkreisen, nachschlagen und verknüpfen'],
         ].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}"${t === 'hand' && st.penOnly ? ' hidden' : ''}>${icon(ic)}<span class="tool-swatch"></span><span class="tool-lbl">${lbl}</span></button>`).join('')}
       </div>
       <div class="grp pen-slots" data-pens></div>
@@ -626,8 +627,8 @@
       const c = p.ink.getContext('2d');
       c.clearRect(0, 0, p.ink.width, p.ink.height);
       p.images.forEach((im) => imgEl(im, () => { if (p.visible) drawInk(p); }));
-      drawImages(c, p, p.ink.width);
-      // Striche, die gerade verschoben werden, zeichnet drawMove auf die Live-Ebene
+      drawImages(c, p, p.ink.width, st.moving);
+      // Striche und Sticker, die gerade verschoben werden, zeichnet drawMove auf die Live-Ebene
       p.strokes.forEach((s) => { if (!st.moving || !st.moving.includes(s)) drawStroke(c, s, p.ink.width); });
     };
     const io = new IntersectionObserver((ents) => ents.forEach((en) => {
@@ -898,7 +899,7 @@
     const select = (p, id) => { clearSSel(); st.sel = { p, id }; updateSel(); };
     const clearSel = () => { st.sel = null; updateSel(); clearSSel(); };
     // ---------- Schrift: mit dem Auswahl-Werkzeug einkreisen, im Rahmen ziehen = verschieben ----------
-    // st.ssel = { p, strokes, links, box }; im Buch darf die Auswahl auf die Nachbarseite der Doppelseite
+    // st.ssel = { p, strokes, imgs, links, box }; imgs = ganz eingekreiste Sticker/Bilder, sie gehen mit. Im Buch darf die Auswahl auf die Nachbarseite der Doppelseite
     const showSSel = (pg, b) => {
       let el = root.querySelector('.ink-ssel');
       if (!el || el.parentNode !== pg.el) {
@@ -912,10 +913,14 @@
       Object.assign(el.style, { left: b.x * 100 + '%', top: (b.y / r) * 100 + '%', width: b.w * 100 + '%', height: (b.h / r) * 100 + '%' });
     };
     const clearSSel = () => { st.ssel = null; const el = root.querySelector('.ink-ssel'); if (el) el.remove(); };
+    const selBox = (s, pad) => SEL.bounds(s.strokes, pad, s.imgs);
     const pickStrokes = (p, poly) => {
-      const strokes = SEL.pick(p.strokes, poly);
-      if (!strokes.length) return;
-      st.ssel = { p, strokes, links: SEL.pickLinks(p.links, poly), box: SEL.bounds(strokes) };
+      const strokes = SEL.pick(p.strokes, poly), imgs = SEL.pickImages(p.images, poly);
+      if (!strokes.length && !imgs.length) return;
+      // nur ein Sticker eingekreist: wie Antippen, mit Drehen und eigenen Ecken
+      if (!strokes.length && imgs.length === 1) { select(p, imgs[0].id); return; }
+      st.ssel = { p, strokes, imgs, links: SEL.pickLinks(p.links, poly) };
+      st.ssel.box = selBox(st.ssel);
       showSSel(p, st.ssel.box);
     };
     const clearLive = (pg) => pg.live.getContext('2d').clearRect(0, 0, pg.live.width, pg.live.height);
@@ -929,8 +934,13 @@
       }
       const area = { x0: Math.min(0, off ? off[0] : 0), x1: Math.max(1, off ? off[0] + 1 : 1), y0: 0, y1: p.def.ratio };
       drawing = { p, mv: st.ssel, x: e.clientX, y: e.clientY, W: r.width, other, off, area, d: [0, 0], host: p };
-      st.moving = st.ssel.strokes;
+      st.moving = st.ssel.strokes.concat(st.ssel.imgs);
       drawInk(p); drawMove();
+    };
+    // Sticker unter der Schrift, wie auf dem Blatt
+    const drawSel = (c, s, W) => {
+      s.imgs.forEach((im) => { const el = imgEl(im); if (el) drawImg(c, el, im, W); });
+      s.strokes.forEach((x) => drawStroke(c, x, W));
     };
     // Auswahl am Zeiger zeichnen – auf beiden Seiten der Doppelseite, damit sie über den Falz wandern kann
     const drawMove = () => {
@@ -940,7 +950,7 @@
         const [pg, dx, dy] = x, c = pg.live.getContext('2d'), W = pg.live.width;
         clearLive(pg);
         c.save(); c.translate(dx * W, dy * W);
-        mv.strokes.forEach((s) => drawStroke(c, s, W));
+        drawSel(c, mv, W);
         c.restore();
       });
       const over = !!other && SEL.overOther(mv.box, d[0], off[0]);
@@ -956,37 +966,39 @@
       if (host !== p) d = [d[0] - off[0], d[1] - off[1]];
       d = SEL.clampDelta(mv.box, d[0], d[1], { x0: 0, x1: 1, y0: 0, y1: host.def.ratio });
       if (host !== p || d[0] || d[1]) {
-        const a = { type: 'sel-move', pi: p.i, to: host.i, strokes: mv.strokes, links: mv.links, dx: d[0], dy: d[1] };
+        const a = { type: 'sel-move', pi: p.i, to: host.i, strokes: mv.strokes, imgs: mv.imgs, links: mv.links, dx: d[0], dy: d[1] };
         applySelMove(a, false);
         st.undo.push(a); st.redo = [];
-        st.ssel = { p: host, strokes: mv.strokes, links: mv.links, box: SEL.bounds(mv.strokes) };
+        st.ssel = { p: host, strokes: mv.strokes, imgs: mv.imgs, links: mv.links };
+        st.ssel.box = selBox(st.ssel);
       } else drawInk(p);
       showSSel(st.ssel.p, st.ssel.box);
     };
-    // Verschieben anwenden oder zurücknehmen; Verknüpfungen, die es noch gibt, wandern mit
+    // Verschieben anwenden oder zurücknehmen; Verknüpfungen und Sticker, die es noch gibt, wandern mit
     const applySelMove = (a, back) => {
       const from = st.pages[back ? a.to : a.pi], to = st.pages[back ? a.pi : a.to], k = back ? -1 : 1;
-      const links = a.links.filter((l) => from.links.includes(l));
-      SEL.shift(a.strokes, k * a.dx, k * a.dy); SEL.shiftBoxes(links, k * a.dx, k * a.dy);
+      const links = a.links.filter((l) => from.links.includes(l)), imgs = (a.imgs || []).filter((im) => from.images.includes(im));
+      SEL.shift(a.strokes, k * a.dx, k * a.dy); SEL.shiftBoxes(links, k * a.dx, k * a.dy); SEL.shiftBoxes(imgs, k * a.dx, k * a.dy);
       if (from !== to) {
         from.strokes = from.strokes.filter((s) => !a.strokes.includes(s)); to.strokes = to.strokes.concat(a.strokes);
         from.links = from.links.filter((l) => !links.includes(l)); to.links = to.links.concat(links);
+        from.images = from.images.filter((im) => !imgs.includes(im)); to.images = to.images.concat(imgs);
       }
       new Set([from, to]).forEach((pg) => { drawInk(pg); renderLinks(pg); markDirty(pg); });
     };
     // ---------- Schrift skalieren: an einer Ecke des Rahmens ziehen; bleibt auf der eigenen Seite ----------
     const startScale = (p, handle, pt) => {
       // gerechnet wird mit dem Rahmen ohne Rand, so bleibt die Gegenecke genau stehen; off = Abstand Zeiger–Ecke beim Greifen
-      const b = SEL.bounds(st.ssel.strokes, 0), off = [pt[0] - (b.x + (handle[1] === 'e' ? b.w : 0)), pt[1] - (b.y + (handle[0] === 's' ? b.h : 0))];
+      const b = selBox(st.ssel, 0), off = [pt[0] - (b.x + (handle[1] === 'e' ? b.w : 0)), pt[1] - (b.y + (handle[0] === 's' ? b.h : 0))];
       drawing = { p, sc: st.ssel, handle, off, inner: b, area: { x0: 0, x1: 1, y0: 0, y1: p.def.ratio }, r: { k: 1, fx: 0, fy: 0 } };
-      st.moving = st.ssel.strokes;
+      st.moving = st.ssel.strokes.concat(st.ssel.imgs);
       drawInk(p); drawScale();
     };
     const drawScale = () => {
       const { p, sc, inner, r } = drawing, c = p.live.getContext('2d'), W = p.live.width;
       clearLive(p);
       c.save(); c.translate(r.fx * W, r.fy * W); c.scale(r.k, r.k); c.translate(-r.fx * W, -r.fy * W);
-      sc.strokes.forEach((s) => drawStroke(c, s, W));
+      drawSel(c, sc, W);
       c.restore();
       // Rahmen wie nach dem Loslassen: skalierte Schrift plus fester Rand
       const g = [{ ...inner }]; SEL.scaleBoxes(g, r.k, r.fx, r.fy);
@@ -996,21 +1008,25 @@
       const { p, sc, r } = drawing;
       clearLive(p); drawing = null; st.moving = null;
       if (r.k !== 1) {
-        const links = sc.links.filter((l) => p.links.includes(l));
-        const a = { type: 'sel-scale', pi: p.i, strokes: sc.strokes, links, before: SEL.snap(sc.strokes, links) };
-        SEL.scale(sc.strokes, r.k, r.fx, r.fy); SEL.scaleBoxes(links, r.k, r.fx, r.fy);
-        a.after = SEL.snap(sc.strokes, links);
+        // Verknüpfungen und Sticker sind beides Rahmen { x, y, w, h } – sie skalieren gleich
+        const links = sc.links.filter((l) => p.links.includes(l)), boxes = links.concat(sc.imgs.filter((im) => p.images.includes(im)));
+        const a = { type: 'sel-scale', pi: p.i, strokes: sc.strokes, links, boxes, before: SEL.snap(sc.strokes, boxes) };
+        SEL.scale(sc.strokes, r.k, r.fx, r.fy); SEL.scaleBoxes(boxes, r.k, r.fx, r.fy);
+        a.after = SEL.snap(sc.strokes, boxes);
         st.undo.push(a); st.redo = [];
-        st.ssel = { ...sc, box: SEL.bounds(sc.strokes) };
+        st.ssel = { ...sc, box: selBox(sc) };
         renderLinks(p); markDirty(p);
       }
       drawInk(p); showSSel(p, st.ssel.box);
     };
     const deleteSel = () => {
       if (st.ssel) {
-        const { p, strokes } = st.ssel;
+        const { p, strokes, imgs } = st.ssel;
+        // Sticker mit ihrem Platz in der Reihenfolge merken, damit Rückgängig sie wieder an dieselbe Stelle legt
+        const gone = imgs.map((im) => ({ im, idx: p.images.indexOf(im) })).filter((x) => x.idx >= 0);
         p.strokes = p.strokes.filter((s) => !strokes.includes(s));
-        st.undo.push({ type: 'erase', pi: p.i, removed: strokes }); st.redo = [];
+        p.images = p.images.filter((im) => !imgs.includes(im));
+        st.undo.push(gone.length ? { type: 'sel-del', pi: p.i, removed: strokes, imgs: gone } : { type: 'erase', pi: p.i, removed: strokes }); st.redo = [];
         clearSSel(); drawInk(p); markDirty(p);
         return;
       }
@@ -1263,7 +1279,12 @@
       else if (a.type === 'img-add') { if (back) p.images = p.images.filter((x) => x !== a.im); else p.images.push(a.im); }
       else if (a.type === 'img-del') { if (back) p.images.splice(Math.min(a.idx, p.images.length), 0, a.im); else p.images = p.images.filter((x) => x !== a.im); }
       else if (a.type === 'sel-move') applySelMove(a, back);
-      else if (a.type === 'sel-scale') { SEL.restore(a.strokes, a.links, back ? a.before : a.after); renderLinks(p); }
+      else if (a.type === 'sel-del') {
+        const ims = a.imgs.map((x) => x.im);
+        if (back) { p.strokes = p.strokes.concat(a.removed); a.imgs.forEach((x) => p.images.splice(Math.min(x.idx, p.images.length), 0, x.im)); }
+        else { p.strokes = p.strokes.filter((x) => !a.removed.includes(x)); p.images = p.images.filter((x) => !ims.includes(x)); }
+      }
+      else if (a.type === 'sel-scale') { SEL.restore(a.strokes, a.boxes || a.links, back ? a.before : a.after); renderLinks(p); }
       else if (a.type === 'img-edit') { const im = p.images.find((x) => x.id === a.id); if (im) Object.assign(im, back ? a.before : a.after); }
       to.push(a); drawInk(p); markDirty(p); updateSel();
     };

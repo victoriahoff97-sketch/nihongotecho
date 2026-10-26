@@ -3,6 +3,7 @@
 (function (root) {
   const node = typeof module !== 'undefined' && module.exports;
   const { pointInPoly } = node ? require('./hw-logic.js') : root.App.hwLogic;
+  const II = node ? require('./ink-images.js') : root.App.inkImages;
   const r4 = (v) => +v.toFixed(4);
 
   // Striche, deren Punkte mehrheitlich im Lasso liegen (anders als beim Erkennen zählt der Marker mit)
@@ -17,12 +18,22 @@
   };
   // Wort-Verknüpfungen, deren Mitte im Lasso liegt
   const pickLinks = (links, poly) => (links || []).filter((l) => pointInPoly([l.x + l.w / 2, l.y + l.h / 2], poly));
+  // Bilder/Sticker, die das Lasso fast ganz umschließt – wer nur die Schrift auf einem Zettel einkreist, nimmt den Zettel nicht mit
+  const pickImages = (images, poly, share = 0.7) => {
+    if (!poly || poly.length < 3) return [];
+    return (images || []).filter((im) => {
+      const pts = II.samples(im);
+      return pts.filter((q) => pointInPoly(q, poly)).length >= share * pts.length;
+    });
+  };
 
-  // Rahmen um die Auswahl (Anteile der Seitenbreite); null ohne Punkte
+  // Rahmen um die Auswahl aus Strichen und Bildern (Anteile der Seitenbreite); null ohne Punkte
   const PAD = 0.008;
-  const bounds = (strokes, pad = PAD) => {
+  const bounds = (strokes, pad = PAD, imgs = []) => {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    strokes.forEach((s) => (s.pts || []).forEach((q) => { minX = Math.min(minX, q[0]); minY = Math.min(minY, q[1]); maxX = Math.max(maxX, q[0]); maxY = Math.max(maxY, q[1]); }));
+    const add = (q) => { minX = Math.min(minX, q[0]); minY = Math.min(minY, q[1]); maxX = Math.max(maxX, q[0]); maxY = Math.max(maxY, q[1]); };
+    strokes.forEach((s) => (s.pts || []).forEach(add));
+    imgs.forEach((im) => II.corners(im).forEach(add));
     if (minX === Infinity) return null;
     return { x: r4(minX - pad), y: r4(minY - pad), w: r4(maxX - minX + 2 * pad), h: r4(maxY - minY + 2 * pad) };
   };
@@ -81,6 +92,6 @@
     links.forEach((l, i) => Object.assign(l, sn.l[i]));
   };
 
-  const P = { PAD, pick, pickLinks, bounds, isTap, inBox, clampDelta, overOther, shift, shiftBoxes, handleAt, scaleAt, scale, scaleBoxes, snap, restore };
+  const P = { PAD, pick, pickLinks, pickImages, bounds, isTap, inBox, clampDelta, overOther, shift, shiftBoxes, handleAt, scaleAt, scale, scaleBoxes, snap, restore };
   if (node) module.exports = P; else root.App.inkSelect = P;
 })(this);
