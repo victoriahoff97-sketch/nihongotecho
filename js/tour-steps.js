@@ -169,9 +169,9 @@
     ],
     // Gruppenfenster hinter der Gedankenwolke: „⋯ › Hilfe“
     gruppe: [
-      { target: '.forum-modal [data-new] textarea', title: 'Gedanken festhalten', text: 'Hier hältst du schnell fest, was du mit der Gruppe besprechen oder zeigen willst. Ein Bild kannst du auch anhängen.' },
-      { target: '.forum-modal .forum-kinds', title: 'Reden oder zeigen', text: '💬 heißt: darüber möchte ich reden. 💡 heißt: wollte ich euch nur zeigen.' },
-      { target: '.forum-modal [data-list]', title: 'Eure Themen', text: 'Offene Themen stehen oben. Was ihr besprochen habt, landet unten unter „Besprochen“. Neues von den anderen ist rot markiert.' },
+      { target: '.forum-modal [data-new] textarea', title: 'Gedanken festhalten', text: 'Hier hältst du fest, was du besprechen oder zeigen willst. Tippst du hinein, wählst du 💬 (darüber reden) oder 💡 (nur zeigen) und kannst ein Bild anhängen.' },
+      { target: '.forum-modal [data-tabs]', title: 'Welche Themen?', text: 'Hier wählst du: alle offenen Themen, nur Redebedarf, nur Gezeigtes oder das, was ihr schon besprochen habt.' },
+      { target: '.forum-modal [data-list]', title: 'Eure Themen', text: 'Jeder Beitrag ist ein Kästchen, links steht der Tag. Neues von den anderen hat einen roten Rand. Tipp ein Kästchen an, um zu antworten.' },
       { target: '.forum-modal .forum-more', title: 'Mehr', text: 'Hier findest du den Gruppencode für neue Mitglieder und kannst deinen Namen ändern.' },
     ],
     // Browser-Erweiterung: läuft immer auf der Karte in den Einstellungen

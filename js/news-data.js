@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-26-forum-kaestchen', date: '26. Oktober',
+      items: [
+        { t: 'Gruppe übersichtlicher', d: 'Die Gedankenwolke ist größer: Jeder Beitrag steht in einem eigenen Kästchen wie im Tagebuch, oben wählst du, welche Themen du sehen willst.' },
+        { t: 'Eintrag gleich mitschicken', d: 'Öffnest du die Wolke auf einer Grammatik, Vokabel, einem Ausdruck oder Kanji, hängst du ihn mit einem Tipp an. Vokabeln sehen alle mit Deutsch und Beispielsatz.' },
+      ],
+    },
+    {
       id: '2026-10-25-gruppe', date: '25. Oktober',
       items: [
         { t: 'Gedankenwolke für eure Gruppe', d: 'Die Wolke oben rechts sammelt, worüber ihr reden wollt und was ihr euch zeigen möchtet. Nur dieser Bereich wird geteilt. Den Code gibt dir, wer die Gruppe gründet.' },

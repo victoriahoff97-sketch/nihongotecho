@@ -102,8 +102,13 @@
     return `<div class="forum-refs">${list.map((r, i) => {
       const sec = App.SECTIONS[r.type];
       const take = resolve(r).kind === 'take';
-      return `<span class="forum-ref ${sec.cls}"><button type="button" class="forum-ref-open" data-ref="${esc(owner)}:${i}" title="${take ? 'Hast du noch nicht – danach suchen' : 'Öffnen'}">
-          <span class="badge sec">${sec.label}</span><b lang="ja">${esc(r.label)}</b>${r.sub ? `<span class="muted">${esc(r.sub)}</span>` : ''}</button>
+      // Vokabeln bringen ihre Kopie mit (Wort, Lesung, Deutsch, oberster Beispielsatz) – so sehen alle sie, auch ohne Paket
+      const v = r.vocab;
+      const reading = v && v.kana && v.kana !== r.label ? `<span class="forum-ref-kana" lang="ja">${esc(v.kana)}</span>` : '';
+      const ex = v && v.examples && v.examples[0] && v.examples[0].jp ? v.examples[0] : null;
+      const exHtml = ex ? `<span class="forum-ref-ex"><span lang="ja">${App.jp.ruby(ex.jp)}</span>${ex.de ? `<span class="muted">${esc(ex.de)}</span>` : ''}</span>` : '';
+      return `<span class="forum-ref ${sec.cls}"><button type="button" class="forum-ref-open ${exHtml ? 'has-ex' : ''}" data-ref="${esc(owner)}:${i}" title="${take ? 'Hast du noch nicht – danach suchen' : 'Öffnen'}">
+          <span class="badge sec">${sec.label}</span><b lang="ja">${esc(r.label)}</b>${reading}${r.sub ? `<span class="muted">${esc(r.sub)}</span>` : ''}${exHtml}</button>
           ${take ? `<button type="button" class="btn btn-sm" data-take="${esc(owner)}:${i}">${icon('plus')} Als Vokabel übernehmen</button>` : ''}</span>`;
     }).join('')}</div>`;
   };
@@ -125,7 +130,8 @@
 
   // ---------- Eingabefeld (neuer Gedanke, Antwort, Bearbeiten) ----------
   // key = Entwurf auf diesem Gerät ('new' bzw. 'r:<postId>'); beim Bearbeiten kein Entwurf
-  const composer = ({ key, kinds, label, placeholder, init = {}, onSubmit, onCancel }) => {
+  // closed: erst nur eine Zeile, klappt beim Hineintippen auf (und nach dem Teilen wieder zu)
+  const composer = ({ key, kinds, closed, label, placeholder, init = {}, onSubmit, onCancel }) => {
     const el = document.createElement('div');
     el.className = 'forum-compose';
     el.innerHTML = `<textarea class="input" maxlength="${F.MAX_TEXT}" placeholder="${esc(placeholder)}"></textarea>
@@ -147,6 +153,9 @@
     let image = init.image || null;
     let busy = false;
     ta.value = key ? draft(key) : (init.text || '');
+    const setClosed = (on) => el.classList.toggle('is-closed', !!closed && on);
+    setClosed(!ta.value);
+    ['focus', 'pointerdown', 'input'].forEach((ev) => ta.addEventListener(ev, () => setClosed(false)));
     const setErr = (msg) => { err.textContent = msg; err.hidden = !msg; };
     const setKind = (k) => { kind = k; $$('[data-kind]', el).forEach((b) => b.classList.toggle('on', b.dataset.kind === k)); };
     const setImage = (src) => {
@@ -206,7 +215,7 @@
       busy = true;
       try {
         await onSubmit({ kind, text, image, refs });
-        if (key) { saveDraft(key, ''); ta.value = ''; setImage(null); refs = []; drawRefs(); }
+        if (key) { saveDraft(key, ''); ta.value = ''; setImage(null); refs = []; drawRefs(); ta.blur(); setClosed(true); }
       } catch (x) {
         setErr(OFFLINE);
       } finally { busy = false; }
@@ -358,31 +367,55 @@
   };
 
   // ---------- Liste ----------
-  const row = (p) => `<button class="forum-item ${F.isNew(p, st.seen, D.uid()) ? 'is-new' : ''}" data-open="${esc(p.id)}">
-      <span class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}${p.hasImage ? ' · 📷' : ''}${p.refs && p.refs.length ? ' · 🔗' : ''}
-        <span class="grow"></span>${p.replyCount ? `<span class="badge">${p.replyCount} ${p.replyCount === 1 ? 'Antwort' : 'Antworten'}</span>` : ''}</span>
-      <span class="forum-item-text">${esc(p.text)}</span></button>`;
+  // Kästchen wie im Tagebuch: links groß der Tag, rechts Kopf, bis zu drei Zeilen Text, unten Verknüpfungen und Antworten
+  const WEEKDAY = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+  const dateCol = (ms) => { const d = new Date(ms || Date.now()); return `<span class="forum-date"><span class="forum-day">${d.getDate()}</span><span class="forum-wd">${WEEKDAY[d.getDay()]}</span></span>`; };
+  const refChips = (refs) => F.cleanRefs(refs).map((r) => `<span class="badge sec ${App.SECTIONS[r.type].cls}" lang="ja">${esc(r.label)}</span>`).join('');
+  const row = (p) => {
+    const fresh = F.isNew(p, st.seen, D.uid());
+    const replies = p.replyCount ? `<span class="badge">${icon('chat')} ${p.replyCount} ${p.replyCount === 1 ? 'Antwort' : 'Antworten'}</span>` : '';
+    const foot = refChips(p.refs) + replies;
+    return `<button class="forum-item ${fresh ? 'is-new' : ''}" data-open="${esc(p.id)}">${dateCol(p.createdAt)}
+      <span class="forum-item-body">
+        <span class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}${p.hasImage ? ` ${icon('image')}` : ''}
+          <span class="grow"></span>${fresh ? '<span class="badge forum-new">neu</span>' : ''}${p.done ? '<span class="badge">besprochen</span>' : ''}</span>
+        <span class="forum-item-text">${esc(p.text)}</span>
+        ${foot ? `<span class="forum-item-foot">${foot}</span>` : ''}
+      </span></button>`;
+  };
+  // Auswahl über der Liste – bleibt gewählt, solange das Fenster offen ist
+  const TABS = [['offen', 'Alle offenen'], ['rede', '💬 Redebedarf'], ['zeigen', '💡 Zum Zeigen'], ['done', 'Besprochen']];
+  const EMPTY = { offen: 'Gerade ist nichts offen.', rede: 'Gerade kein offener Redebedarf.', zeigen: 'Noch nichts zum Zeigen.', done: 'Noch nichts besprochen.' };
   const showList = () => {
     if (ui.cleanup) ui.cleanup();
     ui.view = 'list';
     ui.cleanup = null;
+    ui.tab = ui.tab || 'offen';
     const r = ui.root;
-    r.innerHTML = '<h3 class="forum-h">Neuer Gedanke</h3><div data-new></div><div data-list class="forum-list"></div>';
+    r.innerHTML = '<div data-new></div><div class="forum-bar" data-tabs><b>Eure Themen</b><span class="grow"></span><select class="input" aria-label="Welche Themen"></select></div><div data-list class="forum-list"></div>';
     r.querySelector('[data-new]').appendChild(composer({
-      key: 'new', kinds: true, label: 'Teilen', placeholder: 'Was ist dir aufgefallen?',
+      // von einem Eintrag aus geöffnet: gleich aufgeklappt, damit „Diesen Eintrag anhängen“ zu sehen ist
+      key: 'new', kinds: true, closed: !pageItem(), label: 'Teilen', placeholder: 'Neuer Gedanke … was ist dir aufgefallen?',
       onSubmit: (v) => D.addPost(st.code, Object.assign({ name: st.name }, v)),
     }));
     App.hydrateIcons(r);
+    const tabs = r.querySelector('[data-tabs]');
+    const pick = tabs.querySelector('select');
     const list = r.querySelector('[data-list]');
     ui.onPosts = () => {
+      const live = status === 'live' && posts.length;
+      const s = live ? F.sections(posts, Date.now()) : null;
+      const by = s ? { offen: s.open.concat(s.show), rede: s.open, zeigen: s.show, done: s.done } : null;
+      tabs.hidden = !live;
+      pick.innerHTML = live ? TABS.map(([k, l]) => `<option value="${k}"${ui.tab === k ? ' selected' : ''}>${l} (${by[k].length})</option>`).join('') : '';
       if (status === 'offline') { list.innerHTML = offlineNote(); return; }
       if (status !== 'live') { list.innerHTML = '<p class="muted">Lade Beiträge …</p>'; return; }
       if (!posts.length) { list.innerHTML = '<p class="muted forum-empty">Noch keine Gedanken. Teil den ersten!</p>'; return; }
-      const s = F.sections(posts, Date.now());
-      const wasOpen = list.querySelector('details[open]');
-      list.innerHTML = s.open.map(row).join('') + s.show.map(row).join('')
-        + (s.done.length ? `<details class="forum-done"${wasOpen ? ' open' : ''}><summary>Besprochen (${s.done.length})</summary>${s.done.map(row).join('')}</details>` : '');
+      const shown = by[ui.tab];
+      list.innerHTML = shown.length ? shown.map(row).join('') : `<p class="muted forum-empty">${EMPTY[ui.tab]}</p>`;
+      App.hydrateIcons(list);
     };
+    pick.onchange = () => { ui.tab = pick.value; ui.onPosts(); };
     list.onclick = (e) => { const b = e.target.closest('[data-open]'); if (b) showPost(b.dataset.open); };
     ui.onPosts();
   };
@@ -394,7 +427,7 @@
     const r = ui.root;
     r.innerHTML = `<button class="btn btn-sm" data-back>${icon('back')} Zurück zur Liste</button>
       <div data-head class="forum-post"></div><div data-replies class="forum-replies"></div>
-      <h3 class="forum-h">Antworten</h3><div data-answer></div>`;
+      <h3 class="forum-h">Deine Antwort</h3><div data-answer class="forum-answer"></div>`;
     r.querySelector('[data-back]').onclick = () => showList();
     const head = r.querySelector('[data-head]');
     const repEl = r.querySelector('[data-replies]');
@@ -420,7 +453,7 @@
       const done = p.kind === 'rede'
         ? `<div class="forum-row">${p.done ? `<span class="badge">Besprochen · von ${esc(p.doneBy)}${p.doneAt ? ', ' + dayMonth(p.doneAt) : ''}</span>` : ''}
             <button class="btn btn-sm" data-done>${p.done ? 'Wieder öffnen' : `${icon('check')} Als besprochen markieren`}</button></div>` : '';
-      head.innerHTML = `<div class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}</div>
+      head.innerHTML = `<div class="forum-post-top">${dateCol(p.createdAt)}<div class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}</div></div>
         <div class="forum-text">${F.linkify(p.text)}</div>${p.hasImage ? (id in pics ? imgHtml(pics[id], 'forum-img') : '<p class="muted small">Bild wird geladen …</p>') : ''}${refsHtml(p.refs, 'post')}${done}${tools(p, 'post')}`;
     };
     const drawReplies = () => {
