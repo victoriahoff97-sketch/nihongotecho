@@ -11,8 +11,9 @@
   App.kursbuchLink = (course) => '#/unterricht/buch?c=' + encodeURIComponent(course === UL.NO_COURSE ? '' : course);
 
   // Blätterbuch in view aufbauen. cfg: { cls, crumbs, bookTitle, sections: [{ id, title, sub, sheets: [Notizblatt-Datei] }],
-  //   topics: [{ itemId, sessionId }] oder (pages) => [...], spread, href(spread), texts, tabHref?(sectionId, fileId),
-  //   openSection(sectionId, fileId), openTopic?(topic), extraButtons?, emptyHtml? }
+  //   topics: [{ itemId, sessionId }] oder (pages) => [...], spread, href(spread), texts, tabHref?(sectionId, fileId, page),
+  //   openSection(sectionId, fileId, page?) – page: Seite im Blatt (ab 0), die gerade aufgeschlagen ist, openTopic?(topic), extraButtons?, emptyHtml?,
+  //   look?: { stored() → { color, tabColors, layout }, save(obj), fallback: Familie ohne eigene Wahl } – Farben und Ansicht (layout 'pages' = normale Seiten)
   // Die Seiten-Objekte heißen weiter „sessionId“ – bei Heften ist das die Kapitel-ID.
   const mount = async (view, cfg) => {
     const { sections, texts } = cfg;
@@ -30,30 +31,148 @@
     const topics = (typeof cfg.topics === 'function' ? cfg.topics(pages) : cfg.topics).filter((t) => App.item(t.itemId));
     const toc = KL.tocSpreads(sections.length, topics.length);
     const nSpreads = KL.spreadCount(pages.length, toc);
+    // Farben: Einband und Reiter aus einer Familie, einzeln wählbar über „Farben“
+    const col = cfg.look || { stored: () => null, fallback: 'salbei' };
+    let stored = col.stored() || {};
+    let pal = KL.bookColors(stored, sections.map((s) => s.id), col.fallback);
+    // ---------- Normale Seiten: Abschnitte als Überschrift, die Seiten untereinander zum Scrollen ----------
+    function flatView() {
+      const of = new Map();
+      pages.forEach((pg, i) => { if (!of.has(pg.sessionId)) of.set(pg.sessionId, []); of.get(pg.sessionId).push(i); });
+      const openLink = (id, fileId, page, cls, label, title) => {
+        const href = cfg.tabHref && fileId ? cfg.tabHref(id, fileId, page) : '#';
+        return `<a class="${cls}" href="${esc(href)}" data-kb-open="${esc(id)}" data-kb-file="${esc(fileId || '')}" data-kb-page="${page}" title="${esc(title)}">${icon('pen')} ${label}</a>`;
+      };
+      view.innerHTML = `<div class="${cfg.cls} kursbuch kb-flat"><div class="row between kb-bar">${cfg.crumbs}<div class="row">${layoutSwitch}${jumpSelect}${cfg.extraButtons || ''}</div></div>
+        ${topics.length ? `<div class="kb-flat-topics sec-grammar"><span class="kb-col-lab">${esc(texts.topicsHead)}</span>${topics.map((t) => `<button type="button" class="chip" data-kb-topic="${esc(t.itemId)}">${esc(App.item(t.itemId).title)}</button>`).join('')}</div>` : ''}
+        ${sections.length ? sections.map((s, n) => `<section class="kb-flat-sec" data-kb-sec="${esc(s.id)}"><div class="row between kb-flat-head">
+            <h3><span class="kb-dot" style="background:${pal.tabs[s.id]}"></span><span class="kb-no">${n + 1}</span><span lang="ja">${esc(s.title)}</span>${s.sub ? `<span class="kb-sub">${esc(s.sub)}</span>` : ''}</h3>
+            ${openLink(s.id, (firstSheet(s.id) || {}).id, 0, 'btn btn-sm', 'Öffnen', texts.tabTitle)}</div>
+            ${(of.get(s.id) || []).map((i) => { const pg = pages[i]; return `<div class="kb-flat-page"><canvas data-kb-ink="${i}"></canvas>${openLink(s.id, pg.fileId, pg.page, 'kb-flat-open', 'Seite ' + (i + 1), 'Diese Seite zum Schreiben öffnen')}</div>`; }).join('')}
+          </section>`).join('') : cfg.emptyHtml || ''}</div>`;
+      bindLayout();
+      // Seiten erst zeichnen, wenn sie in die Nähe kommen; bei neuer Breite scharf nachzeichnen
+      const draw = (cv) => { const pg = pages[+cv.dataset.kbInk]; App.ink.preview(cv, pg.fileId, { page: pg.page, crop: false, maxH: 1e5, always: true }); };
+      const seen = new Set();
+      const io = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting && !seen.has(en.target)) { seen.add(en.target); draw(en.target); } }), { rootMargin: '800px 0px' });
+      view.querySelectorAll('[data-kb-ink]').forEach((cv) => io.observe(cv));
+      const root = view.querySelector('.kb-flat');
+      let lastW = root.clientWidth, redrawTimer = 0;
+      const ro = new ResizeObserver(() => { if (root.clientWidth === lastW) return; lastW = root.clientWidth; clearTimeout(redrawTimer); redrawTimer = setTimeout(() => seen.forEach(draw), 200); });
+      ro.observe(root);
+      App.onLeave(() => { io.disconnect(); ro.disconnect(); clearTimeout(redrawTimer); });
+      const scrollTo = (el) => el && el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      view.querySelector('[data-kb-jump]').onchange = (e) => { scrollTo(view.querySelector(`[data-kb-sec="${CSS.escape(e.target.value)}"]`)); e.target.value = ''; };
+      root.addEventListener('click', (e) => {
+        const t = e.target.closest('[data-kb-open], [data-kb-topic]');
+        if (!t) return;
+        if (t.dataset.kbTopic) {
+          const tp = topics.find((x) => x.itemId === t.dataset.kbTopic), i = KL.topicPage(pages, tp.itemId, tp.sessionId);
+          if (i >= 0) scrollTo(view.querySelector(`[data-kb-ink="${i}"]`).parentNode); else if (cfg.openTopic) cfg.openTopic(tp);
+        } else if (t.getAttribute('href') === '#') { e.preventDefault(); cfg.openSection(t.dataset.kbOpen, t.dataset.kbFile || undefined, +t.dataset.kbPage); }
+      });
+    }
+    const firstSheet = (id) => ((byId.get(id) || {}).sheets || [])[0];
+    const swatch = (attr, hex, label) => `<button type="button" class="kb-sw" ${attr} style="background:${hex}" title="${esc(label)}" aria-label="${esc(label)}"></button>`;
+    const colorsPanel = () => `<div class="kb-colors" data-kb-colors hidden>
+        <div class="kb-col-grp"><span class="kb-col-lab">Buch</span><span class="kb-sws">${KL.FAMILIES.map((f) => swatch(`data-kb-fam="${f.key}"`, f.cover, f.name)).join('')}</span></div>
+        <div class="kb-col-grp"><span class="kb-col-lab">Reiter</span><select class="input" data-kb-tabsel title="Welcher Reiter?">${sections.map((s, i) => `<option value="${esc(s.id)}">${i + 1} · ${esc(s.title)}</option>`).join('')}</select>
+          <span class="kb-sws" data-kb-tones></span><button type="button" class="btn btn-sm" data-kb-alltones aria-expanded="false">Alle Farben</button><button type="button" class="btn btn-sm" data-kb-auto title="Reiter wieder passend zum Buch">↺ Passend</button></div>
+        <button type="button" class="btn btn-sm btn-primary" data-kb-colors-done>Fertig</button>
+        <div class="kb-all" data-kb-all hidden>${KL.FAMILIES.map((f) => `<span class="kb-sws">${f.tabs.map((t) => swatch(`data-kb-tone="${t}"`, t, f.name)).join('')}</span>`).join('')}</div></div>`;
+
+    // Ansicht pro Notizbuch: Buch (Standard) oder normale Seiten untereinander
+    const flat = stored.layout === 'pages';
+    const layoutSwitch = cfg.look ? `<span class="kb-mode" role="group" aria-label="Ansicht"><button class="btn btn-sm${flat ? '' : ' btn-sec'}" data-kb-layout="" title="Als Buch zum Blättern">📖 Buch</button><button class="btn btn-sm${flat ? ' btn-sec' : ''}" data-kb-layout="pages" title="Als normale Seiten untereinander">${icon('list')} Seiten</button></span>` : '';
+    const jumpSelect = `<select class="input" data-kb-jump title="${esc(texts.jumpTitle)}"><option value="">${esc(texts.jump)}</option>${sections.map((s, i) => KL.sessionPage(pages, s.id) >= 0 ? `<option value="${esc(s.id)}">${i + 1} · ${esc(s.title)}${s.sub ? ' – ' + esc(s.sub) : ''}</option>` : '').join('')}</select>`;
+    const bindLayout = () => view.querySelectorAll('[data-kb-layout]').forEach((b) => {
+      b.onclick = async () => {
+        if ((b.dataset.kbLayout || '') === (stored.layout || '')) return;
+        stored = Object.assign({}, stored, { layout: b.dataset.kbLayout || undefined });
+        await col.save(stored);
+        App.render(true);
+      };
+    });
+    if (flat) { flatView(); return; }
 
     view.innerHTML = `<div class="${cfg.cls} kursbuch"><div class="row between kb-bar">${cfg.crumbs}
-        <div class="row"><span class="small muted" data-kb-pos></span><span class="kb-zoom"><button class="btn btn-sm" data-kb-zoom="-1" title="Verkleinern">−</button><button class="btn btn-sm" data-kb-zoom="0" title="Ganze Doppelseite zeigen">100 %</button><button class="btn btn-sm" data-kb-zoom="1" title="Vergrößern">+</button></span><button class="btn btn-sm" data-kb-toc>${icon('list')} Inhalt</button>
-        <select class="input" data-kb-jump title="${esc(texts.jumpTitle)}"><option value="">${esc(texts.jump)}</option>${sections.map((s, i) => KL.sessionPage(pages, s.id) >= 0 ? `<option value="${esc(s.id)}">${i + 1} · ${esc(s.title)}${s.sub ? ' – ' + esc(s.sub) : ''}</option>` : '').join('')}</select>${cfg.extraButtons || ''}</div></div>
+        <div class="row">${layoutSwitch}<span class="small muted" data-kb-pos></span><span class="kb-zoom"><button class="btn btn-sm" data-kb-zoom="-1" title="Verkleinern">−</button><button class="btn btn-sm" data-kb-zoom="0" title="Ganze Doppelseite zeigen">100 %</button><button class="btn btn-sm" data-kb-zoom="1" title="Vergrößern">+</button></span><button class="btn btn-sm" data-kb-toc>${icon('list')} Inhalt</button>
+        ${jumpSelect}${cfg.look ? `<button class="btn btn-sm" data-kb-colors-on title="Farbe von Buch und Reitern wählen">${icon('brush')} Farben</button>` : ''}${cfg.extraButtons || ''}</div></div>
+      ${cfg.look ? colorsPanel() : ''}
       <div class="kb-stage viewer-book"><div class="viewer-scroll"><div class="viewer-pages book" data-kb-book></div></div></div></div>`;
+    bindLayout();
     const stage = view.querySelector('.kb-stage'), scroller = stage.firstElementChild, book = view.querySelector('[data-kb-book]');
     const pos = view.querySelector('[data-kb-pos]'), jump = view.querySelector('[data-kb-jump]'), zoomBtn = view.querySelector('[data-kb-zoom="0"]');
 
     let spread = Math.min(Math.max(0, +cfg.spread || 0), nSpreads - 1);
     let hl = null; // { page, itemId }: Markierung eines Grammatikpunkts hervorheben, zu dem geblättert wurde
 
+    // ---------- Farben: „Farben“ klappt eine Leiste auf, das Buch färbt sich sofort mit ----------
+    const panel = view.querySelector('[data-kb-colors]');
+    let picking = false, selSec = (sections[0] || {}).id;
+    const paint = () => {
+      book.style.setProperty('--kb-cover', pal.cover);
+      book.querySelectorAll('.kb-tab').forEach((a) => {
+        const t = pal.tabs[a.dataset.kbOpen];
+        a.style.background = t; a.style.color = KL.tabInk(t);
+        a.classList.toggle('kb-tab-sel', picking && a.dataset.kbOpen === selSec);
+      });
+      book.querySelectorAll('[data-kb-dot]').forEach((d) => { d.style.background = pal.tabs[d.dataset.kbDot]; });
+      if (!panel) return;
+      panel.querySelectorAll('[data-kb-fam]').forEach((b) => b.classList.toggle('on', b.dataset.kbFam === pal.family.key));
+      panel.querySelector('[data-kb-tones]').innerHTML = pal.family.tabs.map((t) => swatch(`data-kb-tone="${t}"`, t, pal.family.name)).join('');
+      panel.querySelectorAll('[data-kb-tone]').forEach((b) => b.classList.toggle('on', b.dataset.kbTone === pal.tabs[selSec]));
+      panel.querySelector('[data-kb-tabsel]').value = selSec || '';
+      panel.querySelector('[data-kb-auto]').hidden = !(stored.tabColors || {})[selSec];
+    };
+    const setColors = (next) => {
+      stored = next;
+      pal = KL.bookColors(stored, sections.map((s) => s.id), col.fallback);
+      paint();
+      Promise.resolve(col.save(stored)).catch((er) => { console.error(er); App.toast('Farbe nicht gespeichert'); });
+    };
+    const setPicking = (on) => {
+      picking = on;
+      panel.hidden = !on;
+      view.querySelector('[data-kb-colors-on]').classList.toggle('btn-sec', on);
+      fit();
+      paint();
+    };
+    if (panel) {
+      view.querySelector('[data-kb-colors-on]').onclick = () => setPicking(!picking);
+      panel.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        if (b.dataset.kbFam) setColors(KL.recolor(stored, b.dataset.kbFam, col.fallback));
+        else if (b.dataset.kbTone) setColors(KL.setTab(stored, selSec, b.dataset.kbTone));
+        else if (b.hasAttribute('data-kb-auto')) setColors(KL.setTab(stored, selSec, null));
+        else if (b.hasAttribute('data-kb-alltones')) {
+          const all = panel.querySelector('[data-kb-all]');
+          all.hidden = !all.hidden;
+          b.setAttribute('aria-expanded', String(!all.hidden));
+          fit();
+        } else if (b.hasAttribute('data-kb-colors-done')) setPicking(false);
+      });
+      // Reiter aus der Liste wählen: dorthin blättern, damit man ihn gleich sieht
+      panel.querySelector('[data-kb-tabsel]').onchange = (e) => {
+        selSec = e.target.value;
+        const i = KL.sessionPage(pages, selSec);
+        if (i >= 0 && KL.spreadOfPage(i, toc) !== spread) toPage(i); else paint();
+      };
+    }
+
     // ---------- Seiten ----------
-    const tocRow = (attr, no, name, sub, page, hint) => `<button type="button" class="kb-row" ${attr}${hint ? ` title="${esc(hint)}"` : ''}><span class="kb-no">${no}</span><span class="kb-name" lang="ja">${esc(name)}</span>${sub ? `<span class="kb-sub">${esc(sub)}</span>` : ''}<span class="kb-dots"></span><span class="kb-pg">${page >= 0 ? page + 1 : '–'}</span></button>`;
+    const tocRow = (attr, no, name, sub, page, hint, dotId) => `<button type="button" class="kb-row" ${attr}${hint ? ` title="${esc(hint)}"` : ''}><span class="kb-no">${no}</span>${dotId ? `<span class="kb-dot" data-kb-dot="${esc(dotId)}" style="background:${pal.tabs[dotId]}"></span>` : ''}<span class="kb-name" lang="ja">${esc(name)}</span>${sub ? `<span class="kb-sub">${esc(sub)}</span>` : ''}<span class="kb-dots"></span><span class="kb-pg">${page >= 0 ? page + 1 : '–'}</span></button>`;
     const tocPage = (leaf) => {
       const n = leaf >> 1, more = n ? ' · Fortsetzung' : '';
       if (leaf % 2 === 0) {
         return `<div class="kb-toc-in"><div class="kb-kicker">目次 · Inhalt${more}</div><h2>${esc(cfg.bookTitle)}</h2>
-          ${KL.chunk(sections, n).map((s, i) => { const pg = KL.sessionPage(pages, s.id); return tocRow(`data-kb-session="${esc(s.id)}"`, n * KL.TOC_ROWS + i + 1, s.title, s.sub, pg, pg < 0 ? texts.emptySection : ''); }).join('')}
+          ${KL.chunk(sections, n).map((s, i) => { const pg = KL.sessionPage(pages, s.id); return tocRow(`data-kb-session="${esc(s.id)}"`, n * KL.TOC_ROWS + i + 1, s.title, s.sub, pg, pg < 0 ? texts.emptySection : '', s.id); }).join('')}
           ${!sections.length && cfg.emptyHtml ? cfg.emptyHtml : ''}</div>`;
       }
       const list = KL.chunk(topics, n);
       return `<div class="kb-toc-in sec-grammar"><div class="kb-kicker">文法 · Grammatik${more}</div><h2>${esc(texts.topicsHead)}</h2>
-        ${list.map((t) => { const it = App.item(t.itemId); return tocRow(`data-kb-topic="${esc(t.itemId)}"`, '●', it.title, it.summary, KL.topicPage(pages, t.itemId, t.sessionId), ''); }).join('')}
-        ${!topics.length ? `<p class="kb-none">${esc(texts.noTopics)}</p>` : ''}</div>`;
+        ${list.map((t) => { const it = App.item(t.itemId); return tocRow(`data-kb-topic="${esc(t.itemId)}"`, '●', it.title, it.summary, KL.topicPage(pages, t.itemId, t.sessionId), ''); }).join('')}</div>`; // ohne verknüpfte Grammatik bleibt die Seite leer, ohne Hinweis
     };
     const leafHtml = (leaf, side) => {
       const cls = `vpage bk-${side}`;
@@ -67,8 +186,9 @@
     const tabHtml = (leaf, side, other) => {
       const pg = pages[leaf - 2 * toc], o = pages[other - 2 * toc];
       if (leaf < 2 * toc || !pg || (side === 'r' && o && other >= 2 * toc && o.sessionId === pg.sessionId)) return '';
-      const s = byId.get(pg.sessionId), href = cfg.tabHref ? cfg.tabHref(pg.sessionId, pg.fileId) : '#';
-      return `<a class="kb-tab ${side}" href="${esc(href)}" data-kb-open="${esc(pg.sessionId)}" data-kb-file="${esc(pg.fileId)}" title="${esc(texts.tabTitle)}"><span class="kb-tab-t"><span lang="ja">${esc(s.title)}</span>${s.sub ? ' · ' + esc(s.sub) : ''}</span><b>${icon('pen')} öffnen</b></a>`;
+      const s = byId.get(pg.sessionId), href = cfg.tabHref ? cfg.tabHref(pg.sessionId, pg.fileId, pg.page) : '#';
+      const t = pal.tabs[pg.sessionId];
+      return `<a class="kb-tab ${side}" style="background:${t};color:${KL.tabInk(t)}" href="${esc(href)}" data-kb-open="${esc(pg.sessionId)}" data-kb-file="${esc(pg.fileId)}" data-kb-page="${pg.page}" title="${esc(texts.tabTitle)}"><span class="kb-tab-t"><span lang="ja">${esc(s.title)}</span>${s.sub ? ' · ' + esc(s.sub) : ''}</span><b>${icon('pen')} öffnen</b></a>`;
     };
     let zoom = 1, inkTimer = 0;
     const drawInk = () => book.querySelectorAll('[data-kb-ink]').forEach((cv) => {
@@ -104,6 +224,10 @@
       if (dir) book.querySelectorAll('.vpage').forEach((el) => el.classList.add(dir > 0 ? 'flip-next' : 'flip-prev'));
       scroller.scrollLeft = 0; scroller.scrollTop = 0;
       drawInk();
+      // beim Farbenwählen ist immer ein Reiter auf der Doppelseite ausgewählt
+      const shown = Array.from(book.querySelectorAll('.kb-tab'), (a) => a.dataset.kbOpen);
+      if (picking && shown.length && !shown.includes(selSec)) selSec = shown[0];
+      paint();
       pos.textContent = spread < toc ? 'Inhaltsverzeichnis' : `Doppelseite ${spread - toc + 1} von ${nSpreads - toc}`;
       const first = pages[Math.max(0, l - 2 * toc)];
       jump.value = spread >= toc && first ? first.sessionId : '';
@@ -113,7 +237,6 @@
     const goTo = (s, mark = null) => { const d = Math.sign(s - spread); hl = mark; spread = Math.min(Math.max(0, s), nSpreads - 1); show(d); };
     const turn = (d) => { const s = spread + d; if (s >= 0 && s < nSpreads) goTo(s); };
     const toPage = (i, mark) => goTo(KL.spreadOfPage(i, toc), mark);
-    const firstSheet = (id) => ((byId.get(id) || {}).sheets || [])[0];
 
     // ---------- Bedienung: wischen blättert; vergrößert verschiebt der Finger das Blatt; zwei Finger / Strg+Mausrad zoomen ----------
     // Geschrieben wird hier nie. Zum Blatt geht es nur über den Reiter über dem Buch, nicht per Tipp auf die Seite.
@@ -160,9 +283,11 @@
       const t = e.target.closest('[data-kb-turn], [data-kb-session], [data-kb-topic], [data-kb-open]');
       if (!t) return;
       if (t.dataset.kbTurn) turn(+t.dataset.kbTurn);
+      else if (t.dataset.kbOpen && picking) { e.preventDefault(); selSec = t.dataset.kbOpen; paint(); } // beim Farbenwählen wählt der Reiter aus statt zu öffnen
       else if (t.dataset.kbOpen) {
         // Reiter: der Kurs hat einen echten Link (tabHref), Hefte öffnen das Blatt direkt
-        if (!cfg.tabHref) { e.preventDefault(); cfg.openSection(t.dataset.kbOpen, t.dataset.kbFile); }
+        // und öffnen das Blatt auf der Seite, die gerade aufgeschlagen ist
+        if (!cfg.tabHref) { e.preventDefault(); cfg.openSection(t.dataset.kbOpen, t.dataset.kbFile, +t.dataset.kbPage); }
       } else if (t.dataset.kbSession) {
         const i = KL.sessionPage(pages, t.dataset.kbSession);
         if (i >= 0) toPage(i); else cfg.openSection(t.dataset.kbSession, (firstSheet(t.dataset.kbSession) || {}).id);
@@ -217,11 +342,16 @@
       texts: {
         jump: 'Zur Stunde …', jumpTitle: 'Zu einer Stunde blättern', topicsHead: 'Themen in diesem Kurs', tabTitle: 'Stunde zum Schreiben öffnen',
         emptySection: 'Noch keine Handschrift – öffnet die Stunde',
-        noTopics: 'Noch keine Grammatik verknüpft. In der Stunde unter „Gelernt“ auswählen oder ein Wort auf dem Blatt einkreisen und verknüpfen – dann steht sie hier.',
       },
-      tabHref: (id, fileId) => `${App.link(byId.get(id))}?nb=${encodeURIComponent(fileId)}`,
+      tabHref: (id, fileId, page) => `${App.link(byId.get(id))}?nb=${encodeURIComponent(fileId)}${page ? '&pg=' + (page + 1) : ''}`,
       openSection: (id) => App.go(App.link(byId.get(id))),
       openTopic: (tp) => App.go(App.link(byId.get(tp.sessionId)) + '?tab=learned'),
+      // Farben pro Kurs in den Einstellungen (gehen mit ins Backup); ohne Wahl grün wie bisher
+      look: {
+        fallback: 'salbei',
+        stored: () => (App.store.settings.courseBooks || {})[course],
+        save: (c) => App.saveSettings({ courseBooks: Object.assign({}, App.store.settings.courseBooks, { [course]: c }) }, { silent: true }),
+      },
     });
   });
 })(window.App);

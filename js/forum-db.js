@@ -76,6 +76,13 @@
   };
   D.leaveGroup = (code) => group(code).collection('members').doc(D.uid()).delete();
   D.rename = (code, name) => group(code).collection('members').doc(D.uid()).update({ name });
+  D.setAvatar = (code, avatar) => group(code).collection('members').doc(D.uid()).update({ avatar });
+  // Mitglieder → { uid: { name, avatar } } – für die Avatare neben den Namen (gelten auch für alte Beiträge)
+  D.watchMembers = (code, onMembers) => group(code).collection('members').onSnapshot((snap) => {
+    const out = {};
+    snap.docs.forEach((d) => { const x = d.data(); out[d.id] = { name: typeof x.name === 'string' ? x.name : '', avatar: typeof x.avatar === 'string' ? x.avatar : '' }; });
+    onMembers(out);
+  }, () => {});
 
   // ---------- Lesen ----------
   // fromCache ohne Beiträge = noch nie Antwort vom Server bekommen (offline gestartet)

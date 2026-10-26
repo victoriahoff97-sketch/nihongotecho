@@ -1,7 +1,7 @@
 /* Nihongo Techō – Nachschlagen-Fenster auf Stift-Seiten: eigene Wörter, eigene Grammatik + Offline-Wörterbuch, groß mit Strichfolge.
    Das Suchwort lässt sich tippen oder mit dem Stift ins Schreibfeld schreiben (Handschrift-Dienst wie bei „Erkennen“).
    Übernimmt von sich aus nichts; nach „Erkennen“ kann die Schreibfläche einen Treffer mit der eingekreisten Stelle verknüpfen
-   oder die Eingabe als neue Vokabel/Grammatik anlegen (onLink). */
+   oder die Eingabe als neue Vokabel/Grammatik (ein einzelnes Kanji auch als Kanji) anlegen (onLink). */
 'use strict';
 (function (App) {
   const { esc, icon } = App;
@@ -10,6 +10,8 @@
   const HW = App.hwLogic;
   const LK = App.lookup = {};
   const MAX = 8, MAX_CHARS = 6;
+  // ein einzelnes Kanji, das noch nicht in der Sammlung ist → „als Kanji anlegen“ anbieten
+  const newKanji = (q) => { const c = String(q || '').trim(); return Array.from(c).length === 1 && JP.hasKanji(c) && !App.kanjiByChar(c) ? c : ''; };
   const PAD_WAIT = 700; // ms Schreibpause, bis das Schreibfeld erkennt
 
   // Bedeutungen des Wörterbuchs einmal laden; neu, sobald sich die installierten Wörterbuch-Pakete ändern
@@ -101,7 +103,7 @@
 
   // Ein Fenster pro Schreibfläche; erneutes Öffnen holt das vorhandene nach vorn
   // onLink(r) (optional): Treffer mit dem zuletzt eingekreisten Wort verknüpfen – zeigt in der Detailansicht „Verknüpfen“;
-  // onLink({ create: 'vocab' | 'grammar', q }): die Eingabe als neuen Eintrag anlegen und verknüpfen
+  // onLink({ create: 'vocab' | 'grammar' | 'kanji', q }): die Eingabe als neuen Eintrag anlegen und verknüpfen
   LK.open = (root, q = '', { onLink = null } = {}) => {
     // q leer = Knopf in der Leiste (Feld fokussieren, Eingabe behalten); q gesetzt = Vorschlag aus „Erkennen“ (keine Bildschirmtastatur)
     if (root._lookup) { root._lookup.setLink(onLink); if (q) root._lookup.setQuery(q); else root._lookup.focus(); return root._lookup; }
@@ -145,7 +147,8 @@
       // Nach „Erkennen“: was es noch nicht gibt, direkt anlegen und mit der eingekreisten Stelle verknüpfen
       const create = onLink ? `<div class="lk-new"><div class="lk-sec">Nicht dabei?</div>
         <button class="btn btn-sm ${App.SECTIONS.vocab.cls}" data-lknew="vocab">${icon('plus')} „${esc(res.q)}“ als neue Vokabel</button>
-        <button class="btn btn-sm ${App.SECTIONS.grammar.cls}" data-lknew="grammar">${icon('plus')} „${esc(res.q)}“ als neue Grammatik</button></div>` : '';
+        <button class="btn btn-sm ${App.SECTIONS.grammar.cls}" data-lknew="grammar">${icon('plus')} „${esc(res.q)}“ als neue Grammatik</button>
+        ${newKanji(res.q) ? `<button class="btn btn-sm ${App.SECTIONS.kanji.cls}" data-lknew="kanji">${icon('plus')} „${esc(res.q.trim())}“ als neues Kanji</button>` : ''}</div>` : '';
       const any = res.own.length || res.grammar.length || res.dict.length;
       const ownHtml = res.own.length ? `<div class="lk-sec">Deine Wörter</div>${res.own.map((r, i) => rowHtml(r, i, 'own')).join('')}` : '';
       const gramHtml = res.grammar.length ? `<div class="lk-sec">Grammatik</div>${res.grammar.map((r, i) => rowHtml(r, i, 'grammar')).join('')}` : '';
@@ -172,6 +175,7 @@
       body.innerHTML = `<button class="btn btn-sm btn-ghost" data-lkback>${icon('back')} Treffer</button>
         <div class="lk-big">${esc(r.jp)}</div><div class="lk-kana">${esc(r.kana !== r.jp ? r.kana : '')}</div><div class="lk-de">${esc(r.meaning)}</div>${formHtml(r)}
         ${onLink ? `<button class="btn btn-sm btn-primary lk-link" data-lklink>${icon('link')} ${r.id ? 'Mit dem Wort verknüpfen' : 'Als Vokabel speichern & verknüpfen'}</button>` : ''}
+        ${onLink && newKanji(r.jp) ? `<button class="btn btn-sm lk-link ${App.SECTIONS.kanji.cls}" data-lknew="kanji" data-q="${esc(newKanji(r.jp))}">${icon('plus')} Als Kanji anlegen & verknüpfen</button>` : ''}
         <div class="lk-strokes">${chars.map(() => '<div class="lk-stroke"></div>').join('')}</div>`;
       body.scrollTop = 0;
       body.querySelectorAll('.lk-stroke').forEach((host, i) => App.stroke.animator(host, chars[i], { compact: true, autoplay: i === 0 }));
@@ -255,7 +259,7 @@
       if (cand) { cands.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === cand)); input.value = cand.dataset.lkcand; search(); return; }
       if (e.target.closest('[data-lklink]')) { if (onLink && shown) onLink(shown); return; }
       const nw = e.target.closest('[data-lknew]');
-      if (nw) { if (onLink && last.q) onLink({ create: nw.dataset.lknew, q: last.q }); return; }
+      if (nw) { const q = nw.dataset.q || last.q; if (onLink && q) onLink({ create: nw.dataset.lknew, q }); return; }
       const inst = e.target.closest('[data-lkinstall]');
       if (inst) { install(inst); return; }
       const row = e.target.closest('[data-lk]');

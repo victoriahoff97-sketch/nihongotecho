@@ -30,13 +30,18 @@
   // gen zählt jede Verbindung: Antworten einer schon beendeten (stop während des Ladens) werden verworfen,
   // sonst hingen zwei Listener dran oder ein alter Fehler würfe eine gerade beigetretene Gruppe wieder raus
   let gen = 0;
-  const stop = () => { gen++; if (unsub) unsub(); unsub = null; posts = []; status = 'idle'; };
+  let members = {}; // uid → { name, avatar }
+  let unsubM = null;
+  const stop = () => { gen++; if (unsub) unsub(); if (unsubM) unsubM(); unsub = unsubM = null; posts = []; members = {}; status = 'idle'; };
   const start = () => {
     if (!D.configured() || !st.code || unsub || status === 'loading') return;
     status = 'loading';
     const g = gen;
     const mine = (fn) => (...a) => { if (g === gen) fn(...a); };
-    D.load().then(mine(() => { unsub = D.watchPosts(st.code, mine(onPosts), mine(onError)); })).catch(mine(onError));
+    D.load().then(mine(() => {
+      unsub = D.watchPosts(st.code, mine(onPosts), mine(onError));
+      if (!unsubM) unsubM = D.watchMembers(st.code, mine((m) => { members = m; if (ui && ui.onMembers) ui.onMembers(); }));
+    })).catch(mine(onError));
   };
   const onPosts = (list, meta = {}) => {
     posts = list;
@@ -84,7 +89,9 @@
   const showBig = (src) => App.modal({ title: 'Bild', body: imgHtml(src, 'forum-big'), foot: false, wide: true, cls: 'forum-img-modal' });
 
   // ---------- Verknüpfte Einträge ----------
-  const toRef = (it) => F.makeRef(it, { label: App.itemPlain(it), sub: App.itemSub(it) });
+  const kanjiCopy = (it) => (it.type === 'kanji'
+    ? { on: [].concat(it.on || []).join('、'), kun: [].concat(it.kun || []).map(App.kanjiLogic.kunText).join('、') } : undefined);
+  const toRef = (it) => F.makeRef(it, { label: App.itemPlain(it), sub: App.itemSub(it), kanji: kanjiCopy(it) });
   // Eintrag, der gerade unter dem Fenster offen ist (z. B. #/grammatik/g-n5-wa) – für „Diesen Eintrag anhängen“
   const pageItem = () => {
     const parts = App.parseHash().path.split('/').filter(Boolean);
@@ -95,11 +102,12 @@
     return it && F.REF_TYPES.includes(it.type) && App.link(it) === '#/' + parts.join('/') ? it : null;
   };
   const byWord = (w) => { for (const it of App.store.items.values()) if (it.type === 'vocab' && (it.kanji === w || it.kana === w)) return it; return null; };
-  const resolve = (ref) => F.resolveRef(ref, { byId: App.item, byWord });
+  const resolve = (ref) => F.resolveRef(ref, { byId: App.item, byWord, byChar: App.kanjiByChar });
+  // Kanji stehen rechts neben dem Text (withKanji), alles andere darunter; i bleibt der Platz in refs
   const refsHtml = (refs, owner) => {
-    const list = F.cleanRefs(refs);
+    const list = F.cleanRefs(refs).map((r, i) => [r, i]).filter(([r]) => r.type !== 'kanji');
     if (!list.length) return '';
-    return `<div class="forum-refs">${list.map((r, i) => {
+    return `<div class="forum-refs">${list.map(([r, i]) => {
       const sec = App.SECTIONS[r.type];
       const take = resolve(r).kind === 'take';
       // Vokabeln bringen ihre Kopie mit (Wort, Lesung, Deutsch, oberster Beispielsatz) – so sehen alle sie, auch ohne Paket
@@ -112,6 +120,22 @@
           ${take ? `<button type="button" class="btn btn-sm" data-take="${esc(owner)}:${i}">${icon('plus')} Als Vokabel übernehmen</button>` : ''}</span>`;
     }).join('')}</div>`;
   };
+  const kanjiHtml = (refs, owner) => {
+    const list = F.cleanRefs(refs).map((r, i) => [r, i]).filter(([r]) => r.type === 'kanji');
+    if (!list.length) return '';
+    return `<aside class="forum-kanji">${list.map(([r, i]) => {
+      const k = r.kanji || {};
+      const take = resolve(r).kind === 'take';
+      const read = [k.on, k.kun].filter(Boolean).join(' · ');
+      return `<div class="forum-kj ${App.SECTIONS.kanji.cls}"><button type="button" class="forum-kj-open" data-ref="${esc(owner)}:${i}" title="${take ? 'Hast du noch nicht' : 'Öffnen'}">
+          <b lang="ja">${esc(k.char || r.label)}</b><span>${esc(k.de || r.sub)}</span>${read ? `<span class="forum-kj-read" lang="ja">${esc(read)}</span>` : ''}</button>
+          ${take ? `<button type="button" class="btn btn-sm" data-take="${esc(owner)}:${i}">${icon('plus')} Als Kanji übernehmen</button>` : ''}</div>`;
+    }).join('')}</aside>`;
+  };
+  const withKanji = (main, refs, owner) => {
+    const k = kanjiHtml(refs, owner);
+    return k ? `<div class="forum-split"><div class="forum-split-main">${main}</div>${k}</div>` : main;
+  };
   // Verweis antippen: öffnen (Fenster zu), eigene Vokabel öffnen oder danach suchen
   const openRef = (ref) => {
     const r = resolve(ref);
@@ -120,6 +144,16 @@
     App.go(to);
   };
   const takeRef = (ref, after) => {
+    if (ref.type === 'kanji') {
+      // Lesungen, Strichzahl und Wörter füllt das Kanji-Formular selbst aus dem Kanji-Index
+      const k = ref.kanji || {};
+      App.editItem({
+        type: 'kanji', title: 'Kanji übernehmen', single: true,
+        defaults: { char: k.char || ref.label, de: k.de || ref.sub, source: 'Eigene', tags: [] },
+        onSaved: () => { App.toast(`„${k.char || ref.label}“ ist jetzt in deinen Kanji`); if (after) after(); },
+      });
+      return;
+    }
     const v = ref.vocab || {};
     App.editItem({
       type: 'vocab', title: 'Vokabel übernehmen',
@@ -224,7 +258,14 @@
   };
 
   // ---------- Fenster ----------
-  const meta = (p) => `<b>${esc(p.name)}</b> · ${p.createdAt ? esc(F.relTime(p.createdAt, Date.now())) : 'gerade eben'}${p.editedAt ? ' (bearbeitet)' : ''}`;
+  // Avatar aus dem Mitglied-Eintrag; ohne (oder ausgetreten): Anfangsbuchstabe im grauen Kreis
+  const avatarHtml = (a, name, cls = '') => {
+    if (a && a.t === 'e') return `<span class="forum-av av-${a.c} ${cls}" aria-hidden="true">${a.v}</span>`;
+    if (a && a.t === 'k') return `<span class="forum-av av-hanko ${cls}" lang="ja" aria-hidden="true">${esc(a.v)}</span>`;
+    return `<span class="forum-av ${cls}" aria-hidden="true">${esc(Array.from(String(name || '?').trim())[0] || '?')}</span>`;
+  };
+  const avatarOf = (x) => avatarHtml(F.parseAvatar(members[x.uid] && members[x.uid].avatar), x.name);
+  const meta = (p) => `${avatarOf(p)}<b>${esc(p.name)}</b> ·${p.createdAt ? esc(F.relTime(p.createdAt, Date.now())) : 'gerade eben'}${p.editedAt ? ' (bearbeitet)' : ''}`;
   const dayMonth = (ms) => { const d = new Date(ms); return `${d.getDate()}.${d.getMonth() + 1}.`; };
   const offlineNote = () => `<div class="forum-note">${esc(OFFLINE)}</div>`;
 
@@ -256,7 +297,7 @@
     pop.className = 'more-pop card';
     const item = (k, ic, label, cls = '') => `<button class="more-item ${cls}" data-m="${k}">${icon(ic)}<span>${label}</span></button>`;
     pop.innerHTML = st.code
-      ? item('code', 'link', 'Gruppencode anzeigen') + item('name', 'edit', 'Meinen Namen ändern') + item('help', 'help', 'Hilfe')
+      ? item('code', 'link', 'Gruppencode anzeigen') + item('name', 'edit', 'Meinen Namen ändern') + item('avatar', 'sparkle', 'Mein Avatar') + item('help', 'help', 'Hilfe')
         + item('leave', 'close', 'Gruppe auf diesem Gerät verlassen', 'danger')
       : item('help', 'help', 'Hilfe');
     host.appendChild(pop);
@@ -271,6 +312,7 @@
       if (m === 'code') showCode(st.code);
       if (m === 'help') App.tour.start('gruppe');
       if (m === 'name') rename();
+      if (m === 'avatar') pickAvatar();
       if (m === 'leave') leave();
     };
   };
@@ -290,6 +332,48 @@
     if (msg) { App.toast(msg); return; }
     try { await D.rename(st.code, r[0]); st.name = r[0]; save(); App.toast('Name geändert – gilt für neue Beiträge.'); } catch (e) { App.toast(OFFLINE); }
   };
+  // Kawaii-Motiv im Pastellkreis oder ein eigenes Kanji als Hanko-Stempel
+  const COLOR_NAMES = { sakura: 'Kirschblüte', matcha: 'Matcha', sora: 'Himmel', yuzu: 'Yuzu', fuji: 'Glyzinie', kumo: 'Wolke' };
+  const pickAvatar = () => {
+    const cur = F.parseAvatar(members[D.uid()] && members[D.uid()].avatar);
+    let a = cur || { t: 'e', v: F.AVATAR_MOTIFS[0], c: F.AVATAR_COLORS[0] };
+    let lastColor = a.c || F.AVATAR_COLORS[0];
+    const md = App.modal({
+      title: 'Mein Avatar', cls: 'forum-av-modal',
+      foot: '<button class="btn" data-no>Abbrechen</button><button class="btn btn-primary" data-ok>Speichern</button>',
+      body: `<div class="forum-av-preview" data-prev></div>
+        <h3 class="forum-h">Motiv</h3>
+        <div class="forum-av-grid">${F.AVATAR_MOTIFS.map((m) => `<button type="button" class="forum-av-pick" data-motif="${m}" aria-label="Motiv ${m}">${m}</button>`).join('')}</div>
+        <div class="forum-av-colors">${F.AVATAR_COLORS.map((c) => `<button type="button" class="forum-av av-${c}" data-color="${c}" title="${COLOR_NAMES[c]}" aria-label="Farbe ${COLOR_NAMES[c]}"></button>`).join('')}</div>
+        <h3 class="forum-h">Oder ein Kanji als Stempel</h3>
+        <div class="forum-row"><input class="input forum-av-kanji" data-kanji maxlength="2" lang="ja" placeholder="桜" value="${a.t === 'k' ? esc(a.v) : ''}"><span class="muted small">ein Kanji, z. B. aus deinem Namen</span></div>`,
+    });
+    md.el.querySelector('[data-no]').onclick = () => md.close();
+    md.el.querySelector('[data-ok]').onclick = async () => {
+      try { await D.setAvatar(st.code, F.makeAvatar(a)); App.toast('Avatar gespeichert'); md.close(); }
+      catch (e) { App.toast(e && e.code === 'permission-denied' ? 'Avatare gehen erst nach dem nächsten Gruppen-Update.' : OFFLINE); }
+    };
+    const root = md.body;
+    const draw = () => {
+      root.querySelector('[data-prev]').innerHTML = avatarHtml(a, st.name, 'is-big') + `<b>${esc(st.name)}</b>`;
+      root.querySelectorAll('[data-motif]').forEach((b) => b.classList.toggle('on', a.t === 'e' && b.dataset.motif === a.v));
+      root.querySelectorAll('[data-color]').forEach((b) => b.classList.toggle('on', a.t === 'e' && b.dataset.color === a.c));
+    };
+    root.onclick = (e) => {
+      const m = e.target.closest('[data-motif]');
+      const c = e.target.closest('[data-color]');
+      if (m) a = { t: 'e', v: m.dataset.motif, c: lastColor };
+      else if (c) { lastColor = c.dataset.color; a = { t: 'e', v: a.t === 'e' ? a.v : F.AVATAR_MOTIFS[0], c: lastColor }; }
+      else return;
+      root.querySelector('[data-kanji]').value = '';
+      draw();
+    };
+    root.querySelector('[data-kanji]').oninput = (e) => {
+      const k = F.parseAvatar('k:' + Array.from(e.target.value.trim()).pop());
+      if (k) { a = k; draw(); }
+    };
+    draw();
+  };
   const leave = async () => {
     if (!(await App.confirm('Dieses Gerät verlässt die Gruppe. Mit dem Code kannst du jederzeit wieder beitreten.', { ok: 'Verlassen' }))) return;
     const code = st.code;
@@ -306,6 +390,7 @@
     if (ui.cleanup) ui.cleanup();
     ui.view = 'join';
     ui.onPosts = () => {};
+    ui.onMembers = null;
     ui.cleanup = null;
     const r = ui.root;
     r.innerHTML = mode === 'join'
@@ -392,7 +477,9 @@
     ui.cleanup = null;
     ui.tab = ui.tab || 'offen';
     const r = ui.root;
-    r.innerHTML = '<div data-new></div><div class="forum-bar" data-tabs><b>Eure Themen</b><span class="grow"></span><select class="input" aria-label="Welche Themen"></select></div><div data-list class="forum-list"></div>';
+    ui.q = ui.q || '';
+    r.innerHTML = `<div data-new></div><div class="forum-bar" data-tabs><b>Eure Themen</b>
+      <input class="input forum-search" type="search" placeholder="Suchen …" aria-label="Im Forum suchen" value="${esc(ui.q)}"><select class="input" aria-label="Welche Themen"></select></div><div data-list class="forum-list"></div>`;
     r.querySelector('[data-new]').appendChild(composer({
       // von einem Eintrag aus geöffnet: gleich aufgeklappt, damit „Diesen Eintrag anhängen“ zu sehen ist
       key: 'new', kinds: true, closed: !pageItem(), label: 'Teilen', placeholder: 'Neuer Gedanke … was ist dir aufgefallen?',
@@ -411,11 +498,18 @@
       if (status === 'offline') { list.innerHTML = offlineNote(); return; }
       if (status !== 'live') { list.innerHTML = '<p class="muted">Lade Beiträge …</p>'; return; }
       if (!posts.length) { list.innerHTML = '<p class="muted forum-empty">Noch keine Gedanken. Teil den ersten!</p>'; return; }
-      const shown = by[ui.tab];
-      list.innerHTML = shown.length ? shown.map(row).join('') : `<p class="muted forum-empty">${EMPTY[ui.tab]}</p>`;
+      // Suche: über alle Themen, auch besprochene
+      const q = ui.q.trim();
+      const shown = q ? s.open.concat(s.show, s.done).filter((p) => F.matchPost(p, q)) : by[ui.tab];
+      pick.disabled = !!q;
+      list.innerHTML = shown.length ? shown.map(row).join('')
+        : `<p class="muted forum-empty">${q ? `Nichts gefunden zu „${esc(q)}“.` : EMPTY[ui.tab]}</p>`;
       App.hydrateIcons(list);
     };
+    ui.onMembers = ui.onPosts;
     pick.onchange = () => { ui.tab = pick.value; ui.onPosts(); };
+    const search = tabs.querySelector('.forum-search');
+    search.oninput = App.debounce(() => { ui.q = search.value; ui.onPosts(); }, 150);
     list.onclick = (e) => { const b = e.target.closest('[data-open]'); if (b) showPost(b.dataset.open); };
     ui.onPosts();
   };
@@ -454,12 +548,12 @@
         ? `<div class="forum-row">${p.done ? `<span class="badge">Besprochen · von ${esc(p.doneBy)}${p.doneAt ? ', ' + dayMonth(p.doneAt) : ''}</span>` : ''}
             <button class="btn btn-sm" data-done>${p.done ? 'Wieder öffnen' : `${icon('check')} Als besprochen markieren`}</button></div>` : '';
       head.innerHTML = `<div class="forum-post-top">${dateCol(p.createdAt)}<div class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}</div></div>
-        <div class="forum-text">${F.linkify(p.text)}</div>${p.hasImage ? (id in pics ? imgHtml(pics[id], 'forum-img') : '<p class="muted small">Bild wird geladen …</p>') : ''}${refsHtml(p.refs, 'post')}${done}${tools(p, 'post')}`;
+        ${withKanji(`<div class="forum-text">${F.linkify(p.text)}</div>${p.hasImage ? (id in pics ? imgHtml(pics[id], 'forum-img') : '<p class="muted small">Bild wird geladen …</p>') : ''}${refsHtml(p.refs, 'post')}${done}${tools(p, 'post')}`, p.refs, 'post')}`;
     };
     const drawReplies = () => {
       repEl.innerHTML = replies.map((x) => (editing === x.id ? `<div class="forum-reply" data-rid="${esc(x.id)}" data-editing></div>`
         : `<div class="forum-reply" data-rid="${esc(x.id)}"><div class="forum-item-head">${meta(x)}</div>
-          <div class="forum-text">${F.linkify(x.text)}</div>${imgHtml(x.image, 'forum-img')}${refsHtml(x.refs, x.id)}${tools(x, x.id)}</div>`)).join('');
+          ${withKanji(`<div class="forum-text">${F.linkify(x.text)}</div>${imgHtml(x.image, 'forum-img')}${refsHtml(x.refs, x.id)}${tools(x, x.id)}`, x.refs, x.id)}</div>`)).join('');
       const slot = repEl.querySelector('[data-editing]');
       if (slot) {
         const x = replies.find((y) => y.id === editing);
@@ -517,6 +611,7 @@
     };
 
     ui.onPosts = () => { drawHead(); markSeen(id); };
+    ui.onMembers = () => { drawHead(); if (!editing || editing === 'post') drawReplies(); };
     let unsubR = null;
     if (status === 'live') {
       unsubR = D.watchReplies(st.code, id, (list) => { replies = list; if (!editing || editing === 'post') drawReplies(); markSeen(id); }, () => {});

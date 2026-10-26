@@ -9,6 +9,9 @@
   // Kapitel-Blätter verknüpfen Wörter wie Mitschriften – die Grammatik steht dann rechts im Inhaltsverzeichnis
   App.sheetHome((f) => (f.bookId ? { newDefaults: {} } : null));
   const chaptersOf = (book) => KL.bookChapters(book, Array.from(App.store.files.values()));
+  const allBooks = () => App.itemsOf('notebook').sort((a, b) => (a.created || 0) - (b.created || 0));
+  // Farbfamilie eines Hefts: eigene Wahl (book.color), sonst reihum wie die Karten in der Bibliothek
+  const fallbackColor = (book) => KL.HEFT_ROW[Math.max(0, allBooks().indexOf(book)) % KL.HEFT_ROW.length];
 
   App.newHeft = async () => {
     const r = await App.ask('Neues Notizbuch', [{ label: 'Name', placeholder: 'z. B. Partikeln' }]);
@@ -121,19 +124,29 @@
       texts: {
         jump: 'Zum Kapitel …', jumpTitle: 'Zu einem Kapitel blättern', topicsHead: 'Themen in diesem Heft', tabTitle: 'Kapitel zum Schreiben öffnen',
         emptySection: 'Noch keine Handschrift – öffnet das Kapitel',
-        noTopics: 'Noch keine Grammatik verknüpft. Ein Wort auf dem Blatt einkreisen und verknüpfen – dann steht sie hier.',
       },
-      openSection: (id) => App.ink.open(id, { afterClose: () => App.render(true) }),
+      openSection: (id, fileId, page) => App.ink.open(fileId || id, { page: (page || 0) + 1, afterClose: () => App.render(true) }),
       extraButtons: `<button class="btn btn-sm" data-heft-add>${icon('plus')} Kapitel</button><button class="btn btn-sm" data-heft-more title="Umbenennen, Kapitel ordnen, löschen">⋯</button>`,
+      look: {
+        fallback: fallbackColor(book),
+        stored: () => ({ color: book.color, tabColors: book.tabColors, layout: book.layout }),
+        save: (c) => {
+          book.color = c.color; book.tabColors = c.tabColors;
+          if (c.layout) book.layout = c.layout; else delete book.layout;
+          return App.saveItem(book, { silent: true });
+        },
+      },
       emptyHtml: `<div class="heft-empty"><p class="kb-none">Noch keine Kapitel.</p><button type="button" class="btn btn-primary" data-heft-add>${icon('plus')} Erstes Kapitel anlegen</button></div>`,
     });
   });
 
   // Reihe „Meine Notizbücher“ über den Dateien der Bibliothek (leer, solange es kein Heft gibt)
   App.heftRow = () => {
-    const books = App.itemsOf('notebook').sort((a, b) => (a.created || 0) - (b.created || 0));
+    const books = allBooks();
     if (!books.length) return '';
-    return `<h3 class="heft-head">Meine Notizbücher</h3><div class="heft-row">${books.map((b) => { const n = chaptersOf(b).length; return `<a class="heft-card" href="${App.heftLink(b.id)}"><b>${esc(b.title)}</b><span>${n === 1 ? '1 Kapitel' : n + ' Kapitel'}</span></a>`; }).join('')}
+    return `<h3 class="heft-head">Meine Notizbücher</h3><div class="heft-row">${books.map((b, i) => {
+      const n = chaptersOf(b).length, f = KL.family(b.color, KL.HEFT_ROW[i % KL.HEFT_ROW.length]);
+      return `<a class="heft-card" style="--hc-cover:${f.cover};--hc-bg:${f.tabs[2]};--hc-line:${f.tabs[3]};--hc-ink:${f.ink}" href="${App.heftLink(b.id)}"><b>${esc(b.title)}</b><span>${n === 1 ? '1 Kapitel' : n + ' Kapitel'}</span></a>`; }).join('')}
       <button type="button" class="heft-card heft-new" data-heft-new>${icon('plus')} Neu</button></div>`;
   };
 })(window.App);

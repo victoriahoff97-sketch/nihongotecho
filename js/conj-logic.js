@@ -13,10 +13,10 @@
   const POS_IDS = C.POS.map((p) => p.id);
   C.posOf = (form) => (form.map === 'verb' ? 'verb' : form.id.startsWith('a-na') ? 'na-adj' : 'i-adj');
 
-  // Abfragbar ist jede Station der Lernlandkarte außer den Startstationen (Grundformen)
+  // Abfragbar ist jede Form außer den Grundformen
   C.forms = (pos) => F.FORMS.filter((f) => f.from.length && (!pos || C.posOf(f) === pos));
   const askable = (id) => { const f = F.form(id); return f && f.from.length ? f : null; };
-  // Für „Selbst zusammenstellen“: je Formenfamilie eine Gruppe, in der Reihenfolge der Karte
+  // Für „Selbst zusammenstellen“: je Formenfamilie eine Gruppe, in der Reihenfolge der Formenliste
   C.groups = () => {
     const out = [];
     C.forms().forEach((f) => {
@@ -37,9 +37,6 @@
     if (!o || !Array.isArray(o.pos) || !Array.isArray(o.forms)) return null;
     return { pos: POS_IDS.filter((p) => o.pos.includes(p)), forms: C.forms().filter((f) => o.forms.includes(f.id)).map((f) => f.id) };
   };
-  // Von der Lernlandkarte: genau diese eine Form
-  C.preset = (formId) => { const f = askable(formId); return f ? { pos: [C.posOf(f)], forms: [f.id] } : null; };
-
   // Fertige Mischungen für die Startseite – erst eine wählen, die Feinauswahl gibt es nur bei „Selbst zusammenstellen“.
   // forms = null: alle abfragbaren Formen (bzw. alle einer Wortart über pos) · custom: eigene Auswahl
   C.MIXES = [
@@ -55,7 +52,7 @@
   C.mix = (id) => C.MIXES.find((m) => m.id === id) || null;
   // Gemerkte Mischung prüfen; unbekannt oder leer → „Alles gemischt“ (wie bisher: erst einmal alles)
   C.cleanMix = (id) => (C.mix(id) ? id : 'all');
-  // Die Formen einer Mischung (Form-Objekte, in Kartenreihenfolge)
+  // Die Formen einer Mischung (Form-Objekte, in der Reihenfolge der Formenliste)
   C.mixForms = (m) => (m.forms ? m.forms.map(askable).filter(Boolean) : C.forms().filter((f) => !m.pos || m.pos.includes(C.posOf(f))));
   // Auswahl aus Formen: die Wortarten ergeben sich aus den Formen – eine eigene Wortart-Wahl braucht es nicht mehr
   C.selOf = (formIds) => {

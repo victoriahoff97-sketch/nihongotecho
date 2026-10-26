@@ -1,7 +1,7 @@
 /* Nihongo Techō – Unterricht (VHS-Kurs): Stunden, Mitschrift, Material, Hausaufgaben, Zusammenfassung */
 'use strict';
 (function (App) {
-  const { $, $$, esc, icon } = App;
+  const { esc, icon } = App;
   const JP = App.jp;
   const S = App.store;
   const KEYS = { grammar: 'grammarIds', vocab: 'vocabIds', kanji: 'kanjiIds', phrase: 'phraseIds' };
@@ -81,8 +81,8 @@
     const sec = App.SECTIONS.session;
     const groups = UL.groupByCourse(sessions());
     const folded = (c) => (S.settings.coursesFolded || []).includes(c);
-    view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Deine Kursstunden: mit dem Stift mitschreiben, Präsentationen ablegen, Hausaufgaben lösen – und nach jeder Stunde eine Zusammenfassung.',
-      `<a class="btn" href="#/karte">${icon('map')} Lernlandkarte</a><button class="btn btn-sec" data-action="new-session">${icon('plus')} Neue Stunde</button>`)}
+    view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Deine Kursstunden: mit dem Stift mitschreiben, Präsentationen ablegen, Hausaufgaben lösen.',
+      `<button class="btn btn-sec" data-action="new-session">${icon('plus')} Neue Stunde</button>`)}
       ${groups.length ? groups.map((gr) => `<div class="course-group"><div class="section-title"><button type="button" class="fold-btn" data-fold-course="${esc(gr.course)}" aria-expanded="${!folded(gr.course)}" title="Kurs ein- oder ausklappen"><span class="chev"></span>${esc(gr.course)}<span class="fold-sum">· ${esc(UL.courseSummary(gr.sessions, App.fmtDate))}</span></button> <span class="badge">${gr.sessions.length}</span><a class="btn btn-sm kb-open" href="${App.kursbuchLink(gr.course)}" title="Alle Mitschriften dieses Kurses als ein Notizbuch zum Blättern">📖 Notizbuch</a></div>
         <div class="timeline${folded(gr.course) ? ' is-folded' : ''}">${gr.sessions.map(sessionCard).join('')}</div></div>`).join('')
       : `<div class="empty-state"><div class="big">授</div><h3>Noch keine Stunde angelegt</h3><p>Lege zu jeder VHS-Stunde einen Eintrag an. Dort schreibst du mit dem Stift mit, legst die PowerPoint ab und erledigst Hausaufgaben.</p><button class="btn btn-primary" data-action="new-session">${icon('plus')} Erste Stunde anlegen</button></div>`}</div>`;
@@ -125,10 +125,10 @@
     if (tab === 'hand') {
       App.inkArea(body, {
         sheets: files.filter((f) => f.role === 'notes').sort((a, b) => a.created - b.created),
-        activeId: q.nb,
+        activeId: q.nb, page: +q.pg || 1, // pg: aus dem Kurs-Notizbuch die gerade aufgeschlagene Seite
         sheetMeta: (paper, n) => ({ sessionId: s.id, role: 'notes', section: 'session', source: UL.CLASS_SOURCE, paper, name: 'Mitschrift ' + sessionTitle(s) + (n > 1 ? ` (${n})` : '') }),
         multiSheet: true,
-        onSelect: (id) => App.setQuery({ nb: id }),
+        onSelect: (id) => App.setQuery({ nb: id, pg: '' }),
         newDefaults, onLinked, newPhrase: true,
       });
     }
@@ -149,9 +149,8 @@
     }
     if (tab === 'homework') {
       body.innerHTML = `<div class="row" style="margin-bottom:14px"><button class="btn btn-sec" data-up>${icon('upload')} Hausaufgabe (PDF/Foto) hochladen</button><button class="btn" data-blank>${icon('notebook')} Leeres Blatt</button></div>
-        ${hw.length ? `<div class="stack">${hw.map((f) => `<div class="card row between"><div class="row"><label class="chip ${f.done ? 'on' : ''}" style="--sec:var(--matcha)"><input type="checkbox" data-done="${f.id}" ${f.done ? 'checked' : ''} hidden>${f.done ? '✓ Erledigt' : 'Offen'}</label>
-          <div><b>${esc(f.name)}</b><div class="small muted">${App.store.inkCount.get(f.id) ? `✎ ${App.store.inkCount.get(f.id)} Seite(n) beschrieben` : 'noch nicht bearbeitet'}</div></div></div>
-          <div class="row"><button class="btn btn-sec btn-sm" data-open-file="${f.id}">${icon('pen')} Mit Stift bearbeiten</button></div></div>`).join('')}</div>`
+        ${hw.length ? `<div class="stack">${hw.map((f) => `<div class="card row hw-row"><label class="chip ${f.done ? 'on' : ''}" style="--sec:var(--matcha)"><input type="checkbox" data-done="${f.id}" ${f.done ? 'checked' : ''} hidden>${f.done ? '✓ Erledigt' : 'Offen'}</label>
+          <button type="button" class="hw-open" data-open-file="${f.id}" title="Mit Stift bearbeiten"><b>${esc(f.name)}</b><span class="small muted">${App.store.inkCount.get(f.id) ? `✎ ${App.store.inkCount.get(f.id)} Seite(n) beschrieben` : 'noch nicht bearbeitet'}</span></button></div>`).join('')}</div>`
         : '<div class="empty-state"><div class="big">宿</div><h3>Keine Hausaufgaben</h3><p>Lade das Aufgabenblatt als PDF hoch – dann kannst du es mit dem Surface-Stift direkt ausfüllen und als PDF wieder ausdrucken/abgeben.</p></div>'}`;
       body.querySelector('[data-up]').onclick = () => App.uploadDialog({ sessionId: s.id, role: 'homework', section: 'session', source: UL.CLASS_SOURCE, accept: 'application/pdf,image/*' });
       // Ohne Titel-Abfrage: das Blatt heißt nach der Stunde (umbenennen geht im Blatt über „⋯“)
@@ -186,20 +185,10 @@
     if (tab === 'summary') {
       body.innerHTML = `<div class="split"><div><div class="card pad-lg summary-doc" data-sum>${App.sessionSummary(s)}</div></div>
         <aside><div class="card"><h3>Eigenes Fazit</h3><textarea class="input" style="width:100%" rows="6" data-note placeholder="Was war schwierig? Was will ich wiederholen?">${esc(s.summaryNote || '')}</textarea></div>
-        <div class="card stack"><button class="btn" data-print>${icon('print')} Drucken / PDF</button><button class="btn" data-ai>${icon('copy')} KI-Prompt kopieren</button>
-        <span class="small muted">Die Zusammenfassung entsteht automatisch aus den verknüpften Einträgen, deinen Überschriften und <mark>Markierungen</mark> in der Mitschrift.</span>
+        <div class="card stack"><span class="small muted">Die Zusammenfassung entsteht automatisch aus den verknüpften Einträgen, deinen Überschriften und <mark>Markierungen</mark> in der Mitschrift.</span>
         <a class="btn btn-sec" href="#/ueben/saetze?s=${encodeURIComponent(s.id)}">${icon('sparkle')} Übungen zu dieser Stunde</a></div></aside></div>`;
       const ta = body.querySelector('[data-note]');
       ta.addEventListener('input', App.debounce(async () => { await save({ summaryNote: ta.value }); body.querySelector('[data-sum]').innerHTML = App.sessionSummary(s); }, 600));
-      body.querySelector('[data-print]').onclick = () => {
-        let pr = $('#print-root'); if (!pr) { pr = document.createElement('div'); pr.id = 'print-root'; document.body.appendChild(pr); }
-        pr.innerHTML = `<div class="print-doc summary-doc" style="padding:20px">${App.sessionSummary(s)}</div>`;
-        window.print();
-      };
-      body.querySelector('[data-ai]').onclick = () => {
-        const txt = App.sessionPrompt(s);
-        navigator.clipboard.writeText(txt).then(() => App.toast('Prompt kopiert – in Claude oder einer anderen KI einfügen'), () => App.modal({ title: 'KI-Prompt', body: `<div class="prompt-box">${esc(txt)}</div>` }));
-      };
     }
     App.hydrateThumbs(body);
   });
@@ -227,17 +216,5 @@
       ${files.length ? `<h3>Material & Hausaufgaben</h3><ul>${files.map((f) => `<li>${esc(f.name)}${f.role === 'homework' ? (f.done ? ' – <b style="color:var(--matcha)">erledigt ✓</b>' : ' – <b style="color:var(--shu)">offen</b>') : ''}</li>`).join('')}</ul>` : ''}
       ${s.summaryNote ? `<h3>Mein Fazit</h3><div class="prose">${JP.md(s.summaryNote)}</div>` : ''}
       ${!g.length && !v.length && !ex.length ? '<p class="muted" style="margin-top:14px">Noch leer: Verknüpfe unter „Gelernt“ die Grammatik und Vokabeln dieser Stunde oder markiere Wichtiges in der Mitschrift.</p>' : ''}`;
-  };
-  App.sessionPrompt = (s) => {
-    const g = (s.grammarIds || []).map(App.item).filter(Boolean);
-    const v = (s.vocabIds || []).map(App.item).filter(Boolean);
-    const d = document.createElement('div'); d.innerHTML = s.notesHtml || '';
-    return `Ich lerne Japanisch (Niveau JLPT N5, Lehrbuch ${bookRef(s) || 'Genki I'}). Erstelle mir bitte eine übersichtliche Zusammenfassung meiner Unterrichtsstunde auf Deutsch mit: 1) den Grammatikthemen und je einer kurzen Erklärung + 2 Beispielsätzen, 2) den wichtigsten Vokabeln als Tabelle (Kanji, Kana, Deutsch), 3) fünf kurzen Übersetzungsübungen (Deutsch → Japanisch) NUR mit dieser Grammatik und diesen Vokabeln, Lösungen am Ende.
-
-Stunde: ${sessionTitle(s)} (${App.fmtDate(s.date)})
-Grammatik: ${g.map((x) => `${x.title} (${JP.plain(x.jp || '')})`).join('; ') || '–'}
-Vokabeln: ${v.map((x) => `${x.kanji || x.kana} (${x.kana}) = ${App.meaning(x).text}`).join('; ') || '–'}
-Meine Mitschrift:
-${d.innerText.trim() || '–'}`;
   };
 })(window.App);

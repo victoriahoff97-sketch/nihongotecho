@@ -49,9 +49,12 @@
     examples: (Array.isArray(v.examples) ? v.examples : []).filter((x) => x && typeof x === 'object').slice(0, 1)
       .map((x) => ({ jp: str(x.jp, 200), de: str(x.de, 200) })),
   });
-  F.makeRef = (it, { label, sub }) => {
+  // Kanji: Zeichen, Bedeutung und Lesungen (als fertiger Text) – so sehen alle das Kanji, auch ohne es selbst zu haben
+  const cleanKanji = (k) => ({ char: str(k.char, 4), de: str(k.de, 120), on: str(k.on, 80), kun: str(k.kun, 120) });
+  F.makeRef = (it, { label, sub, kanji }) => {
     const ref = { type: it.type, id: it.id, label: str(label, 60), sub: str(sub, 80) };
     if (it.type === 'vocab') ref.vocab = cleanVocab(it);
+    if (it.type === 'kanji') ref.kanji = cleanKanji(Object.assign({ char: it.char, de: sub }, kanji));
     return ref;
   };
   // Verweise kommen von anderen Geräten: nur Bekanntes durchlassen, Texte kürzen
@@ -61,11 +64,12 @@
     .map((r) => {
       const out = { type: r.type, id: r.id, label: str(r.label, 60), sub: str(r.sub, 80) };
       if (r.type === 'vocab' && r.vocab && typeof r.vocab === 'object') out.vocab = cleanVocab(r.vocab);
+      if (r.type === 'kanji' && r.kanji && typeof r.kanji === 'object') out.kanji = cleanKanji(r.kanji);
       return out;
     });
-  // Antippen: derselbe Eintrag → öffnen · eigene Vokabel mit demselben Wort → die öffnen ·
-  // fremde Vokabel → übernehmen anbieten · sonst danach suchen
-  F.resolveRef = (ref, { byId, byWord }) => {
+  // Antippen: derselbe Eintrag → öffnen · eigene Vokabel mit demselben Wort bzw. eigenes Kanji mit demselben
+  // Zeichen → das öffnen · fremde Vokabel / fremdes Kanji → übernehmen anbieten · sonst danach suchen
+  F.resolveRef = (ref, { byId, byWord, byChar = () => null }) => {
     const same = byId(ref.id);
     if (same) return { kind: 'open', id: same.id };
     if (ref.type === 'vocab' && ref.vocab) {
@@ -73,8 +77,39 @@
       if (mine) return { kind: 'open', id: mine.id };
       return { kind: 'take' };
     }
+    if (ref.type === 'kanji') {
+      const ch = (ref.kanji && ref.kanji.char) || ref.label;
+      const mine = ch ? byChar(ch) : null;
+      if (mine) return { kind: 'open', id: mine.id };
+      if (ch) return { kind: 'take' };
+    }
     return { kind: 'search', q: ref.label };
   };
+
+  // ---------- Suche ----------
+  // Alle Wörter müssen irgendwo vorkommen: Text, Name, verknüpfte Einträge (Wort, Lesung, Deutsch)
+  const fold = (s) => String(s ?? '').toLowerCase().normalize('NFKC');
+  const postWords = (p) => [p.text, p.name].concat(...F.cleanRefs(p.refs).map((r) => [r.label, r.sub,
+    r.vocab && r.vocab.kana, r.vocab && r.vocab.de, r.kanji && r.kanji.de, r.kanji && r.kanji.on, r.kanji && r.kanji.kun]));
+  F.matchPost = (p, q) => {
+    const words = fold(q).split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    const hay = fold(postWords(p).filter(Boolean).join('\n'));
+    return words.every((w) => hay.includes(w));
+  };
+
+  // ---------- Avatare ----------
+  // Pro Mitglied ein Text: „e:<Motiv>:<Farbe>“ (Kawaii-Motiv im Pastellkreis) oder „k:<Kanji>“ (Hanko-Stempel)
+  F.AVATAR_MOTIFS = ['🍙', '🦊', '🐱', '🌸', '🍡', '🎏', '🐼', '🍵', '🗻', '🐟', '🍣', '🐸', '🌙', '🎐', '🐰', '⛩️'];
+  F.AVATAR_COLORS = ['sakura', 'matcha', 'sora', 'yuzu', 'fuji', 'kumo'];
+  const KANJI_RE = /^[㐀-鿿豈-﫿]$/u;
+  F.parseAvatar = (s) => {
+    const [t, v, c] = String(s ?? '').split(':');
+    if (t === 'e' && F.AVATAR_MOTIFS.includes(v)) return { t, v, c: F.AVATAR_COLORS.includes(c) ? c : F.AVATAR_COLORS[0] };
+    if (t === 'k' && KANJI_RE.test(v || '')) return { t, v };
+    return null;
+  };
+  F.makeAvatar = ({ t, v, c }) => (t === 'k' ? `k:${v}` : `e:${v}:${c}`);
 
   // ---------- Daten von anderen Geräten ----------
   // Alles, was aus Firebase kommt, hat ein anderes Mitglied geschrieben: jedes Feld auf seinen Typ bringen,

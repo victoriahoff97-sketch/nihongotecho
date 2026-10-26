@@ -7,6 +7,24 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-26-unterricht-notizbuch', date: '26. Oktober',
+      items: [
+        { t: 'Notizbücher in deinen Farben', d: 'Buch und Reiter passen jetzt farblich zusammen und lassen sich einzeln umfärben. Wer lieber normale Seiten statt Buch mag, stellt das pro Notizbuch um.' },
+        { t: 'Kanji beim Markieren verknüpfen', d: 'In der Mitschrift markierst du ein Kanji und verknüpfst es direkt – auch eins, das du noch nicht hast. Es landet bei den Kanji der Stunde.' },
+        { t: 'Nur Markierungen radieren', d: 'Der Radierer hat einen Modus „nur Markierungen“: Er nimmt Markierungen und Verknüpfungen weg, deine Schrift bleibt stehen.' },
+        { t: 'Leiste nicht mehr im Weg', d: 'Markierst du mit Stift oder Finger, erscheint die kleine Leiste der App unter dem Text, damit sie nicht über dem Menü des Tablets liegt.' },
+        { t: 'Hausaufgaben schneller öffnen', d: 'Ein Tipp auf die ganze Zeile öffnet die Hausaufgabe. Die Stunden-Seite ist aufgeräumter.' },
+      ],
+    },
+    {
+      id: '2026-10-26-forum-plus', date: '26. Oktober',
+      items: [
+        { t: 'Suchen in der Gruppe', d: 'Über der Themenliste der Gedankenwolke gibt es ein Suchfeld – es findet Text, Namen und angehängte Wörter, auch in besprochenen Themen.' },
+        { t: 'Kanji rechts daneben', d: 'Angehängte Kanji stehen groß rechts neben dem Beitrag, mit Bedeutung und Lesungen. Fehlt dir eins, holst du es mit „Als Kanji übernehmen“ zu dir.' },
+        { t: 'Dein Avatar', d: 'Über „⋯ › Mein Avatar“ wählst du ein niedliches Motiv mit Farbe oder ein Kanji als Namensstempel – er steht neben deinem Namen.' },
+      ],
+    },
+    {
       id: '2026-10-26-forum-kaestchen', date: '26. Oktober',
       items: [
         { t: 'Gruppe übersichtlicher', d: 'Die Gedankenwolke ist größer: Jeder Beitrag steht in einem eigenen Kästchen wie im Tagebuch, oben wählst du, welche Themen du sehen willst.' },

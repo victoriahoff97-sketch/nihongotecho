@@ -274,7 +274,6 @@ window.App = window.App || {};
     wkLevels: [],       // freigeschaltete WaniKani-Level
     wkVocabLevels: [],  // WaniKani-Vokabeln Deutsch → Japanisch: freigeschaltete Level
     furiKnown: 'hide', // Furigana in der Abfrage über Kanji, die man lesen kann: hide | show
-    formsKnown: [], // Lernlandkarte: abgehakte Formen (Kennungen aus js/formmap-logic.js)
     listenPos: 0, // 今日のリスニング: Stelle in der Hör-Kette (js/listening-logic.js)
     dayLog: null, // Tagesliste „今日“ auf der Startseite: was heute erledigt ist (js/daycheck-logic.js)
     dayGoals: null, // Tagesliste: eigene Ziele – Ziel / Mag / Aus pro Punkt, Zahlen, eigene Punkte (js/daycheck-logic.js D.goals)
@@ -290,10 +289,10 @@ window.App = window.App || {};
   App.onChange = (fn) => S.listeners.add(fn);
   const emit = App.emit = (what) => S.listeners.forEach((fn) => { try { fn(what); } catch (e) { console.error(e); } });
 
-  App.saveSettings = async (patch) => {
+  App.saveSettings = async (patch, { silent } = {}) => {
     Object.assign(S.settings, patch);
     await App.db.put('meta', { key: 'settings', value: S.settings });
-    emit('settings');
+    if (!silent) emit('settings');
   };
   App.sources = () => S.settings.sources;
   App.sourceColor = (name) => {

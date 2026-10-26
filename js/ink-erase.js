@@ -44,11 +44,14 @@
     return parts.filter((p) => len(p) >= MIN_LEN).map((p) => ({ ...s, pts: p }));
   };
 
+  // Radierer „Nur Markierungen“: trifft nur Textmarker-Striche, die Schrift darunter bleibt
+  const erasable = (s, marksOnly) => !marksOnly || s.t === 'marker';
+
   // Alle Striche einer Seite; Teile rücken an die Stelle ihres Strichs (Reihenfolge = Schreibfolge). null = nichts getroffen
-  const cutAll = (strokes, c, rad) => {
+  const cutAll = (strokes, c, rad, marksOnly = false) => {
     let out = null;
     for (let i = 0; i < strokes.length; i++) {
-      const r = cutStroke(strokes[i], c, rad);
+      const r = erasable(strokes[i], marksOnly) ? cutStroke(strokes[i], c, rad) : null;
       if (r && !out) out = strokes.slice(0, i);
       if (out) { if (r) out.push(...r); else out.push(strokes[i]); }
     }
@@ -65,6 +68,6 @@
     return out;
   };
 
-  const P = { radius, cutStroke, cutAll, sweep };
+  const P = { radius, cutStroke, erasable, cutAll, sweep };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.inkErase = P;
 })(this);

@@ -20,8 +20,7 @@
     ['session', 'Unterricht', '#/unterricht', 'sec-session', '授業'],
     ['library', 'Bibliothek', '#/bibliothek', 'sec-library', '資料'],
   ];
-  // Die Lernlandkarte hängt an der Grammatik (Knopf dort); Pakete und Einstellungen stehen als Symbole in der Fußzeile
-  const ALSO = { '/grammatik': ['/karte'] };
+  // Pakete und Einstellungen stehen als Symbole in der Fußzeile
   const renderNav = () => {
     const path = App.parseHash().path;
     const due = App.dueCount();
@@ -29,7 +28,7 @@
       if (!n) return '<div class="nav-sep"></div>';
       const [ic, label, href, cls, jp] = n;
       const base = href.slice(1);
-      const active = base === '/' ? path === '/' : path === base || path.startsWith(base + '/') || (ALSO[base] || []).includes(path);
+      const active = base === '/' ? path === '/' : path === base || path.startsWith(base + '/');
       const extra = ic === 'practice' && due ? `<span class="badge count">${due}</span>` : `<span class="jp-mini">${jp}</span>`;
       return `<a class="nav-link ${cls} ${active ? 'active' : ''}" href="${href}" title="${label}"><span class="dot">${icon(ic)}</span><span class="lbl">${label}</span>${extra}</a>`;
     }).join('');

@@ -242,7 +242,6 @@
     konjugieren: ['sec-practice', 'href="#/ueben/konjugieren"', 'shuffle', 'Konjugieren', 'Verbformen üben'],
     schreiben: ['sec-kanji', 'href="#/ueben/kanji"', 'pen', 'Kanji schreiben', 'Mit dem Stift üben'],
     lernweg: ['sec-practice', 'href="#/lernweg"', 'list', 'Lernweg', 'Wie deine Wörter wandern'],
-    karte: ['sec-grammar', 'href="#/karte"', 'map', 'Lernlandkarte', 'Grammatik Station für Station'],
     eingang: ['sec-vocab', 'href="#/eingang"', 'download', 'Eingang', 'Aus dem Browser übernommen'],
     suche: ['sec-home', 'href="#/suche"', 'search', 'Suche', 'Alles in der App durchsuchen'],
   };
@@ -576,7 +575,7 @@
     const files = App.filesFor({ section: 'grammar', source: q.src || undefined, lesson: q.l || undefined });
     const cardQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'grammar', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v)));
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Jeder Grammatikpunkt mit Aufbau, Erklärung, Beispielen – und wo du ihn gelernt hast.',
-      `<a class="btn" href="#/ueben/karten?${cardQs}">${icon('practice')} Karteikarten</a><a class="btn" href="#/karte">${icon('map')} Lernlandkarte</a><button class="btn btn-sec" data-new="grammar">${icon('plus')} Grammatik</button>`)}
+      `<a class="btn" href="#/ueben/karten?${cardQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="grammar">${icon('plus')} Grammatik</button>`)}
       ${tabsHtml(q, items.length, files.length)}
       <div class="toolbar">${filterInput(q, 'Grammatik suchen, z. B. て-Form, Vergleich …')}<div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
       ${App.levelSelect(q.lvl)}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusChoices({ type: 'grammar' }).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>

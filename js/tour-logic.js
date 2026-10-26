@@ -6,7 +6,7 @@
 
   const PAGES = ['/grammatik', '/vokabeln', '/kanji', '/ausdruecke', '/gleichklang', '/ueben', '/anwenden', '/hoeren', '/unterricht', '/bibliothek', '/pakete', '/einstellungen'];
   // Seiten ohne eigene Tour zeigen die der Seite, zu der sie gehören
-  const ALIAS = { '/karte': '/grammatik', '/saetze': '/vokabeln', '/eingang': 'erweiterung' };
+  const ALIAS = { '/saetze': '/vokabeln', '/eingang': 'erweiterung' };
 
   // Welche Tour gehört zu dieser Adresse? Unterseiten nehmen die Tour ihrer Menüseite.
   const tourKeyFor = (path) => {

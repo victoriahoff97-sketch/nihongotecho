@@ -10,11 +10,44 @@
     onSaved: async (it) => { if (onLinked) await onLinked(it, true); },
   });
 
+  // Kanji aus markiertem Text anlegen (fertig ausgefüllt, App.createKanji) und verknüpfen; onLinked(it, isNew) je Kanji.
+  // Ein Kanji direkt, mehrere über die Auswahl mit genau diesen Zeichen vorgewählt. Kennt die App ein einzelnes Zeichen nicht,
+  // öffnet das Kanji-Formular. Liefert die verknüpften Kanji ([] = nichts getan).
+  App.linkKanji = async (text, defaults = {}, onLinked, { quiet = false } = {}) => {
+    const cs = App.kanjiLogic.kanjiChars(text);
+    const defs = () => Object.assign({}, defaults, { tags: (defaults.tags || []).slice() });
+    if (!cs.length) { App.toast('In der Markierung ist kein Kanji'); return []; }
+    if (cs.length === 1) {
+      const ch = cs[0], had = App.kanjiByChar(ch);
+      const it = had || await App.createKanji(ch, defs());
+      if (!it) {
+        return new Promise((res) => App.editItem({
+          type: 'kanji', single: true, title: 'Neues Kanji verknüpfen', defaults: Object.assign(defs(), { char: ch }),
+          onSaved: async (k) => { if (onLinked) await onLinked(k, true); res([k]); },
+        }));
+      }
+      if (onLinked) await onLinked(it, !had);
+      if (!quiet) App.toast(had ? `Kanji ${ch} verknüpft` : `Kanji ${ch} angelegt und verknüpft`);
+      return [it];
+    }
+    const ix = (await App.kanjiIndex()) || {};
+    const had = new Set();
+    const selected = cs.map((c) => { const k = App.kanjiByChar(c); if (k) had.add(k.id); return k ? k.id : ix[c] ? App.pickNew(c) : null; }).filter(Boolean);
+    const ids = await App.pickItems({ title: 'Kanji verknüpfen', types: ['kanji'], selected, q: cs.join(''), kanjiDefaults: defs() });
+    if (!ids || !ids.length) return [];
+    const items = ids.map(App.item).filter(Boolean);
+    for (const it of items) if (onLinked) await onLinked(it, !had.has(it.id));
+    if (!quiet) App.toast(`${items.length} Kanji verknüpft`);
+    return items;
+  };
+
   // Treffer aus dem Nachschlagen-Fenster (nach „Erkennen“) verknüpfen: eigener Eintrag (Wort oder Grammatik) direkt,
-  // Wörterbuch-Treffer über den vorbelegten Vokabel-Dialog, r.create = die Eingabe als neue Vokabel/Grammatik anlegen.
+  // Wörterbuch-Treffer über den vorbelegten Vokabel-Dialog, r.create = die Eingabe als neue Vokabel/Grammatik/Kanji anlegen.
   // defaultsFor(type) → Vorgaben für neue Einträge (Vokabel: contexts[0] = Fundort).
   // Liefert den Eintrag; bleibt offen, wenn der Dialog abgebrochen wird.
   App.wordLinker = (defaultsFor, onLinked) => (r) => new Promise((res) => {
+    // ein eingekreistes Kanji, das noch nicht in der Sammlung ist: fertig ausgefüllt anlegen
+    if (r.create === 'kanji') { App.linkKanji(r.q, defaultsFor('kanji'), onLinked, { quiet: true }).then((l) => l[0] && res(l[0])); return; }
     if (r.create) {
       const type = r.create === 'grammar' ? 'grammar' : 'vocab';
       App.editItem({
@@ -69,11 +102,11 @@
   };
 
   // ---------- Handschrift ----------
-  // opts: { sheets, activeId, sheetMeta(paper, n), multiSheet, onSelect(fileId), newDefaults (Objekt oder (type) => Objekt), onLinked, onUnlinked, newPhrase }
+  // opts: { sheets, activeId, page (Seite ab 1, auf der das Blatt aufgeht), sheetMeta(paper, n), multiSheet, onSelect(fileId), newDefaults (Objekt oder (type) => Objekt), onLinked, onUnlinked, newPhrase }
   // newPhrase: zusätzlich „＋ Ausdruck“ in der Stiftleiste (nur wo onLinked Ausdrücke verknüpft, z. B. Unterricht)
   // onUnlinked(itemId): die letzte Markierung eines Wortes wurde auf dem Blatt gelöst
   // Liefert { dropLinks(itemId) }: Markierungen eines Wortes vom Blatt nehmen (Verknüpfung wurde woanders entfernt)
-  App.inkArea = (host, { sheets = [], activeId, sheetMeta, multiSheet = true, onSelect, newDefaults = {}, onLinked, onUnlinked, newPhrase = false } = {}) => {
+  App.inkArea = (host, { sheets = [], activeId, page, sheetMeta, multiSheet = true, onSelect, newDefaults = {}, onLinked, onUnlinked, newPhrase = false } = {}) => {
     const defaultsFor = (type) => (typeof newDefaults === 'function' ? newDefaults(type) : newDefaults);
     const linkWord = App.wordLinker(defaultsFor, onLinked);
     const UL = App.uLogic;
@@ -122,7 +155,7 @@
     const last = App.ink.lastState && App.ink.lastState.fileId === active.id ? App.ink.lastState : {};
     const extraTools = linkTools(defaultsFor, onLinked, newPhrase);
     App.ink.mount(inkEl, active.id, {
-      embedded: true, ...last,
+      embedded: true, ...last, ...(page > 1 && active.id === activeId ? { page } : {}),
       extraTools,
       onLinkWord: linkWord, onUnlinkWord: onUnlinked,
       // Vollbild: eingebettete Fläche abbauen, damit sie nach dem Schließen frisch geladen wird.
@@ -139,8 +172,9 @@
   App.typedArea = (host, { html = '', onSave, newDefaults = {}, onLinked, contextInfo, placeholder, hint = '', linkLabel, linkRefs = false, newPhrase = false, markTitle, dictate } = {}) => {
     host.innerHTML = `<div data-rte></div>${hint ? `<p class="small muted">${hint}</p>` : ''}`;
     return App.rte(host.querySelector('[data-rte]'), html, onSave, {
-      placeholder, linkLabel, newPhrase, markTitle, dictate,
+      placeholder, linkLabel, newPhrase, markTitle, dictate, kanjiDefaults: newDefaults,
       onRefItem: linkRefs && onLinked ? (it) => onLinked(it, false) : undefined,
+      onKanji: (text) => App.linkKanji(text, newDefaults, onLinked),
       onNewItem: (t, d, cb) => App.newLinked(t, Object.assign({}, newDefaults, d), async (it) => { cb && cb(it); if (onLinked) await onLinked(it, true); }),
       contextInfo,
       // Bestehende Vokabel verknüpfen: Kontext anhängen (gleicher Ort + Satz wird ersetzt), ggf. zum Lernen vormerken

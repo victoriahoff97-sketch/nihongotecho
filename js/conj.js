@@ -36,17 +36,11 @@
       <b>${esc(m.label)}</b><span class="small muted">${esc(sub)}</span>${show ? `<span class="jp conj-mix-ex" lang="ja">${esc(exampleOf(show))}</span>` : ''}</button>`;
   };
 
-  // Von der Lernlandkarte („Diese Form üben“): Auswahl nur für diesen Besuch, die gemerkte Mischung bleibt unberührt
-  let visit = null;
-
   App.route('/ueben/konjugieren', (view, p, q) => {
-    const preset = C.preset(q.form);
-    if (!preset) visit = null;
-    else if (!visit || visit.form !== q.form) visit = { form: q.form, sel: preset };
     // Gewählte Mischung und eigene Zusammenstellung werden getrennt gemerkt – wer kurz „Nur die て-Form“ übt, verliert seine Auswahl nicht
     let mixId = C.cleanMix(App.lsGet('conjMix'));
     const custom = C.clean(App.lsGet('conjSel2')) || C.defaults();
-    let sel = visit ? visit.sel : C.mixSel(mixId, custom);
+    let sel = C.mixSel(mixId, custom);
 
     const byChoice = q.w === 'wahl';
     const all = App.itemsOf('vocab').filter((it) => C.POS.some((x) => x.id === it.pos));
@@ -63,12 +57,10 @@
     const groupHtml = (g) => `<div class="conj-group" style="--c:${g.color}">
         <label class="picker-row conj-group-head"><input type="checkbox" data-line-check><b>${esc(g.label)}</b><span class="small muted" data-count></span></label>
         <div class="conj-forms" ${g.forms.length > 1 ? '' : 'hidden'}>${g.forms.map((f) => `<label class="picker-row"><input type="checkbox" data-form value="${f.id}" ${custom.forms.includes(f.id) ? 'checked' : ''}><span>${esc(f.label)}</span><span class="jp muted" lang="ja">${esc(JP.plain(F.example(f, F.sampleWord(f)).to))}</span></label>`).join('')}</div></div>`;
-    const visitForm = visit && F.form(visit.form);
     view.innerHTML = `<div class="sec-grammar"><div class="crumbs">${App.backCrumb()} › Konjugieren</div>
       <div class="page-head"><div class="titles"><h1>Konjugieren <span class="jp-title">活用</span></h1><p>Du siehst ein Wort in der Grundform und bildest die gesuchte Form – im Kopf oder auf Papier. Dann deckst du auf. An deinem Lernstand ändert das nichts.</p></div></div>
       <div class="card" data-setup><div class="stack">
         <h3>Was möchtest du üben?</h3>
-        ${visitForm ? `<div class="conj-visit" style="--c:${lineColor(visitForm)}">Von der Lernlandkarte: nur die <b>${esc(visitForm.label)}</b> <span class="jp muted" lang="ja">${esc(exampleOf(visitForm))}</span><span class="small muted">Tipp eine Mischung an, um etwas anderes zu üben.</span></div>` : ''}
         <div class="conj-mixes">${C.MIXES.map(mixHtml).join('')}</div>
         <div class="conj-custom" data-custom><div class="conj-groups">${C.groups().map(groupHtml).join('')}</div></div>
         <div class="row conj-words"><span class="small muted">Mit welchen Wörtern?</span><div class="seg"><button class="${byChoice ? '' : 'on'}" data-q-w="">Meine Wörter</button><button class="${byChoice ? 'on' : ''}" data-q-w="wahl">Nach Lektion oder Niveau</button></div>
@@ -83,11 +75,11 @@
     // Zahl, Häkchen und Hinweise an Ort und Stelle nachziehen (ohne Neuzeichnen, damit Antippen flüssig bleibt)
     const refresh = () => {
       setup.querySelectorAll('[data-mix]').forEach((b) => {
-        const on = !visit && b.dataset.mix === mixId;
+        const on = b.dataset.mix === mixId;
         b.classList.toggle('on', on);
         b.setAttribute('aria-pressed', on);
       });
-      setup.querySelector('[data-custom]').hidden = !!visit || mixId !== 'custom';
+      setup.querySelector('[data-custom]').hidden = mixId !== 'custom';
       setup.querySelectorAll('.conj-group').forEach((el) => {
         const boxes = [...el.querySelectorAll('[data-form]')], on = boxes.filter((c) => c.checked).length;
         const head = el.querySelector('[data-line-check]');
@@ -114,8 +106,6 @@
       if (!b) return;
       mixId = b.dataset.mix;
       App.lsSet('conjMix', mixId);
-      // Besuch von der Lernlandkarte beenden: ohne ?form= zeichnet sich die Seite mit der gewählten Mischung neu
-      if (visit) { App.setQuery({ form: '' }); return; }
       sel = C.mixSel(mixId, custom);
       refresh();
     });
@@ -141,7 +131,7 @@
         cram: true,
         left: () => entries.length,
         onGrade: (ent, g) => { C.tally(stats, ent.form, g > 0, !ent.again); ent.again = true; App.dayCheck.mark('conj'); },
-        endHtml: () => { const rows = C.summary(stats); return rows.length ? `<div class="conj-summary">${rows.map((r) => { const f = F.form(r.form); return `<div style="--c:${lineColor(f)}"><b>${esc(f.label)}</b><span>${r.right}/${r.asked}</span></div>`; }).join('')}<a class="small" href="#/karte">${icon('map')} Zur Lernlandkarte</a></div>` : ''; },
+        endHtml: () => { const rows = C.summary(stats); return rows.length ? `<div class="conj-summary">${rows.map((r) => { const f = F.form(r.form); return `<div style="--c:${lineColor(f)}"><b>${esc(f.label)}</b><span>${r.right}/${r.asked}</span></div>`; }).join('')}</div>` : ''; },
       };
       opts.nextChunk = () => {
         stats = {};

@@ -38,9 +38,10 @@
   const wordLines = (words) => (words || []).filter((w) => w.jp && (w.de || w.en)).map((w) => `${w.jp} = ${w.de || w.en}`).join('\n');
 
   // Kanji der Suche, die der Index kennt und die noch nicht in der Sammlung stehen (has(ch))
-  const newChars = (q, index, has) => [...new Set(Array.from(String(q || '')).filter((c) => KANJI_RE.test(c)))]
-    .filter((c) => index && index[c] && !has(c));
+  // alle Kanji eines Textes, jedes einmal (Reihenfolge wie im Text)
+  const kanjiChars = (s) => [...new Set(Array.from(String(s || '')).filter((c) => KANJI_RE.test(c)))];
+  const newChars = (q, index, has) => kanjiChars(q).filter((c) => index && index[c] && !has(c));
 
-  const P = { entry, kunParts, kunText, kunRaw, firstKanji, exampleWords, wordLines, newChars };
+  const P = { entry, kunParts, kunText, kunRaw, firstKanji, kanjiChars, exampleWords, wordLines, newChars };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.kanjiLogic = P;
 })(typeof window !== 'undefined' ? window : globalThis);

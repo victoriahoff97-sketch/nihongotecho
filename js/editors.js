@@ -796,7 +796,7 @@
   // newPhrase: zusätzlich „＋ Ausdruck“ (wo auch Ausdrücke verknüpft werden, z. B. Unterricht)
   // markTitle: Hinweis am Markieren-Knopf (im Unterricht: landet in der Zusammenfassung)
   // dictate: Sprache fürs Diktieren (z. B. 'ja-JP') – Knopf „Diktieren“, der Text landet an der Schreibmarke (js/dictate.js)
-  App.rte = (host, html, onSave, { placeholder = 'Hier mitschreiben …', onNewItem, onLinkItem, onRefItem, contextInfo, linkLabel, newPhrase = false, markTitle = 'Markieren', dictate } = {}) => {
+  App.rte = (host, html, onSave, { placeholder = 'Hier mitschreiben …', onNewItem, onLinkItem, onRefItem, contextInfo, linkLabel, newPhrase = false, markTitle = 'Markieren', dictate, onKanji, kanjiDefaults = {} } = {}) => {
     host.innerHTML = `<div class="editor-toolbar">
       <button class="icon-btn sm" data-cmd="h2" title="Überschrift">${icon('h')}</button>
       <button class="icon-btn sm" data-cmd="bold" title="Fett (Strg+B)">${icon('bold')}</button>
@@ -847,7 +847,7 @@
         const r = await App.ask('Furigana einfügen', [{ label: 'Kanji', value: base, jp: true }, { label: 'Lesung (Romaji oder Kana)', jp: true }]);
         if (r && r[0] && r[1]) insertHtml(`<ruby>${esc(r[0])}<rt>${esc(JP.looksRomaji(r[1]) ? JP.romaji(r[1]) : r[1])}</rt></ruby>&nbsp;`);
       } else if (c === 'ref') {
-        const ids = await App.pickItems({ title: 'Eintrag verlinken', single: true, types: ['grammar', 'vocab', 'kanji', 'phrase'] });
+        const ids = await App.pickItems({ title: 'Eintrag verlinken', single: true, types: ['grammar', 'vocab', 'kanji', 'phrase'], q: selText.trim().slice(0, 40), kanjiDefaults });
         if (ids && ids[0]) {
           const it = App.item(ids[0]);
           insertHtml(`<a class="ref" href="${App.link(it)}" data-ref="${it.id}" contenteditable="false">${esc(App.itemPlain(it))}</a>&nbsp;`);
@@ -933,27 +933,39 @@
       const bar = document.createElement('div');
       bar.className = 'sel-bar';
       bar.hidden = true;
-      bar.innerHTML = `<button data-b="vocab">${icon('plus')} Vokabel</button><button data-b="mark">${icon('highlight')} Markieren</button><button data-b="ref">${icon('link')} Verlinken</button>`;
+      // „＋ Kanji“ nur, wenn Kanji markiert sind: legt sie fertig ausgefüllt an und verknüpft sie (onKanji)
+      bar.innerHTML = `<button data-b="vocab">${icon('plus')} Vokabel</button>${onKanji ? `<button data-b="kanji" title="Markierte Kanji anlegen und verknüpfen">${icon('plus')} Kanji</button>` : ''}<button data-b="mark">${icon('highlight')} Markieren</button><button data-b="ref">${icon('link')} Verlinken</button>`;
       document.body.appendChild(bar);
       App.onLeave(() => bar.remove());
+      const kBtn = bar.querySelector('[data-b="kanji"]');
       bar.addEventListener('pointerdown', (e) => e.preventDefault());
       bar.addEventListener('click', (e) => {
         const b = e.target.closest('[data-b]'); if (!b) return;
         bar.hidden = true;
         if (b.dataset.b === 'vocab') newVocab();
+        else if (b.dataset.b === 'kanji') onKanji(savedRange ? savedRange.toString() : '');
         else host.querySelector(`.editor-toolbar [data-cmd="${b.dataset.b}"]`).click();
       });
+      // Bei Stift/Touch zeigt das Tablet sein eigenes Menü über der Markierung –
+      // dann kommt unsere Leiste darunter (mit Luft für die Auswahl-Griffe).
+      let touchy = matchMedia('(pointer: coarse)').matches;
+      const lastPointer = (e) => { touchy = e.pointerType !== 'mouse'; };
+      document.addEventListener('pointerdown', lastPointer, true);
       const place = App.debounce(() => {
         const s = getSelection();
         if (!s.rangeCount || s.isCollapsed || !ed.contains(s.anchorNode) || !s.toString().trim() || s.toString().length > 40) { bar.hidden = true; return; }
         const r = s.getRangeAt(0).getBoundingClientRect();
-        bar.style.left = App.clamp(r.left + r.width / 2, 120, window.innerWidth - 120) + 'px';
-        bar.style.top = Math.max(70, r.top - 8) + 'px';
+        if (kBtn) kBtn.hidden = !JP.hasKanji(s.toString());
         bar.hidden = false;
+        const half = Math.min(bar.offsetWidth / 2 + 8, window.innerWidth / 2);
+        bar.style.left = App.clamp(r.left + r.width / 2, half, window.innerWidth - half) + 'px';
+        const below = touchy && r.bottom + 34 + bar.offsetHeight <= window.innerHeight - 8;
+        bar.classList.toggle('below', below);
+        bar.style.top = (below ? r.bottom + 34 : Math.max(70, r.top - 8)) + 'px';
       }, 180);
       document.addEventListener('selectionchange', place);
       window.addEventListener('scroll', () => { bar.hidden = true; }, { passive: true });
-      App.onLeave(() => document.removeEventListener('selectionchange', place));
+      App.onLeave(() => { document.removeEventListener('selectionchange', place); document.removeEventListener('pointerdown', lastPointer, true); });
     }
     // Links im Editor per Klick öffnen
     ed.addEventListener('click', (e) => { const a = e.target.closest('a.ref'); if (a) { e.preventDefault(); App.go(a.getAttribute('href')); } });

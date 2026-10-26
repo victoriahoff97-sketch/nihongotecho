@@ -17,7 +17,7 @@
   };
   // name: für die Zeile oben · to: für den Knopf „Zurück …“
   const LABELS = [
-    ['/grammatik', 'Grammatik', 'zur Grammatik'], ['/karte', 'Lernlandkarte', 'zur Lernlandkarte'], ['/vokabeln', 'Vokabeln', 'zu den Vokabeln'],
+    ['/grammatik', 'Grammatik', 'zur Grammatik'], ['/vokabeln', 'Vokabeln', 'zu den Vokabeln'],
     ['/kanji', 'Kanji', 'zu den Kanji'], ['/ausdruecke', 'Ausdrücke', 'zu den Ausdrücken'], ['/gleichklang', 'Gleichklang', 'zum Gleichklang'],
     ['/anwenden', 'Anwenden', 'zu Anwenden'], ['/unterricht', 'Unterricht', 'zum Unterricht'], ['/bibliothek', 'Bibliothek', 'zur Bibliothek'],
     ['/aufgabe', 'Buchaufgabe', 'zur Buchaufgabe'], ['/suche', 'Suche', 'zur Suche'], ['/eingang', 'Eingang', 'zum Eingang'], ['/saetze', 'Sätze', 'zu den Sätzen'],

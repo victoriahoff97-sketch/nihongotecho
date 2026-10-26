@@ -235,7 +235,7 @@
     // Standard-Stift (sonst der zuletzt benutzte) – außer der Aufrufer reicht den Zustand eines gerade offenen Blatts weiter (der hat penId)
     const handed = opts.penId !== undefined;
     const tool0 = PEN.PEN_TOOLS.includes(opts.defaultTool) ? 'ink' : opts.defaultTool;
-    const st = { tool: handed && TOOLS.includes(tool0) ? tool0 : 'ink', penId: handed && pens.list.some((p) => p.id === opts.penId) ? opts.penId : PEN.startPen(pens), color: PEN_COLORS[0], mcolor: MARK_COLORS[0], zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, ruler: false, stamp: null, book: bookable && !!S.inkBook, spread: 0, split: splittable && S.exSplit !== false, side: S.exSide === 'r' ? 'r' : 'l', cols: null, exOff: 0 };
+    const st = { tool: handed && TOOLS.includes(tool0) ? tool0 : 'ink', penId: handed && pens.list.some((p) => p.id === opts.penId) ? opts.penId : PEN.startPen(pens), color: PEN_COLORS[0], mcolor: MARK_COLORS[0], zoom: 1, penOnly: S.penOnly !== false, pages: [], undo: [], redo: [], sel: null, ssel: null, moving: null, ruler: false, stamp: null, book: bookable && !!S.inkBook, spread: 0, split: splittable && S.exSplit !== false, side: S.exSide === 'r' ? 'r' : 'l', cols: null, exOff: 0, marksOnly: !!opts.marksOnly };
     // Radier-Ende des Stifts: nimmt den zuletzt gewählten Radierer
     // Blättern gibt es nur ohne „Nur Stift“ – sonst scrollt ohnehin der Finger
     if (st.tool === 'hand' && st.penOnly) st.tool = 'ink';
@@ -257,7 +257,7 @@
       </div>
       <div class="grp pen-slots" data-pens></div>
       <div class="grp">
-        ${[['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}" data-tool="${t}" title="${title}">${icon(ic)}<span class="tool-swatch"></span><span class="tool-lbl">${lbl}</span></button>`).join('')}
+        ${[['eraser', 'eraser', 'Strich-Radierer', 'Strich-Radierer: löscht ganze Striche'], ['cut', 'eraserDot', 'Punkt-Radierer', 'Punkt-Radierer: kürzt oder teilt Striche genau an der Spitze']].map(([t, ic, lbl, title]) => `<button class="icon-btn tool-btn ${st.tool === t ? 'active' : ''}${st.marksOnly ? ' marks-only' : ''}" data-tool="${t}" title="${title}">${icon(ic)}<span class="tool-swatch"></span><span class="tool-lbl">${lbl}</span></button>`).join('')}
         <button class="icon-btn tool-btn" data-v="ruler" title="Lineal: alle Stifte ziehen gerade Linien">${icon('ruler')}<span class="tool-swatch"></span><span class="tool-lbl">Lineal</span></button>
         <button class="icon-btn tool-btn" data-v="image" title="Bild einfügen (Strg+V)">${icon('imagePlus')}<span class="tool-swatch"></span><span class="tool-lbl">Bild</span></button>
         <button class="icon-btn tool-btn" data-v="sticker" title="Sticker: Symbol wählen, dann auf die Stelle im Blatt tippen">${icon('sticker')}<span class="tool-swatch"></span><span class="tool-lbl">Sticker</span></button>
@@ -278,6 +278,7 @@
         ${opts.extraInMenu ? (opts.extraTools || []).map((t) => `<button class="more-item" data-x="${esc(t.id)}">${t.icon ? icon(t.icon) : ''}<span>${esc(t.menuLabel || t.label)}</span></button>`).join('') : ''}
         ${embedded ? '' : `<button class="more-item" data-v="details">${icon('edit')}<span>Umbenennen / Details</span></button>`}
         <button class="more-item" data-v="penonly" title="Wenn an: Nur der Stift schreibt, mit dem Finger wird gescrollt/gezoomt">${icon('ballpen')}<span>Nur Stift schreibt</span><b data-state>${st.penOnly ? 'an' : 'aus'}</b></button>
+        <button class="more-item" data-v="marksonly" title="Wenn an: Die Radierer lösen nur Verknüpfungen (Vokabel, Kanji …) und nehmen Textmarker weg – die Schrift bleibt">${icon('highlighter')}<span>Radierer: nur Markierungen</span><b data-state>${st.marksOnly ? 'an' : 'aus'}</b></button>
         ${splittable ? `<button class="more-item" data-v="typed" title="Antwort tippen statt mit dem Stift schreiben – beides bleibt am Versuch">${icon('edit')}<span>Mit der Tastatur antworten</span><b data-state>aus</b></button>` : ''}
         ${splittable ? `<button class="more-item" data-v="swap" title="Aufgabe links oder rechts (z. B. für Linkshänder)"${st.split ? '' : ' hidden'}>${icon('shuffle')}<span>Seiten tauschen</span></button>` : ''}
         <div class="more-item more-zoom">${icon('zoomIn')}<span>Zoom</span><button class="icon-btn sm" data-v="zout" title="Verkleinern">${icon('zoomOut')}</button><button class="btn btn-sm btn-ghost" data-v="fit" title="Einpassen">100%</button><button class="icon-btn sm" data-v="zin" title="Vergrößern">${icon('zoomIn')}</button></div>
@@ -663,18 +664,28 @@
       const rad = 0.012 / st.zoom + 0.004;
       const keep = [];
       p.strokes.forEach((s) => {
-        const hit = s.pts.some((q) => Math.hypot(q[0] - pt[0], q[1] - pt[1]) < rad + s.w / 2);
+        const hit = IE.erasable(s, st.marksOnly) && s.pts.some((q) => Math.hypot(q[0] - pt[0], q[1] - pt[1]) < rad + s.w / 2);
         if (hit) act.removed.push(s); else keep.push(s);
       });
       if (keep.length !== p.strokes.length) { p.strokes = keep; drawInk(p); }
+      if (st.marksOnly) dropLinksAt(p, pt, rad);
+    };
+    // „Nur Markierungen“: über ein verknüpftes Wort wischen löst die Verknüpfung, die Schrift bleibt
+    const dropLinksAt = (p, pt, rad) => {
+      for (let l = HW.linkAt(p.links, pt, rad); l; l = HW.linkAt(p.links, pt, rad)) {
+        const it = App.item(l.itemId);
+        removeLink(p, l);
+        if (it) note('Verknüpfung gelöst: ' + App.itemPlain(it));
+      }
     };
     // Punkt-Radierer: nur das Stück unter der Spitze; der Kreis zeigt, wo er wirkt
     const cutAt = (p, pt) => {
       const rad = IE.radius(st.zoom);
       let changed = false;
-      IE.sweep(drawing.last, pt, rad).forEach((q) => { const r = IE.cutAll(p.strokes, q, rad); if (r) { p.strokes = r; changed = true; } });
+      IE.sweep(drawing.last, pt, rad).forEach((q) => { const r = IE.cutAll(p.strokes, q, rad, st.marksOnly); if (r) { p.strokes = r; changed = true; } });
       drawing.last = pt;
       if (changed) drawInk(p);
+      if (st.marksOnly) dropLinksAt(p, pt, rad);
       const c = p.live.getContext('2d'), W = p.live.width;
       c.clearRect(0, 0, W, p.live.height);
       c.save(); c.lineWidth = Math.max(1, W / p.el.clientWidth); c.strokeStyle = '#1f2430'; c.fillStyle = 'rgba(255,255,255,.6)';
@@ -1259,7 +1270,7 @@
     const destroy = () => {
       if (destroyed) return;
       destroyed = true;
-      INK.lastState = { fileId: f.id, defaultTool: st.tool, eraser: st.eraser, penId: st.penId };
+      INK.lastState = { fileId: f.id, defaultTool: st.tool, eraser: st.eraser, penId: st.penId, marksOnly: st.marksOnly };
       flushAll(); if (ty.flush) ty.flush(); io.disconnect(); ro.disconnect();
       // Bild-Cache dieser Datei freigeben (sonst wächst er mit jedem geöffneten Blatt)
       st.pages.forEach((p) => (p.images || []).forEach((im) => imgCache.delete(im.id)));
@@ -1337,6 +1348,13 @@
         root.querySelector('[data-tool=hand]').hidden = st.penOnly;
         if (st.penOnly && st.tool === 'hand') setTool('ink');
         note(st.penOnly ? 'Nur der Stift schreibt – mit dem Finger scrollen & zoomen' : 'Finger schreibt jetzt auch');
+      }
+      if (a === 'marksonly') {
+        st.marksOnly = !st.marksOnly; v.querySelector('[data-state]').textContent = st.marksOnly ? 'an' : 'aus';
+        $$('[data-tool=eraser], [data-tool=cut]', root).forEach((b) => b.classList.toggle('marks-only', st.marksOnly));
+        // gleich zum Radierer greifen, damit man direkt loslegen kann
+        if (st.marksOnly && st.tool !== 'eraser' && st.tool !== 'cut') setTool(st.eraser);
+        note(st.marksOnly ? 'Radierer löst nur Verknüpfungen und Textmarker – die Schrift bleibt' : 'Radierer nimmt wieder alles weg');
       }
       if (a === 'addpage') addPage();
       if (a === 'paper') changePaper();
@@ -1455,7 +1473,7 @@
     ready = true;
     fillSpread();
     if (st.penOnly && !embedded) note('✍ Stift schreibt · Finger scrollt & zoomt');
-    return { flush: flushAll, destroy, dropLinks, state: () => ({ defaultTool: st.tool, eraser: st.eraser, penId: st.penId }) };
+    return { flush: flushAll, destroy, dropLinks, state: () => ({ defaultTool: st.tool, eraser: st.eraser, penId: st.penId, marksOnly: st.marksOnly }) };
   };
 
   // Markierungen eines Wortes von einem Blatt nehmen, das gerade nicht geöffnet ist (direkt im Speicher)
@@ -1467,7 +1485,7 @@
   };
 
   // ---------- Vollbild-Viewer ----------
-  // opts: Werkzeug-Zustand übernehmen (defaultTool, eraser, penId)
+  // opts: Werkzeug-Zustand übernehmen (defaultTool, eraser, penId, marksOnly)
   // Gehört das Blatt zu einer Stunde, einer Antwort/einem Tagebucheintrag oder einer Buchaufgabe, kommen „Neue Vokabel …“ und
   // „Erkennen → verknüpfen“ von selbst mit (App.sheetLinkOpts, writearea.js) – außer der Aufrufer bringt sie schon mit
   INK.open = async (fileId, opts = {}) => {

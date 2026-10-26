@@ -813,7 +813,9 @@
   // Gesuchte Kanji, die noch nicht in der Sammlung stehen, lassen sich „neu anlegen“ (Wert „new:駅“): sie werden
   // beim Übernehmen fertig ausgefüllt gespeichert (App.createKanji, kanjiDefaults = Quelle/Lektion/Schlagwörter)
   const NEW = 'new:';
-  App.pickItems = ({ title = 'Einträge auswählen', types = ['vocab', 'grammar', 'kanji', 'phrase'], selected = [], single = false, kanjiDefaults = {} } = {}) => new Promise((resolve) => {
+  // q: Startsuche (z. B. der markierte Text) · selected darf App.pickNew(c) enthalten = Kanji c ist zum Anlegen vorgewählt
+  App.pickNew = (c) => NEW + c;
+  App.pickItems = ({ title = 'Einträge auswählen', types = ['vocab', 'grammar', 'kanji', 'phrase'], selected = [], single = false, kanjiDefaults = {}, q: q0 = '' } = {}) => new Promise((resolve) => {
     const sel = new Set(selected);
     let kIndex = null;
     const body = document.createElement('div');
@@ -821,6 +823,7 @@
       <select class="input" data-t><option value="">Alle Bereiche</option>${types.map((t) => `<option value="${t}">${App.SECTIONS[t].label}</option>`).join('')}</select></div>
       <div class="picker-list"></div>`;
     const inp = body.querySelector('input'), list = body.querySelector('.picker-list'), tsel = body.querySelector('[data-t]');
+    inp.value = q0;
     const draw = () => {
       const q = inp.value.trim();
       const ts = tsel.value ? [tsel.value] : types;

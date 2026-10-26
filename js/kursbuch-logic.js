@@ -65,6 +65,51 @@
     return next || clampZoom(z);
   };
 
-  const K = { ZOOM_MAX, clampZoom, stepZoom, TOC_ROWS, courseSessions, pages, topics, bookChapters, topicsFromLinks, sessionPage, topicPage, tocSpreads, chunk, leafOf, spreadOfPage, spreadCount };
+  // Farbfamilien der Notizbücher: Einband, Schrift auf den Reitern und vier Reiter-Töne derselben Familie
+  const FAMILIES = [
+    { key: 'salbei', name: 'Salbei', cover: '#2f4a3c', ink: '#22382c', tabs: ['#cfe6d6', '#b3d6bf', '#e2f0e6', '#a3cbb0'] },
+    { key: 'sakura', name: 'Sakura', cover: '#a8506f', ink: '#6b2a45', tabs: ['#f7cfdc', '#f0b6ca', '#fbe3eb', '#e9a3bb'] },
+    { key: 'lavendel', name: 'Lavendel', cover: '#5f4482', ink: '#4a2f5e', tabs: ['#e2d4f3', '#d0bdea', '#eee5f9', '#c2abe0'] },
+    { key: 'himmel', name: 'Himmel', cover: '#36597a', ink: '#24405c', tabs: ['#cfe0f0', '#b6d0e8', '#e2edf7', '#a4c2df'] },
+    { key: 'pfirsich', name: 'Pfirsich', cover: '#b0603a', ink: '#7a3a1c', tabs: ['#fbd9c2', '#f5c4a4', '#fde8da', '#eeb18c'] },
+    { key: 'senf', name: 'Senf', cover: '#9a7a22', ink: '#5e4a12', tabs: ['#f5e6b0', '#eed98c', '#faf0cd', '#e6cc76'] },
+    { key: 'tinte', name: 'Tinte', cover: '#2b3152', ink: '#262b48', tabs: ['#d5d8ec', '#c1c6e2', '#e5e7f4', '#b0b6d8'] },
+    { key: 'kakao', name: 'Kakao', cover: '#5e4030', ink: '#4a3226', tabs: ['#ead9c8', '#dfc6ad', '#f3e8dd', '#d3b597'] },
+  ];
+  // Hefte ohne eigene Wahl: dieselbe Reihenfolge wie bisher die Karten in der Bibliothek (lila, rosa, grün)
+  const HEFT_ROW = ['lavendel', 'sakura', 'salbei'];
+  const HEX = /^#[0-9a-f]{6}$/i;
+  const family = (key, fallback) => FAMILIES.find((f) => f.key === key) || FAMILIES.find((f) => f.key === fallback) || FAMILIES[0];
+  const familyOfTone = (hex) => FAMILIES.find((f) => f.tabs.includes(String(hex).toLowerCase()));
+  // Schrift auf einem Reiter: die dunkle Farbe der Familie, aus der der Ton stammt
+  const tabInk = (hex) => (familyOfTone(hex) || { ink: '#4a3a3f' }).ink;
+  // Farben eines Buchs. stored: { color, tabColors: { abschnittId: '#hex' } } (fehlt = Standard)
+  // Jeder Abschnitt ohne eigene Wahl bekommt reihum einen Ton der Buch-Familie.
+  const bookColors = (stored, sectionIds, fallback) => {
+    const s = stored || {}, fam = family(s.color, fallback), own = s.tabColors || {};
+    const tabs = {};
+    sectionIds.forEach((id, i) => { tabs[id] = HEX.test(own[id] || '') ? own[id].toLowerCase() : fam.tabs[i % fam.tabs.length]; });
+    return { family: fam, cover: fam.cover, tabs };
+  };
+  // Buchfarbe wechseln: eigene Reiter-Töne der alten Familie wandern auf denselben Ton der neuen, andere bleiben
+  const recolor = (stored, key, fallback) => {
+    const s = stored || {}, from = family(s.color, fallback), to = family(key);
+    const tabColors = {};
+    Object.entries(s.tabColors || {}).forEach(([id, hex]) => {
+      if (!HEX.test(hex || '')) return;
+      const k = from.tabs.indexOf(hex.toLowerCase());
+      tabColors[id] = k >= 0 ? to.tabs[k] : hex.toLowerCase();
+    });
+    return Object.assign({}, s, { color: to.key, tabColors });
+  };
+  // Reiter-Ton setzen (null = wieder automatisch passend)
+  const setTab = (stored, id, hex) => {
+    const s = stored || {}, tabColors = Object.assign({}, s.tabColors);
+    if (hex && HEX.test(hex)) tabColors[id] = hex.toLowerCase(); else delete tabColors[id];
+    return Object.assign({}, s, { tabColors });
+  };
+
+  const K = { ZOOM_MAX, clampZoom, stepZoom, TOC_ROWS, courseSessions, pages, topics, bookChapters, topicsFromLinks, sessionPage, topicPage, tocSpreads, chunk, leafOf, spreadOfPage, spreadCount,
+    FAMILIES, HEFT_ROW, family, tabInk, bookColors, recolor, setTab };
   if (typeof module !== 'undefined' && module.exports) module.exports = K; else root.App.kursbuchLogic = K;
 })(this);

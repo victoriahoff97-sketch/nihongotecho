@@ -39,7 +39,6 @@
     '/grammatik': [
       { target: '#view .toolbar', text: 'Suche nach einer Form oder grenze nach Quelle, Lektion und Lernstand ein.' },
       { target: '#view h2', text: 'Die Einträge sind nach Lektion geordnet. Ein Tipp auf einen Eintrag öffnet Erklärung und Beispiele.' },
-      { target: '#view .page-head a[href="#/karte"]', text: 'Die Lernlandkarte zeigt, welche Formen aufeinander aufbauen.' },
       { target: '#view [data-new="grammar"]', text: 'Eigene Regeln aus dem Unterricht legst du hier an.' },
     ],
     '/vokabeln': [
@@ -101,8 +100,8 @@
     blatt: [
       { target: '.viewer-bar [data-pens]', title: 'Meine Stifte', text: 'Tippe einen Stift an, um zu schreiben. Nochmal antippen: Stiftart, Dicke, Deckkraft und Farbe einstellen oder ihn zum Standard machen. „Neu“ legt einen weiteren Stift an.' },
       { target: '.viewer-bar [data-tool="lasso"]', title: 'Erkennen', text: 'Kreise ein handgeschriebenes Wort ein. Die App schlägt vor, was dort steht – tippe den passenden Vorschlag an.' },
-      { target: '.viewer-bar [data-tool="lasso"]', title: 'Verknüpfen', text: 'Im Nachschlagen-Fenster tippst du „Mit dem Wort verknüpfen“. Gibt es die Vokabel oder Grammatik noch nicht, legst du sie dort gleich an.' },
-      { target: '.viewer-bar [data-tool="lasso"]', title: 'Wiederfinden', text: 'Verknüpfte Stellen sind farbig markiert: Vokabeln lila, Grammatik orange. Ein Tipp darauf zeigt den Eintrag.' },
+      { target: '.viewer-bar [data-tool="lasso"]', title: 'Verknüpfen', text: 'Im Nachschlagen-Fenster tippst du „Mit dem Wort verknüpfen“. Gibt es die Vokabel, Grammatik oder das Kanji noch nicht, legst du es dort gleich an.' },
+      { target: '.viewer-bar [data-tool="lasso"]', title: 'Wiederfinden', text: 'Verknüpfte Stellen sind farbig markiert: Vokabeln lila, Grammatik orange, Kanji pink. Ein Tipp darauf zeigt den Eintrag.' },
       { target: '.viewer-bar [data-v="paper"]', title: 'Papier', text: 'Liniert, kariert, Kanji-Raster, Punkte oder blanko, für jede Seite einzeln.', link: { label: 'Sticker, Buch und Aufgaben zeigen', tour: 'blattMehr' } },
     ],
     // zweiter Teil, erreichbar über den letzten Schritt von „blatt“; „Buch“ gibt es nur im Notizblatt, „Nebeneinander“ nur bei Buchaufgaben
@@ -111,15 +110,15 @@
       { target: '.viewer-bar [data-v="book"]', text: 'Zeigt zwei Seiten nebeneinander wie in einem aufgeschlagenen Heft.' },
       { target: '.viewer-bar [data-v="split"]', title: 'Genki-Aufgaben', text: 'Aufgabe und Schreibblatt stehen nebeneinander statt untereinander. Geht im Querformat.' },
       { target: '.viewer-bar [data-v="more"]', text: 'Zoom, Drucken, „Nur Stift schreibt“ und „Blatt löschen“ liegen hier. Bei Genki-Aufgaben auch „Seiten tauschen“ und „Mit der Tastatur antworten“: ein Feld zum Tippen statt des Schreibblatts.' },
-      { target: '.viewer-bar [data-tool="eraser"]', until: '.viewer-bar [data-tool="cut"]', text: 'Zwei Radierer: Der eine löscht ganze Striche, der andere nur genau unter der Spitze.' },
+      { target: '.viewer-bar [data-tool="eraser"]', until: '.viewer-bar [data-tool="cut"]', text: 'Zwei Radierer: Der eine löscht ganze Striche, der andere nur genau unter der Spitze. Mit „⋯“ › „Radierer: nur Markierungen“ lösen sie nur Verknüpfungen und Textmarker, die Schrift bleibt.' },
     ],
     // Kurs-Notizbuch (#/unterricht/buch)
     notizbuch: [
       { target: '#view [data-kb-book]', text: 'Alle Mitschriften des Kurses als ein Buch. Hier wird nur gelesen, nicht geschrieben.' },
-      { target: '#view [data-kb-toc]', title: 'Inhaltsverzeichnis', text: 'Die erste Doppelseite: links die Stunden, rechts die Grammatik des Kurses. Ein Tipp auf eine Zeile blättert dorthin.' },
-      { target: '#view [data-kb-toc]', text: 'Grammatik, die du auf dem Blatt verknüpft hast, springt genau zu der Stelle und ist dort hervorgehoben.' },
+      { target: '#view [data-kb-toc]', title: 'Inhaltsverzeichnis', text: 'Die erste Doppelseite: links die Stunden, rechts die Grammatik des Kurses. Ein Tipp auf eine Zeile blättert dorthin – verknüpfte Grammatik genau zur Stelle.' },
       { title: 'Weiterschreiben', text: 'Zum Schreiben öffnest du die Stunde über den Reiter oben an ihrer Seite („öffnen“).' },
       { target: '#view .kb-zoom', text: 'Blättern mit den Pfeilen oder Wischen. Vergrößern mit +, zwei Fingern oder Doppeltipp.' },
+      { target: '#view [data-kb-colors-on]', title: 'Farben', text: 'Wähle die Farbe des Buchs – die Reiter passen sich an. Lieber normale Seiten untereinander? „Buch | Seiten“ links oben schaltet um.' },
     ],
     '/bibliothek': [
       { target: '#view [data-upload="library"]', text: 'Lege Arbeitsblätter, PDFs und Bilder aus dem Kurs hier ab.' },

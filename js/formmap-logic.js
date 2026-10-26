@@ -1,14 +1,9 @@
-/* Nihongo Techō – Lernlandkarte: Formen als Streckenplan (reine Daten und Logik) */
+/* Nihongo Techō – Verb- und Adjektivformen für Konjugieren (reine Daten und Logik) */
 'use strict';
 (function (App) {
   const JP = App.jp;
   const F = App.formMap = {};
 
-  // Zwei Karten; w/h = Zeichenfläche des Streckenplans
-  F.MAPS = [
-    { id: 'verb', title: 'Verben', w: 680, h: 660 },
-    { id: 'adj', title: 'Adjektive', w: 680, h: 660 },
-  ];
   // Jede Formenfamilie ist eine Linie mit eigener Farbe; label = Name der Familie, wie ihn Lernende kennen (nicht „Linie“)
   F.LINES = {
     start: { label: 'Grundform', color: 'var(--muted)' },
@@ -21,144 +16,91 @@
     na: { label: 'な-Adjektive', color: 'var(--sakura)' },
   };
 
-  // from = Formen, aus denen man diese ableitet · conj = Schlüssel für JP.conj bzw. JP.adj
-  // grammar = Kennung des Grammatik-Eintrags · x/y = Station auf der Karte (Beschriftung steht darunter)
-  // uses = Grammatik-Einträge, die diese Form benutzen (im Fenster der Station verlinkt)
-  // out = Startstation: die Linien gehen erst nach einem kurzen gemeinsamen Stück auseinander
+  // map = verb | adj · from = Formen, aus denen man diese ableitet (leer = Grundform) · conj = Schlüssel für JP.conj bzw. JP.adj
+  // ask = Frage beim Üben, wo der Name nur die Endung wäre · rule = Bildungsregel, die beim Aufdecken steht
   F.FORMS = [
-    { id: 'v-dict', map: 'verb', line: 'start', from: [], label: 'Wörterbuchform', conj: 'dict', grammar: 'g-g3-verbtypes', uses: ['g-g8-noga-suki', 'g-g8-to-omoimasu', 'g-g8-to-itteimashita', 'g-g8-informal', 'g-g9-noun-modify', 'g-g9-kara', 'g-g10-tsumori', 'g-g12-ndesu', 'g-g12-node', 'g-g12-deshou'], x: 70, y: 270, out: 60,
+    { id: 'v-dict', map: 'verb', line: 'start', from: [], label: 'Wörterbuchform', conj: 'dict',
       rule: 'Die Grundform, wie sie im Wörterbuch steht. Aus ihr leitest du alle anderen Formen ab – je nach Verbgruppe (う-Verb, る-Verb oder unregelmäßig) etwas anders.' },
-    { id: 'v-stem', map: 'verb', line: 'masu', from: ['v-dict'], label: 'ます-Stamm', conj: 'stem', grammar: 'g-g3-masu', uses: ['g-g7-stem-ni-iku', 'g-g12-sugiru'], x: 220, y: 130,
+    { id: 'v-stem', map: 'verb', line: 'masu', from: ['v-dict'], label: 'ます-Stamm', conj: 'stem',
       rule: 'る-Verben: る weglassen. う-Verben: die letzte Silbe von der u-Reihe in die i-Reihe (く → き, む → み). する → し, くる → き.' },
-    { id: 'v-masu', map: 'verb', line: 'masu', from: ['v-stem'], label: 'ます-Form', ask: 'ます-Form (höflich)', conj: 'masu', grammar: 'g-g3-masu', uses: ['g-g3-masenka', 'g-g3-frequency'], x: 360, y: 130,
+    { id: 'v-masu', map: 'verb', line: 'masu', from: ['v-stem'], label: 'ます-Form', ask: 'ます-Form (höflich)', conj: 'masu',
       rule: 'ます-Stamm + ます.' },
-    { id: 'v-mashita', map: 'verb', line: 'masu', from: ['v-masu'], label: 'ました', ask: 'Past Positiv (höflich)', conj: 'mashita', grammar: 'g-g4-mashita', uses: ['g-g9-mou-mada'], x: 500, y: 60,
+    { id: 'v-mashita', map: 'verb', line: 'masu', from: ['v-masu'], label: 'ました', ask: 'Past Positiv (höflich)', conj: 'mashita',
       rule: 'Vergangenheit: ます → ました.' },
-    { id: 'v-masen', map: 'verb', line: 'masu', from: ['v-masu'], label: 'ません', ask: 'Present Negativ (höflich)', conj: 'masen', grammar: 'g-g3-masu', x: 500, y: 130,
+    { id: 'v-masen', map: 'verb', line: 'masu', from: ['v-masu'], label: 'ません', ask: 'Present Negativ (höflich)', conj: 'masen',
       rule: 'Verneinung: ます → ません. Kurzform: ない-Form.' },
-    { id: 'v-masendeshita', map: 'verb', line: 'masu', from: ['v-masen'], label: 'ませんでした', ask: 'Past Negativ (höflich)', conj: 'masendeshita', grammar: 'g-g4-mashita', x: 620, y: 130,
+    { id: 'v-masendeshita', map: 'verb', line: 'masu', from: ['v-masen'], label: 'ませんでした', ask: 'Past Negativ (höflich)', conj: 'masendeshita',
       rule: 'Verneinte Vergangenheit: ません + でした. Kurzform: なかった-Form.' },
-    { id: 'v-mashou', map: 'verb', line: 'masu', from: ['v-masu'], label: 'ましょう', ask: '„Lass uns …“ (höflich)', conj: 'mashou', grammar: 'g-g5-mashou', uses: ['g-g6-mashouka'], x: 500, y: 200,
+    { id: 'v-mashou', map: 'verb', line: 'masu', from: ['v-masu'], label: 'ましょう', ask: '„Lass uns …“ (höflich)', conj: 'mashou',
       rule: 'ます → ましょう: „Lass uns …“.' },
-    { id: 'v-tai', map: 'verb', line: 'masu', from: ['v-stem'], label: 'たい-Form', conj: 'taiplain', grammar: 'g-g11-tai', x: 360, y: 50,
+    { id: 'v-tai', map: 'verb', line: 'masu', from: ['v-stem'], label: 'たい-Form', conj: 'taiplain',
       rule: 'ます-Stamm + たい: „möchte …“. Danach beugt sich たい wie ein い-Adjektiv (たくない, たかった).' },
-    { id: 'v-te', map: 'verb', line: 'te', from: ['v-dict'], label: 'て-Form', conj: 'te', grammar: 'g-g6-te-form', uses: ['g-g6-tekudasai', 'g-g6-temoii', 'g-g6-tewaikenai', 'g-g6-te-connect', 'g-g7-teiru-progress', 'g-g7-teiru-state', 'g-g9-mou-mada'], x: 220, y: 270,
+    { id: 'v-te', map: 'verb', line: 'te', from: ['v-dict'], label: 'て-Form', conj: 'te',
       rule: 'る-Verben: る → て. う-Verben nach der Endung: う・つ・る → って, む・ぶ・ぬ → んで, く → いて, ぐ → いで, す → して. Ausnahme: 行く → 行って. する → して, くる → きて.' },
-    { id: 'v-ta', map: 'verb', line: 'te', from: ['v-te'], label: 'た-Form', ask: 'た-Form (kurz)', conj: 'ta', grammar: 'g-g9-short-past', uses: ['g-g9-informal-past', 'g-g9-quote-past', 'g-g11-koto-ga-aru', 'g-g12-hou-ga-ii'], x: 360, y: 270,
+    { id: 'v-ta', map: 'verb', line: 'te', from: ['v-te'], label: 'た-Form', ask: 'た-Form (kurz)', conj: 'ta',
       rule: 'て-Form nehmen und て → た tauschen (で → だ).' },
-    { id: 'v-tari', map: 'verb', line: 'te', from: ['v-ta'], label: 'たり-Form', conj: 'tari', grammar: 'g-g11-tari', x: 510, y: 270,
+    { id: 'v-tari', map: 'verb', line: 'te', from: ['v-ta'], label: 'たり-Form', conj: 'tari',
       rule: 'た-Form + り.' },
-    { id: 'v-nai', map: 'verb', line: 'nai', from: ['v-dict'], label: 'ない-Form', ask: 'ない-Form (kurz)', conj: 'nai', grammar: 'g-g8-short-present', uses: ['g-g12-hou-ga-ii', 'g-g12-nakereba'], x: 220, y: 380,
+    { id: 'v-nai', map: 'verb', line: 'nai', from: ['v-dict'], label: 'ない-Form', ask: 'ない-Form (kurz)', conj: 'nai',
       rule: 'る-Verben: る → ない. う-Verben: die letzte Silbe in die a-Reihe + ない (く → かない, う → わない). する → しない, くる → こない, ある → ない.' },
-    { id: 'v-nakatta', map: 'verb', line: 'nai', from: ['v-nai'], label: 'なかった-Form', ask: 'Past Negativ (kurz)', conj: 'nakatta', grammar: 'g-g9-short-past', uses: ['g-g9-quote-past'], x: 360, y: 380,
+    { id: 'v-nakatta', map: 'verb', line: 'nai', from: ['v-nai'], label: 'なかった-Form', ask: 'Past Negativ (kurz)', conj: 'nakatta',
       rule: 'ない → なかった. (ない beugt sich wie ein い-Adjektiv.)' },
-    { id: 'v-naide', map: 'verb', line: 'nai', from: ['v-nai'], label: 'ないで-Form', conj: 'naide', grammar: 'g-g8-naidekudasai', x: 360, y: 450,
+    { id: 'v-naide', map: 'verb', line: 'nai', from: ['v-nai'], label: 'ないで-Form', conj: 'naide',
       rule: 'ない-Form + で.' },
-    { id: 'v-pot', map: 'verb', line: 'pot', from: ['v-dict'], label: 'Potentialform', conj: 'potential', grammar: 'g-n4-potential', x: 220, y: 520,
+    { id: 'v-pot', map: 'verb', line: 'pot', from: ['v-dict'], label: 'Potentialform', conj: 'potential',
       rule: '„Können“: る-Verben: る → られる. う-Verben: die letzte Silbe in die e-Reihe + る (く → ける, む → める). する → できる, くる → こられる. Das Ergebnis beugt sich wie ein る-Verb. Umgangssprachlich hört man bei る-Verben auch die Kurzform (食べれる).' },
-    { id: 'v-vol', map: 'verb', line: 'vol', from: ['v-dict'], label: 'Volitionalform', conj: 'volitional', grammar: 'g-n4-volitional', uses: ['g-n4-you-to-omou'], x: 160, y: 600,
+    { id: 'v-vol', map: 'verb', line: 'vol', from: ['v-dict'], label: 'Volitionalform', conj: 'volitional',
       rule: 'Die Kurzform von 〜ましょう: る-Verben: る → よう. う-Verben: die letzte Silbe in die o-Reihe + う (く → こう, む → もう). する → しよう, くる → こよう.' },
 
-    { id: 'a-i', map: 'adj', line: 'start', from: [], label: 'い-Adjektiv', conj: 'plain', grammar: 'g-g5-adjectives', uses: ['g-g7-body', 'g-g10-yori', 'g-g10-ichiban', 'g-g10-adj-no', 'g-g10-naru', 'g-g12-sugiru'], x: 70, y: 145, out: 60,
+    { id: 'a-i', map: 'adj', line: 'start', from: [], label: 'い-Adjektiv', conj: 'plain',
       rule: 'Die Grundform endet auf い. Zum Beugen fällt das letzte い weg. Ausnahme: いい beugt sich als よ- (よくない, よかった).' },
-    { id: 'a-i-neg', map: 'adj', line: 'i', from: ['a-i'], label: 'くない', ask: 'Present Negativ (kurz)', conj: 'negp', grammar: 'g-g8-short-present', x: 250, y: 40,
+    { id: 'a-i-neg', map: 'adj', line: 'i', from: ['a-i'], label: 'くない', ask: 'Present Negativ (kurz)', conj: 'negp',
       rule: 'Verneinung, Kurzform: い → くない.' },
-    { id: 'a-i-pastneg', map: 'adj', line: 'i', from: ['a-i-neg'], label: 'くなかった', ask: 'Past Negativ (kurz)', conj: 'pastnegp', grammar: 'g-g9-short-past', x: 420, y: 40,
+    { id: 'a-i-pastneg', map: 'adj', line: 'i', from: ['a-i-neg'], label: 'くなかった', ask: 'Past Negativ (kurz)', conj: 'pastnegp',
       rule: 'Verneinte Vergangenheit, Kurzform: くない → くなかった.' },
-    { id: 'a-i-neg-desu', map: 'adj', line: 'i', from: ['a-i'], label: 'くないです', ask: 'Present Negativ (höflich)', conj: 'neg', grammar: 'g-g5-adj-conjugation', x: 250, y: 110,
+    { id: 'a-i-neg-desu', map: 'adj', line: 'i', from: ['a-i'], label: 'くないです', ask: 'Present Negativ (höflich)', conj: 'neg',
       rule: 'Verneinung, höflich: い → くないです.' },
-    { id: 'a-i-pastneg-desu', map: 'adj', line: 'i', from: ['a-i-neg-desu'], label: 'くなかったです', ask: 'Past Negativ (höflich)', conj: 'pastneg', grammar: 'g-g5-adj-conjugation', x: 420, y: 110,
+    { id: 'a-i-pastneg-desu', map: 'adj', line: 'i', from: ['a-i-neg-desu'], label: 'くなかったです', ask: 'Past Negativ (höflich)', conj: 'pastneg',
       rule: 'Verneinte Vergangenheit, höflich: くないです → くなかったです.' },
-    { id: 'a-i-past', map: 'adj', line: 'i', from: ['a-i'], label: 'かった', ask: 'Past Positiv (kurz)', conj: 'pastp', grammar: 'g-g9-short-past', x: 250, y: 180,
+    { id: 'a-i-past', map: 'adj', line: 'i', from: ['a-i'], label: 'かった', ask: 'Past Positiv (kurz)', conj: 'pastp',
       rule: 'Vergangenheit, Kurzform: い → かった.' },
-    { id: 'a-i-past-desu', map: 'adj', line: 'i', from: ['a-i-past'], label: 'かったです', ask: 'Past Positiv (höflich)', conj: 'past', grammar: 'g-g5-adj-conjugation', x: 420, y: 180,
+    { id: 'a-i-past-desu', map: 'adj', line: 'i', from: ['a-i-past'], label: 'かったです', ask: 'Past Positiv (höflich)', conj: 'past',
       rule: 'Vergangenheit, höflich: かった + です. Nie 〜いでした.' },
-    { id: 'a-i-te', map: 'adj', line: 'i', from: ['a-i'], label: 'くて', ask: 'て-Form', conj: 'te', grammar: 'g-g7-adj-te', x: 250, y: 250,
+    { id: 'a-i-te', map: 'adj', line: 'i', from: ['a-i'], label: 'くて', ask: 'て-Form', conj: 'te',
       rule: 'て-Form zum Verbinden: い → くて.' },
-    { id: 'a-na', map: 'adj', line: 'start', from: [], label: 'な-Adjektiv', conj: 'plain', grammar: 'g-g5-adjectives', uses: ['g-g5-suki-kirai', 'g-g10-yori', 'g-g10-ichiban', 'g-g10-adj-no', 'g-g10-naru', 'g-g12-sugiru'], x: 70, y: 470, out: 60,
+    { id: 'a-na', map: 'adj', line: 'start', from: [], label: 'な-Adjektiv', conj: 'plain',
       rule: 'Die Grundform steht ohne な. Vor einem Nomen kommt な dazu (元気な人), sonst beugt sie sich wie ein Nomen mit です.' },
-    { id: 'a-na-neg', map: 'adj', line: 'na', from: ['a-na'], label: 'じゃない', ask: 'Present Negativ (kurz)', conj: 'negp', grammar: 'g-g8-short-present', x: 250, y: 330,
+    { id: 'a-na-neg', map: 'adj', line: 'na', from: ['a-na'], label: 'じゃない', ask: 'Present Negativ (kurz)', conj: 'negp',
       rule: 'Verneinung, Kurzform: Grundform + じゃない.' },
-    { id: 'a-na-pastneg', map: 'adj', line: 'na', from: ['a-na-neg'], label: 'じゃなかった', ask: 'Past Negativ (kurz)', conj: 'pastnegp', grammar: 'g-g9-short-past', x: 420, y: 330,
+    { id: 'a-na-pastneg', map: 'adj', line: 'na', from: ['a-na-neg'], label: 'じゃなかった', ask: 'Past Negativ (kurz)', conj: 'pastnegp',
       rule: 'Verneinte Vergangenheit, Kurzform: じゃない → じゃなかった.' },
-    { id: 'a-na-neg-desu', map: 'adj', line: 'na', from: ['a-na'], label: 'じゃないです', ask: 'Present Negativ (höflich)', conj: 'neg', grammar: 'g-g5-adj-conjugation', uses: ['g-g2-janai'], x: 250, y: 400,
+    { id: 'a-na-neg-desu', map: 'adj', line: 'na', from: ['a-na'], label: 'じゃないです', ask: 'Present Negativ (höflich)', conj: 'neg',
       rule: 'Verneinung, höflich: Grundform + じゃないです.' },
-    { id: 'a-na-pastneg-desu', map: 'adj', line: 'na', from: ['a-na-neg-desu'], label: 'じゃなかったです', ask: 'Past Negativ (höflich)', conj: 'pastneg', grammar: 'g-g5-adj-conjugation', x: 420, y: 400,
+    { id: 'a-na-pastneg-desu', map: 'adj', line: 'na', from: ['a-na-neg-desu'], label: 'じゃなかったです', ask: 'Past Negativ (höflich)', conj: 'pastneg',
       rule: 'Verneinte Vergangenheit, höflich: じゃないです → じゃなかったです.' },
-    { id: 'a-na-past', map: 'adj', line: 'na', from: ['a-na'], label: 'でした', ask: 'Past Positiv (höflich)', conj: 'past', grammar: 'g-g5-adj-conjugation', uses: ['g-g4-deshita'], x: 250, y: 470,
+    { id: 'a-na-past', map: 'adj', line: 'na', from: ['a-na'], label: 'でした', ask: 'Past Positiv (höflich)', conj: 'past',
       rule: 'Vergangenheit, höflich: Grundform + でした.' },
-    { id: 'a-na-pastp', map: 'adj', line: 'na', from: ['a-na'], label: 'だった', ask: 'Past Positiv (kurz)', conj: 'pastp', grammar: 'g-g9-short-past', x: 250, y: 540,
+    { id: 'a-na-pastp', map: 'adj', line: 'na', from: ['a-na'], label: 'だった', ask: 'Past Positiv (kurz)', conj: 'pastp',
       rule: 'Vergangenheit, Kurzform: Grundform + だった.' },
-    { id: 'a-na-te', map: 'adj', line: 'na', from: ['a-na'], label: 'で', ask: 'て-Form', conj: 'te', grammar: 'g-g7-adj-te', x: 250, y: 610,
+    { id: 'a-na-te', map: 'adj', line: 'na', from: ['a-na'], label: 'で', ask: 'て-Form', conj: 'te',
       rule: 'て-Form zum Verbinden: Grundform + で.' },
   ];
   const BY_ID = new Map(F.FORMS.map((f) => [f.id, f]));
   F.form = (id) => BY_ID.get(id);
-  F.formsOf = (mapId) => F.FORMS.filter((f) => f.map === mapId);
-  F.usesOf = (form) => form.uses || [];
-
-  const knownSet = (known) => new Set((Array.isArray(known) ? known : []).filter((id) => BY_ID.has(id)));
-
-  // done = abgehakt · next = alle Vorgänger gekonnt (Startstationen immer) · later = ein Vorgänger fehlt
-  F.status = (form, known) => {
-    const k = knownSet(known);
-    if (k.has(form.id)) return 'done';
-    return form.from.every((id) => k.has(id)) ? 'next' : 'later';
-  };
-  // Haken setzen oder zurücknehmen; andere Formen bleiben unberührt, unbekannte Kennungen fliegen raus
-  F.toggle = (known, id) => {
-    const k = knownSet(known);
-    if (!BY_ID.has(id)) return [...k];
-    if (k.has(id)) k.delete(id); else k.add(id);
-    return [...k];
-  };
-  F.progress = (mapId, known) => {
-    const k = knownSet(known);
-    const forms = F.formsOf(mapId);
-    return { done: forms.filter((f) => k.has(f.id)).length, total: forms.length };
-  };
-
-  // Fest hinterlegte Beispielwörter, falls die eigenen Vokabeln eine Gruppe nicht hergeben
+  // Fest hinterlegte Beispielwörter für die Beschriftung der Formen
   const FALLBACK = {
     u: { kana: 'かく', kanji: '書く', de: 'schreiben', pos: 'verb', v: { cls: 'u' } },
-    ru: { kana: 'たべる', kanji: '食べる', de: 'essen', pos: 'verb', v: { cls: 'ru' } },
-    irr: { kana: 'する', kanji: 'する', de: 'machen', pos: 'verb', v: { cls: 'irr' } },
     'i-adj': { kana: 'たかい', kanji: '高い', de: 'teuer, hoch', pos: 'i-adj' },
     'na-adj': { kana: 'げんき', kanji: '元気', de: 'gesund, munter', pos: 'na-adj' },
   };
   const adjPos = (form) => (form.id.startsWith('a-na') ? 'na-adj' : 'i-adj');
-  // Das Wort, mit dem die Station auf der Karte beschriftet wird
+  // Das Wort, an dem eine Form gezeigt wird (z. B. 書く → 書いて)
   F.sampleWord = (form) => (form.map === 'verb' ? FALLBACK.u : FALLBACK[adjPos(form)]);
 
-  // Beispielwörter für das Fenster einer Station: Verben je eines pro Verbgruppe, Adjektive bis zu zwei
-  F.samples = (form, vocab, rnd = Math.random) => {
-    const pick = (list, n) => {
-      const pool = list.slice(), out = [];
-      while (pool.length && out.length < n) out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
-      return out;
-    };
-    const words = (vocab || []).filter((w) => w && w.kana);
-    if (form.map === 'verb') {
-      const fits = (w) => w.pos === 'verb' && w.v && !(form.conj === 'potential' && JP.noPotential(w)); // ある → あれる wäre falsches Japanisch
-      return ['u', 'ru', 'irr'].map((cls) => pick(words.filter((w) => fits(w) && w.v.cls === cls), 1)[0] || FALLBACK[cls]);
-    }
-    const pos = adjPos(form);
-    const own = pick(words.filter((w) => w.pos === pos), 2);
-    return own.length ? own : [FALLBACK[pos]];
-  };
-
   const conj = (form, word) => (form.map === 'verb' ? JP.conj(word, form.conj) : JP.adj(word, form.conj));
-  // Ein Beispiel: Vorgängerform → Form (in Furigana-Notation); Startstationen haben keinen Vorgänger
+  // Ein Beispiel: Vorgängerform → Form (in Furigana-Notation); Grundformen haben keinen Vorgänger
   F.example = (form, word) => {
     const prev = form.from.length ? BY_ID.get(form.from[0]) : null;
     return { from: prev ? conj(prev, word) : null, to: conj(form, word) };
-  };
-
-  // Strecke zwischen zwei Punkten: gerade auf gleicher Höhe, sonst ein weicher Bogen, der früh abbiegt
-  // (so läuft er über bzw. unter den Beschriftungen der Nachbarstationen vorbei)
-  F.path = (x1, y1, x2, y2) => {
-    if (y1 === y2) return `M${x1} ${y1} L${x2} ${y2}`;
-    const mx = x1 + (x2 - x1) * 0.4;
-    return `M${x1} ${y1} C${mx} ${y1},${mx} ${y2},${x2} ${y2}`;
   };
 })(window.App);

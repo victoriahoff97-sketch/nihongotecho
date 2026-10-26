@@ -17,7 +17,7 @@
     .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || 0) - (a.created || 0));
   const lvlBadge = (p) => (isOwn(p) && !p.level ? '<span class="badge">eigene</span>' : App.levelBadge(p));
   // Kurzname für Abzeichen: Grammatik-Titel nur bis zur Erklärung („〜たり〜たりする – …“)
-  const itemName = (it) => (it.title ? it.title.split(' – ')[0] : '') || it.kanji || it.kana || it.jp || '';
+  const itemName = (it) => (it.title ? it.title.split(' – ')[0] : '') || it.kanji || it.kana || it.jp || it.char || '';
   const notebookOf = (it) => App.filesFor({ itemId: it.id }).find((f) => App.fileKind(f) === 'notebook');
   // Steht etwas drin? Getippter Text oder Handschrift auf dem Blatt – ein leer angelegter Eintrag zählt nicht (Tagesliste)
   App.applyHasContent = (it) => { if (AL.plainText(it.html || '').trim()) return true; const nb = notebookOf(it); return !!(nb && App.store.inkCount.get(nb.id)); };
@@ -450,8 +450,9 @@
   };
 
   // ---------- Schreibbereich: Antwort / Tagebucheintrag ----------
-  const LINK_KEYS = { vocab: 'vocabIds', grammar: 'grammarIds' };
-  const linkedIds = (item) => (item.grammarIds || []).concat(item.vocabIds || []);
+  const LINK_KEYS = { vocab: 'vocabIds', grammar: 'grammarIds', kanji: 'kanjiIds' };
+  const linkedIds = (item) => (item.grammarIds || []).concat(item.vocabIds || [], item.kanjiIds || []);
+  const TYPE_ORDER = { grammar: 0, vocab: 1, kanji: 2 };
   const uniq = (a) => Array.from(new Set(a));
   // Wochentag aus ISO-Datum per Split (keine Zeitzonen-Verschiebung)
   const weekday = (iso) => {
@@ -475,7 +476,7 @@
     ? Object.assign(baseDefaults(item), { contexts: [{ itemId: item.id, label: sourceOf(item) + ' · ' + App.fmtDate(item.date), date: item.date, text: '' }] })
     : baseDefaults(item));
   const unlinkFrom = async (item, id) => {
-    ['vocabIds', 'grammarIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => v !== id); });
+    ['vocabIds', 'grammarIds', 'kanjiIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => v !== id); });
     await App.saveItem(item, { silent: true });
   };
   // Das Blatt einer Antwort/eines Eintrags verknüpft auch dann mit ihm, wenn es als ganzes Blatt geöffnet wird (z. B. aus der Bibliothek)
@@ -520,13 +521,13 @@
         <div data-body></div></div>
         <aside class="card write-side" data-side></aside></div></div>`;
 
-    // Seitenleiste „In dieser Antwort / In diesem Eintrag“: Neu und Angewendet, je Grammatik vor Vokabeln
+    // Seitenleiste „In dieser Antwort / In diesem Eintrag“: Neu und Angewendet, je Grammatik vor Vokabeln vor Kanji
     const side = view.querySelector('[data-side]');
     const drawSide = () => {
       const news = new Set(item.newIds || []);
       const all = linkedIds(item).map(App.item).filter(Boolean)
-        .sort((a, b) => (a.type === b.type ? 0 : a.type === 'grammar' ? -1 : 1));
-      const chip = (it) => `<div class="badge sec w-chip ${App.SECTIONS[it.type].cls}"><a href="${App.link(it)}" lang="ja">${esc(itemName(it))}</a>${it.type === 'vocab' ? `<span class="w-de">${esc(App.itemSub(it) || '')}</span>` : ''}<button class="w-x" data-w-unlink="${esc(it.id)}" title="Verknüpfung entfernen">×</button></div>`;
+        .sort((a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type]);
+      const chip = (it) => `<div class="badge sec w-chip ${App.SECTIONS[it.type].cls}"><a href="${App.link(it)}" lang="ja">${esc(itemName(it))}</a>${it.type === 'vocab' || it.type === 'kanji' ? `<span class="w-de">${esc(App.itemSub(it) || '')}</span>` : ''}<button class="w-x" data-w-unlink="${esc(it.id)}" title="Verknüpfung entfernen">×</button></div>`;
       const group = (label, list, cls) => (list.length ? `<div class="w-sec ${cls}">${label}</div><div class="w-chips">${list.map(chip).join('')}</div>` : '');
       const nNew = all.filter((it) => news.has(it.id)), nUsed = all.filter((it) => !news.has(it.id));
       side.innerHTML = `<h3>${isAnswer ? 'In dieser Antwort' : 'In diesem Eintrag'}</h3>
@@ -548,15 +549,15 @@
       if (x) { await unlink(x.dataset.wUnlink); return; }
       if (!e.target.closest('[data-w-pick]')) return;
       const before = new Set(linkedIds(item));
-      const ids = await App.pickItems({ title: 'Vorhandenes verknüpfen', types: ['grammar', 'vocab'], selected: Array.from(before) });
+      const ids = await App.pickItems({ title: 'Vorhandenes verknüpfen', types: ['grammar', 'vocab', 'kanji'], selected: Array.from(before), kanjiDefaults: baseDefaults(item) });
       if (!ids) return;
       const keep = new Set(ids);
       // Abgewählte entfernen, neu gewählte als „angewendet“ übernehmen
-      ['vocabIds', 'grammarIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => keep.has(v)); });
+      ['vocabIds', 'grammarIds', 'kanjiIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => keep.has(v)); });
       for (const id of before) if (!keep.has(id)) await dropMarks(id);
       ids.filter((id) => !before.has(id)).forEach((id) => {
         const it = App.item(id), k = it && LINK_KEYS[it.type];
-        if (k) item[k] = uniq(item[k].concat(id));
+        if (k) item[k] = uniq((item[k] || []).concat(id));
       });
       await App.saveItem(item, { silent: true });
       drawSide();
