@@ -538,7 +538,7 @@
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${crumbs(sec, it)}
       <div class="split"><div>
         <div class="card pad-lg"><div class="row between" style="align-items:flex-start">
-          <div class="detail-hero"><div class="big" lang="ja">${JP.wordRuby(it)}</div>${App.speakBtn(it.kanji || it.kana, '')}</div>
+          <div class="detail-hero"><div class="big" lang="ja">${JP.wordRuby(it)}</div>${App.speakBtn(it.kana || it.kanji, '')}</div>
           <div class="row">${detailActions(it)}</div></div>
           <div class="de-big" style="margin:4px 0 14px">${App.meaningHtml(it)}</div>
           <dl class="kv">${it.level ? `<dt>JLPT</dt><dd>${App.levelBadge(it)}</dd>` : ''}<dt>Lesung</dt><dd lang="ja" style="font-size:18px">${esc(it.kana)}</dd>${App.accentHtml(it) ? `<dt>Pitch Accent</dt><dd>${App.accentHtml(it)}</dd>` : ''}

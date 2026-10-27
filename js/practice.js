@@ -305,7 +305,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const reading = it.type === 'vocab' ? it.kana : JP.kana(it.jp);
     const ex = it.examples && it.examples[0];
     const extra = (it.type === 'vocab' ? App.accentHtml(it) + App.useHtml(it, true) : '') + (ex ? `<div style="margin-top:6px">${App.exampleHtml(ex)}</div>` : '') + (it.note ? `<div class="small muted">${esc(it.note)}</div>` : '');
-    const speakTxt = it.type === 'vocab' ? (it.kanji || it.kana) : it.jp;
+    const speakTxt = it.type === 'vocab' ? (it.kana || it.kanji) : it.jp;
     const badges = App.levelBadge(it) + (it.type === 'vocab' ? ' ' + App.verbClsBadge(it) : '');
     if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it, true)}</div>`, back: `<div class="ans jp" lang="ja">${jpHtml}</div>${badges}${extra}`, speak: speakTxt };
     return { front: `<div class="front" lang="ja">${App.askHtml(it)}</div>`, back: `<div class="jp" lang="ja" style="font-size:20px;color:var(--muted)">${esc(reading)}</div><div class="ans">${App.meaningHtml(it)}</div>${badges}${extra}`, speak: speakTxt };

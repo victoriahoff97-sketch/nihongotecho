@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-27-vorlesen', date: '27. Oktober',
+      items: [
+        { t: 'Vorlesen mit der richtigen Lesung', d: 'Der Lautsprecher-Knopf liest Wörter und Sätze jetzt so vor, wie die Lesung im Eintrag steht – 開く klingt also „aku“ und nicht mehr „hiraku“.' },
+      ],
+    },
+    {
       id: '2026-10-27-import', date: '27. Oktober',
       items: [
         { t: 'Wortlisten einfacher importieren', d: 'Vokabeln › „Importieren“: PDF aus dem Unterricht wählen, schon siehst du die Wörter. Wort, Lesung und Deutsch änderst du direkt oder schreibst Wörter dazu.' },

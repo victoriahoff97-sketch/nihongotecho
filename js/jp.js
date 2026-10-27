@@ -350,7 +350,8 @@
   JP.speak = (text) => {
     if (!window.speechSynthesis) return App.toast('Sprachausgabe wird von diesem Browser nicht unterstützt');
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(JP.plain(text));
+    // Wo eine Lesung notiert ist, wird sie gesprochen – sonst rät die Stimme (開[あ]く würde „hiraku“)
+    const u = new SpeechSynthesisUtterance(JP.kana(text));
     u.lang = 'ja-JP';
     const voice = JP.voice();
     if (voice) u.voice = voice;
