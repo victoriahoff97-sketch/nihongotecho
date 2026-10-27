@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-27-import', date: '27. Oktober',
+      items: [
+        { t: 'Wortlisten einfacher importieren', d: 'Vokabeln › „Importieren“: PDF aus dem Unterricht wählen, schon siehst du die Wörter. Wort, Lesung und Deutsch änderst du direkt oder schreibst Wörter dazu.' },
+        { t: 'Gleich in die Lernschlange', d: 'Importierte Wörter kommen jetzt von selbst in die Lernschlange. Wer sie lieber erst einstufen will, stellt das unten vor dem Übernehmen um.' },
+      ],
+    },
+    {
       id: '2026-10-26-auswahl-2', date: '26. Oktober',
       items: [
         { t: 'Zettel samt Schrift verschieben', d: 'Kreise mit „Auswahl“ einen Zettel oder Sticker ganz ein: Schrift und Sticker werden zusammen verschoben, vergrößert oder gelöscht.' },

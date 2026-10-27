@@ -444,38 +444,47 @@
     if (/い$/.test(kana) && !/^(der|die|das) /i.test(de) && /^[a-zäöüß]+$/.test(de.split(/[,;]/)[0].trim()) && de[0] === de[0].toLowerCase()) return 'i-adj';
     return '';
   };
+  // Zeilen der Liste → bearbeitbare Einträge (eine Zeile = ein Eintrag). Was man in der Vorschau ändert, landet hier –
+  // den ausgelesenen Text selbst bekommt man nur noch unter „Wörter falsch erkannt?“ zu sehen.
+  const toEntries = (st, map, from) => st.rows.map((r, i) => {
+    const get = (f) => { const c = map.indexOf(f); return c >= 0 ? clean(r[c]) : ''; };
+    let { kanji, kana, na } = get('jp') ? splitJp(get('jp')) : { kanji: get('kanji'), kana: get('kana') };
+    if (map.includes('jp') && get('kanji')) kanji = get('kanji');
+    if (map.includes('jp') && get('kana')) kana = get('kana');
+    const exjp = get('exjp');
+    return { eid: 'e' + (from + i), kanji: kanji || '', kana: kana || '', na: !!na, de: get('de'), exjp: /\[/.test(exjp) ? ankiFuri(exjp) : exjp, exde: get('exde'), lesson: get('lesson'), tags: get('tags') };
+  });
   // Ohne Deutsch (Spalte leer, z. B. eine Liste aus dem Unterricht) zählt die Zeile trotzdem: enrich() ergänzt die Bedeutung.
   // Gibt es das Wort schon, kommt sein Beispielsatz zum vorhandenen Eintrag (addEx), wenn er dort noch fehlt.
   // „Vielleicht schon vorhanden“ (maybe): wie die Warnung im Vokabel-Formular (autofillLogic.dupes) – in der Liste nur Kana
   // (きらい), in der App mit Kanji (嫌い), oder gleiche Kanji mit anderer Lesung. Was damit passiert, steht in opts.choice
   // (Schlüssel des Listenworts → Id des vorhandenen Worts oder 'new'); ohne Wahl gilt der erste Treffer als dasselbe Wort.
-  const buildItems = (st, map, opts) => {
+  // Abgewählte Einträge (off) bleiben draußen; deOwn/exdeOwn = von Hand geändert, dort wird nichts nachgeschlagen.
+  const buildItems = (entries, opts) => {
     const vocab = App.itemsOf('vocab');
     const existing = new Map(vocab.map((v) => [App.vocabKey(v), v]));
     const seen = new Set();
-    const out = { items: [], addEx: [], maybe: [], dup: 0, bad: 0, noReading: 0 };
+    const out = { items: [], addEx: [], maybe: [], known: [], dup: 0, bad: 0, noReading: 0 };
     const exTo = (old, ex) => { if (ex && !(old.examples || []).some((e) => JP.plain(e.jp) === JP.plain(ex.jp)) && !out.addEx.some((a) => a.id === old.id)) out.addEx.push({ id: old.id, ex }); };
-    for (const r of st.rows) {
-      const get = (f) => { const i = map.indexOf(f); return i >= 0 ? clean(r[i]) : ''; };
-      let { kanji, kana, na } = get('jp') ? splitJp(get('jp')) : { kanji: get('kanji'), kana: get('kana') };
-      if (map.includes('jp') && get('kanji')) kanji = get('kanji');
-      if (map.includes('jp') && get('kana')) kana = get('kana');
+    for (const e of entries) {
+      if (e.off) continue;
+      let { kanji, kana } = e;
       if (kana && JP.looksRomaji(kana)) kana = JP.romaji(kana);
-      const de = get('de');
-      if (!kanji && !kana) { out.bad++; continue; }
+      if (!kanji && !kana) { if (!e.manual) out.bad++; continue; }
       if (!kana) { out.noReading++; kana = kanji; }
       if (kanji === kana) kanji = '';
-      const exjp = get('exjp');
-      const ex = exjp ? { jp: /\[/.test(exjp) ? ankiFuri(exjp) : exjp, de: get('exde') } : null;
+      const ex = e.exjp ? { jp: e.exjp, de: e.exde } : null;
+      if (ex && e.exdeOwn) ex._own = 1;
       const key = App.vocabKey({ kanji, kana });
       const old = existing.get(key);
       if (old || seen.has(key)) {
         out.dup++;
-        if (old) exTo(old, ex);
+        if (old) { exTo(old, ex); if (!out.known.some((k) => k.id === old.id)) out.known.push({ id: old.id, ex }); }
         continue;
       }
       seen.add(key);
-      const it = { id: App.uid('v'), type: 'vocab', kana, kanji, de, pos: na ? 'na-adj' : guessPos(kana, de), cat: [], source: opts.source, lesson: get('lesson') || opts.lesson, tags: opts.tags.concat(get('tags') ? get('tags').split(/[\s,]+/).map((t) => t.toLowerCase()).filter(Boolean) : []), level: '', examples: [], imported: Date.now() };
+      const it = { id: App.uid('v'), type: 'vocab', kana, kanji, de: e.de, pos: e.na ? 'na-adj' : guessPos(kana, e.de), cat: [], source: opts.source, lesson: e.lesson || opts.lesson, tags: opts.tags.concat(e.tags ? e.tags.split(/[\s,]+/).map((t) => t.toLowerCase()).filter(Boolean) : []), level: '', examples: [], imported: Date.now(), _eid: e.eid };
+      if (e.deOwn) it._deOwn = 1;
       it.level = App.levelFor(it); // JLPT-Niveau aus dem Index (Import speichert direkt, ohne saveItem)
       if (it.lesson !== '' && !isNaN(+it.lesson)) it.lesson = +it.lesson;
       if (ex) it.examples.push(ex);
@@ -497,11 +506,11 @@
   // Ergebnisse bleiben im cache (je Import-Fenster), damit Vorschau und Import nicht doppelt nachschlagen.
   const newCache = () => ({ word: new Map(), sent: new Map() });
   const wordKey = (it) => App.vocabKey(it);
-  const sentences = (r) => r.items.flatMap((it) => it.examples).concat(r.addEx.map((a) => a.ex)).filter((e) => !String(e.de || '').trim());
+  const sentences = (r) => r.items.flatMap((it) => it.examples).concat(r.addEx.map((a) => a.ex)).filter((e) => !e._own && !String(e.de || '').trim());
   // trägt ein, was der cache schon weiß (r ist frisch aus buildItems); _fill/_mt markieren Ergänztes für die Vorschau
   const applyCache = (r, cache) => {
     r.items.forEach((it) => {
-      const w = !it.de && cache.word.get(wordKey(it));
+      const w = !it.de && !it._deOwn && cache.word.get(wordKey(it));
       if (!w) return;
       it._fill = w.src;
       it.de = w.de || '';
@@ -512,8 +521,8 @@
     return r;
   };
   const unmark = (r) => {
-    r.items.forEach((it) => { delete it._fill; delete it._maybe; it.examples.forEach((e) => delete e._mt); });
-    r.addEx.forEach((a) => delete a.ex._mt);
+    r.items.forEach((it) => { delete it._fill; delete it._maybe; delete it._deOwn; delete it._eid; it.examples.forEach((e) => { delete e._mt; delete e._own; }); });
+    r.addEx.forEach((a) => { delete a.ex._mt; delete a.ex._own; });
   };
   const translateMany = async (texts, out) => {
     const T = App.exfillLogic;
@@ -530,7 +539,7 @@
     // wie im Vokabel-Formular: leichte JLPT-Wörter zuerst – nur in Kana (きらい) soll 嫌い gewinnen, nicht 機雷
     const LV = { N5: 6, N4: 5, N3: 4, N2: 3, N1: 2 };
     const bonus = (e) => (LV[App.jlptOf({ type: 'vocab', kanji: (e.k || [])[0] || '', kana: (e.r || [])[0] || '' })] || 0) + (e.de ? 1 : 0);
-    const todo = r.items.filter((it) => !it.de && !cache.word.has(wordKey(it)));
+    const todo = r.items.filter((it) => !it.de && !it._deOwn && !cache.word.has(wordKey(it)));
     if (todo.length && App.dict.installed()) {
       let hits = new Map();
       try { hits = await App.dict.lookup([...new Set(todo.flatMap((it) => [it.kanji, it.kana].filter(Boolean)))]); } catch (e) { console.error(e); }
@@ -595,129 +604,285 @@
     return { text: lines.join('\n'), pages: list.length, total: pdf.numPages, chars, splitPages };
   };
 
+  // Zwei Schritte: 1) Liste wählen (Datei, Bibliothek oder Text einfügen) – eine Datei wird gleich ausgelesen;
+  // 2) Wörter prüfen und ergänzen: Wort, Lesung, Deutsch und Satz-Übersetzung direkt eintippen, ✎ ändert auch den Satz, Haken = übernehmen.
+  // Spalten, Seiten und der ausgelesene Text stecken eingeklappt unter „Wörter falsch erkannt?“.
   App.importVocab = ({ fileId } = {}) => {
     const body = document.createElement('div');
-    body.className = 'sec-vocab';
+    body.className = 'sec-vocab imp';
     const libPdfs = Array.from(S.files.values()).filter((f) => App.fileKind(f) === 'pdf').sort((a, b) => b.created - a.created);
     body.innerHTML = `<div class="stack" data-step1>
-        <p class="muted" style="margin:0">Füge eine Wortliste ein oder wähle eine Datei (auch PDF). Eine Zeile pro Wort, Spalten getrennt durch Tab, Semikolon, Komma, „=“ oder „ - “.</p>
-        <div class="row"><label class="btn">${icon('upload')} Datei wählen (PDF, .txt, .csv)<input type="file" accept=".pdf,application/pdf,.txt,.csv,.tsv,text/plain,text/csv" hidden data-file></label>
-          ${libPdfs.length ? `<select class="input" data-libpdf style="max-width:320px"><option value="">… oder PDF aus der Bibliothek</option>${libPdfs.map((f) => `<option value="${f.id}" ${f.id === fileId ? 'selected' : ''}>${esc(f.name)}${f.source ? ' · ' + esc(f.source) : ''}${f.lesson !== '' && f.lesson != null ? ' L' + esc(f.lesson) : ''}</option>`).join('')}</select>` : ''}</div>
-        <div class="card" data-pdfopts hidden style="box-shadow:none;background:var(--matcha-soft);border-color:transparent;padding:12px 16px"><div class="row">
-          <b data-pdfname></b><span class="small muted" data-pdfinfo></span><span class="grow"></span>
-          <label class="row small" style="gap:6px">Seiten <input class="input" data-pages placeholder="alle – z. B. 3-5, 8" style="width:150px;height:38px"></label>
-          <select class="input" data-twocols style="height:38px;width:auto"><option value="auto">Listen: automatisch</option><option value="false">eine Liste pro Seite</option><option value="true">zwei Listen nebeneinander</option></select>
-          <button class="btn btn-sm" data-reread>${icon('replay')} Neu auslesen</button></div></div>
-        <textarea class="input jp-in" rows="9" data-text placeholder="食べる;たべる;essen&#10;新聞 (しんぶん) = Zeitung&#10;がっこう	die Schule&#10;日本[にほん]語[ご]	Japanisch"></textarea>
-        <span class="small muted">Anki: <i>Durchsuchen › Notizen exportieren › „Notizen als Klartext (.txt)“</i>. Excel/Numbers: als CSV speichern. PDF: Der ausgelesene Text erscheint oben – du kannst ihn vor dem Weiter noch bearbeiten.</span>
-      </div><div data-step2 hidden></div>`;
-    const md = App.modal({ title: 'Vokabeln importieren', body, wide: true, foot: '<button class="btn" data-no>Abbrechen</button><button class="btn btn-primary" data-next disabled>Weiter</button>' });
+        <p class="muted" style="margin:0">Wähle deine Wortliste. Die App liest die Wörter heraus und ergänzt fehlendes Deutsch – danach siehst du alles noch einmal und kannst es ändern.</p>
+        <div class="imp-choices">
+          <label class="imp-choice">${icon('upload')}<b>Datei wählen</b><span>PDF aus dem Unterricht, Anki-Export (.txt) oder Tabelle (.csv)</span><input type="file" accept=".pdf,application/pdf,.txt,.csv,.tsv,text/plain,text/csv" hidden data-file></label>
+          ${libPdfs.length ? `<div class="imp-choice">${icon('library')}<b>Aus der Bibliothek</b><select class="input" data-libpdf><option value="">PDF auswählen …</option>${libPdfs.map((f) => `<option value="${f.id}" ${f.id === fileId ? 'selected' : ''}>${esc(f.name)}${f.source ? ' · ' + esc(f.source) : ''}${f.lesson !== '' && f.lesson != null ? ' L' + esc(f.lesson) : ''}</option>`).join('')}</select></div>` : ''}
+          <button type="button" class="imp-choice" data-paste>${icon('edit')}<b>Text einfügen</b><span>kopierte Liste, eine Zeile pro Wort</span></button>
+        </div>
+        <div class="stack" data-pastebox hidden>
+          <textarea class="input jp-in" rows="8" data-text placeholder="食べる;たべる;essen&#10;新聞 (しんぶん) = Zeitung&#10;がっこう	die Schule"></textarea>
+          <span class="small muted">Spalten getrennt durch Tab, Semikolon, Komma, „=“ oder „ - “. Anki: <i>Durchsuchen › Notizen exportieren › „Notizen als Klartext (.txt)“</i>. Excel/Numbers: als CSV speichern.</span>
+        </div>
+        <div class="small muted" data-status></div>
+      </div><div class="stack" data-step2 hidden></div>`;
+    const md = App.modal({ title: 'Vokabeln importieren', body, wide: true, foot: '<button class="btn" data-back hidden>← Andere Liste</button><span class="grow"></span><button class="btn" data-no>Abbrechen</button><button class="btn btn-primary" data-next hidden disabled>Weiter</button>' });
     const ta = body.querySelector('[data-text]');
-    const nextB = md.el.querySelector('[data-next]');
+    const step1 = body.querySelector('[data-step1]'), s2 = body.querySelector('[data-step2]');
+    const statusEl = body.querySelector('[data-status]');
+    const nextB = md.el.querySelector('[data-next]'), backB = md.el.querySelector('[data-back]');
     md.el.querySelector('[data-no]').onclick = md.close;
-    ta.addEventListener('input', () => { nextB.disabled = !ta.value.trim(); });
-    let pdfBlob = null;
-    const opts = body.querySelector('[data-pdfopts]');
+
+    const cache = newCache();
+    const choice = new Map(); // „vielleicht schon vorhanden“: Schlüssel des Listenworts → Id des vorhandenen Worts oder 'new'
+    let raw = '', st = null, map = [], entries = [], nextEid = 0, editing = null, step = 1, run = 0, last = null, busy = false;
+    let pdfBlob = null, pdfPages = '', pdfTwo = 'auto', pdfInfo = '', fname = '', meta = {};
+    const form = { status: 'learn' }; // Lernstand neuer Wörter: standardmäßig gleich in die Lernschlange
+    const entryOf = (eid) => entries.find((e) => e.eid === eid);
+
+    // ---------- Schritt 1: Liste wählen ----------
     const readPdf = async () => {
-      if (!pdfBlob) return;
-      const info = body.querySelector('[data-pdfinfo]');
-      info.textContent = 'wird ausgelesen …';
-      nextB.disabled = true;
+      statusEl.textContent = 'PDF wird ausgelesen …';
       try {
-        const r = await App.pdfToText(pdfBlob, { pages: body.querySelector('[data-pages]').value, twoCols: ({ auto: 'auto', true: true, false: false })[body.querySelector('[data-twocols]').value] });
+        const r = await App.pdfToText(pdfBlob, { pages: pdfPages, twoCols: ({ auto: 'auto', true: true, false: false })[pdfTwo] });
+        statusEl.textContent = '';
         if (!r.chars) {
-          info.textContent = '';
-          ta.value = '';
-          App.modal({ title: 'Kein Text in dieser PDF', body: '<p>Die PDF enthält nur Bilder (z. B. eingescannte Buchseiten) – daraus kann die App keinen Text lesen.</p><p class="muted">Tipp: In der Microsoft-Fotos-App oder OneNote lässt sich Text aus Bildern kopieren („Text kopieren“). Den kopierten Text hier einfügen.</p>' });
-          return;
+          App.modal({ title: 'Kein Text in dieser PDF', body: '<p>Die PDF enthält nur Bilder (z. B. eingescannte Buchseiten) – daraus kann die App keinen Text lesen.</p><p class="muted">Tipp: In der Microsoft-Fotos-App oder OneNote lässt sich Text aus Bildern kopieren („Text kopieren“). Den kopierten Text hier über „Text einfügen“ einfügen.</p>' });
+          return false;
         }
-        ta.value = r.text;
-        info.textContent = `${r.pages} von ${r.total} Seiten gelesen · ${r.text.split('\n').length} Zeilen${r.splitPages ? ` · auf ${r.splitPages} Seite(n) zwei Listen nebeneinander erkannt` : ''}`;
-        nextB.disabled = !ta.value.trim();
-      } catch (er) { info.textContent = 'Fehler beim Lesen: ' + er.message; }
+        raw = r.text;
+        pdfInfo = `${r.pages === r.total ? (r.total === 1 ? '1 Seite' : r.total + ' Seiten') : r.pages + ' von ' + r.total + ' Seiten'}${r.splitPages ? ' · zwei Listen nebeneinander erkannt' : ''}`;
+        return true;
+      } catch (er) { statusEl.textContent = 'Fehler beim Lesen: ' + er.message; return false; }
     };
-    const usePdf = (blob, name, meta = {}) => { pdfBlob = blob; body.dataset.fname = name; body.dataset.src = meta.source || ''; body.dataset.lesson = meta.lesson ?? ''; opts.hidden = false; body.querySelector('[data-pdfname]').textContent = name; readPdf(); };
+    // Text → Zeilen → Einträge; selbst hinzugefügte Wörter bleiben beim Neu-Einlesen erhalten
+    const parse = () => {
+      const s = detect(raw);
+      if (!s.rows.length) { App.toast('In dieser Liste wurden keine Wörter gefunden'); return false; }
+      st = s; map = s.map.slice();
+      entries = toEntries(st, map, nextEid).concat(entries.filter((e) => e.manual));
+      nextEid += st.rows.length;
+      editing = null;
+      return true;
+    };
+    const open = async (fromPdf) => {
+      if (fromPdf && !(await readPdf())) return;
+      if (parse()) showStep2();
+    };
+    const usePdf = (blob, name, m = {}) => { pdfBlob = blob; fname = name; meta = m; pdfPages = ''; pdfTwo = 'auto'; open(true); };
     body.querySelector('[data-file]').onchange = async (e) => {
       const f = e.target.files[0]; if (!f) return;
+      e.target.value = '';
       if (/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) return usePdf(f, f.name);
-      pdfBlob = null; opts.hidden = true;
-      ta.value = await f.text(); nextB.disabled = false; body.dataset.fname = f.name;
+      pdfBlob = null; fname = f.name; meta = {}; pdfInfo = '';
+      raw = await f.text();
+      open(false);
     };
     const lib = body.querySelector('[data-libpdf]');
     if (lib) lib.onchange = async () => { if (lib.value) { const f = S.files.get(lib.value); usePdf(await App.fileBlob(f.id), f.name, f); } };
     if (lib && fileId) lib.onchange();
-    body.querySelector('[data-reread]').onclick = readPdf;
-    body.querySelector('[data-twocols]').onchange = readPdf;
-    body.querySelector('[data-pages]').addEventListener('keydown', (e) => { if (e.key === 'Enter') readPdf(); });
-    let st = null;
-    const step2 = () => {
-      st = detect(ta.value);
-      if (!st.rows.length) return App.toast('Keine Zeilen erkannt');
-      const s2 = body.querySelector('[data-step2]');
-      body.querySelector('[data-step1]').hidden = true;
-      s2.hidden = false;
-      const defSrc = body.dataset.src || (/anki/i.test(body.dataset.fname || '') ? 'Anki' : (App.lsGet('importSource') || 'Anki'));
-      s2.innerHTML = `<div class="stack">
-        <div class="small muted">${st.rows.length} Zeilen erkannt · Trennzeichen: <b>${esc(st.delim === '\t' ? 'Tab' : st.delim.trim() || st.delim)}</b>${st.header ? ' · erste Zeile ist eine Kopfzeile' : ''}. Prüfe die Spalten-Zuordnung:</div>
-        <div style="overflow:auto"><table class="map-table"><thead><tr>${Array.from({ length: st.ncol }, (_, c) => `<th><select class="input" data-col="${c}" style="min-width:170px">${FIELDS.map(([k, l]) => `<option value="${k}" ${st.map[c] === k ? 'selected' : ''}>${l}</option>`).join('')}</select>${st.headRow ? `<div class="small" style="margin-top:4px;text-transform:none">${esc(st.headRow[c] || '')}</div>` : ''}</th>`).join('')}</tr></thead>
-          <tbody>${st.rows.slice(0, 5).map((r) => `<tr>${Array.from({ length: st.ncol }, (_, c) => `<td lang="ja" class="small">${esc(clean(r[c] || '').slice(0, 60))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
-        <div class="section-title" style="margin:6px 0">Vorschau</div><div data-prev></div>
-        <div class="form"><div class="three"><div class="field"><label>Quelle</label><select class="input" data-src>${App.sourceOptions(defSrc, false)}</select></div>
-          <div class="field"><label>Lektion <small>falls keine Spalte</small></label><input class="input" data-lesson value="${esc(body.dataset.lesson || '')}"></div>
-          <div class="field"><label>Schlagwörter</label><input class="input" data-tags placeholder="z. B. import"></div></div>
-          <div class="field"><label>Lernstand der neuen Wörter</label><div class="seg" data-st><button class="on" data-v="unchecked">Ungeprüft (empfohlen)</button><button data-v="learn">Direkt in die Lernschlange</button><button data-v="known">Kann ich schon</button></div></div></div></div>`;
-      // Vorschau: alle Zeilen; fehlendes Deutsch wird nachgeschlagen (Wörterbuch, sonst Übersetzer) – Ergänztes ist markiert
-      let run = 0;
-      const FILL = { dict: 'aus dem Wörterbuch', mt: 'übersetzt – bitte prüfen' };
-      const draw = (r, busy) => {
-        const noDe = r.items.filter((v) => !v.de && !v.en).length;
-        const filled = r.items.filter((v) => v._fill).length;
-        // ohne die „vielleicht“-Wörter, die oben mit Auswahl stehen
-        const dupN = r.dup - r.maybe.filter((m) => m.pick !== 'new').length, exN = r.addEx.filter((a) => !a.maybe).length;
-        const exCell = (ex, note) => (ex ? `<span lang="ja">${JP.ruby(ex.jp)}</span>${ex.de ? `<div class="muted">${esc(ex.de)}${ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}${note ? `<div class="muted"><i>${note}</i></div>` : ''}` : '');
-        const candLabel = (c) => `Dasselbe wie ${c.kanji ? c.kanji + ' (' + c.kana + ')' : c.kana}${c.de ? ' – ' + App.firstGloss(c.de) : ''}${c.source ? ' · ' + c.source : ''}`;
-        // „vielleicht schon vorhanden“ zuerst – dort wählt man je Wort: dasselbe (Satz kommt dorthin) oder neu anlegen
-        const maybeRows = r.maybe.map((m) => { const v = m.it, isNew = m.pick === 'new', old = S.items.get(m.pick);
-          return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr;background:var(--shu-soft)"><span class="k" lang="ja">${JP.wordRuby(v)}${isNew && (v.de || v.en) ? `<div class="small">${App.meaningHtml(v)}</div>` : ''}</span>
-            <span><select class="input" data-maybe="${esc(m.key)}" style="height:auto;font-size:13px;white-space:normal">${m.cands.map((c) => `<option value="${c.id}" ${m.pick === c.id ? 'selected' : ''}>${esc(candLabel(c))}</option>`).join('')}<option value="new" ${isNew ? 'selected' : ''}>Anderes Wort – neu anlegen</option></select></span>
-            <span class="small">${exCell(m.ex, !m.ex ? '' : isNew ? '' : r.addEx.some((a) => a.id === m.pick) ? 'Satz kommt zu ' + esc(old.kanji || old.kana) : 'Satz ist dort schon')}</span></div>`; }).join('');
-        s2.querySelector('[data-prev]').innerHTML = `<div class="row small" style="margin-bottom:8px"><span class="badge" style="background:var(--matcha-soft);color:var(--matcha)">${r.items.length} neu</span>${r.maybe.length ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${r.maybe.length} vielleicht schon vorhanden – bitte ansehen</span>` : ''}${dupN ? `<span class="badge">${dupN} schon vorhanden – werden übersprungen${exN ? `, ${exN === 1 ? 'ein Beispielsatz kommt' : exN + ' Beispielsätze kommen'} dort dazu` : ''}</span>` : ''}${r.bad ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${r.bad} ohne Japanisch</span>` : ''}${r.noReading ? `<span class="badge">${r.noReading} ohne Lesung</span>` : ''}${busy ? '<span class="badge">Deutsch wird ergänzt …</span>' : filled ? `<span class="badge">${filled}× Deutsch ergänzt</span>` : ''}${!busy && noDe ? `<span class="badge" style="background:var(--shu-soft);color:var(--shu)">${noDe} ohne Deutsch – später ergänzen</span>` : ''}</div>
-          <div class="list" style="max-height:340px;overflow:auto">${maybeRows + r.items.filter((v) => !v._maybe).map((v) => { const ex = v.examples[0]; return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr"><span class="k" lang="ja">${JP.wordRuby(v)}</span><span>${v.de || v.en ? App.meaningHtml(v) : '<span class="muted">–</span>'}${v._fill ? `<div class="small muted">${FILL[v._fill]}</div>` : ''}</span><span class="small">${ex ? `<span lang="ja">${JP.ruby(ex.jp)}</span>${ex.de ? `<div class="muted">${esc(ex.de)}${ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}` : ''}</span></div>`; }).join('')
-            + r.addEx.filter((a) => !a.maybe).map((a) => { const old = S.items.get(a.id); return `<div class="list-row" style="grid-template-columns:1fr 1fr 1.6fr"><span class="k" lang="ja">${JP.wordRuby(old)}</span><span class="small muted">schon vorhanden – bekommt diesen Beispielsatz</span><span class="small"><span lang="ja">${JP.ruby(a.ex.jp)}</span>${a.ex.de ? `<div class="muted">${esc(a.ex.de)}${a.ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}</span></div>`; }).join('')
-            || '<div class="list-row">Nichts zu importieren – Zuordnung prüfen.</div>'}</div>`;
-        const n = r.items.length;
-        nextB.disabled = busy || !(n || r.addEx.length);
-        nextB.innerHTML = busy ? 'Deutsch wird ergänzt …' : `${icon('download')} ${n ? `${n} importieren` : 'Beispielsätze ergänzen'}`;
-      };
-      const prev = async () => {
-        const my = ++run;
-        const r = buildItems(st, $$('[data-col]', s2).map((x) => x.value), { source: '', lesson: '', tags: [], choice });
-        const need = r.items.some((v) => !v.de) || sentences(r).length > 0;
-        draw(applyCache(r, cache), need);
-        if (!need) return;
-        await enrich(r, cache);
-        if (my === run && s2.isConnected) draw(r, false);
-      };
-      s2.addEventListener('change', (e) => {
-        if (e.target.matches('[data-maybe]')) choice.set(e.target.dataset.maybe, e.target.value);
-        if (e.target.matches('[data-col], [data-maybe]')) prev();
-      });
-      s2.querySelector('[data-st]').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) $$('[data-v]', s2).forEach((x) => x.classList.toggle('on', x === b)); });
-      prev();
-      nextB.onclick = doImport;
+    body.querySelector('[data-paste]').onclick = () => {
+      body.querySelector('[data-pastebox]').hidden = false;
+      nextB.hidden = false; nextB.innerHTML = 'Weiter';
+      ta.focus();
     };
-    const cache = newCache();
-    const choice = new Map(); // „vielleicht schon vorhanden“: Schlüssel des Listenworts → Id des vorhandenen Worts oder 'new'
+    ta.addEventListener('input', () => { nextB.disabled = !ta.value.trim(); });
+    backB.onclick = () => {
+      step = 1; ++run; editing = null; entries = [];
+      s2.hidden = true; step1.hidden = false; backB.hidden = true;
+      nextB.hidden = body.querySelector('[data-pastebox]').hidden; nextB.innerHTML = 'Weiter'; nextB.disabled = !ta.value.trim();
+    };
+
+    // ---------- Schritt 2: prüfen und ergänzen ----------
+    const FILL = { dict: 'aus dem Wörterbuch', mt: 'übersetzt – bitte prüfen' };
+    const showStep2 = () => {
+      step = 2;
+      step1.hidden = true; s2.hidden = false; backB.hidden = false; nextB.hidden = false;
+      if (!('source' in form)) {
+        form.source = meta.source || (/anki/i.test(fname) ? 'Anki' : (App.lsGet('importSource') || (pdfBlob ? 'VHS-Kurs' : 'Anki')));
+        form.lesson = String(meta.lesson ?? ''); form.tags = '';
+      }
+      s2.innerHTML = `<div class="imp-head"><span class="imp-file">${icon(pdfBlob ? 'file' : 'list')}<b>${esc(fname || 'Eingefügter Text')}</b></span>${pdfInfo ? `<span class="small muted">${pdfInfo}</span>` : ''}<span class="grow"></span><span class="row small" data-badges></span></div>
+        <div data-maybe></div>
+        <div class="imp-list" data-list></div>
+        <div class="row small muted" style="gap:10px"><button class="btn btn-sm" data-add>${icon('plus')} Wort hinzufügen</button><span>Alle Felder kannst du direkt ändern · ${icon('edit')} ändert auch den Beispielsatz · Haken weg = nicht übernehmen</span></div>
+        <div data-known></div>
+        <div class="imp-where form">
+          <div class="three"><div class="field"><label>Quelle</label><select class="input" data-w="source">${App.sourceOptions(form.source, false)}</select></div>
+            <div class="field"><label>Lektion</label><input class="input" data-w="lesson" value="${esc(form.lesson)}" placeholder="z. B. 4"></div>
+            <div class="field"><label>Schlagwörter</label><input class="input" data-w="tags" value="${esc(form.tags)}" placeholder="z. B. unterricht"></div></div>
+          <div class="field"><label>Neue Wörter kommen …</label><div class="seg" data-st>${[['learn', 'in die Lernschlange'], ['unchecked', 'erst zum Einstufen'], ['known', 'zu „kann ich schon“']].map(([v, l]) => `<button type="button" data-v="${v}" class="${form.status === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+        </div>
+        <details class="adv" data-adv><summary>Wörter falsch erkannt? Spalten und Seiten anpassen</summary><div class="stack" data-advbody></div></details>`;
+      App.hydrateIcons(s2);
+      drawAdv();
+      prev();
+    };
+    const drawAdv = () => {
+      s2.querySelector('[data-advbody]').innerHTML = `
+        ${pdfBlob ? `<div class="row small"><label class="row" style="gap:6px">Seiten <input class="input" data-pages value="${esc(pdfPages)}" placeholder="alle – z. B. 3-5, 8" style="width:150px;height:38px"></label>
+          <select class="input" data-twocols style="height:38px;width:auto">${[['auto', 'Listen: automatisch'], ['false', 'eine Liste pro Seite'], ['true', 'zwei Listen nebeneinander']].map(([v, l]) => `<option value="${v}" ${pdfTwo === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          <button class="btn btn-sm" data-reread>${icon('replay')} Neu auslesen</button></div>` : ''}
+        <div class="small muted">So wurden die Spalten verstanden – stimmt eine nicht, hier umstellen:</div>
+        <div style="overflow:auto"><table class="map-table"><thead><tr>${Array.from({ length: st.ncol }, (_, c) => `<th><select class="input" data-col="${c}" style="min-width:170px">${FIELDS.map(([k, l]) => `<option value="${k}" ${map[c] === k ? 'selected' : ''}>${l}</option>`).join('')}</select>${st.headRow ? `<div class="small" style="margin-top:4px;text-transform:none">${esc(st.headRow[c] || '')}</div>` : ''}</th>`).join('')}</tr></thead>
+          <tbody>${st.rows.slice(0, 3).map((r) => `<tr>${Array.from({ length: st.ncol }, (_, c) => `<td lang="ja" class="small">${esc(clean(r[c] || '').slice(0, 60))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+        <details class="imp-raw"><summary class="small">Ausgelesenen Text ansehen und bearbeiten</summary>
+          <textarea class="input jp-in" rows="8" data-raw>${esc(raw)}</textarea>
+          <div class="row"><span class="small muted grow">Eine Zeile pro Wort, Spalten mit Tab getrennt. Zeilen mit # werden übersprungen.</span><button class="btn btn-sm" data-reparse>${icon('replay')} Text neu einlesen</button></div></details>
+        <div class="small muted">Beim Neu-Einlesen gehen Änderungen in der Liste verloren – selbst hinzugefügte Wörter bleiben.</div>`;
+      App.hydrateIcons(s2);
+    };
+
+    // Vorschau: Einträge → Wörter; fehlendes Deutsch wird nachgeschlagen (Wörterbuch, sonst Übersetzer) – Ergänztes ist markiert
+    const opts0 = () => ({ source: '', lesson: '', tags: [], choice });
+    const prev = async () => {
+      const my = ++run;
+      const r = buildItems(entries, opts0());
+      const need = r.items.some((v) => !v.de && !v._deOwn) || sentences(r).length > 0;
+      busy = need;
+      draw(applyCache(r, cache));
+      if (!need) return;
+      await enrich(r, cache);
+      if (my !== run || !s2.isConnected) return;
+      busy = false;
+      draw(r);
+    };
+    // abgewählte Zeilen: kein Wort im Ergebnis – Nachgeschlagenes kommt aus dem cache
+    const wordOf = (e, it) => it || { kanji: e.kanji, kana: e.kana || e.kanji, de: e.de || (cache.word.get(App.vocabKey({ kanji: e.kanji === e.kana ? '' : e.kanji, kana: e.kana || e.kanji })) || {}).de || '', examples: e.exjp ? [{ jp: e.exjp, de: e.exde || cache.sent.get(JP.plain(e.exjp)) || '' }] : [] };
+    const exRuby = (ex) => `<span lang="ja">${JP.ruby(ex.jp)}</span>${ex.de ? `<div class="muted">${esc(ex.de)}${ex._mt ? ' <i>(übersetzt)</i>' : ''}</div>` : ''}`;
+    const rowHtml = (e, it) => {
+      const v = wordOf(e, it);
+      if (editing === e.eid) return editHtml(e, v);
+      const ex = v.examples[0];
+      const de = e.deOwn ? e.de : v.de || '';
+      const exde = ex ? (e.exdeOwn ? e.exde : ex.de || '') : '';
+      const hint = it && it._fill && !e.deOwn ? `<span class="imp-hint ${it._fill}">${FILL[it._fill]}</span>` : '';
+      return `<div class="imp-row${e.off ? ' off' : ''}" data-eid="${e.eid}">
+        <label class="imp-on" title="übernehmen"><input type="checkbox" data-on ${e.off ? '' : 'checked'}></label>
+        <span class="imp-w"><input class="imp-in w jp-in" lang="ja" data-f="kanji" value="${esc(e.kanji)}" placeholder="ohne Kanji" ${e.off ? 'disabled' : ''}><input class="imp-in w sm jp-in" lang="ja" data-f="kana" value="${esc(e.kana)}" placeholder="Lesung" ${e.off ? 'disabled' : ''}></span>
+        <span class="imp-de"><input class="imp-in" data-f="de" value="${esc(de)}" placeholder="${!de && busy ? 'wird ergänzt …' : v.en ? 'engl.: ' + esc(v.en) : 'Deutsch eintragen'}" ${e.off ? 'disabled' : ''}>${hint}</span>
+        <span class="imp-ex">${ex ? `<span lang="ja" class="imp-exjp">${JP.ruby(ex.jp)}</span><input class="imp-in sm" data-f="exde" value="${esc(exde)}" placeholder="${!exde && busy ? 'wird übersetzt …' : 'Übersetzung des Satzes'}" ${e.off ? 'disabled' : ''}>${ex._mt && !e.exdeOwn ? '<span class="imp-hint mt">übersetzt – bitte prüfen</span>' : ''}` : '<span class="small muted">kein Beispielsatz</span>'}</span>
+        <button type="button" class="icon-btn" data-edit title="Wort oder Satz ändern" ${e.off ? 'disabled' : ''}>${icon('edit')}</button></div>`;
+    };
+    // Bearbeiten: data-o hält den angezeigten Stand – nur was sich davon unterscheidet, gilt als geändert
+    const editHtml = (e, v) => {
+      const ex = v.examples[0] || { jp: '', de: '' };
+      const f = (k, label, val, ph = '', jp = false) => `<div class="field"><label>${label}</label><input class="input${jp ? ' jp-in' : ''}" data-e="${k}" data-o="${esc(val)}" value="${esc(val)}" placeholder="${ph}"></div>`;
+      return `<div class="imp-row editing" data-eid="${e.eid}"><div class="imp-edit form">
+        <div class="three">${f('kanji', 'Kanji', e.kanji, 'falls es welche gibt', true)}${f('kana', 'Lesung', e.kana, 'Kana oder Romaji', true)}${f('de', 'Deutsch', e.deOwn ? e.de : v.de || '')}</div>
+        <div class="two">${f('exjp', 'Beispielsatz', JP.plain(e.exjp), 'optional', true)}${f('exde', 'Übersetzung', e.exdeOwn ? e.exde : ex.de || '', 'leer = wird übersetzt')}</div>
+        <div class="row"><span class="small muted grow">Lesung und Furigana im Satz ergänzt die App, wenn du sie leer lässt.</span><button type="button" class="btn btn-sm" data-cancel>Abbrechen</button><button type="button" class="btn btn-sm btn-primary" data-done>${icon('check')} Fertig</button></div>
+      </div></div>`;
+    };
+    const finishEdit = async (row) => {
+      const e = entryOf(row.dataset.eid);
+      const inp = (k) => row.querySelector(`[data-e="${k}"]`);
+      const val = (k) => inp(k).value.trim();
+      const changed = (k) => val(k) !== inp(k).dataset.o.trim();
+      let kanji = val('kanji'), kana = val('kana');
+      editing = null;
+      if (!kanji && !kana) { if (e.manual) entries.splice(entries.indexOf(e), 1); return prev(); }
+      if (kanji && !JP.hasKanji(kanji) && !kana) { kana = kanji; kanji = ''; }
+      if (kanji && !kana) { try { const r = await App.sentenceReading(kanji); if (!r.missing.length) kana = r.kana; } catch (er) { console.error(er); } }
+      e.kanji = kanji; e.kana = kana;
+      if (changed('de')) { e.de = val('de'); e.deOwn = 1; }
+      if (changed('exjp')) {
+        const s = val('exjp');
+        e.exjp = s;
+        if (s && JP.hasKanji(s)) { try { const r = await App.sentenceReading(s); if (r.furi) e.exjp = r.furi; } catch (er) { console.error(er); } }
+        if (!changed('exde')) { e.exde = ''; delete e.exdeOwn; } // neuer Satz → neue Übersetzung
+      }
+      if (changed('exde')) { e.exde = val('exde'); e.exdeOwn = 1; }
+      // selbst hinzugefügt, gibt es aber schon: es landet bei „hast du schon“ – kurz sagen, wohin es verschwindet
+      const old = e.manual && App.itemsOf('vocab').find((v) => App.vocabKey(v) === App.vocabKey({ kanji: kanji === kana ? '' : kanji, kana: kana || kanji }));
+      if (old) App.toast(`${old.kanji || old.kana} hast du schon${e.exjp ? ' – der Satz kommt dort dazu' : ''}`);
+      return prev();
+    };
+    // Wort direkt in der Liste geändert: fehlt die Lesung zu Kanji, ergänzt sie die App; dann neu prüfen (schon vorhanden? Deutsch?)
+    const wordChanged = async (e) => {
+      if (e.kanji && !JP.hasKanji(e.kanji) && !e.kana) { e.kana = e.kanji; e.kanji = ''; }
+      if (e.kanji && !e.kana) { try { const r = await App.sentenceReading(e.kanji); if (!r.missing.length) e.kana = r.kana; } catch (er) { console.error(er); } }
+      prev();
+    };
+    const badge = (txt, warn) => `<span class="badge"${warn ? ' style="background:var(--shu-soft);color:var(--shu)"' : ''}>${txt}</span>`;
+    const draw = (r) => {
+      last = r;
+      const list = s2.querySelector('[data-list]');
+      // Fokus und Scrollstand halten, wenn das Nachschlagen fertig wird, während man tippt
+      const a = document.activeElement;
+      const keep = a && list.contains(a) && a.dataset.f ? { eid: a.closest('[data-eid]').dataset.eid, f: a.dataset.f, s: a.selectionStart } : null;
+      const top = md.body.scrollTop;
+      const byEid = new Map(r.items.map((it) => [it._eid, it]));
+      const rows = entries.map((e) => (byEid.has(e.eid) || e.off || editing === e.eid ? rowHtml(e, byEid.get(e.eid)) : '')).join('');
+      list.innerHTML = rows || '<div class="imp-empty muted">Keine neuen Wörter in dieser Liste.</div>';
+      md.body.scrollTop = top;
+      if (keep) { const x = list.querySelector(`[data-eid="${keep.eid}"] [data-f="${keep.f}"]`); if (x) { x.focus(); try { x.setSelectionRange(keep.s, keep.s); } catch (er) { /* kein Textfeld */ } } }
+      // „vielleicht schon vorhanden“ – je Wort: dasselbe (Satz kommt dorthin) oder neu anlegen
+      const candLabel = (c) => `Dasselbe wie ${c.kanji ? c.kanji + ' (' + c.kana + ')' : c.kana}${c.de ? ' – ' + App.firstGloss(c.de) : ''}${c.source ? ' · ' + c.source : ''}`;
+      s2.querySelector('[data-maybe]').innerHTML = r.maybe.length ? `<div class="imp-group maybe"><div class="imp-gtitle">${icon('alert')} Gibt es vielleicht schon – bitte kurz ansehen</div>${r.maybe.map((m) => { const old = S.items.get(m.pick);
+        return `<div class="imp-mrow"><span class="imp-w" lang="ja">${JP.wordRuby(m.it)}</span><select class="input" data-maybe="${esc(m.key)}">${m.cands.map((c) => `<option value="${c.id}" ${m.pick === c.id ? 'selected' : ''}>${esc(candLabel(c))}</option>`).join('')}<option value="new" ${m.pick === 'new' ? 'selected' : ''}>Anderes Wort – neu anlegen</option></select>
+          <span class="small muted">${m.pick === 'new' ? 'steht unten bei den neuen Wörtern' : !m.ex ? 'wird übersprungen' : r.addEx.some((x) => x.id === m.pick) ? 'der Satz kommt zu ' + esc(old.kanji || old.kana) : 'wird übersprungen, der Satz ist dort schon'}</span></div>`; }).join('')}</div>` : '';
+      // schon vorhanden: eingeklappt
+      const exN = r.addEx.filter((x) => !x.maybe).length;
+      s2.querySelector('[data-known]').innerHTML = r.known.length ? `<details class="imp-group known"><summary><b>${r.known.length === 1 ? '1 Wort hast' : r.known.length + ' Wörter hast'} du schon</b> – ${r.known.length === 1 ? 'wird' : 'werden'} übersprungen${exN ? `, ${exN === 1 ? 'eins bekommt' : exN + ' bekommen'} den Beispielsatz aus der Liste` : ''}</summary>
+        ${r.known.map((k) => { const old = S.items.get(k.id); const gets = r.addEx.some((x) => x.id === k.id && !x.maybe);
+          return `<div class="imp-mrow"><span class="imp-w" lang="ja">${JP.wordRuby(old)}</span><span class="small">${old.de || old.en ? App.meaningHtml(old) : ''}</span><span class="small">${gets ? `<span class="muted">bekommt diesen Satz:</span> ${exRuby(k.ex)}` : `<span class="muted">${k.ex ? 'Satz ist schon da' : 'nichts zu ergänzen'}</span>`}</span></div>`; }).join('')}</details>` : '';
+      App.hydrateIcons(s2);
+      const n = r.items.length;
+      const noDe = r.items.filter((v) => !v.de && !v.en).length;
+      s2.querySelector('[data-badges]').innerHTML = (n ? badge(`${n} neu`) : '') + (busy ? badge('Deutsch wird ergänzt …') : noDe ? badge(`${noDe} noch ohne Deutsch`, 1) : '') + (r.bad ? badge(`${r.bad} ${r.bad === 1 ? 'Zeile' : 'Zeilen'} ohne Japanisch übersprungen`) : '');
+      nextB.disabled = busy || !!editing || !(n || r.addEx.length);
+      nextB.innerHTML = busy ? 'Deutsch wird ergänzt …' : `${icon('download')} ${n ? `${n === 1 ? '1 Wort' : n + ' Wörter'} übernehmen` : r.addEx.length ? 'Beispielsätze ergänzen' : 'Nichts zu übernehmen'}`;
+    };
+
+    s2.addEventListener('input', (ev) => {
+      const t = ev.target, row = t.closest('[data-eid]');
+      if (t.dataset.f && row) {
+        const e = entryOf(row.dataset.eid), v = t.value.trim();
+        if (t.dataset.f === 'de') { e.de = v; e.deOwn = 1; } else if (t.dataset.f === 'exde') { e.exde = v; e.exdeOwn = 1; } else e[t.dataset.f] = v; // Kanji/Lesung: neu prüfen erst beim Verlassen (change)
+      }
+      if (t.dataset.w) form[t.dataset.w] = t.value;
+    });
+    s2.addEventListener('change', (ev) => {
+      const t = ev.target, row = t.closest('[data-eid]');
+      if (t.matches('[data-on]')) { entryOf(row.dataset.eid).off = !t.checked; prev(); }
+      else if (t.matches('[data-maybe]')) { choice.set(t.dataset.maybe, t.value); prev(); }
+      else if (t.matches('[data-f="kanji"], [data-f="kana"]')) wordChanged(entryOf(row.dataset.eid));
+      else if (t.matches('[data-col]')) {
+        map = $$('[data-col]', s2).map((x) => x.value);
+        entries = toEntries(st, map, nextEid).concat(entries.filter((e) => e.manual));
+        nextEid += st.rows.length; editing = null;
+        prev();
+      } else if (t.matches('[data-twocols]')) { pdfTwo = t.value; reread(); }
+    });
+    const reread = async () => { if (await readPdf() && parse()) { drawAdv(); prev(); s2.querySelector('[data-adv]').open = true; } };
+    s2.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter') return;
+      if (ev.target.matches('[data-pages]')) { pdfPages = ev.target.value.trim(); reread(); }
+      else if (ev.target.matches('[data-e]')) { ev.preventDefault(); finishEdit(ev.target.closest('[data-eid]')); }
+    });
+    s2.addEventListener('click', (ev) => {
+      const b = ev.target.closest('button'); if (!b) return;
+      const row = b.closest('[data-eid]');
+      if (b.matches('[data-edit]')) { editing = row.dataset.eid; draw(last); const f = s2.querySelector('.editing [data-e="de"]'); if (f) f.focus(); }
+      else if (b.matches('[data-done]')) finishEdit(row);
+      else if (b.matches('[data-cancel]')) { const e = entryOf(row.dataset.eid); editing = null; if (e.manual && !e.kanji && !e.kana) entries.splice(entries.indexOf(e), 1); draw(last); }
+      else if (b.matches('[data-add]')) {
+        if (editing) return;
+        const e = { eid: 'e' + nextEid++, manual: 1, kanji: '', kana: '', de: '', exjp: '', exde: '', lesson: '', tags: '' };
+        entries.push(e); editing = e.eid; draw(last);
+        const f = s2.querySelector('.editing [data-e="kanji"]'); if (f) { f.scrollIntoView({ block: 'nearest' }); f.focus(); }
+      } else if (b.matches('[data-v]')) { form.status = b.dataset.v; $$('[data-st] [data-v]', s2).forEach((x) => x.classList.toggle('on', x === b)); }
+      else if (b.matches('[data-reread]')) { pdfPages = s2.querySelector('[data-pages]').value.trim(); reread(); }
+      else if (b.matches('[data-reparse]')) { raw = s2.querySelector('[data-raw]').value; if (parse()) { drawAdv(); prev(); } }
+    });
+
     const doImport = async () => {
-      const s2 = body.querySelector('[data-step2]');
-      const map = $$('[data-col]', s2).map((x) => x.value);
-      const source = s2.querySelector('[data-src]').value;
+      const source = s2.querySelector('[data-w="source"]').value;
       App.lsSet('importSource', source);
-      const tags = s2.querySelector('[data-tags]').value.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
-      const r = applyCache(buildItems(st, map, { source, lesson: s2.querySelector('[data-lesson]').value.trim(), tags, choice }), cache);
+      const tags = s2.querySelector('[data-w="tags"]').value.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
+      const r = applyCache(buildItems(entries, { source, lesson: s2.querySelector('[data-w="lesson"]').value.trim(), tags, choice }), cache);
       unmark(r);
-      const status = s2.querySelector('[data-st] .on').dataset.v;
-      nextB.disabled = true; nextB.textContent = 'Importiere …';
+      const status = form.status;
+      nextB.disabled = true; nextB.textContent = 'Wird übernommen …';
       const now = Date.now();
       r.items.forEach((it, i) => { it.created = now + i; it.updated = now + i; S.items.set(it.id, it); });
       await App.db.putMany('items', r.items);
@@ -728,9 +893,14 @@
       md.close();
       App.emit('items');
       const exMsg = changed.length ? `${changed.length} ${changed.length === 1 ? 'Beispielsatz' : 'Beispielsätze'} bei vorhandenen Wörtern ergänzt` : '';
-      App.toast(r.items.length ? `${r.items.length} Vokabeln importiert${exMsg ? ' · ' + exMsg : ''}` : exMsg, status === 'unchecked' && r.items.length ? { label: 'Jetzt einstufen', fn: () => App.go('#/ueben/einstufen?src=' + encodeURIComponent(source)) } : null);
+      const where = { learn: ' – sie sind jetzt in der Lernschlange', known: ' als „kann ich“' }[status] || '';
+      App.toast(r.items.length ? `${r.items.length} Vokabeln importiert${where}${exMsg ? ' · ' + exMsg : ''}` : exMsg, status === 'unchecked' && r.items.length ? { label: 'Jetzt einstufen', fn: () => App.go('#/ueben/einstufen?src=' + encodeURIComponent(source)) } : null);
     };
-    nextB.onclick = step2;
+    nextB.onclick = () => {
+      if (step === 2) return doImport();
+      raw = ta.value; fname = ''; meta = {}; pdfBlob = null; pdfInfo = '';
+      open(false);
+    };
   };
   document.addEventListener('click', (e) => { if (e.target.closest('[data-action="import-vocab"]')) App.importVocab(); });
 })(window.App);
