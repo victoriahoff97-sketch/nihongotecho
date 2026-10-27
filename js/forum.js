@@ -13,7 +13,7 @@
   const JPEG = 'data:image/jpeg;base64,';
 
   // ---------- Gerätezustand ----------
-  const blank = () => ({ code: '', name: '', seen: {}, drafts: {}, fresh: false });
+  const blank = () => ({ code: '', name: '', avatar: '', seen: {}, drafts: {}, fresh: false });
   let st = (() => {
     try { return Object.assign(blank(), JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) { return blank(); }
   })();
@@ -40,11 +40,38 @@
     const mine = (fn) => (...a) => { if (g === gen) fn(...a); };
     D.load().then(mine(() => {
       unsub = D.watchPosts(st.code, mine(onPosts), mine(onError));
-      if (!unsubM) unsubM = D.watchMembers(st.code, mine((m) => { members = m; if (ui && ui.onMembers) ui.onMembers(); }));
+      if (!unsubM) unsubM = D.watchMembers(st.code, mine((m) => { members = m; keepAvatar(); if (ui && ui.onMembers) ui.onMembers(); }));
     })).catch(mine(onError));
   };
+  // eigenen Avatar auch auf dem Gerät merken: geht die Anmeldung verloren, nimmt das Wiederbeitreten ihn mit
+  const keepAvatar = () => {
+    const a = (members[D.uid()] && members[D.uid()].avatar) || '';
+    if (a && a !== st.avatar) { st.avatar = a; save(); }
+  };
+  // Firebase kann die anonyme Anmeldung vergessen (Browserdaten aufgeräumt …): mit neuer ID ist das Gerät dann kein
+  // Mitglied mehr. Code und Name liegen noch hier – also einmal still wieder beitreten, statt die Gruppe zu vergessen.
+  let rejoining = false;
+  const rejoin = () => {
+    rejoining = true;
+    status = 'loading';
+    const g = ++gen;
+    D.load().then(() => D.joinGroup(st.code, st.name, st.avatar)).then(() => {
+      if (g !== gen) return;
+      stop();
+      start();
+    }).catch((e) => {
+      if (g !== gen) return;
+      if (e && e.code === 'no-group') return forget();
+      rejoining = false;
+      status = 'offline';
+      refreshDot();
+      if (ui) ui.onPosts();
+    });
+  };
+  const forget = () => { rejoining = false; stop(); st = Object.assign(blank(), { name: st.name, drafts: st.drafts }); save(); refreshDot(); if (ui) showJoin(); };
   const onPosts = (list, meta = {}) => {
     posts = list;
+    if (!meta.fromCache) rejoining = false;
     // offline gestartet: noch nie Antwort vom Server – nicht „Noch keine Gedanken“ zeigen
     status = meta.fromCache && !list.length ? 'offline' : 'live';
     // gerade beigetreten: was schon da war, gilt als gesehen
@@ -54,8 +81,8 @@
   };
   const onError = (e) => {
     unsub = null;
-    // kein Mitglied mehr (oder Gruppe weg): zurück zum Beitreten
-    if (e && e.code === 'permission-denied') { stop(); st = Object.assign(blank(), { name: st.name, drafts: st.drafts }); save(); refreshDot(); if (ui) showJoin(); return; }
+    // kein Mitglied mehr: erst still wieder beitreten; klappt auch das nicht (Gruppe weg), zurück zum Beitreten
+    if (e && e.code === 'permission-denied') { if (!rejoining && st.code && !F.checkName(st.name)) rejoin(); else forget(); return; }
     status = 'offline';
     refreshDot();
     if (ui) ui.onPosts();
@@ -307,7 +334,7 @@
     ui = { md, root: md.body.querySelector('.forum') };
     more.querySelector('[data-more]').onclick = (e) => { e.stopPropagation(); toggleMenu(more); };
     if (!st.code) showJoin();
-    else { if (status !== 'live') { stop(); start(); } showList(); }
+    else { if (status !== 'live' && !rejoining) { stop(); start(); } showList(); }
   };
 
   // ---------- ⋯-Menü ----------
@@ -371,7 +398,7 @@
     });
     md.el.querySelector('[data-no]').onclick = () => md.close();
     md.el.querySelector('[data-ok]').onclick = async () => {
-      try { await D.setAvatar(st.code, F.makeAvatar(a)); App.toast('Avatar gespeichert'); md.close(); }
+      try { await D.setAvatar(st.code, F.makeAvatar(a)); st.avatar = F.makeAvatar(a); save(); App.toast('Avatar gespeichert'); md.close(); }
       catch (e) { App.toast(e && e.code === 'permission-denied' ? 'Avatare gehen erst nach dem nächsten Gruppen-Update.' : OFFLINE); }
     };
     const root = md.body;

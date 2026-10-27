@@ -66,9 +66,9 @@
     await b.commit();
   };
   // Die Regeln lassen den Mitglied-Eintrag nur zu, wenn es die Gruppe gibt: „verweigert“ heißt also „falscher Code“
-  D.joinGroup = async (code, name) => {
+  D.joinGroup = async (code, name, avatar) => {
     try {
-      await group(code).collection('members').doc(D.uid()).set({ name, joinedAt: now() });
+      await group(code).collection('members').doc(D.uid()).set(Object.assign({ name, joinedAt: now() }, avatar ? { avatar } : {}));
     } catch (e) {
       if (e && e.code === 'permission-denied') throw Object.assign(new Error('no-group'), { code: 'no-group' });
       throw e;
