@@ -100,6 +100,91 @@
     apply();
   });
 
+  // ---------- Kanji: Reiter „Gleiche Lesung“ auf der Kanji-Seite ----------
+  const KIND_FILTER = [['', 'Alle'], ['on', 'On'], ['kun', 'Kun']];
+  const kLearned = (k) => App.vocabStatus(k.id) !== 'unchecked';
+  const kanjiGroups = () => H.sort(H.visible(H.kanjiGroups(App.itemsOf('kanji'), rank), App.vocabStatus), changedAt, Date.now());
+  const readText = (r) => (r.kind === 'kun' ? App.kanjiLogic.kunText(r.text) : r.text);
+  const kToggled = new Map();
+
+  const kCell = (k, r) => `<div class="kg-cell ${kLearned(k) ? '' : 'off'}">${App.kanjiTile(k)}
+      <div class="kg-read"><span class="kg-kind">${r.kind === 'on' ? 'On' : 'Kun'}</span><span lang="ja">${esc(readText(r))}</span></div>
+      ${kLearned(k) ? '' : `<button class="btn btn-sm" data-kg-learn="${esc(k.id)}" title="In den Lernstapel">${icon('plus')} Lernen</button>`}</div>`;
+
+  const kGroupHtml = (g, q) => {
+    // was du schon lernst, steht vorn
+    const items = g.items.slice().sort((a, b) => rank(b) - rank(a));
+    const kinds = [...new Set([...g.read.values()].map((r) => r.kind))].join(' ');
+    const open = kToggled.has(g.key) ? kToggled.get(g.key) : !!q;
+    return `<details class="card gk-group" data-kg="${esc(g.key)}" data-kind="${kinds}" ${open ? 'open' : ''}>
+      <summary><span class="gk-kana" lang="ja">${H.kanjiLabels(g).map((t) => esc(App.kanjiLogic.kunText(t))).join(' · ')}</span>
+        <span class="gk-chips">${items.map((k) => `<span class="gk-chip sec-kanji ${kLearned(k) ? '' : 'off'}"><b lang="ja">${esc(k.char)}</b>${esc(App.meaning(k).text.split(',')[0])}</span>`).join('')}</span>
+        ${g.fresh ? '<span class="badge sec">neu</span>' : ''}<span class="gk-caret" aria-hidden="true">▾</span></summary>
+      <div class="gk-body"><div class="small muted">${items.length} Kanji</div>
+        <div class="kg-cells">${items.map((k) => kCell(k, g.read.get(k.char))).join('')}</div></div>
+    </details>`;
+  };
+
+  App.kanjiHomophones = (body, q) => {
+    const groups = kanjiGroups();
+    const query = q.r || '';
+    const n = groups.reduce((s, g) => s + g.items.length, 0);
+    body.innerHTML = `<p class="muted">Kanji, die gleich gelesen werden – On- und Kun-Lesung zusammen. Ein Kanji mit mehreren Lesungen steht in mehreren Gruppen. Die Übersicht wächst von selbst: Sobald du ein Kanji lernst, erscheinen seine Lesungen hier.</p>
+      ${groups.length ? `<div class="toolbar"><input class="input" type="search" data-kg-q placeholder="chi, セイ, あける, Blut …" value="${esc(query)}" style="max-width:280px">
+          <div class="seg" data-kg-kind>${KIND_FILTER.map(([k, l], i) => `<button class="${i ? '' : 'on'}" data-v="${k}">${l}</button>`).join('')}</div>
+          <span class="grow"></span><span class="small muted" data-kg-count></span></div>
+        <div class="gk-list">${groups.map((g) => kGroupHtml(g, query)).join('')}</div>
+        <div class="empty-state" data-kg-none hidden><h3>Nichts gefunden</h3></div>
+        <div class="gk-legend small muted"><span><span class="gk-chip sec-kanji"><b lang="ja">地</b></span> lernst du schon</span><span><span class="gk-chip sec-kanji off"><b lang="ja">池</b></span> gleich gelesen, lernst du aber noch nicht</span></div>`
+    : '<div class="empty-state"><div class="big" lang="ja">同音</div><h3>Noch keine gleichen Lesungen</h3><p>Sobald du ein Kanji lernst, das genauso gelesen wird wie ein anderes, erscheint die Gruppe hier – ganz von selbst.</p></div>'}`;
+    if (!groups.length) return;
+
+    const byKey = new Map(groups.map((g) => [g.key, g]));
+    const els = [...body.querySelectorAll('[data-kg]')];
+    const input = body.querySelector('[data-kg-q]');
+    let kind = '';
+    const apply = () => {
+      let shown = 0;
+      els.forEach((el) => {
+        const show = H.kanjiMatches(byKey.get(el.dataset.kg), input.value) && (!kind || el.dataset.kind.split(' ').includes(kind));
+        el.hidden = !show;
+        if (show) shown++;
+      });
+      body.querySelector('[data-kg-none]').hidden = shown > 0;
+      body.querySelector('[data-kg-count]').textContent = shown === groups.length ? `${groups.length} Lesungen · ${n} Einträge` : `${shown} von ${groups.length} Lesungen`;
+    };
+    input.addEventListener('input', apply);
+    body.querySelector('[data-kg-kind]').onclick = (e) => {
+      const b = e.target.closest('[data-v]');
+      if (!b) return;
+      kind = b.dataset.v;
+      body.querySelectorAll('[data-kg-kind] button').forEach((x) => x.classList.toggle('on', x === b));
+      apply();
+    };
+    els.forEach((el) => el.addEventListener('toggle', () => kToggled.set(el.dataset.kg, el.open)));
+    body.querySelector('.gk-list').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-kg-learn]');
+      if (!b) return;
+      kToggled.set(b.closest('[data-kg]').dataset.kg, true);
+      const snap = App.srsSnap([b.dataset.kgLearn]);
+      await App.setCheck(b.dataset.kgLearn, 'learn');
+      App.undoToast('Lernstand: ' + App.statusInfo({ type: 'kanji' }, 'learn').label, snap, () => App.render(true));
+      App.render(true);
+    });
+    apply();
+  };
+
+  // Auf der Kanji-Seite: Lesung als Sprung in „Gleiche Lesung“, wenn es dort eine Gruppe dazu gibt
+  App.kanjiReadingHref = (() => {
+    let keys = null;
+    App.onChange(() => { keys = null; });
+    return (reading) => {
+      if (!keys) keys = new Set(kanjiGroups().map((g) => g.key));
+      const key = JP.toHira(String(reading || '').replace(/[-－\s.．]/g, ''));
+      return keys.has(key) ? '#/kanji?tab=gleich&r=' + encodeURIComponent(key) : '';
+    };
+  })();
+
   // Zeile „Klingt gleich“ auf der Vokabel-Detailseite: die Partner als Chips, Sprung in die Übersicht
   App.homophoneHint = (it) => {
     const others = H.partners(it, App.itemsOf('vocab'), rank);

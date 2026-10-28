@@ -53,10 +53,11 @@
     const einQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'kanji', src: q.src, l: q.l, mark: q.mark, lvl: q.lvl }).filter(([, v]) => v))).toString();
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Bedeutung, Lesungen, Strichfolge als Animation und ein Schreibfeld für deinen Stift.',
       `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${einQs}">${icon('check')} Einstufen${kc.unchecked ? ` <span class="badge">${kc.unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?type=kanji">${icon('practice')} Karteikarten</a><a class="btn" href="#/ueben/kanji">${icon('practice')} Kanji-Quiz</a><button class="btn btn-sec" data-new="kanji">${icon('plus')} Kanji</button>`)}
-      <div class="tabs">${[['kanji', `Kanji <span class="badge">${items.length}</span>`], ['hira', 'Hiragana'], ['kata', 'Katakana'], ['files', `${icon('file')} Dateien <span class="badge">${files.length}</span>`]].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-q-tab="${k === 'kanji' ? '' : k}">${l}</button>`).join('')}</div>
+      <div class="tabs">${[['kanji', `Kanji <span class="badge">${items.length}</span>`], ['hira', 'Hiragana'], ['kata', 'Katakana'], ['gleich', '<span class="tab-kanji">同音</span> Gleiche Lesung'], ['files', `${icon('file')} Dateien <span class="badge">${files.length}</span>`]].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-q-tab="${k === 'kanji' ? '' : k}">${l}</button>`).join('')}</div>
       <div data-body></div></div>`;
     const body = view.querySelector('[data-body]');
     if (tab === 'hira' || tab === 'kata') body.innerHTML = `<p class="muted">Tippe auf ein Zeichen: Strichfolge ansehen und direkt nachschreiben.</p>${kanaChart(tab === 'kata')}`;
+    else if (tab === 'gleich') App.kanjiHomophones(body, q);
     else if (tab === 'files') {
       body.innerHTML = `<div class="row" style="margin-bottom:14px"><button class="btn btn-sec" data-upload="kanji">${icon('upload')} Dateien hinzufügen</button><button class="btn" data-nb-kanji>${icon('notebook')} Kanji-Übungsblatt (Raster)</button></div>
         ${files.length ? `<div class="file-grid">${files.map(App.fileCard).join('')}</div>` : '<div class="empty-state"><div class="big">漢</div><h3>Noch keine Dateien</h3><p>Z. B. Kanji-Seiten aus Genki oder Übungsblätter. Mit „Kanji-Übungsblatt“ bekommst du ein leeres 原稿-Raster zum Schreiben.</p></div>'}`;
@@ -105,6 +106,8 @@
     }
   });
 
+  // Lesung am Kanji: führt zu den gleich gelesenen Kanji, wenn es welche gibt
+  const readingChip = (r, html) => { const href = App.kanjiReadingHref(r); return href ? `<a class="r" lang="ja" href="${href}" title="Gleich gelesene Kanji ansehen">${html}</a>` : `<span class="r" lang="ja">${html}</span>`; };
   App.route('/kanji/:char', (view, p) => {
     const ch = p.char;
     const it = App.kanjiByChar(ch) || App.item(ch);
@@ -132,8 +135,8 @@
             <div class="row" style="align-items:center"><span class="small muted" style="min-width:70px">Schreiben</span><span data-wst></span></div>
             ${App.marksChips(it)}</div>
           <div class="readings">
-            ${(it.on || []).length ? `<div class="r-line"><span class="lab">On</span>${it.on.map((r) => `<span class="r" lang="ja">${esc(r)}</span>`).join('')}</div>` : ''}
-            ${(it.kun || []).length ? `<div class="r-line"><span class="lab">Kun</span>${it.kun.map((r) => { const [stem, oku] = App.kanjiLogic.kunParts(r); return `<span class="r" lang="ja">${esc(stem)}${oku ? `<span class="oku">(${esc(oku)})</span>` : ''}</span>`; }).join('')}</div>` : ''}
+            ${(it.on || []).length ? `<div class="r-line"><span class="lab">On</span>${it.on.map((r) => readingChip(r, esc(r))).join('')}</div>` : ''}
+            ${(it.kun || []).length ? `<div class="r-line"><span class="lab">Kun</span>${it.kun.map((r) => { const [stem, oku] = App.kanjiLogic.kunParts(r); return readingChip(r, `${esc(stem)}${oku ? `<span class="oku">(${esc(oku)})</span>` : ''}`); }).join('')}</div>` : ''}
           </div>
           ${it.mnemonic ? `<div class="pitfall" style="background:var(--murasaki-soft);border-color:var(--murasaki)">💡 ${JP.ruby(it.mnemonic)}</div>` : ''}
           </div></div></div>

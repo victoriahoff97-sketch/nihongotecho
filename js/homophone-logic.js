@@ -84,4 +84,52 @@
     const reading = (g) => g.kana.replace('～', '');
     return rows.sort((a, b) => (b.fresh - a.fresh) || (a.fresh ? b.last - a.last : 0) || reading(a).localeCompare(reading(b), 'ja') || a.kana.localeCompare(b.kana, 'ja'));
   };
+
+  // ---------- Kanji mit gleicher Lesung ----------
+  // Jede Lesung eines Kanji einmal: On in Hiragana umgeschrieben, damit チ (地) und ち (血) zusammenfinden;
+  // Kun mit Okurigana (あ.ける → あける), ohne die Striche für Vor- und Nachsilben (-ぶ, お-)
+  H.kanjiReadings = (k) => {
+    const out = [], seen = new Set();
+    const add = (kind, r) => {
+      const text = String(r ?? '').replace(/[-－\s]/g, '');
+      const key = JP.toHira(text.replace(/[.．]/g, ''));
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      out.push({ kind, text, key });
+    };
+    (k.on || []).forEach((r) => add('on', r));
+    (k.kun || []).forEach((r) => add('kun', r));
+    return out;
+  };
+
+  // Gruppen: gleiche Lesung, mindestens zwei verschiedene Kanji. Doppelt vorhandene Zeichen (Genki und JLPT)
+  // zählen einmal – das mit dem höchsten rank. read: Zeichen → { kind, text } der Lesung in dieser Gruppe
+  H.kanjiGroups = (kanji, rank = () => 0) => {
+    const best = new Map();
+    for (const k of kanji) {
+      if (!k || k.type !== 'kanji' || !k.char || k.char === '々') continue;
+      if (!best.has(k.char) || rank(k) > rank(best.get(k.char))) best.set(k.char, k);
+    }
+    const map = new Map();
+    best.forEach((k) => H.kanjiReadings(k).forEach((r) => {
+      if (!map.has(r.key)) map.set(r.key, { key: r.key, kana: r.key, items: [], read: new Map() });
+      const g = map.get(r.key);
+      g.items.push(k);
+      g.read.set(k.char, { kind: r.kind, text: r.text });
+    }));
+    return [...map.values()].filter((g) => g.items.length > 1);
+  };
+
+  // die Schreibweisen der Gruppe, wie sie am Kanji stehen: チ · ち
+  H.kanjiLabels = (g) => [...new Set([...g.read.values()].map((r) => r.text))];
+
+  // Suche: Lesung (Kana oder Romaji), Zeichen oder Bedeutung
+  H.kanjiMatches = (g, query) => {
+    const q = String(query ?? '').trim().toLowerCase();
+    if (!q) return true;
+    const kana = JP.toHira(strip(JP.looksRomaji(q) ? JP.romaji(q) : q));
+    // „chi“ soll チ finden, nicht jede Lesung mit ち darin
+    if (kana && (g.key === kana || (kana.length > 1 && g.key.startsWith(kana)))) return true;
+    return g.items.some((k) => q.includes(k.char) || `${k.de || ''} ${k.en || ''}`.toLowerCase().includes(q));
+  };
 })(window.App);

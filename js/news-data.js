@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-kanji-lesung', date: '28. Oktober',
+      items: [
+        { t: 'Kanji mit gleicher Lesung', d: 'Unter Kanji › „同音 Gleiche Lesung“ siehst du, welche Kanji gleich gelesen werden – etwa alle mit チ oder セイ. Ein Tipp auf eine Lesung am Kanji führt auch dorthin.' },
+      ],
+    },
+    {
       id: '2026-10-28-bibliothek-3', date: '28. Oktober',
       items: [
         { t: 'Bibliothek aufgeräumt', d: 'Neue Notizbücher und Ordner legst du über „＋ Neu“ in ihrer Reihe an. Filter, Sortieren und „Auswählen“ stehen jetzt gesammelt bei „Dateien“.' },

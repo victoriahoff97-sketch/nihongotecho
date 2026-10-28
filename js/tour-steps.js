@@ -49,7 +49,7 @@
       { target: '#view [data-new="vocab"]', text: 'Eigene Wörter legst du hier an. „Automatisch ausfüllen“ ergänzt dabei Lesung und Bedeutung.' },
     ],
     '/kanji': [
-      { target: '#view .tabs', text: 'Neben den Kanji findest du hier auch die Hiragana- und Katakana-Tafeln.' },
+      { target: '#view .tabs', text: 'Neben den Kanji findest du hier die Hiragana- und Katakana-Tafeln. Unter „Gleiche Lesung“ stehen Kanji, die gleich gelesen werden.' },
       { target: '#view .toolbar', text: 'Suche nach Zeichen, Bedeutung oder Lesung, oder grenze nach Lektion ein.' },
       { target: '#view .chips', text: 'Mit Markierungen sortierst du Kanji selbst, etwa „Im Unterricht gelernt“ oder „Schwierig“.' },
       { target: '#view .page-head a[href="#/ueben/kanji"]', text: 'Im Quiz schreibst du Kanji mit dem Stift oder erkennst Lesungen.' },
