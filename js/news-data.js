@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-selbst-einstufen', date: '28. Oktober',
+      items: [
+        { t: 'Im Kopf lösen reicht', d: 'Bei „Umformen üben“ und „Welche Form?“ musst du nichts schreiben: Tippe „Lösung zeigen“ und sag selbst „Hatte ich richtig“ – dann zählt es und kommt nicht noch einmal.' },
+      ],
+    },
+    {
       id: '2026-10-28-strichfolge', date: '28. Oktober',
       items: [
         { t: 'Strichfolge laden klappt wieder', d: 'Bei manchen Kanji (z. B. 冬) schlug „Strichfolge laden“ fehl, weil der Download-Dienst streikte. Nun lädt die App aus einer festen Version und notfalls direkt von GitHub.' },

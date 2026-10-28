@@ -55,7 +55,8 @@
     view.querySelector('[data-go]').onclick = start;
   });
 
-  // Eine Runde: falsch Beantwortetes kommt am Ende genau einmal wieder; gezählt wird nur der erste Versuch
+  // Eine Runde: falsch Beantwortetes kommt am Ende genau einmal wieder; gezählt wird nur der erste Versuch.
+  // „Lösung zeigen“ heißt: im Kopf gelöst – dann stuft man sich selbst ein (richtig zählt, falsch kommt einmal wieder)
   function run(stage, tasks, kind, again) {
     const total = tasks.length;
     const list = tasks.map((t) => ({ t, retry: false }));
@@ -77,25 +78,31 @@
           <div class="small muted">${esc(kind.how)}</div>
           ${kind.prompt(t)}
           <div data-ansfield></div>
-          <div class="row" style="margin-top:14px"><button class="btn btn-primary" data-check>${icon('check')} Prüfen</button><button class="btn btn-ghost" data-skip>Lösung zeigen</button></div>
+          <div class="row" style="margin-top:14px"><button class="btn btn-primary" data-check>${icon('check')} Prüfen</button><button class="btn btn-ghost" data-skip title="Im Kopf gelöst? Lösung ansehen und selbst einstufen">Lösung zeigen</button></div>
           <div data-sol></div></div></div>`;
       let done = false, waiting = false;
       // Antwortfeld wie auf den Karteikarten (App.answerField): Stift mit Vorschlägen oder Tastatur
-      const field = App.answerField(stage.querySelector('[data-ansfield]'), { onEnter: () => { if (!done) check(); else { i++; show(); } } });
+      const field = App.answerField(stage.querySelector('[data-ansfield]'), { onEnter: () => { if (!done) check(); else { const b = stage.querySelectorAll('[data-res]'); if (b.length === 1) b[0].click(); } } });
+      // Werten: richtig zählt nur beim ersten Versuch, falsch kommt am Ende genau einmal wieder
+      const grade = (ok) => {
+        if (ok && !retry) right++;
+        if (!ok) { if (!missed.includes(t)) missed.push(t); if (!retry) list.push({ t, retry: true }); }
+        i++; show();
+      };
+      // r = Ergebnis der Prüfung; ohne r („Lösung zeigen“, im Kopf gelöst) stuft man sich selbst ein
       const finish = (r) => {
         done = true;
         field.lock();
         const ok = !!(r && r.ok);
-        if (ok && !retry) right++;
-        if (!ok) { if (!missed.includes(t)) missed.push(t); if (!retry) list.push({ t, retry: true }); }
         stage.querySelector('[data-sol]').innerHTML = `<div class="solution">${r ? App.answerVerdictHtml(r) : ''}
           <div class="small muted" style="margin-top:8px">Lösung</div><div class="sol-jp" lang="ja">${JP.ruby(t.solution)} ${App.speakBtn(t.solution)}</div>
           ${kind.after ? kind.after(t) : ''}
-          ${!ok && !retry ? '<div class="small muted">Kommt am Ende der Runde noch einmal.</div>' : ''}
-          <div class="row" style="margin-top:14px"><button class="btn btn-primary" data-next>Weiter ${icon('next')}</button></div></div>`;
+          ${r && !ok && !retry ? '<div class="small muted">Kommt am Ende der Runde noch einmal.</div>' : ''}
+          <div class="row" style="margin-top:14px">${r ? `<button class="btn btn-primary" data-res="${ok ? 1 : 0}">Weiter ${icon('next')}</button>`
+            : `<button class="btn" style="background:var(--shu-soft)" data-res="0">✗ Hatte ich falsch</button><button class="btn" style="background:var(--matcha-soft)" data-res="1">✓ Hatte ich richtig</button>`}</div></div>`;
         stage.querySelector('[data-check]').hidden = true;
         stage.querySelector('[data-skip]').hidden = true;
-        stage.querySelector('[data-next]').onclick = () => { i++; show(); };
+        stage.querySelectorAll('[data-res]').forEach((b) => { b.onclick = () => grade(b.dataset.res === '1'); });
       };
       const check = async () => {
         if (done || waiting) return;
