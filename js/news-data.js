@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-startseite-zurueck', date: '28. Oktober',
+      items: [
+        { t: 'Startseite wie vorher', d: 'Die Startseite sieht wieder aus wie bis heute Morgen: einzelne Lernstand-Karten, Schnellaktionen und die Liste 今日 mit „Wenn du magst“.' },
+      ],
+    },
+    {
       id: '2026-10-28-startseite-3', date: '28. Oktober',
       items: [
         { t: 'Stempelkarte sanfter', d: 'Die Karte 今日のスタンプ ist jetzt zart rosa wie die NHK-Kachel. Der rote 済-Stempel bleibt.' },

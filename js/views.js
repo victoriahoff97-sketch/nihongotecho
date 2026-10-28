@@ -231,27 +231,7 @@
   const HO = App.homeOrderLogic;
   let homeEdit = false;
   window.addEventListener('hashchange', () => { homeEdit = false; });
-  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', read: 'Heute lesen und hören', today: '今日 · Heute', lernstand: 'Mein Lernstand', zuletzt: 'Zuletzt', sammlung: 'Deine Sammlung' };
-  // Leisten, die erst über „Startseite anpassen“ dazukommen (gemerkt pro Gerät, localStorage „homeExtra“)
-  const EXTRA_BLOCKS = ['actions'];
-  const extraList = () => (HO.parse(App.lsGet('homeExtra')) || []).filter((k) => EXTRA_BLOCKS.includes(k));
-  // Mein Lernstand: je Bereich eine Zeile mit Balken; aufgeklappt steht die ganze Karte von früher (Zahlen und Knöpfe).
-  // Aufgeklappte Zeilen merkt sich das Gerät (localStorage „homeLsOpen“).
-  const lsOpen = () => HO.parse(App.lsGet('homeLsOpen')) || [];
-  const LS_LABEL = { vocab: 'Vokabeln', kanji: 'Kanji' };
-  const lsRow = (key, html, bar) => {
-    if (!html) return '';
-    const title = (html.match(/<span class="chev"><\/span>([^<]*)/) || [])[1] || key;
-    const sum = (html.match(/class="fold-sum">· ([^<]*)/) || [])[1] || '';
-    const body = html.replace(/^\s*<div class="section-title">[\s\S]*?<\/div>\s*/, '').replace(' is-folded', '');
-    return `<details class="ls-row" data-ls="${key}" ${lsOpen().includes(key) ? 'open' : ''}><summary><b>${esc(LS_LABEL[key] || title.replace(/[- –]+Lernstand$/, ''))}</b>${bar || '<span></span>'}<span class="small muted">${esc(sum)}</span><span class="chev"></span></summary><div class="ls-body">${body}</div></details>`;
-  };
-  document.addEventListener('toggle', (e) => {
-    const d = e.target;
-    if (!d.matches || !d.matches('details.ls-row')) return;
-    const k = d.dataset.ls, list = lsOpen().filter((x) => x !== k);
-    App.lsSet('homeLsOpen', JSON.stringify(d.open ? list.concat(k) : list));
-  }, true);
+  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert · 今日' };
   // Schnellaktionen: [Farbe, Attribute, Symbol, Titel, Untertitel] – die ersten drei stehen von Anfang an da
   const QUICK = {
     saetze: ['sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze erkennen', 'Text einfügen, Vokabeln finden'],
@@ -284,15 +264,8 @@
       ${rest.length ? `<div class="quick-more"><span class="small muted">Weitere Schnellaktionen:</span>${rest.map((k) => `<button type="button" class="chip" data-quick-on="${k}">${icon('plus')} ${QUICK[k][3]}</button>`).join('')}</div>` : ''}</div>`;
   };
   // Leisten in gemerkter Reihenfolge; im Bearbeiten-Modus auch leere (z. B. JLPT ohne Paket), damit sie sich platzieren lassen
-  const homeBlocks = (blocks) => {
-    const extra = extraList();
-    const shown = Object.keys(blocks).filter((k) => !EXTRA_BLOCKS.includes(k) || extra.includes(k));
-    const rest = EXTRA_BLOCKS.filter((k) => !extra.includes(k));
-    const off = (k) => (EXTRA_BLOCKS.includes(k) ? `<button type="button" class="icon-btn block-off" data-block-off="${k}" title="Von der Startseite nehmen" aria-label="${BLOCK_LABEL[k]} entfernen">${icon('close')}</button>` : '');
-    return HO.order(shown, HO.parse(App.lsGet('homeOrder'))).map((k) => (blocks[k] || homeEdit
-      ? `<section class="home-block" data-block="${k}">${homeEdit ? grip(BLOCK_LABEL[k]) + off(k) : ''}${blocks[k] || `<div class="home-empty small muted">${BLOCK_LABEL[k]} – zurzeit nichts zu zeigen</div>`}</section>` : '')).join('')
-      + (homeEdit && rest.length ? `<div class="quick-more"><span class="small muted">Weitere Leisten:</span>${rest.map((k) => `<button type="button" class="chip" data-block-on="${k}">${icon('plus')} ${BLOCK_LABEL[k]}</button>`).join('')}</div>` : '');
-  };
+  const homeBlocks = (blocks) => HO.order(Object.keys(blocks), HO.parse(App.lsGet('homeOrder'))).map((k) => (blocks[k] || homeEdit
+    ? `<section class="home-block" data-block="${k}">${homeEdit ? grip(BLOCK_LABEL[k]) : ''}${blocks[k] || `<div class="home-empty small muted">${BLOCK_LABEL[k]} – zurzeit nichts zu zeigen</div>`}</section>` : '')).join('');
   const saveList = (list) => {
     if (list.matches('[data-home-blocks]')) App.lsSet('homeOrder', JSON.stringify(Array.from(list.children).map((c) => c.dataset.block).filter(Boolean)));
     else if (list.matches('[data-quick-list]')) App.lsSet('homeActions', JSON.stringify(Array.from(list.children).map((c) => c.dataset.quick).filter(Boolean)));
@@ -370,17 +343,11 @@
     saveList(list);
   });
   document.addEventListener('click', (e) => {
-    const t = e.target.closest && e.target.closest('[data-home-edit], [data-home-done], [data-home-reset], [data-quick-on], [data-quick-off], [data-read-on], [data-read-off], [data-block-on], [data-block-off]');
+    const t = e.target.closest && e.target.closest('[data-home-edit], [data-home-done], [data-home-reset], [data-quick-on], [data-quick-off], [data-read-on], [data-read-off]');
     if (!t) return;
     if (t.matches('[data-home-edit]')) { homeEdit = true; App.render(); return; }
     if (t.matches('[data-home-done]')) { homeEdit = false; App.render(); return; }
-    if (t.matches('[data-home-reset]')) { ['homeOrder', 'homeActions', 'homeRead', 'homeExtra'].forEach((k) => App.lsSet(k, '')); App.render(true); App.toast && App.toast('Startseite wie am Anfang'); return; }
-    if (t.dataset.blockOn || t.dataset.blockOff) {
-      const xl = extraList();
-      App.lsSet('homeExtra', JSON.stringify(t.dataset.blockOn ? xl.concat(t.dataset.blockOn) : xl.filter((k) => k !== t.dataset.blockOff)));
-      App.render(true);
-      return;
-    }
+    if (t.matches('[data-home-reset]')) { App.lsSet('homeOrder', ''); App.lsSet('homeActions', ''); App.lsSet('homeRead', ''); App.render(true); App.toast && App.toast('Startseite wie am Anfang'); return; }
     if (t.dataset.readOn || t.dataset.readOff) {
       const rl = readList();
       App.lsSet('homeRead', JSON.stringify(t.dataset.readOn ? rl.concat(t.dataset.readOn) : rl.filter((k) => k !== t.dataset.readOff)));
@@ -459,28 +426,18 @@
           <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
           <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}</div></div>`; })()}</div>`; })(),
-    };
-    // Mein Lernstand: die früheren Karten (Vokabeln, Kanji, Genki, JLPT) als aufklappbare Zeilen einer Karte
-    const kc = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々'));
-    const gp = App.genkiProgress(GENKI);
-    const lessonBar = gp.total ? `<span class="ls-lessons">${gp.lessons.map((x) => `<i class="${x.done ? 'done' : x.pct ? 'part' : ''}" style="--p:${x.pct}%" title="Lektion ${x.l}${x.done ? ' abgeschlossen' : ''}">${x.l}</i>`).join('')}</span>` : '';
-    const lernstand = [lsRow('vocab', blocks.vocab, progBar(progOf({ vocab }).tot, 'thin')),
-      lsRow('kanji', blocks.kanji, progBar({ known: kc.known, queue: kc.learn, total: kc.total }, 'thin')),
-      lsRow('genki', blocks.genki, lessonBar), lsRow('jlpt', blocks.jlpt)].join('');
-    // Zuletzt: Unterricht und eigene Einträge als zwei eigene Karten nebeneinander
-    const zuletzt = fitRow('home-bottom', [`<div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
+      bottom: fitRow('home-bottom', [`<div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
           <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>`,
-      `<div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
-          <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>`], 2);
-    const shown = { hero: blocks.hero, actions: blocks.actions, read: blocks.read, sammlung: blocks.sammlung, today: App.dayCheck.card(),
-      lernstand: lernstand ? `<div class="section-title">Mein Lernstand</div><div class="card ls-card">${lernstand}</div>` : '',
-      zuletzt };
+        `<div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
+          <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>`,
+        App.dayCheck.card()], 3),
+    };
     view.innerHTML = `<div class="sec-home${homeEdit ? ' home-editing' : ''}">
       ${App.welcome.card()}
       <div data-backup-home>${App.backup.homeCard({ noRestoreHint: !!App.welcome.card() })}</div>
       ${genkiCard}
       ${homeEdit ? `<div class="home-editbar"><span><b>Startseite anpassen</b><span class="hint"> · Leisten und Schnellaktionen am Griff ziehen. Gilt nur für dieses Gerät.</span></span><span class="row"><button class="btn btn-sm" data-home-reset>Zurücksetzen</button><button class="btn btn-sm btn-primary" data-home-done>${icon('check')} Fertig</button></span></div>` : ''}
-      <div data-home-blocks>${homeBlocks(shown)}</div>
+      <div data-home-blocks>${homeBlocks(blocks)}</div>
       ${homeEdit ? '' : `<div class="home-edit-foot"><button class="btn btn-sm" data-home-edit>${icon('edit')} Startseite anpassen</button></div>`}
       </div>`;
     const nv = view.querySelector('[data-new-vocab]');
