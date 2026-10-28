@@ -316,6 +316,15 @@
     return out.sort(App.byFileOrder);
   };
   const kanjiChars = (s) => Array.from(String(s || '')).filter((c) => JP.hasKanji(c) && c !== '々');
+  // Grammatik: eigene Sätze aus Tagebuch + Smalltalk (js/grammar-uses-logic.js), Erkennungswort markiert; ohne Treffer eine Einladung
+  const usesHtml = (it, all) => {
+    const docs = all.filter((x) => x.type === 'journal' || x.type === 'answer').map((x) => ({ item: x, text: App.aLogic.plainText(x.html) }));
+    const r = App.grammarUsesLogic.uses(it, docs);
+    if (!r.items.length) return `<p class="small muted" style="margin:0">Noch kein eigener Satz damit. <a href="#/anwenden">Im Tagebuch ausprobieren</a></p>`;
+    const mark = (u) => (u.hit ? esc(u.sentence.slice(0, u.hit.start)) + `<mark>${esc(u.sentence.slice(u.hit.start, u.hit.end))}</mark>` + esc(u.sentence.slice(u.hit.end)) : esc(u.sentence));
+    return `<div class="rel-list">${r.items.map((u) => `<a class="rel-use" href="${App.link(u.item)}"><span lang="ja">${mark(u)}</span><small>${u.item.type === 'answer' ? 'Smalltalk' : 'Tagebuch'} · ${esc(App.fmtDate(u.item.date))}</small></a>`).join('')}</div>`
+      + (r.more > 0 ? `<div class="small muted" style="margin-top:6px">… und ${r.more} weitere</div>` : '');
+  };
   App.related = (it) => {
     const groups = [];
     const all = Array.from(App.store.items.values());
@@ -333,8 +342,7 @@
     }
     if (it.type === 'grammar') {
       add('Verwandte Grammatik', (it.related || []).map(App.item).concat(all.filter((x) => x.type === 'grammar' && (x.related || []).includes(it.id))).filter((x, i, a) => x && a.indexOf(x) === i));
-      add('Gleiche Themen', all.filter((x) => x.type === 'grammar' && !(it.related || []).includes(x.id) && (x.tags || []).some((t) => (it.tags || []).includes(t))), 6);
-      add('Vokabeln dieser Lektion', all.filter((x) => x.type === 'vocab' && sameLesson(x)), 10);
+      if (App.grammarUsesLogic && App.aLogic) groups.push({ title: 'Schon selbst benutzt', html: usesHtml(it, all) });
     }
     if (it.type === 'kanji') {
       add('Vokabeln mit diesem Kanji', all.filter((x) => x.type === 'vocab' && (x.kanji || '').includes(it.char)), 16);
@@ -351,7 +359,7 @@
   App.relatedHtml = (it) => {
     const gs = App.related(it);
     if (!gs.length) return '';
-    return gs.map((g) => `<div class="card rel-box"><h4>${esc(g.title)}</h4><div class="rel-list">${g.items.map(App.relItem).join('')}</div>${g.more > 0 ? `<div class="small muted" style="margin-top:6px">… und ${g.more} weitere</div>` : ''}</div>`).join('');
+    return gs.map((g) => `<div class="card rel-box"><h4>${esc(g.title)}</h4>${g.html || `<div class="rel-list">${g.items.map(App.relItem).join('')}</div>${g.more > 0 ? `<div class="small muted" style="margin-top:6px">… und ${g.more} weitere</div>` : ''}`}</div>`).join('');
   };
   // Rechte Spalte der Detailseiten (Verwandtes) lässt sich einklappen – gemerkt pro Gerät (localStorage „nt-sideClosed“),
   // gilt für Grammatik, Vokabeln und Ausdrücke gleich. Zu = schmaler Streifen am rechten Rand, die Seite wird breiter.

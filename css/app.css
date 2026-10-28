@@ -496,6 +496,9 @@ details.adv[open] summary { margin-bottom: 12px; }
 .rel-list { display: flex; flex-direction: column; gap: 6px; }
 .rel-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; text-decoration: none; min-height: 44px; }
 .rel-item:hover { background: var(--paper-2); }
+.rel-use { display: block; padding: 6px 10px; border-radius: 10px; text-decoration: none; color: inherit; font-family: var(--font-jp); line-height: 1.6; }
+.rel-use:hover { background: var(--paper-2); }
+.rel-use small { display: block; color: var(--muted); font-family: var(--font-ui); }
 .rel-item .t { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-family: var(--font-kanji); font-size: 16px; flex: none; background: var(--sec-soft); color: var(--sec); font-weight: 600; }
 .rel-item .x { min-width: 0; }
 .rel-item .x b { display: block; font-family: var(--font-jp); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

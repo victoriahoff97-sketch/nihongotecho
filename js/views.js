@@ -612,7 +612,6 @@
     const it = App.item(p.id);
     if (!it) { view.innerHTML = '<div class="empty-state"><h3>Nicht gefunden</h3></div>'; return; }
     const sec = App.SECTIONS.grammar;
-    const sessions = App.sessionsFor(it.id);
     const srs = App.srsOf(it.id);
     // vor/zurück in der Reihenfolge der Grammatikliste (Quelle, Lektion, Buchreihenfolge)
     const order = App.itemsOf('grammar').slice().sort(byLesson);
@@ -625,8 +624,7 @@
           <div lang="ja" style="font-size:30px;color:var(--sec);line-height:1.6">${JP.ruby(it.jp || '')}</div>
           <h1 style="font-size:26px;margin-top:4px">${esc(it.title)}</h1></div><div class="row">${detailActions(it)}</div></div>
           <p style="font-size:17px;color:var(--ink-2);margin:10px 0 12px">${esc(it.summary || '')}</p>
-          <div class="row">${App.srcBadge(it)} ${App.tagsHtml(it.tags)}
-          ${sessions.map((s) => `<a class="badge src" style="--c:var(--shu);text-decoration:none" href="${App.link(s)}">授業 ${esc(s.number ? 'Stunde ' + s.number : s.title)} · ${App.fmtDate(s.date)}</a>`).join('')}</div>
+          <div class="row">${App.srcBadge(it)} ${App.tagsHtml(it.tags)}</div>
           <div class="row" style="margin-top:14px;align-items:center"><span class="small muted">Lernstand</span><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
             <span class="small muted">${App.vocabStatus(it.id) === 'known' ? 'zählt für deinen Lernstand bei Genki und JLPT' : 'Setz den Haken selbst, wenn du den Punkt kannst – Grammatik wird nicht abgefragt'}</span></div></div>
         ${it.structure && it.structure.length ? `<div class="section-title">Aufbau</div><div class="structure">${it.structure.map((s) => `<div>${JP.ruby(s)}</div>`).join('')}</div>` : ''}
@@ -641,7 +639,7 @@
         <span class="small muted">${(it.patterns || []).length ? `${it.patterns.length} Satzmuster + Beispielsätze` : 'Nutzt die Beispielsätze dieses Punktes'}</span></div>
         ${App.exercises.grammarBlock(it)}
         ${App.attachmentsHtml(it)}
-      </div>${App.sideAside(App.relatedHtml(it))}</div></div>`;
+      </div>${App.sideAside(App.relatedHtml(it) || '<div class="card muted small">Noch keine verwandte Grammatik. Mit „Verknüpfen“ kannst du selbst Verbindungen herstellen.</div>')}</div></div>`;
     App.hydrateThumbs(view);
     App.exercises.hydrate(view);
     view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { const snap = App.srsSnap([it.id]); await App.setCheck(it.id, b.dataset.v); App.undoToast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label, snap, () => App.render(true)); App.render(true); } };

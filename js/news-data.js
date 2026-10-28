@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-grammatik-spalte', date: '28. Oktober',
+      items: [
+        { t: 'Grammatik: Schon selbst benutzt', d: 'Rechts auf jeder Grammatikseite stehen jetzt deine eigenen Sätze aus Tagebuch und Smalltalk, in denen du den Punkt benutzt hast – das passende Stück ist markiert.' },
+        { t: 'Grammatik: rechte Spalte aufgeräumt', d: '„Gleiche Themen“ und „Vokabeln dieser Lektion“ sind weg. In welcher Unterrichtsstunde ein Punkt dran war, steht jetzt rechts unter „Im Unterricht behandelt“.' },
+      ],
+    },
+    {
       id: '2026-10-28-selbst-einstufen', date: '28. Oktober',
       items: [
         { t: 'Im Kopf lösen reicht', d: 'Bei „Umformen üben“ und „Welche Form?“ musst du nichts schreiben: Tippe „Lösung zeigen“ und sag selbst „Hatte ich richtig“ – dann zählt es und kommt nicht noch einmal.' },
