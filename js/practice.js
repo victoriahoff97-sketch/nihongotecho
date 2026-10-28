@@ -562,6 +562,8 @@
   // Füllwort neben der Lernschlange: was du schon lesen kannst
   const canRead = (it) => App.vocabStatus(it.id) === 'known';
   const BUILD = { fill: JP.fill, plain: JP.plain, pick: App.pick, shuffle: App.shuffle, meaning: App.exMeaning, situations: (g) => App.drillLogic.field(g, 'situations') || [] };
+  // Für „Grammatik auffrischen“ (js/grammar-refresh.js): derselbe Wortvorrat, dieselben Bausteine, dieselbe Runde
+  App.translateKit = { words: () => genWords(), canRead, BUILD, run: (...a) => runExercises(...a) };
 
   App.route('/ueben/saetze', (view, p, q) => {
     const sec = App.SECTIONS.grammar;
@@ -638,15 +640,19 @@
   const wordOf = (it) => it.kanji || it.kana || JP.plain(it.jp || '');
   const exBadge = (it) => `<a class="badge sec ${App.SECTIONS[it.type].cls}" href="${App.link(it)}" target="_blank" style="text-decoration:none">${it.type === 'grammar' ? '文 ' + esc(it.title) : it.type === 'phrase' ? '表 Ausdruck aus der Lernschlange' : '単 Wort aus der Lernschlange'}</a>`;
 
-  function runExercises(stage, exs, dirMode) {
+  // o.onDone(wrong): einmal am Ende der Runde · o.endHtml(): Zeile unter der Wertung · o.endRow: eigene Knöpfe statt „Neue Runde“
+  function runExercises(stage, exs, dirMode, o = {}) {
     let i = 0, score = 0;
     const wrong = [];
     const show = () => {
       if (i >= exs.length) {
+        if (o.onDone) o.onDone(wrong);
         stage.innerHTML = `<div class="ex-card"><div class="card pad-lg" style="text-align:center"><div class="score-ring">${score} / ${exs.length}</div><h2>${score === exs.length ? '完璧！ Perfekt!' : score > exs.length / 2 ? 'よくできました！' : 'がんばって！ Dranbleiben!'}</h2>
           ${wrong.length ? `<div class="section-title">Zum Wiederholen</div><div class="stack" style="text-align:left">${wrong.map((e) => `<div class="example"><div class="grow"><div class="jp-s" lang="ja">${JP.ruby(e.jp)}</div><div class="de-s">${esc(e.de)}</div><a class="small" href="${App.link(e.g)}">${esc(e.g.title || wordOf(e.g))}</a></div></div>`).join('')}</div>` : ''}
-          <div class="row" style="justify-content:center;margin-top:16px">${App.backBtn('Übersicht')}<button class="btn btn-primary" data-again>Neue Runde</button></div></div></div>`;
-        stage.querySelector('[data-again]').onclick = () => App.render();
+          ${o.endHtml ? o.endHtml() : ''}
+          <div class="row" style="justify-content:center;margin-top:16px">${o.endRow || `${App.backBtn('Übersicht')}<button class="btn btn-primary" data-again>Neue Runde</button>`}</div></div></div>`;
+        const again = stage.querySelector('[data-again]');
+        if (again) again.onclick = () => App.render();
         return;
       }
       const e = exs[i];

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-grammatik', date: '28. Oktober',
+      items: [
+        { t: 'Grammatik auffrischen', d: 'Einmal pro Woche steht auf der Startseite „文 Grammatik 5“: fünf Sätze zu Grammatik, die du auf „kann ich“ gesetzt hast. Dein „kann ich“ bleibt dabei, wie es ist.' },
+      ],
+    },
+    {
       id: '2026-10-28-aufgeraeumt', date: '28. Oktober',
       items: [
         { t: 'Üben: aufgeräumt', d: 'Oben stehen die Übungen, die man oft braucht. Übersetzen und Kanji-Quiz findest du unter „Weitere Übungen“, Zahlen und Zähler über „Ausdrücke“.' },
