@@ -316,11 +316,11 @@
     return out.sort(App.byFileOrder);
   };
   const kanjiChars = (s) => Array.from(String(s || '')).filter((c) => JP.hasKanji(c) && c !== '々');
-  // Grammatik: eigene Sätze aus Tagebuch + Smalltalk (js/grammar-uses-logic.js), Erkennungswort markiert; ohne Treffer eine Einladung
+  // Grammatik: eigene Sätze aus Tagebuch + Smalltalk (js/grammar-uses-logic.js), Erkennungswort markiert; ohne Treffer nur ein kurzer Hinweis
   const usesHtml = (it, all) => {
     const docs = all.filter((x) => x.type === 'journal' || x.type === 'answer').map((x) => ({ item: x, text: App.aLogic.plainText(x.html) }));
     const r = App.grammarUsesLogic.uses(it, docs);
-    if (!r.items.length) return `<p class="small muted" style="margin:0">Noch kein eigener Satz damit. <a href="#/anwenden">Im Tagebuch ausprobieren</a></p>`;
+    if (!r.items.length) return `<p class="small muted" style="margin:0">Noch kein eigener Satz damit.</p>`;
     const mark = (u) => (u.hit ? esc(u.sentence.slice(0, u.hit.start)) + `<mark>${esc(u.sentence.slice(u.hit.start, u.hit.end))}</mark>` + esc(u.sentence.slice(u.hit.end)) : esc(u.sentence));
     return `<div class="rel-list">${r.items.map((u) => `<a class="rel-use" href="${App.link(u.item)}"><span lang="ja">${mark(u)}</span><small>${u.item.type === 'answer' ? 'Smalltalk' : 'Tagebuch'} · ${esc(App.fmtDate(u.item.date))}</small></a>`).join('')}</div>`
       + (r.more > 0 ? `<div class="small muted" style="margin-top:6px">… und ${r.more} weitere</div>` : '');
