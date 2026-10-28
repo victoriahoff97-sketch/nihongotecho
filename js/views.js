@@ -22,6 +22,9 @@
   App.furiClass = () => (S.settings.furigana === 'hover' ? 'hide-furigana' : '');
   const pageHead = (sec, sub, actions = '') => `<div class="page-head"><div class="titles"><h1>${esc(sec.label)} <span class="jp-title">${sec.jp}</span></h1>${sub ? `<p>${sub}</p>` : ''}</div><div class="row">${actions}</div></div>`;
   App.pageHead = pageHead;
+  // Seltenere Knöpfe einer Seite hinter „⋯“; schließt sich beim Klick daneben (Listener unten)
+  const pageMore = (inner) => `<details class="apply-menu page-more"><summary class="btn" title="Mehr" aria-label="Mehr">⋯</summary><div class="apply-menu-pop card">${inner}</div></details>`;
+  document.addEventListener('click', (e) => { document.querySelectorAll('details.page-more[open]').forEach((d) => { if (!d.contains(e.target) || e.target.closest('.apply-menu-pop .btn')) d.open = false; }); });
   const filterItems = (items, q) => {
     let out = items;
     if (q.src) out = out.filter((i) => App.srcMatch(i, q.src));
@@ -49,7 +52,7 @@
     const b = e.target.closest('[data-upload]');
     if (!b) return;
     const q = App.parseHash().query;
-    App.uploadDialog({ section: b.dataset.upload, source: App.oneSrc(q.src), lesson: q.l || '' });
+    App.uploadDialog({ section: b.dataset.upload, source: App.oneSrc(q.src), lesson: q.l || '', folder: b.dataset.upload === 'library' ? q.folder : '' });
   });
   const tabsHtml = (q, entries, filesN) => `<div class="tabs"><button class="tab ${q.tab !== 'files' ? 'on' : ''}" data-q-tab="">Einträge <span class="badge">${entries}</span></button><button class="tab ${q.tab === 'files' ? 'on' : ''}" data-q-tab="files">${icon('file')} Dateien <span class="badge">${filesN}</span></button></div>`;
 
@@ -133,7 +136,7 @@
   };
   const progBar = (c, cls = '') => { const w = (n) => (c.total ? (n / c.total) * 100 : 0); return `<div class="progress prog-bar ${cls}"><i style="width:${w(c.known)}%;background:var(--matcha)"></i><i style="width:${w(c.queue)}%;background:var(--ai)"></i></div>`; };
   // schmale Balken je Bereich (Vokabeln · Kanji · Grammatik) – ohne Zahlen, die stehen im Tooltip
-  const miniBars = (p, qs) => `<div class="mini-bars">${p.types.map((t) => { const c = p.pc[t]; return `<a href="${TYPE_INFO[t][1]}?${qs}" title="${c.known} von ${c.total} kann ich · ${c.queue} in der Lernschlange · ${c.open} warten noch">${TYPE_INFO[t][0]}</a>${progBar(c, 'thin')}`; }).join('')}</div>`;
+  const miniBars = (p, qs) => `<div class="mini-bars">${p.types.map((t) => { const c = p.pc[t]; return `<a href="${TYPE_INFO[t][1]}?${qs}" title="${c.known} von ${c.total} kann ich · ${c.queue} in der Lernschlange · ${c.open} ungeprüft">${TYPE_INFO[t][0]}</a>${progBar(c, 'thin')}`; }).join('')}</div>`;
   // Die zwei Knöpfe je Karte – alles, was nicht von selbst kommt:
   // „neue lernen“ holt Neues in die Lernschlange – bei Vokabeln aus dem Ungeprüften, bei Kanji aus dem Lernstapel (erst Lesen: Vokabeln, Kanji – dann Deutsch → Japanisch),
   // „einstufen“ geht durch, was noch nicht eingestuft ist (Vokabeln lesen, Kanji, Deutsch → Japanisch). Grammatik hat nur den Haken von Hand.
@@ -403,7 +406,7 @@
       <div class="card sec-vocab${foldCls('vocab')}"><div class="row between"><div class="row" style="gap:28px">
         ${num(c.known, 'var(--matcha)', 'kann ich', 'known', 'Lesen und Deutsch → Japanisch sitzen – wird nicht mehr abgefragt')}
         ${num(c.queue, 'var(--ai)', 'in der Lernschlange', 'queue', 'Schon gewusst oder beim Einstufen auf „Lernen“ gesetzt – kommt von selbst über „Jetzt wiederholen“, bis es sitzt')}
-        ${num(c.open, 'var(--muted)', 'warten noch auf dich', 'open', 'Noch ungeprüft – beim Lesen oder bei Deutsch → Japanisch. Einstufen oder neue lernen holt sie in die Lernschlange')}</div>
+        ${num(c.open, 'var(--muted)', 'noch ungeprüft', 'open', 'Noch ungeprüft – beim Lesen oder bei Deutsch → Japanisch. Einstufen oder neue lernen holt sie in die Lernschlange')}</div>
         <span class="row">${cardBtns({ vocab }, '')}</span></div>
         ${progBar(c)}</div>`; })(),
       jlpt: jlptCard(),
@@ -455,7 +458,7 @@
     const cardsQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'vocab', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v))).toString();
     const unchecked = App.vocabCounts(filterItems(all, { src: q.src, l: q.l, lvl: q.lvl })).unchecked;
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Alle Wörter mit Lesung, Kanji, Übersetzung und Beispielsätzen – nach Quelle und Lektion sortiert.',
-      `<button class="btn" data-action="import-vocab">${icon('upload')} Importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a>${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>`)}
+      `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>${pageMore(`<button class="btn" data-action="import-vocab">${icon('upload')} Wortliste importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a>`)}`)}
       ${tabsHtml(q, items.length, files.length)}
       <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
@@ -704,7 +707,7 @@
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Floskeln, Zeitangaben, Zahlen, Zähler & Satzbausteine – alles, was man einfach auswendig lernen muss.',
       `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?type=phrase${q.g ? '&g=' + encodeURIComponent(q.g) : ''}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?type=phrase${q.g ? '&g=' + encodeURIComponent(q.g) : ''}">${icon('practice')} Karteikarten</a><button class="btn" data-new-group>${icon('plus')} Neue Gruppe</button><button class="btn btn-sec" data-new="phrase">${icon('plus')} Ausdruck</button>`)}
       ${tabsHtml(q, items.length, files.length)}
-      <div class="toolbar">${filterInput(q, 'Suchen, z. B. Montag, 3 Uhr, ひとつ …')}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st)}</select></div>
+      <div class="toolbar">${filterInput(q, 'Suchen, z. B. Montag, 3 Uhr, ひとつ …')}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st, 'phrase')}</select></div>
       <div class="chips scroll" style="margin-bottom:16px"><button class="chip ${!q.g ? 'on' : ''}" data-q-g="">Alle Gruppen</button>${groupsOrder.map((g) => `<button class="chip ${q.g === g ? 'on' : ''}" data-q-g="${esc(g)}">${esc(g)}</button>`).join('')}<button class="chip" data-new-group>${icon('plus')} Gruppe</button></div>
       <div data-body></div></div>`;
     const body = view.querySelector('[data-body]');

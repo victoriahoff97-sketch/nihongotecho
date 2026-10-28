@@ -121,11 +121,11 @@
       { target: '#view [data-kb-colors-on]', title: 'Farben', text: 'Wähle die Farbe des Buchs – die Reiter passen sich an. Lieber normale Seiten untereinander? „Buch | Seiten“ links oben schaltet um.' },
     ],
     '/bibliothek': [
-      { target: '#view [data-upload="library"]', text: 'Lege Arbeitsblätter, PDFs und Bilder aus dem Kurs hier ab.' },
-      { target: '#view [data-nb]', text: 'Oder beginne ein leeres Blatt zum Schreiben, unabhängig von einer Stunde.' },
+      { target: '#view [data-upload="library"]', text: 'Lege Arbeitsblätter, PDFs und Bilder aus dem Kurs hier ab. Daneben beginnst du ein leeres Notizblatt zum Schreiben.' },
       { target: '#view [data-heft-new]', text: 'Für dein eigenes Lernen: Lege ein Notizbuch mit Kapiteln an – mit Inhaltsverzeichnis wie im Kurs.' },
-      { target: '#view .toolbar', text: 'Später findest du Dateien über Bereich und Dateityp wieder.' },
-      { target: '#view [data-pick-on]', text: 'Zum Aufräumen: Markiere eine oder mehrere Dateien und lösche sie zusammen.' },
+      { target: '#view .toolbar', text: 'Später findest du Dateien über Bereich und Dateityp wieder. Ganz rechts sortierst du sie – nach Datum, Quelle, Lektion oder Name.' },
+      { target: '#view [data-folder-new]', title: 'Ordner', text: 'Lege eigene Ordner an und zieh Dateien darauf. Dateien im Ordner stehen nicht mehr in der Liste – beim Filtern findest du sie aber trotzdem.' },
+      { target: '#view [data-pick-on]', text: 'Zum Aufräumen: Markiere eine oder mehrere Dateien und lege sie zusammen in einen Ordner oder lösche sie.' },
     ],
     '/pakete': [
       { target: '#view [data-pack-upload] h3', title: 'Paket hochladen', text: 'Hast du ein Paket als Datei bekommen – etwa die Unterrichtsfolien oder ein Paket von Freunden –, öffnest du es hier.' },

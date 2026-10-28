@@ -101,6 +101,7 @@ window.App = window.App || {};
     ruby: '<path d="M4 20l5-12 5 12M5.5 16h7"/><path d="M15 4h5M17.5 4v4"/>',
     box: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 3v18"/>',
     image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
+    folder: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
     notebook: '<path d="M6 3h13v18H6z"/><path d="M3 7h3M3 12h3M3 17h3M10 8h6M10 12h6"/>',
     shuffle: '<path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>',
     grid: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/>',
@@ -284,6 +285,7 @@ window.App = window.App || {};
     shunAt: null, // Seite „Hören“: gemerkte Stelle in der zuletzt offenen Shun-Folge { id, t } (Sekunde)
     inkPen: null, // Schreibblatt, alt: zuletzt gewählter Stift { tool, wIdx, widths, color, mcolor } – nur noch Vorlage für die ersten eigenen Stifte
     inkPens: null, // Schreibblatt: Meine Stifte { list, def, last } (js/ink-pen.js normPens)
+    libFolders: [], // Bibliothek: eigene Ordner [{ id, name }], Dateien merken sich f.folder (js/library-logic.js)
   };
 
   App.onChange = (fn) => S.listeners.add(fn);
@@ -376,6 +378,7 @@ window.App = window.App || {};
       created: Date.now(), pages: meta.pages || 0, paper: meta.paper || '',
     };
     if (meta.bookId) f.bookId = meta.bookId; // Kapitel eines eigenen Notizbuchs (heft.js)
+    if (meta.folder) f.folder = meta.folder; // Ordner in der Bibliothek (js/library-logic.js)
     await App.db.put('blobs', { id, blob });
     await App.db.put('files', f);
     S.files.set(id, f);

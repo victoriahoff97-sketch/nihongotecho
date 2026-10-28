@@ -44,39 +44,17 @@
     const due = App.dueCount();
     const wDue = kanjiFocus() === 'read' ? 0 : App.writeQueue().due.length;
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Wiederholen, übersetzen, schreiben – alles passend zu deinem Niveau und aus deinen eigenen Inhalten.', `<a class="btn" href="#/lernweg">${icon('map')} So läuft das Lernen</a>`)}
-      ${externStrip()}<div class="practice-home" style="margin-top:22px">
+      ${externStrip()}<div class="section-title">In der App</div><div class="practice-home">
         <a class="mode-card sec-practice" href="#/ueben/heute${due ? '?auto=1' : ''}"><span class="k">復</span><h3>Jetzt wiederholen</h3><span class="muted">Alles, was heute fällig ist, gemischt in einer Runde – Vokabeln, Kanji & Ausdrücke.</span>${due ? `<span class="badge count">${due} fällig</span>` : '<span class="badge">für heute alles wiederholt</span>'}</a>
         <a class="mode-card sec-practice" href="#/ueben/karten"><span class="k">札</span><h3>Karteikarten</h3><span class="muted">Einzeln nach Art, Lektion oder Quelle: wiederholen, Neues lernen oder frei üben.</span></a>
         ${!App.checkOn() ? '' : `<a class="mode-card sec-vocab" href="#/ueben/einstufen"><span class="k">確</span><h3>Einstufen</h3><span class="muted">Vokabeln, Kanji &amp; Ausdrücke: Kenne ich das? In Runden prüfen, was du schon kannst und was in die Lernschlange kommt.</span>${(() => { const n = App.vocabCounts().unchecked + App.vocabCounts(App.itemsOf('phrase')).unchecked + W.activeCounts(App.itemsOf('vocab'), S.srs, App.needsCheck).unchecked; return n ? `<span class="badge">${n} ungeprüft</span>` : ''; })()}</a>`}
-        <a class="mode-card sec-grammar" href="#/ueben/saetze"><span class="k">訳</span><h3>Übersetzungsübungen</h3><span class="muted">Sätze aus deinen Grammatik- und Vokabelbausteinen – nur mit dem, was du schon kennst.</span></a>
         <a class="mode-card sec-grammar" href="#/ueben/konjugieren"><span class="k">活</span><h3>Konjugieren</h3><span class="muted">Formen von Verben und Adjektiven selbst bilden – welche, wählst du aus.</span></a>
+      </div>
+      <div class="section-title">Weitere Übungen</div><div class="practice-home">
+        <a class="mode-card sec-grammar" href="#/ueben/saetze"><span class="k">訳</span><h3>Übersetzungsübungen</h3><span class="muted">Sätze aus deinen Grammatik- und Vokabelbausteinen – nur mit dem, was du schon kennst.</span></a>
         <a class="mode-card sec-kanji" href="#/ueben/kanji"><span class="k">書</span><h3>Kanji-Quiz</h3><span class="muted">Bedeutung sehen → mit dem Stift schreiben, oder Lesungen erkennen.</span>${wDue ? `<span class="badge count">${wDue} zu schreiben</span>` : ''}</a>
-        <a class="mode-card sec-phrase" href="#/ueben/karten?type=phrase"><span class="k">表</span><h3>Auswendig-Lernen</h3><span class="muted">Wochentage, Zahlen, Zähler, Uhrzeiten, Floskeln …</span></a>
-        <button class="mode-card sec-library" data-ai-prompt><span class="k">AI</span><h3>KI-Prompt</h3><span class="muted">Fertigen Prompt mit deinem Wortschatz & deiner Grammatik kopieren – für Claude & Co.</span></button>
       </div></div>`;
-    view.querySelector('[data-ai-prompt]').onclick = () => aiPromptDialog(S.settings.level || 12);
   });
-
-  // words: fester Wortvorrat (Lernschlange) statt aller Wörter bis zum Niveau
-  const aiPrompt = (maxL, grammarIds, words) => {
-    const gs = grammarIds ? grammarIds.map(App.item).filter(Boolean) : App.itemsOf('grammar').filter((g) => (lessonNum(g) || 0) <= maxL);
-    const vs = words ? words.filter((v) => v.de && v.kana)
-      : App.itemsOf('vocab').filter((v) => { if (!v.de) return false; const l = lessonNum(v); return v.source !== 'Genki I' || (l !== null && l <= maxL); }); // nur Wörter mit deutscher Bedeutung
-    const vlist = App.shuffle(vs).slice(0, 220);
-    return `Ich lerne Japanisch auf Niveau JLPT N5 (Genki I bis Lektion ${maxL}). Erstelle mir 10 Übersetzungsübungen Deutsch → Japanisch.
-Regeln: Verwende AUSSCHLIESSLICH die unten stehende Grammatik und möglichst nur diese Vokabeln (höchstens 1 unbekanntes Wort pro Satz, dann mit Übersetzung in Klammern). Höfliche です/ます-Form, außer die Grammatik verlangt Kurzform. Kurze, alltagsnahe Sätze. Gib zuerst nur die deutschen Sätze aus; Lösungen (Kanji mit Furigana in Klammern + Kana + kurzer Grammatikhinweis) erst am Ende unter „Lösungen“.
-
-Grammatik:
-${gs.map((g) => `- ${g.title}${g.jp ? ' (' + JP.plain(g.jp) + ')' : ''}`).join('\n')}
-
-Vokabeln:
-${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''} = ${v.de}`).join('; ')}`;
-  };
-  const aiPromptDialog = (maxL, grammarIds, words) => {
-    const txt = aiPrompt(maxL, grammarIds, words);
-    const md = App.modal({ title: 'KI-Prompt für Übungen', body: `<p class="muted small">Kopiere den Text in Claude (oder eine andere KI). Er enthält nur Grammatik & Wörter ${words ? 'aus deiner Lernschlange und was du schon kannst' : 'bis zu deinem Niveau'}.</p><div class="prompt-box">${esc(txt)}</div>`, foot: `<button class="btn btn-primary" data-copy>${icon('copy')} Kopieren</button>` });
-    md.el.querySelector('[data-copy]').onclick = () => navigator.clipboard.writeText(txt).then(() => { App.toast('Kopiert!'); md.close(); });
-  };
 
   // =========================================================
   // Karteikarten
@@ -622,14 +600,13 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
           <div class="row" style="margin-bottom:8px"><button class="btn btn-sm" data-all>${byQueue ? 'Alle' : `Alle bis Lektion ${maxL}`}</button><button class="btn btn-sm" data-none>Keine</button></div>
           <div class="grid cols-2" style="gap:4px">${listG.map((g) => `<label class="picker-row"><input type="checkbox" value="${g.id}" ${selected.has(g.id) ? 'checked' : ''}><span class="badge src" style="--c:${App.sourceColor(g.source)}">L${esc(g.lesson)}</span><span>${esc(g.title)}</span><span class="muted small">${(g.patterns || []).length ? '✦' : ''}${byQueue && !pot.queue.has(g.id) ? ' ● kann ich' : ''}</span></label>`).join('')}</div>
           <div class="small muted" style="margin-top:6px">✦ = mit Satzmustern (erzeugt immer neue Sätze). Ohne ✦ werden die Beispielsätze genutzt.${byQueue ? ' Zur Auswahl steht die Grammatik aus der Lernschlange und die, die du schon kannst.' : ''}</div></details>
-        <div class="row"><button class="btn btn-primary" data-go>${icon('sparkle')} Übung starten</button><button class="btn" data-ai>${icon('copy')} Als KI-Prompt kopieren</button></div></div></div>
+        <div class="row"><button class="btn btn-primary" data-go>${icon('sparkle')} Übung starten</button></div></div></div>
       <div data-stage></div></div>`;
     const setup = view.querySelector('[data-setup]');
     if (!byQueue) setup.querySelector('[data-max]').onchange = (e) => App.setQuery({ max: e.target.value });
     setup.querySelector('[data-all]').onclick = () => $$('input[type=checkbox]', setup).forEach((c) => (c.checked = true));
     setup.querySelector('[data-none]').onclick = () => $$('input[type=checkbox]', setup).forEach((c) => (c.checked = false));
     const chosen = () => $$('details input[type=checkbox]:checked', setup).map((c) => c.value);
-    setup.querySelector('[data-ai]').onclick = () => aiPromptDialog(maxL, chosen(), byQueue ? words.filter((w) => pot.queue.has(w.id) || canRead(w)) : undefined);
     setup.querySelector('[data-go]').onclick = () => {
       const gids = chosen();
       // Wörter der Lernschlange mit eigenem Satz ergeben auch ohne Grammatik eine Runde

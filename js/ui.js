@@ -472,7 +472,10 @@
     const stop = (e) => { e.stopPropagation(); e.preventDefault(); };
     document.addEventListener('click', stop, { capture: true, once: true });
     setTimeout(() => document.removeEventListener('click', stop, { capture: true }), 50);
-    if (save) App.reorderFiles($$('.file-card[data-open-file]', d.grid).map((c) => c.dataset.openFile));
+    if (d.target) d.target.classList.remove('drop-over');
+    // auf einen Ordner der Bibliothek fallen gelassen = hineinlegen (data-folder-drop="" = aus dem Ordner nehmen)
+    if (save && d.target) App.moveToFolder([d.card.dataset.openFile], d.target.dataset.folderDrop).then(() => App.render(true));
+    else if (save && !d.grid.hasAttribute('data-nosort')) App.reorderFiles($$('.file-card[data-open-file]', d.grid).map((c) => c.dataset.openFile));
     else App.render(true);
   };
   const startDrag = () => { drag.active = true; drag.card.classList.add('dragging'); drag.grid.classList.add('sorting'); };
@@ -480,7 +483,8 @@
     if (drag || e.button > 0 || !e.target.closest) return;
     const card = e.target.closest('.file-card[data-open-file]');
     const grid = card && card.closest('.file-grid:not([data-fixed])');
-    if (!grid || grid.children.length < 2) return;
+    // data-nosort (Bibliothek sortiert nach Datum, Name …): kein Umsortieren, aber Ziehen auf einen Ordner geht
+    if (!grid || (grid.children.length < 2 && !document.querySelector('[data-folder-drop]'))) return;
     drag = { card, grid, id: e.pointerId, x: e.clientX, y: e.clientY, active: false, mouse: e.pointerType === 'mouse' };
     if (!drag.mouse) drag.timer = setTimeout(() => { if (drag && !drag.active) startDrag(); }, HOLD_MS);
   });
@@ -492,6 +496,13 @@
       startDrag();
     }
     const el = document.elementFromPoint(e.clientX, e.clientY);
+    const target = (el && el.closest && el.closest('[data-folder-drop]')) || null;
+    if (target !== drag.target) {
+      if (drag.target) drag.target.classList.remove('drop-over');
+      if (target) target.classList.add('drop-over');
+      drag.target = target;
+    }
+    if (target || drag.grid.hasAttribute('data-nosort')) return;
     const over = el && el.closest && el.closest('.file-card');
     if (!over || over === drag.card || over.parentNode !== drag.grid) return;
     const after = drag.card.compareDocumentPosition(over) & Node.DOCUMENT_POSITION_FOLLOWING;
@@ -782,7 +793,7 @@
       const meta = readMeta(md.el);
       okB.disabled = true; okB.textContent = 'Speichere …';
       const out = [];
-      for (const file of picked) out.push(await App.addFile(file, Object.assign({}, meta, { sessionId: d.sessionId, itemId: d.itemId, role: d.role })));
+      for (const file of picked) out.push(await App.addFile(file, Object.assign({}, meta, { sessionId: d.sessionId, itemId: d.itemId, role: d.role, folder: d.folder })));
       done = true; md.close();
       App.toast(out.length === 1 ? 'Datei gespeichert' : `${out.length} Dateien gespeichert`);
       resolve(out);

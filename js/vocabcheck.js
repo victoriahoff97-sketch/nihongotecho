@@ -28,8 +28,8 @@
   // selbst angelegt – nicht aus Paket, Genki, Import oder WaniKani
   App.isOwn = (it) => !!it && !it._seed && !it._pack && !it.imported && !wkLearned(it);
   App.needsCheck = (it) => !!it && (W.direct(it.type) ? !App.isOwn(it) : it.type === 'kanji' ? App.checkOn() && !App.isOwn(it) : true);
-  // Lernstand-Filter der Vokabel- und Kanji-Liste: ohne Einstufen gibt es „Ungeprüft“ nicht
-  App.statusFilter = (cur) => Object.entries(App.STATUS).filter(([k]) => k !== 'unchecked' || App.checkOn()).map(([k, s]) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('');
+  // Lernstand-Filter der Kanji- und Ausdrücke-Liste: ohne Einstufen gibt es „Ungeprüft“ nicht; Beschriftung wie auf den Karten der Art
+  App.statusFilter = (cur, type) => Object.keys(App.STATUS).filter((k) => k !== 'unchecked' || App.checkOn()).map((k) => { const s = App.statusInfo({ type }, k); return `<option value="${k}" ${cur === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`; }).join('');
   const ownWord = (id) => { const it = S.items.get(id); return !!it && !App.needsCheck(it); };
   const isGrammar = (id) => { const it = S.items.get(id); return !!it && it.type === 'grammar'; };
   App.vocabStatus = (id) => {
@@ -142,7 +142,7 @@
   App.WORD_STATE = {
     known: { label: 'Kann ich', color: 'var(--matcha)', dot: '●' },
     queue: { label: 'In der Lernschlange', color: 'var(--ai)', dot: '◐' },
-    open: { label: 'Wartet noch', color: 'var(--muted)', dot: '○' },
+    open: { label: 'Ungeprüft', color: 'var(--muted)', dot: '○' },
   };
   App.progressCounts = (items = App.itemsOf('vocab')) => {
     const c = { known: 0, queue: 0, open: 0, total: items.length };

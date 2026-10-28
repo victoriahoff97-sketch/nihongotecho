@@ -7,6 +7,22 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-aufgeraeumt', date: '28. Oktober',
+      items: [
+        { t: 'Üben: aufgeräumt', d: 'Oben stehen die Übungen, die man oft braucht. Übersetzen und Kanji-Quiz findest du unter „Weitere Übungen“, Zahlen und Zähler über „Ausdrücke“.' },
+        { t: 'Gleiche Wörter für den Lernstand', d: 'Bei Vokabeln heißt der Filter jetzt wie auf den Karten „Ungeprüft“, bei Ausdrücken „Lernschlange“. So passt überall zusammen, was du siehst.' },
+        { t: 'Vokabeln: weniger Knöpfe oben', d: '„Wortliste importieren“ und „Sätze zuordnen“ stecken jetzt hinter „⋯“ rechts neben „＋ Vokabel“.' },
+        { t: 'Ruhigere Kanji-Seite und Einstellungen', d: 'Die Kanji-Markierungen erscheinen erst, wenn du eine vergibst. In den Einstellungen sind die Kanji-Feinheiten unter „Lernen“ eingeklappt.' },
+      ],
+    },
+    {
+      id: '2026-10-28-bibliothek', date: '28. Oktober',
+      items: [
+        { t: 'Bibliothek sortieren', d: 'In der Bibliothek steht ganz rechts neben den Filtern eine neue Auswahl: Dateien nach Datum, Quelle, Lektion oder Name ordnen. Das Gerät merkt sich deine Wahl.' },
+        { t: 'Eigene Ordner', d: 'Bibliothek › „＋ Neuer Ordner“. Zieh Dateien auf einen Ordner oder nimm „Auswählen“ › „In Ordner“. Beim Filtern findest du auch Dateien aus Ordnern.' },
+      ],
+    },
+    {
       id: '2026-10-28-verwandt', date: '28. Oktober',
       items: [
         { t: 'Vokabeln: rechte Spalte aufgeräumt', d: 'Bei einem Wort steht rechts nicht mehr die Grammatik derselben Lektion. Wörter mit gleichem Kanji (z. B. 並ぶ und 並べる) bleiben dort zum Vergleichen.' },

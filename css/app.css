@@ -918,7 +918,8 @@ body.ink-fit #view { padding-bottom: 16px; }
 .viewer-note { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: rgba(0,0,0,.72); color: #fff; padding: 8px 14px; border-radius: 99px; font-size: 13px; font-weight: 700; pointer-events: none; }
 
 /* ---------- Üben ---------- */
-.practice-home { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.practice-home { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+@media (min-width: 900px) { .practice-home { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .mode-card { text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 18px; padding: 22px; cursor: pointer; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; text-decoration: none; transition: transform .12s; }
 .mode-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
 .mode-card .k { font-family: var(--font-kanji); font-size: 40px; color: var(--sec); line-height: 1; }
@@ -1954,3 +1955,24 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .forum-av-kanji { width: 64px; text-align: center; font-family: var(--font-kanji); font-size: 26px; }
 .forum-av-modal .modal-body { display: flex; flex-direction: column; gap: 10px; }
 @media (max-width: 480px) { .forum-av-grid { grid-template-columns: repeat(4, 44px); } }
+
+/* Bibliothek: Ordner und Sortieren (js/views-more.js, js/library-logic.js) */
+.filter-row > .lib-sort { margin-left: auto; }
+.folder-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.folder-card { display: flex; align-items: center; gap: 10px; min-width: 150px; max-width: 240px; box-sizing: border-box; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card, #fff); color: var(--ink); text-decoration: none; box-shadow: var(--shadow); font: inherit; text-align: left; cursor: pointer; transition: transform .12s, background .12s; }
+.folder-card:hover { transform: translateY(-2px); }
+.folder-card > .ico { color: var(--budo); flex: none; }
+.folder-card > .ico svg { width: 24px; height: 24px; }
+.folder-card span { display: flex; flex-direction: column; min-width: 0; }
+.folder-card b { font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-card small { font-size: .8rem; color: var(--muted, #777); }
+.folder-card.folder-new { background: transparent; border: 1.5px dashed var(--line); box-shadow: none; color: var(--muted, #777); min-width: 0; }
+.folder-card.drop-over, .folder-crumb .drop-over { background: var(--budo-soft); outline: 2px dashed var(--budo); outline-offset: 2px; transform: scale(1.03); }
+.folder-crumb { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 4px; }
+.folder-crumb h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 1.1rem; }
+.folder-crumb h3 .ico { color: var(--budo); }
+.folder-badge { background: var(--budo-soft); color: var(--budo); }
+.folder-badge .ico svg { width: 11px; height: 11px; }
+.folder-choose { display: flex; flex-direction: column; gap: 8px; }
+.folder-choose .btn { justify-content: flex-start; }
+.empty-state .big .ico svg { width: 1em; height: 1em; }
