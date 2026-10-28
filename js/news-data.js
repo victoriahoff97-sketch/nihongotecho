@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-einstufen', date: '28. Oktober',
+      items: [
+        { t: 'Einstufen aufgeräumt', d: 'Üben › Einstufen sieht jetzt aus wie die Karteikarten: Art, Richtung, Quelle, Lektion und Niveau in einer Zeile. Mit gewählter Lektion stufst du Lektion für Lektion ein.' },
+      ],
+    },
+    {
       id: '2026-10-28-forum-satz', date: '28. Oktober',
       items: [
         { t: 'Sätze in der Gruppe teilen', d: 'Einen interessanten Satz gefunden? In „Sätze erkennen“ die Gruppe öffnen und auf „Satz anhängen“ tippen – dazu wählst du die Vokabeln, um die es dir geht.' },

@@ -258,27 +258,33 @@
     const pool = type !== 'vocab' ? [] : all.filter((i) => App.srcMatch(i, q.src) && (!q.lvl || App.levelMatch(i, q.lvl)));
     const lessons = Array.from(new Set(pool.map((i) => i.lesson).filter((l) => l !== '' && l != null))).sort((a, b) => (+a) - (+b) || String(a).localeCompare(String(b)));
     const lessonOpen = (l) => pool.some((i) => String(i.lesson) === String(l) && ((dir !== 'de' && readOpen(i)) || (dir !== 'jp' && App.activeStatus(i) === 'unchecked')));
-    const firstOpen = lessons.find(lessonOpen) ?? lessons[0];
     const nextLesson = perLesson ? lessons.slice(lessons.findIndex((l) => String(l) === q.l) + 1).find(lessonOpen) : undefined;
     const pct = (n) => (c.total ? (n / c.total) * 100 : 0);
+    // Aufbau wie bei den Karteikarten: Art · Richtung · Quelle/Lektion/Niveau – Lernstand – Startknopf mit „pro Runde“
+    // Ohne Lektion = alle Lektionen gemischt, mit Lektion = pro Lektion (Buchreihenfolge)
+    const F = App.FLAG;
+    const tip = mix ? 'Steht ein japanisches Wort da, geht es ums Lesen, steht die deutsche Bedeutung da, ums Wort aus dem Deutschen. Antippen deckt auf.'
+      : active ? 'Antippen zeigt das japanische Wort.'
+        : `Antippen zeigt ${isK ? 'Bedeutung und Lesungen' : 'Lesung und Übersetzung'}.${isK ? ' „Kann ich“ heißt hier: kann ich lesen – Schreiben kommt danach im Kanji-Quiz.' : ''}`;
+    const locked = mix ? (!c.unchecked ? ac.locked : 0) : active ? c.locked : 0;
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="crumbs">${App.backCrumb()} › Einstufen</div>
       <div class="page-head"><div class="titles"><h1>Einstufen <span class="jp-title">確認</span></h1>
-        <p>${mix ? `Geh ${perLesson ? 'eine Lektion' : 'deine Vokabeln'} in Runden durch – beide Richtungen gemischt: Was kannst du schon lesen, und was weißt du auch aus dem Deutschen heraus?` : active ? 'Welche Wörter weißt du auch aus dem Deutschen heraus? Geh alle, die du schon lesen kannst, in Runden durch – was du noch üben musst, kommt gleich in die Lernschlange.' : `Was kannst du schon? Geh deine ${isK ? 'Kanji' : isP ? 'Ausdrücke' : 'Vokabeln'} in Runden durch – was du noch lernen musst, kommt gleich in die Lernschlange.`}</p></div>
-        <div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div></div>
+        <p>Was kannst du schon? Was du noch lernen musst, kommt gleich in die Lernschlange.</p></div></div>
       <div class="card" data-setup><div class="stack">
-        ${type !== 'vocab' || !lessons.length ? '' : `<div class="row"><div class="seg"><button class="${perLesson ? '' : 'on'}" data-lmode="">Alle Lektionen gemischt</button><button class="${perLesson ? 'on' : ''}" data-lmode="${esc(perLesson ? q.l : firstOpen)}">Pro Lektion</button></div></div>`}
-        ${type !== 'vocab' ? '' : `<div class="row"><div class="seg">${[['jp', 'Japanisch → Deutsch (lesen)'], ['de', 'Deutsch → Japanisch (aktiv)'], ['mix', 'Beide gemischt']].map(([k, l]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k}">${l}</button>`).join('')}</div></div>`}
+        <div class="row"><div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div>
+          ${type !== 'vocab' ? '' : `<div class="seg">${[['jp', `JP ${F.jp} → DE ${F.de}`, 'Japanisch → Deutsch (lesen)'], ['de', `DE ${F.de} → JP ${F.jp}`, 'Deutsch → Japanisch (aktiv)'], ['mix', 'Beide', 'Beide Richtungen gemischt']].map(([k, l, t]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k}" title="${t}">${l}</button>`).join('')}</div>`}
+          ${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}${isP ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${App.phraseGroups().map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}</div>
         <div class="row between"><div class="row" style="gap:18px">
-          <span><b style="font-size:24px;color:var(--muted)">${c.unchecked}</b> ungeprüft</span>
-          <span><b style="font-size:24px;color:var(--ai)">${c.learn}</b> in der Lernschlange</span>
-          <span><b style="font-size:24px;color:var(--matcha)">${c.known}</b> kann ich${active ? ' aktiv' : ''}</span></div>
-          <span class="small muted">${mix ? `Deutsch → Japanisch: ${ac.unchecked} offen · ${ac.learn} in der Lernschlange · ${ac.known} kann ich aktiv` : q.src || q.l || q.lvl || (isP && q.g) ? `Auswahl · insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
+          <span><b style="font-size:22px;color:var(--muted)">${c.unchecked}</b> ungeprüft</span>
+          <span><b style="font-size:22px;color:var(--ai)">${c.learn}</b> in der Lernschlange</span>
+          <span><b style="font-size:22px;color:var(--matcha)">${c.known}</b> kann ich${active ? ' aktiv' : ''}</span></div>
+          <span class="small muted">${mix ? `DE → JP: ${ac.unchecked} offen · ${ac.learn} in der Lernschlange · ${ac.known} kann ich` : q.src || q.l || q.lvl || (isP && q.g) ? `Insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
         <div class="progress" style="display:flex;height:10px"><i style="width:${pct(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pct(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
-        <div class="row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}${isP ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${App.phraseGroups().map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}
-          <label class="row small" style="gap:8px"><b>${isK ? 'Kanji' : isP ? 'Ausdrücke' : 'Wörter'} pro Runde</b><input class="input" type="number" min="3" max="100" value="${batch}" data-batch style="width:90px"></label>
+        <div class="row between karten-go"><div class="row">
           <button class="btn btn-primary" data-go ${open ? '' : 'disabled'}>${icon('play')} Runde starten (${Math.min(batch, open)})</button>
           ${perLesson && !open && c.total ? `<span class="verdict ok">✓ Lektion ${esc(q.l)} ist eingestuft</span>${nextLesson !== undefined ? `<button class="btn btn-sec" data-lmode="${esc(nextLesson)}">${icon('next')} Lektion ${esc(nextLesson)}</button>` : ''}` : !c.unchecked && c.total ? `<span class="verdict ok">✓ ${active && !(c.learn + c.known) ? 'Noch nichts einzustufen' : 'Alles in dieser Auswahl ist eingestuft'}</span>` : ''}</div>
-        ${mix ? `<div class="small muted">Tipp: Steht ein japanisches Wort da, geht es ums Lesen – steht die deutsche Bedeutung da, um das Wort aus dem Deutschen heraus. Antippen deckt auf. Die Gegenrichtung eines Wortes kommt frühestens in der nächsten Runde. „Lernen“ = kommt gleich in die Lernschlange und ist heute bei „Jetzt wiederholen“ dabei. Beim Lesen merkt es das Wort auch für Deutsch → Japanisch vor – diese Karten kommen von selbst, sobald du es lesen kannst.${ac.locked && !c.unchecked ? ` ${ac.locked} ${ac.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} für Deutsch → Japanisch dazu, sobald du ${ac.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : active ? `<div class="small muted">Tipp: Tippe auf die Bedeutung, um das japanische Wort zu sehen. „Kann ich“ = weiß ich aus dem Deutschen heraus (wird nicht mehr abgefragt). „Lernen“ = kommt gleich in die Lernschlange (Deutsch → Japanisch) und ist heute bei „Jetzt wiederholen“ dabei. Der Lese-Lernstand bleibt davon unberührt.${c.locked ? ` ${c.locked} ${c.locked === 1 ? 'Wort kommt' : 'Wörter kommen'} dazu, sobald du ${c.locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>` : `<div class="small muted">Tipp: Tippe auf ${isK ? 'ein Kanji, um Bedeutung & Lesungen' : isP ? 'einen Ausdruck, um Lesung & Übersetzung' : 'ein Wort, um Lesung & Übersetzung'} zu sehen. „Kann ich“ = gilt als gelernt (wird nicht mehr abgefragt). „Lernen“ = kommt gleich in die Lernschlange und ist heute bei „Jetzt wiederholen“ dabei.${isK ? ' Bei Kanji heißt „Kann ich“: kann ich lesen – fürs Schreiben kommt es danach im Kanji-Quiz dran.' : ''}</div>`}
+          <label class="small muted row" style="gap:6px">pro Runde <input class="input" type="number" min="3" max="100" value="${batch}" data-batch style="width:80px"></label></div>
+        <div class="small muted">${tip} „Kann ich“ wird nicht mehr abgefragt, „Lernen“ kommt in die Lernschlange und ist heute bei „Jetzt wiederholen“ dabei.${locked ? ` ${locked} ${locked === 1 ? 'Wort kommt' : 'Wörter kommen'} für DE → JP dazu, sobald du ${locked === 1 ? 'es' : 'sie'} lesen kannst.` : ''}</div>
       </div></div>
       <div data-stage style="margin-top:18px"></div></div>`;
     const bi = view.querySelector('[data-batch]');

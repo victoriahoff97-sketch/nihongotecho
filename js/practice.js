@@ -176,8 +176,8 @@
   const learningSum = (parts) => parts.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ');
   // In Häppchen: eine gemischte Reihenfolge, Runde für Runde, bis alles einmal dran war. Größe wählbar (0 = alles in einer Runde).
   const CHUNKS = [10, 20, 30, 50, 0];
-  // Kleine Flaggen für die Kartenrichtung (als SVG – Flaggen-Emojis zeigt Windows nur als Buchstaben)
-  const FLAG = {
+  // Kleine Flaggen für die Kartenrichtung (als SVG – Flaggen-Emojis zeigt Windows nur als Buchstaben); auch fürs Einstufen
+  const FLAG = App.FLAG = {
     jp: '<svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#bc002d"/></svg>',
     de: '<svg class="flag" viewBox="0 0 5 3" aria-hidden="true"><rect width="5" height="1" fill="#000"/><rect y="1" width="5" height="1" fill="#dd0000"/><rect y="2" width="5" height="1" fill="#ffce00"/></svg>',
   };
