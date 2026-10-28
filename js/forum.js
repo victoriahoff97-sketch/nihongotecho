@@ -138,10 +138,18 @@
   // Kanji stehen rechts neben dem Text (withKanji), alles andere darunter; i bleibt der Platz in refs
   // mine: eigener Beitrag – dann lässt sich am Beispielsatz (Zahnrad) ein anderer eigener Satz wählen
   const otherExamples = (r) => { const it = r.type === 'vocab' && App.item(r.id); return it ? (it.examples || []).filter((x) => x && x.jp) : []; };
+  // Satz aus „Sätze erkennen“: groß mit Furigana, darunter Deutsch und Quelle
+  const satzHtml = (r) => {
+    const s = r.satz;
+    const src = s.src || s.url ? `<span class="forum-satz-src">${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.src || 'Quelle')} ↗</a>` : esc(s.src)}</span>` : '';
+    return `<div class="forum-satz ${App.SECTIONS.vocab.cls}"><span lang="ja" class="forum-satz-jp">${App.jp.ruby(s.jp)}</span>${s.de ? `<span class="muted">${esc(s.de)}</span>` : ''}${src}</div>`;
+  };
   const refsHtml = (refs, owner, mine) => {
-    const list = F.cleanRefs(refs).map((r, i) => [r, i]).filter(([r]) => r.type !== 'kanji');
-    if (!list.length) return '';
-    return `<div class="forum-refs">${list.map(([r, i]) => {
+    const all = F.cleanRefs(refs);
+    const satz = all.find((r) => r.type === 'satz');
+    const list = all.map((r, i) => [r, i]).filter(([r]) => r.type !== 'kanji' && r.type !== 'satz');
+    if (!list.length) return satz ? satzHtml(satz) : '';
+    return `${satz ? satzHtml(satz) : ''}<div class="forum-refs">${list.map(([r, i]) => {
       const sec = App.SECTIONS[r.type];
       const take = resolve(r).kind === 'take';
       // Vokabeln bringen ihre Kopie mit (Wort, Lesung, Deutsch, oberster Beispielsatz) – so sehen alle sie, auch ohne Paket
@@ -166,6 +174,41 @@
       onClose: () => done(chosen),
     });
     md.body.onclick = (e) => { const b = e.target.closest('[data-k]'); if (b) { chosen = list[Number(b.dataset.k)]; md.close(); } };
+  });
+  // „Satz anhängen“: einen der erkannten Sätze wählen (bei nur einem schon gewählt) und die Vokabeln dazu antippen
+  // room = wie viele Vokabeln noch neben den Satz passen → Promise mit { satz, vocab } (oder null)
+  const pickSentence = (room) => new Promise((done) => {
+    const list = App.sentencesOpen();
+    let k = 0, picked = new Set(), result = null;
+    const md = App.modal({ title: 'Satz anhängen', foot: false, cls: 'forum-modal', onClose: () => done(result) });
+    const draw = () => {
+      const s = list[k];
+      md.body.innerHTML = `${list.length > 1 ? `<p class="muted small">Welcher Satz?</p><div class="forum-exlist">${list.map((x, i) => `<button type="button" class="forum-expick ${i === k ? 'on' : ''}" data-k="${i}"><span lang="ja">${App.jp.ruby(x.jp)}</span>${x.de ? `<span class="muted">${esc(x.de)}</span>` : ''}</button>`).join('')}</div>`
+          : `<div class="forum-satz ${App.SECTIONS.vocab.cls}"><span lang="ja" class="forum-satz-jp">${App.jp.ruby(s.jp)}</span>${s.de ? `<span class="muted">${esc(s.de)}</span>` : ''}</div>`}
+        <p class="muted small" style="margin-top:14px">${s.vocab.length ? `Welche Vokabeln sollen dazu? <span>(höchstens ${room})</span>` : 'In diesem Satz steckt keine deiner Vokabeln – der Satz kommt allein.'}</p>
+        <div class="chips ${App.SECTIONS.vocab.cls}">${s.vocab.map((v) => `<button type="button" class="chip ${picked.has(v.id) ? 'on' : ''}" data-v="${esc(v.id)}"><span lang="ja">${esc(v.kanji || v.kana)}</span><span class="small" style="opacity:.8">${esc(App.meaning(v).text.slice(0, 30))}</span></button>`).join('')}</div>
+        <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn btn-primary" data-ok>Anhängen</button></div>`;
+    };
+    draw();
+    md.body.onclick = (e) => {
+      const b = e.target.closest('[data-k]');
+      if (b) { k = Number(b.dataset.k); picked = new Set(); draw(); return; }
+      const v = e.target.closest('[data-v]');
+      if (v) {
+        const id = v.dataset.v;
+        if (picked.has(id)) picked.delete(id);
+        else if (picked.size >= room) { App.toast(`Höchstens ${F.MAX_REFS} Verknüpfungen pro Beitrag – Satz und ${room} ${room === 1 ? 'Vokabel' : 'Vokabeln'}`); return; }
+        else picked.add(id);
+        draw(); return;
+      }
+      if (e.target.closest('[data-ok]')) {
+        const s = list[k];
+        // Vokabeln ohne eigenen Beispielsatz – der geteilte Satz ist das Beispiel
+        const vocab = s.vocab.filter((x) => picked.has(x.id)).map((it) => { const r = toRef(it); if (r.vocab) r.vocab.examples = []; return r; });
+        result = { satz: F.makeSentenceRef(s), vocab };
+        md.close();
+      }
+    };
   });
   const kanjiHtml = (refs, owner) => {
     const list = F.cleanRefs(refs).map((r, i) => [r, i]).filter(([r]) => r.type === 'kanji');
@@ -259,9 +302,11 @@
     const drawRefs = () => {
       const here = pageItem();
       const offer = here && !refs.some((r) => r.id === here.id) && refs.length < F.MAX_REFS ? here : null;
-      chosen.innerHTML = refs.map((r, i) => `<span class="chip on ${App.SECTIONS[r.type].cls}"><span lang="ja">${esc(r.label)}</span>
+      const satzOffer = !refs.some((r) => r.type === 'satz') && refs.length < F.MAX_REFS && App.sentencesOpen().length;
+      chosen.innerHTML = refs.map((r, i) => `<span class="chip on ${App.SECTIONS[r.type === 'satz' ? 'vocab' : r.type].cls}"><span lang="ja">${r.type === 'satz' ? '例文 ' : ''}${esc(r.label)}</span>
           <button type="button" class="forum-unref" data-unref="${i}" title="Verknüpfung entfernen" aria-label="Verknüpfung entfernen">✕</button></span>`).join('')
-        + (offer ? `<button type="button" class="chip forum-offer" data-here>${icon('plus')} ${App.screenItem && App.screenItem() ? 'Diese Karte' : 'Diesen Eintrag'} anhängen: <b lang="ja">${esc(App.itemPlain(offer))}</b></button>` : '');
+        + (offer ? `<button type="button" class="chip forum-offer" data-here>${icon('plus')} ${App.screenItem && App.screenItem() ? 'Diese Karte' : 'Diesen Eintrag'} anhängen: <b lang="ja">${esc(App.itemPlain(offer))}</b></button>` : '')
+        + (satzOffer ? `<button type="button" class="chip forum-offer" data-satz>${icon('plus')} Satz anhängen</button>` : '');
       chosen.hidden = !chosen.innerHTML;
     };
     const pick = async () => {
@@ -326,6 +371,13 @@
       const un = e.target.closest('[data-unref]');
       if (un) { refs.splice(Number(un.dataset.unref), 1); drawRefs(); }
       if (e.target.closest('[data-here]')) { const it = pageItem(); if (it) { refs.push(toRef(it)); setErr(''); drawRefs(); } }
+      if (e.target.closest('[data-satz]')) pickSentence(F.MAX_REFS - refs.length - 1).then((add) => {
+        if (!add) return;
+        // der Satz vorne, Vokabeln dahinter; schon verknüpfte Wörter nicht doppelt
+        const vocab = add.vocab.filter((r) => !refs.some((x) => x.id === r.id));
+        refs = [add.satz].concat(refs, vocab).slice(0, F.MAX_REFS);
+        setErr(''); setClosed(false); drawRefs();
+      });
     });
     const takeImage = async (file) => {
       setErr('');
@@ -572,7 +624,7 @@
   // Kästchen wie im Tagebuch: links groß der Tag, rechts Kopf, bis zu drei Zeilen Text, unten Verknüpfungen und Antworten
   const WEEKDAY = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
   const dateCol = (ms) => { const d = new Date(ms || Date.now()); return `<span class="forum-date"><span class="forum-day">${d.getDate()}</span><span class="forum-wd">${WEEKDAY[d.getDay()]}</span></span>`; };
-  const refChips = (refs) => F.cleanRefs(refs).map((r) => `<span class="badge sec ${App.SECTIONS[r.type].cls}" lang="ja">${esc(r.label)}</span>`).join('');
+  const refChips = (refs) => F.cleanRefs(refs).map((r) => `<span class="badge sec ${App.SECTIONS[r.type === 'satz' ? 'vocab' : r.type].cls}" lang="ja">${r.type === 'satz' ? '例文 ' : ''}${esc(r.label)}</span>`).join('');
   const row = (p) => {
     const fresh = F.isNew(p, st.seen, D.uid());
     const replies = p.replyCount ? `<span class="badge">${icon('chat')} ${p.replyCount} ${p.replyCount === 1 ? 'Antwort' : 'Antworten'}</span>` : '';
@@ -597,9 +649,9 @@
     ui.tab = ui.tab || 'offen';
     const r = ui.root;
     ui.q = ui.q || '';
-    r.innerHTML = `<div data-new></div><div class="forum-bar" data-tabs><b>Eure Themen</b>
+    r.innerHTML = `<div data-newpost></div><div class="forum-bar" data-tabs><b>Eure Themen</b>
       <input class="input forum-search" type="search" placeholder="Suchen …" aria-label="Im Forum suchen" value="${esc(ui.q)}"><select class="input" aria-label="Welche Themen"></select></div><div data-list class="forum-list"></div>`;
-    r.querySelector('[data-new]').appendChild(composer({
+    r.querySelector('[data-newpost]').appendChild(composer({
       // von einem Eintrag aus geöffnet: gleich aufgeklappt, damit „Diesen Eintrag anhängen“ zu sehen ist
       key: 'new', kinds: true, closed: !pageItem(), label: 'Teilen', placeholder: 'Neuer Gedanke … was ist dir aufgefallen?',
       onSubmit: (v) => D.addPost(st.code, Object.assign({ name: st.name }, v)),

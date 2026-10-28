@@ -117,6 +117,16 @@
   };
   // Läuft gerade eine Zuordnung (erkannte Sätze, noch nicht gespeichert oder geleert)?
   App.sentencesBusy = () => !!(state && state.rows.length);
+  // Gerade erkannte Sätze, solange die Seite offen ist – fürs Forum („Satz anhängen“); vocab = eigene Vokabeln im Satz
+  App.sentencesOpen = () => {
+    if (App.parseHash().path !== '/saetze' || !state || !state.rows.length) return [];
+    const ref = (state.ref || '').trim();
+    return state.rows.map((r) => ({
+      jp: exampleOf(r).jp, plain: r.jp, de: (r.de || '').trim(),
+      src: [state.src, /^https?:\/\//i.test(ref) ? '' : ref].filter(Boolean).join(' – '), url: /^https?:\/\//i.test(ref) ? ref : '',
+      vocab: r.matches.filter((m) => !m.nested).map((m) => App.item(m.v.id)).filter(Boolean),
+    }));
+  };
 
   // =========================================================
   // Seite: Sätze zuordnen
@@ -139,7 +149,7 @@
     const txt = view.querySelector('[data-text]'), srcSel = view.querySelector('[data-src]'), refIn = view.querySelector('[data-ref]');
     if (!state) state = { text: '', src: '', ref: '', rows: [] };
     let rows = state.rows;
-    txt.value = state.text; refIn.value = state.ref;
+    txt.value = state.text; refIn.value = state.ref; state.src = srcSel.value;
     txt.addEventListener('input', () => { state.text = txt.value; });
     refIn.addEventListener('input', () => { state.ref = refIn.value; });
     srcSel.addEventListener('change', () => { state.src = srcSel.value; });

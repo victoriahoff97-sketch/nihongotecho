@@ -7,6 +7,19 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-forum-satz', date: '28. Oktober',
+      items: [
+        { t: 'Sätze in der Gruppe teilen', d: 'Einen interessanten Satz gefunden? In „Sätze erkennen“ die Gruppe öffnen und auf „Satz anhängen“ tippen – dazu wählst du die Vokabeln, um die es dir geht.' },
+      ],
+    },
+    {
+      id: '2026-10-28-kanji-quiz', date: '28. Oktober',
+      items: [
+        { t: 'Kanji-Quiz wie die Karteikarten', d: 'Üben › Kanji-Quiz hat jetzt dieselbe Auswahl wie die Karteikarten: Quelle, Lektion, Niveau, Lernstand und dieselben Startknöpfe.' },
+        { t: 'Frei üben statt 10 zufällige', d: 'Frei üben geht im Kanji-Quiz alle Kanji deiner Auswahl durch – Runde für Runde, so groß wie bei „pro Runde“ eingestellt.' },
+      ],
+    },
+    {
       id: '2026-10-28-lernschlange', date: '28. Oktober',
       items: [
         { t: 'Überall „Lernschlange“', d: 'Was du gerade lernst, heißt jetzt in der ganzen App gleich – auch bei Kanji und beim Kanji-Schreiben (früher „Lernstapel“ oder „Übe ich“).' },

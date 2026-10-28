@@ -57,16 +57,25 @@
     if (it.type === 'kanji') ref.kanji = cleanKanji(Object.assign({ char: it.char, de: sub }, kanji));
     return ref;
   };
+  // Satz aus „Sätze erkennen“ (z. B. aus einem Zeitungsartikel): kein Eintrag, sondern eine Kopie des Satzes;
+  // jp mit Furigana-Notation, plain ohne – höchstens einer pro Beitrag, Link nur ins Web
+  const cleanSatz = (s) => ({ jp: str(s.jp, 300), de: str(s.de, 300), src: str(s.src, 120), url: /^https?:\/\//i.test(s.url || '') ? str(s.url, 300) : '' });
+  F.makeSentenceRef = ({ jp, plain, de, src, url }) => ({ type: 'satz', id: 'satz', label: str(plain, 60), sub: str(de, 80), satz: cleanSatz({ jp, de, src, url }) });
   // Verweise kommen von anderen Geräten: nur Bekanntes durchlassen, Texte kürzen
-  F.cleanRefs = (list) => (Array.isArray(list) ? list : [])
-    .filter((r) => r && typeof r === 'object' && F.REF_TYPES.includes(r.type) && typeof r.id === 'string' && r.id && r.id.length <= 100)
-    .slice(0, F.MAX_REFS)
-    .map((r) => {
-      const out = { type: r.type, id: r.id, label: str(r.label, 60), sub: str(r.sub, 80) };
-      if (r.type === 'vocab' && r.vocab && typeof r.vocab === 'object') out.vocab = cleanVocab(r.vocab);
-      if (r.type === 'kanji' && r.kanji && typeof r.kanji === 'object') out.kanji = cleanKanji(r.kanji);
-      return out;
-    });
+  F.cleanRefs = (list) => {
+    let satz = false;
+    return (Array.isArray(list) ? list : [])
+      .filter((r) => r && typeof r === 'object' && typeof r.id === 'string' && r.id && r.id.length <= 100
+        && (F.REF_TYPES.includes(r.type) || (r.type === 'satz' && r.satz && typeof r.satz === 'object' && !satz && (satz = true))))
+      .slice(0, F.MAX_REFS)
+      .map((r) => {
+        const out = { type: r.type, id: r.id, label: str(r.label, 60), sub: str(r.sub, 80) };
+        if (r.type === 'vocab' && r.vocab && typeof r.vocab === 'object') out.vocab = cleanVocab(r.vocab);
+        if (r.type === 'kanji' && r.kanji && typeof r.kanji === 'object') out.kanji = cleanKanji(r.kanji);
+        if (r.type === 'satz') out.satz = cleanSatz(r.satz);
+        return out;
+      });
+  };
   // Antippen: derselbe Eintrag → öffnen · eigene Vokabel mit demselben Wort bzw. eigenes Kanji mit demselben
   // Zeichen → das öffnen · fremde Vokabel / fremdes Kanji → übernehmen anbieten · sonst danach suchen
   F.resolveRef = (ref, { byId, byWord, byChar = () => null }) => {
@@ -90,7 +99,7 @@
   // Alle Wörter müssen irgendwo vorkommen: Text, Name, verknüpfte Einträge (Wort, Lesung, Deutsch)
   const fold = (s) => String(s ?? '').toLowerCase().normalize('NFKC');
   const postWords = (p) => [p.text, p.name].concat(...F.cleanRefs(p.refs).map((r) => [r.label, r.sub,
-    r.vocab && r.vocab.kana, r.vocab && r.vocab.de, r.kanji && r.kanji.de, r.kanji && r.kanji.on, r.kanji && r.kanji.kun]));
+    r.vocab && r.vocab.kana, r.vocab && r.vocab.de, r.kanji && r.kanji.de, r.kanji && r.kanji.on, r.kanji && r.kanji.kun, r.satz && r.satz.de, r.satz && r.satz.src]));
   F.matchPost = (p, q) => {
     const words = fold(q).split(/\s+/).filter(Boolean);
     if (!words.length) return true;
