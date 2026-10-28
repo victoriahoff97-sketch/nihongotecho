@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-verwandt', date: '28. Oktober',
+      items: [
+        { t: 'Vokabeln: rechte Spalte aufgeräumt', d: 'Bei einem Wort steht rechts nicht mehr die Grammatik derselben Lektion. Wörter mit gleichem Kanji (z. B. 並ぶ und 並べる) bleiben dort zum Vergleichen.' },
+      ],
+    },
+    {
       id: '2026-10-28-diktieren', date: '28. Oktober',
       items: [
         { t: 'In der Gruppe diktieren', d: 'Im Schreibfeld der Gruppe gibt es jetzt „Diktieren“: sprechen statt tippen, auf Deutsch oder Japanisch (DE / 日本語 daneben). Es hört zu, bis du „Fertig“ tippst.' },

@@ -327,7 +327,6 @@
       const chars = kanjiChars(it.kanji);
       add('Kanji in diesem Wort', chars.map(App.kanjiByChar));
       add('Wörter mit gleichem Kanji', all.filter((x) => x.type === 'vocab' && chars.some((c) => (x.kanji || '').includes(c))));
-      add('Grammatik derselben Lektion', all.filter((x) => x.type === 'grammar' && sameLesson(x)), 6);
       const ex = (it.examples || []).map((e) => e.jp).join('');
       add('Ausdrücke', all.filter((x) => x.type === 'phrase' && it.kanji && JP.plain(x.jp).includes(it.kanji)), 5);
       if (!ex) { /* nichts */ }
