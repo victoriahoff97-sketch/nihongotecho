@@ -734,6 +734,7 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .imp-list { border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
 .imp-row { display: grid; grid-template-columns: 28px minmax(110px, 1fr) minmax(150px, 1.1fr) minmax(170px, 1.6fr) 36px; gap: 12px; align-items: start; padding: 10px 12px; border-bottom: 1px solid var(--line); }
 .imp-row:last-child { border-bottom: 0; }
+.imp-hd { position: sticky; top: 0; z-index: 1; padding-top: 8px; padding-bottom: 6px; background: var(--card); border-radius: 14px 14px 0 0; font-size: 11.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .imp-row.off > :not(.imp-on) { opacity: .4; }
 .imp-row.off .imp-in { text-decoration: line-through; }
 .imp-row.editing { display: block; background: var(--sec-soft); }
@@ -773,6 +774,7 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
   .imp-row { grid-template-columns: 28px 1fr 36px; }
   .imp-row .imp-de, .imp-row .imp-ex { grid-column: 2 / 4; }
   .imp-row .icon-btn { grid-row: 1; grid-column: 3; }
+  .imp-hd { display: none; }
   .imp-mrow { grid-template-columns: 1fr; gap: 4px; }
   .imp-where .seg { flex-wrap: wrap; }
 }

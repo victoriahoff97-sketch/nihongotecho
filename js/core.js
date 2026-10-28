@@ -287,6 +287,7 @@ window.App = window.App || {};
     inkPen: null, // Schreibblatt, alt: zuletzt gewählter Stift { tool, wIdx, widths, color, mcolor } – nur noch Vorlage für die ersten eigenen Stifte
     inkPens: null, // Schreibblatt: Meine Stifte { list, def, last } (js/ink-pen.js normPens)
     libFolders: [], // Bibliothek: eigene Ordner [{ id, name }], Dateien merken sich f.folder (js/library-logic.js)
+    importSource: '', // Vokabeln importieren: zuletzt benutzte Quelle, wird beim nächsten Import vorgeschlagen (js/vocabcheck.js)
   };
 
   App.onChange = (fn) => S.listeners.add(fn);

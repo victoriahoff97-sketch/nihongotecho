@@ -702,7 +702,9 @@
       step = 2;
       step1.hidden = true; s2.hidden = false; backB.hidden = false; nextB.hidden = false;
       if (!('source' in form)) {
-        form.source = meta.source || (/anki/i.test(fname) ? 'Anki' : (App.lsGet('importSource') || (pdfBlob ? 'VHS-Kurs' : 'Anki')));
+        // zuletzt benutzte Quelle hat Vorrang (settings.importSource, früher nur pro Gerät im localStorage)
+        const lastSrc = S.settings.importSource || App.lsGet('importSource');
+        form.source = lastSrc || meta.source || (/anki/i.test(fname) ? 'Anki' : (pdfBlob ? 'VHS-Kurs' : 'Anki'));
         form.lesson = String(meta.lesson ?? ''); form.tags = '';
       }
       s2.innerHTML = `<div class="imp-head"><span class="imp-file">${icon(pdfBlob ? 'file' : 'list')}<b>${esc(fname || 'Eingefügter Text')}</b></span>${pdfInfo ? `<span class="small muted">${pdfInfo}</span>` : ''}<span class="grow"></span><span class="row small" data-badges></span></div>
@@ -817,7 +819,8 @@
       const top = md.body.scrollTop;
       const byEid = new Map(r.items.map((it) => [it._eid, it]));
       const rows = entries.map((e) => (byEid.has(e.eid) || e.off || editing === e.eid ? rowHtml(e, byEid.get(e.eid)) : '')).join('');
-      list.innerHTML = rows || '<div class="imp-empty muted">Keine neuen Wörter in dieser Liste.</div>';
+      const hd = '<div class="imp-row imp-hd" aria-hidden="true"><span></span><span>Japanisch</span><span>Deutsch</span><span>Beispielsatz</span><span></span></div>';
+      list.innerHTML = rows ? hd + rows : '<div class="imp-empty muted">Keine neuen Wörter in dieser Liste.</div>';
       md.body.scrollTop = top;
       if (keep) { const x = list.querySelector(`[data-eid="${keep.eid}"] [data-f="${keep.f}"]`); if (x) { x.focus(); try { x.setSelectionRange(keep.s, keep.s); } catch (er) { /* kein Textfeld */ } } }
       // „vielleicht schon vorhanden“ – je Wort: dasselbe (Satz kommt dorthin) oder neu anlegen
@@ -883,6 +886,7 @@
     const doImport = async () => {
       const source = s2.querySelector('[data-w="source"]').value;
       App.lsSet('importSource', source);
+      if (S.settings.importSource !== source) await App.saveSettings({ importSource: source }, { silent: true });
       const tags = s2.querySelector('[data-w="tags"]').value.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
       const r = applyCache(buildItems(entries, { source, lesson: s2.querySelector('[data-w="lesson"]').value.trim(), tags, choice }), cache);
       unmark(r);

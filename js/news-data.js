@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-import-spalten', date: '28. Oktober',
+      items: [
+        { t: 'Vokabel-Import mit Spaltennamen', d: 'Beim Importieren einer Wortliste steht jetzt über den Spalten, was Japanisch, Deutsch und Beispielsatz ist.' },
+        { t: 'Quelle wird vorgeschlagen', d: 'Der Import merkt sich, welche Quelle du zuletzt gewählt hast, und schlägt sie beim nächsten Mal von selbst vor.' },
+      ],
+    },
+    {
       id: '2026-10-28-kanji-striche', date: '28. Oktober',
       items: [
         { t: 'Strichzahl bei Kanji berichtigt', d: 'Wer ein neues Kanji per Tastatur eintippt (z. B. „aki“ für 秋), bekam manchmal eine falsche Strichzahl. Behoben – falsche Zahlen wurden von selbst korrigiert.' },
