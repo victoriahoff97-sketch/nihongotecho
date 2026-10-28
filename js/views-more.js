@@ -229,7 +229,7 @@
   const folderRow = (all, fl) => {
     const n = LL.counts(all, fl);
     return `<h3 class="heft-head">Ordner</h3><div class="folder-row">${LL.byFolderName(fl).map((x) => `<a class="folder-card" href="#/bibliothek?folder=${x.id}" data-folder-drop="${x.id}">${icon('folder')}<span><b>${esc(x.name)}</b><small>${n[x.id] === 1 ? '1 Datei' : n[x.id] + ' Dateien'}</small></span></a>`).join('')}
-      <button type="button" class="folder-card folder-new" data-folder-new>${icon('plus')} Neuer Ordner</button></div>`;
+      <button type="button" class="heft-card heft-new" data-folder-new title="Neuer Ordner">${icon('plus')} Neu</button></div>`;
   };
   // Karte mit Ordner-Abzeichen – nur bei Filtern, wo Dateien aus Ordnern mitten in der Liste stehen
   const withFolderBadge = (html, f, fl) => {
@@ -259,19 +259,21 @@
     const kinds = Array.from(new Set(all.map(App.fileKind)));
     const secs = Array.from(new Set(all.map((f) => f.section)));
     if (App.exercises.inLibrary()) secs.push('exercise');
-    view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Alle Materialien: Buchseiten, Präsentationen, Hausaufgaben, Notizblätter – filterbar nach Quelle, Bereich und Lektion.',
-      `${App.exercises.inLibrary() ? `<a class="btn ${exMode ? 'btn-sec' : ''}" href="${exMode ? '#/bibliothek' : App.exercises.libHref()}">${icon('practice')} Buchaufgaben</a>` : ''}${!exMode && files.length && !pick ? `<button class="btn" data-pick-on>${icon('check')} Auswählen</button>` : ''}<button class="btn" data-heft-new>${icon('notebook')} Neues Notizbuch</button><button class="btn" data-nb>${icon('notebook')} Notizblatt</button><button class="btn btn-sec" data-upload="library">${icon('upload')} Hochladen</button>`)}
-      <div class="dropzone" data-drop style="margin-bottom:18px"${exMode || pick ? ' hidden' : ''}>${icon('upload')} <b>Dateien hierher ziehen</b> – PDF, Fotos, PowerPoint, Videos …</div>
-      <div class="toolbar"><div class="filter-row">
+    // Aufbau: Kopf (Neues hereinbringen) · Regal (Notizbücher | Ordner) bzw. Ordner-Kopf · Dateien (Filter, Sortieren, Auswählen) · Ablage-Zeile · Karten
+    const shelf = !exMode && !filtered && !folder && !pick;
+    view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Deine Materialien aus Kurs und Buch: Buchseiten, Folien, Hausaufgaben und Notizblätter.',
+      `${App.exercises.inLibrary() ? `<a class="btn ${exMode ? 'btn-sec' : ''}" href="${exMode ? '#/bibliothek' : App.exercises.libHref()}">${icon('practice')} Buchaufgaben</a>` : ''}<button class="btn" data-nb>${icon('notebook')} Notizblatt</button><button class="btn btn-sec" data-upload="library">${icon('upload')} Hochladen</button>`)}
+      ${shelf ? `<div class="lib-shelf"><section>${App.heftRow()}</section><section>${folderRow(all, fl)}</section></div>` : ''}
+      ${folder ? `<div class="folder-crumb"><a class="btn btn-sm" href="#/bibliothek" data-folder-drop="">← Alle Dateien</a><h3>${icon('folder')} ${esc(folder.name)}</h3><span class="grow"></span><button class="btn btn-sm" data-folder-ren>${icon('edit')} Umbenennen</button><button class="btn btn-sm" data-folder-del>${icon('trash')} Ordner löschen</button></div>` : ''}
+      <div class="lib-files-head"><h3>${exMode ? 'Buchaufgaben' : 'Dateien'}</h3><span class="grow"></span>${!exMode && files.length && !pick ? `<button class="btn btn-sm" data-pick-on>${icon('check')} Auswählen</button>` : ''}</div>
+      <div class="toolbar lib-toolbar"><div class="filter-row">
         ${App.sourceSelect(all, q.src)}<select class="input" data-q-select="sec"><option value="">Alle Bereiche</option>${secs.map((s) => `<option value="${s}" ${q.sec === s ? 'selected' : ''}>${SEC_LABEL[s] || s}</option>`).join('')}</select>
         ${exMode ? '' : `<select class="input" data-q-select="kind"><option value="">Alle Dateitypen</option>${kinds.map((k) => `<option value="${k}" ${q.kind === k ? 'selected' : ''}>${KIND_LABEL[k]}</option>`).join('')}</select>
         ${App.lessonSelect(all, q.l)}
         <select class="input lib-sort" data-lib-sort title="Sortieren" aria-label="Sortieren">${LL.SORTS.map((o) => `<option value="${o.key}" ${sort === o.key ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`}</div></div>
-      ${folder ? `<div class="folder-crumb"><a class="btn btn-sm" href="#/bibliothek" data-folder-drop="">← Alle Dateien</a><h3>${icon('folder')} ${esc(folder.name)}</h3><span class="grow"></span><button class="btn btn-sm" data-folder-ren>${icon('edit')} Umbenennen</button><button class="btn btn-sm" data-folder-del>${icon('trash')} Ordner löschen</button></div>` : ''}
       ${pick ? `<div class="pick-bar"><b data-pick-count></b><button class="btn btn-sm" data-pick-all></button><span class="grow"></span><button class="btn btn-sm" data-pick-move>${icon('folder')} In Ordner</button><button class="btn btn-sm btn-danger" data-pick-del>${icon('trash')} Löschen</button><button class="btn btn-sm btn-sec" data-pick-off>Fertig</button></div>` : ''}
-      ${!exMode && !filtered && !folder ? `<div class="lib-shelf">${(() => { const h = pick ? '' : App.heftRow(); return h ? `<section>${h}</section>` : ''; })()}<section>${folderRow(all, fl)}</section></div>` : ''}
-      ${!exMode && !filtered && !folder && fl.length && files.length ? '<h3 class="heft-head" style="margin-top:16px">Dateien</h3>' : ''}
-      <div style="margin-top:16px">${exMode ? App.exercises.libraryHtml(q) : files.length ? (pick ? `<div class="file-grid picking" data-fixed>${files.map(pickCard).join('')}</div>` : `<div class="file-grid"${sort === 'own' ? '' : ' data-nosort'}>${files.map(card).join('')}</div>`) : folder ? `<div class="empty-state"><div class="big">${icon('folder')}</div><h3>Der Ordner ist leer</h3><p>Zieh Dateien auf den Ordner oder nimm „Auswählen“ → „In Ordner“.</p></div>` : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien</h3><p>Lade deine Genki-Seiten, Marugoto-PDFs, PowerPoints aus dem VHS-Kurs oder Hausaufgaben hoch.</p></div>`}</div></div>`;
+      <div class="dropzone dropzone-slim" data-drop${exMode || pick ? ' hidden' : ''}>${icon('upload')} <b>Dateien hierher ziehen</b> oder tippen – PDF, Fotos, PowerPoint, Videos …</div>
+      <div>${exMode ? App.exercises.libraryHtml(q) : files.length ? (pick ? `<div class="file-grid picking" data-fixed>${files.map(pickCard).join('')}</div>` : `<div class="file-grid"${sort === 'own' ? '' : ' data-nosort'}>${files.map(card).join('')}</div>`) : folder ? `<div class="empty-state"><div class="big">${icon('folder')}</div><h3>Der Ordner ist leer</h3><p>Zieh Dateien auf den Ordner oder nimm „Auswählen“ → „In Ordner“.</p></div>` : `<div class="empty-state"><div class="big">資</div><h3>Noch keine Dateien</h3><p>Lade deine Genki-Seiten, Marugoto-PDFs, PowerPoints aus dem VHS-Kurs oder Hausaufgaben hoch.</p></div>`}</div></div>`;
     App.hydrateThumbs(view);
     App.exercises.hydrate(view);
     view.querySelector('[data-nb]').onclick = () => App.newNotebook(folder ? { section: 'library', folder: folder.id } : { section: 'library' });

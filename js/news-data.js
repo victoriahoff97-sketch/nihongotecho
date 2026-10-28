@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-bibliothek-3', date: '28. Oktober',
+      items: [
+        { t: 'Bibliothek aufgeräumt', d: 'Neue Notizbücher und Ordner legst du über „＋ Neu“ in ihrer Reihe an. Filter, Sortieren und „Auswählen“ stehen jetzt gesammelt bei „Dateien“.' },
+      ],
+    },
+    {
       id: '2026-10-28-bibliothek-2', date: '28. Oktober',
       items: [
         { t: 'Notizbücher und Ordner nebeneinander', d: 'In der Bibliothek stehen „Meine Notizbücher“ und „Ordner“ jetzt in einer Reihe. Sind es mehr, wischst oder scrollst du in jedem Bereich zur Seite.' },

@@ -140,13 +140,12 @@
     });
   });
 
-  // Reihe „Meine Notizbücher“ über den Dateien der Bibliothek (leer, solange es kein Heft gibt)
+  // Reihe „Meine Notizbücher“ über den Dateien der Bibliothek – auch ohne Heft, damit „＋ Neu“ immer zu finden ist
   App.heftRow = () => {
     const books = allBooks();
-    if (!books.length) return '';
     return `<h3 class="heft-head">Meine Notizbücher</h3><div class="heft-row">${books.map((b, i) => {
       const n = chaptersOf(b).length, f = KL.family(b.color, KL.HEFT_ROW[i % KL.HEFT_ROW.length]);
       return `<a class="heft-card" style="--hc-cover:${f.cover};--hc-bg:${f.tabs[2]};--hc-line:${f.tabs[3]};--hc-ink:${f.ink}" href="${App.heftLink(b.id)}"><b>${esc(b.title)}</b><span>${n === 1 ? '1 Kapitel' : n + ' Kapitel'}</span></a>`; }).join('')}
-      <button type="button" class="heft-card heft-new" data-heft-new>${icon('plus')} Neu</button></div>`;
+      <button type="button" class="heft-card heft-new" data-heft-new title="Neues Notizbuch">${icon('plus')} Neu</button></div>`;
   };
 })(window.App);
