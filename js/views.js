@@ -467,12 +467,11 @@
     const lernstand = [lsRow('vocab', blocks.vocab, progBar(progOf({ vocab }).tot, 'thin')),
       lsRow('kanji', blocks.kanji, progBar({ known: kc.known, queue: kc.learn, total: kc.total }, 'thin')),
       lsRow('genki', blocks.genki, lessonBar), lsRow('jlpt', blocks.jlpt)].join('');
-    // Zuletzt: Unterricht und eigene Einträge in einer Karte
-    const zuletzt = `<div class="section-title">Zuletzt</div><div class="card home-recent">
-        <div><div class="row between"><h3>授業 Unterricht</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
-          <div class="rel-list">${sessions.slice(0, 2).map(App.relItem).join('') || '<p class="muted small">Noch keine Stunde angelegt.</p>'}</div></div>
-        <div><h3>Zuletzt gespeichert</h3>
-          <div class="rel-list">${recent.slice(0, 4).map(App.relItem).join('') || '<p class="muted small">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div></div>`;
+    // Zuletzt: Unterricht und eigene Einträge als zwei eigene Karten nebeneinander
+    const zuletzt = fitRow('home-bottom', [`<div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
+          <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>`,
+      `<div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
+          <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>`], 2);
     const shown = { hero: blocks.hero, actions: blocks.actions, read: blocks.read, sammlung: blocks.sammlung, today: App.dayCheck.card(),
       lernstand: lernstand ? `<div class="section-title">Mein Lernstand</div><div class="card ls-card">${lernstand}</div>` : '',
       zuletzt };

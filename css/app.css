@@ -2009,8 +2009,6 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .ls-body { padding: 0 0 14px; }
 .ls-body > .card { box-shadow: none; border: 0; padding: 0; background: none; }
 .ls-lessons { display: flex; gap: 3px; }
-.home-recent { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; }
-.home-recent h3 { margin: 0 0 8px; }
 .home-editing .home-block > .block-off { position: absolute; top: 10px; right: 10px; pointer-events: auto; z-index: 2; }
 @media (max-width: 600px) { .ls-row > summary { grid-template-columns: 80px minmax(0, 1fr) 14px; } .ls-row > summary > .small { display: none; } }
 
@@ -2038,22 +2036,18 @@ button.day-stamp:not(.on):hover { border-color: var(--shu); color: var(--shu); }
 .ls-lessons i.part::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: var(--p); background: var(--matcha); }
 .ls-lessons i.done { background: var(--matcha); border-color: var(--matcha); color: #fff; }
 
-/* 今日のスタンプ in Zinnoberrot (2026-10-28): kräftige Karte, weiße Stempel, etwas niedriger */
-.day-check { background: var(--shu); border: 0; color: #fff; padding: 12px 18px; }
-.day-check h3, .day-check h3 span, .day-check .day-rows .day-row b { color: #fff; }
-.day-check h3 span { opacity: .8; }
-.day-check .day-head .small, .day-check .day-head .small.muted, .day-check .day-all { color: #fff; opacity: .9; font-weight: 700; }
-.day-check:not(.day-editing) .day-edit-btn { color: #fff; }
-.day-check .day-edit-btn:hover { background: rgba(255, 255, 255, .15); }
+/* 今日のスタンプ pastellig wie die Lese-Kacheln (2026-10-28): zartes Zinnober, gestrichelter Rand, roter 済-Stempel, etwas niedriger */
+.day-check { background: var(--shu-soft); border: 2px dashed color-mix(in srgb, var(--shu) 55%, transparent); border-radius: 18px; padding: 12px 18px; }
+.day-check h3 { color: var(--shu); }
+.day-check h3 span { color: color-mix(in srgb, var(--shu) 70%, var(--ink)); opacity: .8; }
+.day-check .day-head .small, .day-check .day-head .small.muted { color: color-mix(in srgb, var(--shu) 75%, var(--ink)); font-weight: 700; }
+.day-check .day-all { color: var(--matcha); }
 .day-check .day-rows { margin-top: 2px; }
 .day-check .day-rows .day-row { padding: 6px 0; gap: 12px; }
-.day-check .day-rows .day-row + .day-row { border-top: 1px dashed rgba(255, 255, 255, .35); }
-.day-check .day-row small { color: rgba(255, 255, 255, .78); font-size: 12.5px; }
-.day-check .day-stamp { width: 34px; height: 34px; font-size: 16px; border: 2px dashed rgba(255, 255, 255, .6); color: #fff; }
-.day-check .day-stamp.on { background: #fff; color: var(--shu); border: 2px solid #fff; box-shadow: none; }
-.day-check button.day-stamp:not(.on):hover { border-color: #fff; background: rgba(255, 255, 255, .15); color: #fff; }
-.day-check:not(.day-editing) .btn { background: #fff; color: var(--shu); border-color: #fff; }
-.day-check .day-empty { color: rgba(255, 255, 255, .85); }
-.day-check.day-editing { background: var(--card); color: var(--ink); padding: 18px; }
-.day-check.day-editing h3, .day-check.day-editing .day-row b { color: var(--ink); }
-.day-check.day-editing .day-row small { color: var(--muted); }
+.day-check .day-rows .day-row + .day-row { border-top: 1px dashed color-mix(in srgb, var(--shu) 30%, transparent); }
+.day-check .day-row small { color: color-mix(in srgb, var(--shu) 60%, var(--muted)); font-size: 12.5px; }
+.day-check .day-stamp { width: 34px; height: 34px; font-size: 16px; border-color: color-mix(in srgb, var(--shu) 55%, transparent); color: var(--shu); }
+.day-check .day-stamp.on { background: var(--card); }
+.day-check:not(.day-editing) .btn { background: var(--card); color: var(--shu); border-color: color-mix(in srgb, var(--shu) 50%, transparent); }
+.day-check.day-editing { background: var(--card); border: 1px solid var(--line); padding: 18px; }
+.day-check.day-editing h3 { color: var(--ink); }

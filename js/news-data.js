@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-startseite-3', date: '28. Oktober',
+      items: [
+        { t: 'Stempelkarte sanfter', d: 'Die Karte 今日のスタンプ ist jetzt zart rosa wie die NHK-Kachel. Der rote 済-Stempel bleibt.' },
+        { t: 'Unterricht und Zuletzt getrennt', d: 'Unten auf der Startseite stehen „Letzte Unterrichtsstunden“ und „Zuletzt gespeichert“ wieder als eigene Karten nebeneinander.' },
+      ],
+    },
+    {
       id: '2026-10-28-kanji-lesung-2', date: '28. Oktober',
       items: [
         { t: 'Gleiche Lesung nach あいうえお', d: 'Unter Kanji › „同音 Gleiche Lesung“ stehen die Lesungen jetzt nach あいうえお, Kun (Hiragana) immer vor On (Katakana). Das Auswahlfeld holt Neues nach oben.' },
