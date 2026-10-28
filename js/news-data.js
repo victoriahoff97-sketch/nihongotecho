@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-diktieren', date: '28. Oktober',
+      items: [
+        { t: 'In der Gruppe diktieren', d: 'Im Schreibfeld der Gruppe gibt es jetzt „Diktieren“: sprechen statt tippen, auf Deutsch oder Japanisch (DE / 日本語 daneben). Es hört zu, bis du „Fertig“ tippst.' },
+        { t: 'Vokabel-Antwort sprechen', d: 'Bei den Karteikarten Deutsch → Japanisch steht neben „Prüfen“ ein Mikrofon: Wort auf Japanisch sagen, dann prüfen. Das Antwortfeld schaltest du unter der Karte ein.' },
+      ],
+    },
+    {
       id: '2026-10-27-gruppe', date: '27. Oktober',
       items: [
         { t: 'Die Gruppe bleibt', d: 'Manche Geräte vergaßen die Gruppe und zeigten so auch keinen roten Punkt bei Antworten. Jetzt tritt die App von selbst wieder bei.' },

@@ -189,6 +189,10 @@
     });
   };
 
+  // Diktieren (js/dictate.js): Sprache pro Gerät gemerkt
+  const DLANGS = [['de-DE', 'DE'], ['ja-JP', '日本語']];
+  const dictLang = () => (App.lsGet('forumDictLang') === 'ja-JP' ? 'ja-JP' : 'de-DE');
+
   // ---------- Eingabefeld (neuer Gedanke, Antwort, Bearbeiten) ----------
   // key = Entwurf auf diesem Gerät ('new' bzw. 'r:<postId>'); beim Bearbeiten kein Entwurf
   // closed: erst nur eine Zeile, klappt beim Hineintippen auf (und nach dem Teilen wieder zu)
@@ -203,6 +207,8 @@
         <label class="btn btn-sm forum-pick">${icon('imagePlus')}<span>Bild</span><input type="file" accept="image/*" hidden></label>
         ${navigator.clipboard && navigator.clipboard.read ? `<button type="button" class="btn btn-sm" data-clip title="Screenshot oder Bild aus der Zwischenablage einfügen (am PC auch Strg+V)">${icon('copy')}<span>Einfügen</span></button>` : ''}
         <button type="button" class="btn btn-sm" data-link>${icon('link')}<span>Eintrag</span></button>
+        ${App.dictate.supported() ? `<span class="forum-dict"><button type="button" class="btn btn-sm mic" data-mic title="Sprechen – der Text erscheint im Feld. Bleibt an, bis du auf „Fertig“ tippst.">${icon('mic')}<span class="mic-label">Diktieren</span></button>
+          <span class="seg forum-dlang" title="In welcher Sprache diktierst du?">${DLANGS.map(([l, t]) => `<button type="button" data-dlang="${l}">${t}</button>`).join('')}</span></span>` : ''}
         <span class="grow"></span>
         ${onCancel ? '<button type="button" class="btn btn-sm" data-cancel>Abbrechen</button>' : ''}
         <button type="button" class="btn btn-sm btn-primary" data-send>${esc(label)}</button>
@@ -246,17 +252,25 @@
       refs = next.slice(0, F.MAX_REFS);
       drawRefs();
     };
+    const showLang = () => { const l = dictLang(); $$('[data-dlang]', el).forEach((b) => b.classList.toggle('on', b.dataset.dlang === l)); };
     if (kinds) setKind(kind);
+    showLang();
     setImage(image);
     drawRefs();
     const keep = key ? App.debounce(() => saveDraft(key, ta.value), 400) : () => {};
     ta.addEventListener('input', () => { setErr(''); keep(); });
+    ta.addEventListener('change', keep); // Diktiertes kommt als change
+
     el.addEventListener('click', (e) => {
       const k = e.target.closest('[data-kind]');
       if (k) setKind(k.dataset.kind);
       if (e.target.closest('[data-noimg]')) setImage(null);
-      if (e.target.closest('[data-cancel]')) onCancel();
+      if (e.target.closest('[data-cancel]')) { App.dictate.stopFor(ta, { now: true }); onCancel(); }
       if (e.target.closest('[data-link]')) pick();
+      const mic = e.target.closest('[data-mic]');
+      if (mic) { setErr(''); App.dictate.toggle(ta, mic, dictLang(), { long: true }); }
+      const dl = e.target.closest('[data-dlang]');
+      if (dl) { App.dictate.stopFor(ta); App.lsSet('forumDictLang', dl.dataset.dlang); showLang(); }
       const un = e.target.closest('[data-unref]');
       if (un) { refs.splice(Number(un.dataset.unref), 1); drawRefs(); }
       if (e.target.closest('[data-here]')) { const it = pageItem(); if (it) { refs.push(toRef(it)); setErr(''); drawRefs(); } }
@@ -291,6 +305,7 @@
     el.querySelector('[data-send]').addEventListener('click', async () => {
       if (busy) return;
       if (navigator.onLine === false) { setErr(OFFLINE); return; }
+      App.dictate.stopFor(ta, { now: true });
       const text = ta.value.trim();
       const msg = F.checkPost({ text, image, refs });
       if (msg) { setErr(msg); return; }
@@ -325,7 +340,7 @@
     }
     const md = App.modal({
       title: `${icon('thought')} Gruppe`, body: '<div class="forum"></div>', foot: false, cls: 'forum-modal',
-      onClose: () => { if (ui && ui.cleanup) ui.cleanup(); ui = null; },
+      onClose: () => { $$('textarea', md.el).forEach((t) => App.dictate.stopFor(t, { now: true })); if (ui && ui.cleanup) ui.cleanup(); ui = null; },
     });
     const more = document.createElement('div');
     more.className = 'forum-more';

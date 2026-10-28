@@ -1851,6 +1851,9 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .forum-compose.is-closed > :not(textarea) { display: none; }
 .forum-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .forum-row .grow, .forum-item-head .grow { flex: 1; }
+.forum-dict { display: inline-flex; align-items: center; gap: 4px; }
+.forum-dlang { padding: 2px; }
+.forum-dlang button { min-height: 30px; padding: 0 8px; font-size: 13px; }
 .forum-kinds { display: flex; gap: 6px; flex-wrap: wrap; }
 .forum-kinds .chip { --sec: var(--shu); }
 .forum-bar { display: flex; align-items: center; gap: 10px; margin-top: 4px; }

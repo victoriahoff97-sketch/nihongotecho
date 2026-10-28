@@ -404,13 +404,14 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     const answerBox = () => {
       const box = stage.querySelector('[data-answer]'), mode = answerMode();
       if (ans && ans.pad) ans.pad.stop();
+      if (ans) App.dictate.stopFor(ans.inp, { now: true });
       stage.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b.dataset.amode === mode));
       ans = null;
       box.hidden = mode === 'off';
       if (box.hidden) { box.innerHTML = ''; return; }
       loadKanjiIndex();
       box.innerHTML = `${mode === 'pen' ? '<div data-hwpad></div>' : ''}
-        <div class="ans-line"><input class="input ans-in" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${mode === 'pen' ? 'Erkannt wird hier eingetragen' : 'Auf Japanisch (Romaji wird zu かな)'}"><button class="btn btn-primary" data-acheck>${icon('check')} Prüfen</button></div>
+        <div class="ans-line"><input class="input ans-in" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${mode === 'pen' ? 'Erkannt wird hier eingetragen' : 'Auf Japanisch (Romaji wird zu かな)'}">${App.dictate.supported() ? `<button class="btn btn-ghost mic" data-amic title="Antwort auf Japanisch sprechen – sie erscheint im Feld" aria-label="Antwort diktieren">${icon('mic')}</button>` : ''}<button class="btn btn-primary" data-acheck>${icon('check')} Prüfen</button></div>
         ${mode === 'pen' ? '<div class="ans-cands" hidden></div>' : ''}<div data-averdict></div>`;
       const inp = box.querySelector('.ans-in'), cands = box.querySelector('.ans-cands');
       ans = { mode, inp, cands, list: [], checked: false };
@@ -432,6 +433,7 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
     // true = geprüft (die Karte ist damit aufgedeckt) oder Stift-Erkennung wird noch abgewartet; false = nichts geschrieben
     const checkAnswer = () => {
       if (!ans || ans.checked || flipped) return false;
+      App.dictate.stopFor(ans.inp, { now: true }); // Prüfen beendet ein laufendes Diktat, das bisher Erkannte steht schon im Feld
       // Stift: Schreibpause bzw. Erkennung noch nicht vorbei – erst abwarten, sonst wäre das Feld noch leer
       if (ans.waiting) return true;
       if (ans.pad && !ans.waited && ans.pad.pending()) {
@@ -546,6 +548,8 @@ ${vlist.map((v) => `${v.kanji || v.kana}${v.kanji ? '（' + v.kana + '）' : ''}
       const am = e.target.closest('[data-amode]');
       if (am) { App.lsSet('answerMode', am.dataset.amode); if (!flipped) answerBox(); else stage.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b === am)); return; }
       if (e.target.closest('[data-acheck]')) { if (!checkAnswer()) flip(); return; }
+      const mic = e.target.closest('[data-amic]');
+      if (mic) { if (ans && !ans.checked && !flipped) App.dictate.toggle(ans.inp, mic, 'ja-JP'); return; }
       const ac = e.target.closest('[data-acand]');
       if (ac && ans && !ans.checked) { ans.cands.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === ac)); ans.inp.value = ac.dataset.acand; return; }
       if (e.target.closest('[data-known]')) return markKnown();

@@ -66,8 +66,9 @@
   App.dictate = {
     joined,
     supported: () => !!SR(),
-    // Läuft gerade ein Diktat in dieses Feld, beenden (z. B. beim Verlassen der Seite)
-    stopFor: (input) => { if (active && active.input === input) active.stop(); },
+    // Läuft gerade ein Diktat in dieses Feld, beenden (z. B. beim Verlassen der Seite).
+    // now: was gerade im Feld steht, gilt – Nachzügler der Erkennung schreiben nicht mehr hinein (Prüfen, Absenden)
+    stopFor: (input, { now = false } = {}) => { if (active && active.input === input) active.stop(now); },
     // Startet das Diktat ins Feld (input oder contenteditable); ein zweiter Aufruf fürs selbe Feld beendet es. btn bekommt solange die Klasse „active“.
     // long: bleibt an, bis man wieder antippt (Tagebuch: Zeit zum Überlegen) – erst nach SILENCE ganz ohne Sprache geht es von selbst aus.
     // Ohne long endet es nach einem Satz (Sprechpause). Ein .mic-label im Knopf zeigt solange „Fertig“.
@@ -82,7 +83,7 @@
       if (was) { was.stop(); if (was.input === input) return; }
       const label = btn.querySelector && btn.querySelector('.mic-label');
       const labelText = label && label.textContent;
-      let on = true, tg = null, last = null, cur = null, idle = 0, fails = 0;
+      let on = true, cut = false, tg = null, last = null, cur = null, idle = 0, fails = 0;
       // Bisher Erkanntes übernehmen; weiter geht es direkt dahinter
       const commit = () => { if (tg) { last = tg.end() || last; tg = null; } };
       const target = () => tg || (tg = input.isContentEditable ? editTarget(input, lang, last) : fieldTarget(input, lang));
@@ -93,7 +94,7 @@
         if (label) label.textContent = labelText;
         if (active && active.input === input) active = null;
       };
-      const stopAll = () => { on = false; if (cur) cur.stop(); };
+      const stopAll = (now) => { on = false; if (now) cut = true; if (cur) cur.stop(); };
       const stillness = () => { clearTimeout(idle); idle = setTimeout(() => { App.toast('Diktieren ist aus – eine Minute lang nichts gehört.'); stopAll(); }, SILENCE); };
 
       // Eine Runde der Spracherkennung; im langen Diktat startet nach ihrem Ende gleich die nächste
@@ -107,7 +108,7 @@
           done = true;
           clearTimeout(timer);
           commit();
-          if (!on || !long) return off();
+          if (!on || !long || !input.isConnected) return off(); // Feld verschwunden (Ansicht gewechselt): nicht weiter zuhören
           // Endet jede Runde sofort ohne Ergebnis, stimmt etwas nicht – nicht endlos neu starten
           fails = heard || Date.now() - t0 > 1500 ? 0 : fails + 1;
           if (fails >= 3) { App.toast('Diktieren hat nicht geklappt.'); return off(); }
@@ -126,7 +127,8 @@
         rec.interimResults = true;
         rec.continuous = long && !android();
         rec.onresult = (e) => {
-          if (done) return;
+          if (done || cut) return;
+          if (!input.isConnected) { stopAll(true); return; }
           // Fertige Sätze gleich als Text übernehmen (wird gespeichert), der Rest bleibt Zwischenstand
           let fin = '', rest = '';
           for (let i = from; i < e.results.length; i++) {
