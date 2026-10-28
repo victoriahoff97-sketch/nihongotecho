@@ -7,6 +7,21 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-startseite', date: '28. Oktober',
+      items: [
+        { t: 'Ruhigere Startseite', d: 'Dein Lernstand steht jetzt in einer Karte „Mein Lernstand“. Ein Tipp auf Vokabeln, Kanji oder Genki klappt die Zahlen und Knöpfe auf.' },
+        { t: 'Tagesziele als Stempelkarte', d: 'Unter 今日のスタンプ bekommt jedes geschaffte Tagesziel einen roten 済-Stempel. Mit dem Stift daneben stellst du deine Ziele ein.' },
+        { t: 'Mehr nach Wunsch', d: 'Schnellaktionen und „Deine Sammlung“ holst du unten über „Startseite anpassen“ zurück.' },
+        { t: 'Gleichklang bei den Vokabeln', d: 'Gleichklang steht nicht mehr im Menü links, sondern als Reiter bei den Vokabeln neben „Dateien“.' },
+      ],
+    },
+    {
+      id: '2026-10-28-diktieren-2', date: '28. Oktober',
+      items: [
+        { t: 'Diktieren beim Übersetzen bleibt an', d: 'Beim Übersetzen und Grammatik-Auffrischen hört das Mikrofon wie im Tagebuch weiter zu, auch wenn du kurz überlegst – bis du „Fertig“ tippst.' },
+      ],
+    },
+    {
       id: '2026-10-28-kanji-lesung', date: '28. Oktober',
       items: [
         { t: 'Kanji mit gleicher Lesung', d: 'Unter Kanji › „同音 Gleiche Lesung“ siehst du, welche Kanji gleich gelesen werden – etwa alle mit チ oder セイ. Ein Tipp auf eine Lesung am Kanji führt auch dorthin.' },

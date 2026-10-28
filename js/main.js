@@ -9,9 +9,7 @@
     ['grammar', 'Grammatik', '#/grammatik', 'sec-grammar', '文法'],
     ['vocab', 'Vokabeln', '#/vokabeln', 'sec-vocab', '単語'],
     ['kanji', 'Kanji', '#/kanji', 'sec-kanji', '漢字'],
-    null,
     ['phrase', 'Ausdrücke', '#/ausdruecke', 'sec-phrase', '表現'],
-    ['copy', 'Gleichklang', '#/gleichklang', 'sec-homophone', '同音'],
     null,
     ['practice', 'Üben', '#/ueben', 'sec-practice', '練習'],
     ['edit', 'Anwenden', '#/anwenden', 'sec-apply', '使'],
@@ -28,7 +26,7 @@
       if (!n) return '<div class="nav-sep"></div>';
       const [ic, label, href, cls, jp] = n;
       const base = href.slice(1);
-      const active = base === '/' ? path === '/' : path === base || path.startsWith(base + '/');
+      const active = base === '/' ? path === '/' : path === base || path.startsWith(base + '/') || (base === '/vokabeln' && path === '/gleichklang');
       const extra = ic === 'practice' && due ? `<span class="badge count">${due}</span>` : `<span class="jp-mini">${jp}</span>`;
       return `<a class="nav-link ${cls} ${active ? 'active' : ''}" href="${href}" title="${label}"><span class="dot">${icon(ic)}</span><span class="lbl">${label}</span>${extra}</a>`;
     }).join('');

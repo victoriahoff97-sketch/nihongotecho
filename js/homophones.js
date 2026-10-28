@@ -57,6 +57,7 @@
     const words = groups.reduce((n, g) => n + g.items.length, 0);
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="page-head"><div class="titles"><h1>Gleichklang <span class="jp-title">同音</span></h1>
         <p>Wörter, die in der Grundform gleich gelesen werden, aber anders geschrieben sind und etwas anderes bedeuten. Die Übersicht wächst von selbst: Sobald ein Wort, das du lernst, einen Gleichklang hat, steht es hier.</p></div></div>
+      <div class="tabs"><a class="tab" href="#/vokabeln" style="text-decoration:none">Einträge</a><a class="tab" href="#/vokabeln?tab=files" style="text-decoration:none">${icon('file')} Dateien</a>${App.GK_TAB(true)}</div>
       ${groups.length ? `<div class="toolbar"><input class="input" type="search" data-gk-q placeholder="はし, kami, Brücke …" value="${esc(q)}" style="max-width:280px">
           <div class="seg" data-gk-pos>${POS_FILTER.map(([k, l], i) => `<button class="${i ? '' : 'on'}" data-v="${k}">${l}</button>`).join('')}</div>
           <span class="grow"></span><span class="small muted" data-gk-count></span></div>

@@ -635,8 +635,9 @@
 
   // Woher ein Satz kommt: ein Grammatikpunkt oder ein Wort der Lernschlange (dann mit dessen eigenem Beispielsatz).
   // Vor der Lösung verrät die Marke das Wort nicht; hinterher steht es bei der Lösung.
-  // Diktieren ins Antwortfeld (js/dictate.js): Japanisch bei De → Jp, Deutsch bei Jp → De
-  const micBtn = (lang, title) => (App.dictate.supported() ? `<button class="btn btn-sm btn-ghost mic" data-mic="${lang}" title="${title}">${icon('mic')} Diktieren</button>` : '');
+  // Diktieren ins Antwortfeld (js/dictate.js): Japanisch bei De → Jp, Deutsch bei Jp → De.
+  // Wie im Tagebuch lang: bleibt an, bis man „Fertig“ tippt, prüft oder überspringt – Zeit zum Überlegen mitten im Satz
+  const micBtn = (lang, title) => (App.dictate.supported() ? `<button class="btn btn-sm btn-ghost mic" data-mic="${lang}" title="${title}. Bleibt an, bis du auf „Fertig“ tippst.">${icon('mic')} <span class="mic-label">Diktieren</span></button>` : '');
   const wordOf = (it) => it.kanji || it.kana || JP.plain(it.jp || '');
   const exBadge = (it) => `<a class="badge sec ${App.SECTIONS[it.type].cls}" href="${App.link(it)}" target="_blank" style="text-decoration:none">${it.type === 'grammar' ? '文 ' + esc(it.title) : it.type === 'phrase' ? '表 Ausdruck aus der Lernschlange' : '単 Wort aus der Lernschlange'}</a>`;
 
@@ -676,12 +677,13 @@
       const ta = stage.querySelector('textarea');
       const inp = () => (field ? field.inp() : ta);
       const mic = stage.querySelector('[data-mic]');
-      const micOn = () => mic && mic.classList.contains('active');
-      if (mic) mic.onclick = () => App.dictate.toggle(inp(), mic, mic.dataset.mic);
+      // Prüfen und Überspringen beenden ein laufendes Diktat: was im Feld steht, gilt
+      const micStop = () => App.dictate.stopFor(inp(), { now: true });
+      if (mic) mic.onclick = () => App.dictate.toggle(inp(), mic, mic.dataset.mic, { long: true });
       if (ta) setTimeout(() => ta.focus(), 50);
       const check = async () => {
         if (checked || waiting) return;
-        if (micOn()) App.dictate.toggle(inp(), mic, mic.dataset.mic); // Prüfen beendet ein laufendes Diktat
+        micStop();
         waiting = true;
         const ans = (field ? await field.value() : ta.value).trim();
         waiting = false;
@@ -705,7 +707,7 @@
         stage.querySelector('[data-check]').hidden = true;
       };
       stage.querySelector('[data-check]').onclick = check;
-      stage.querySelector('[data-skip]').onclick = () => { if (micOn()) App.dictate.toggle(inp(), mic, mic.dataset.mic); if (field) field.lock(); wrong.push(e); i++; show(); };
+      stage.querySelector('[data-skip]').onclick = () => { micStop(); if (field) field.lock(); wrong.push(e); i++; show(); };
       if (ta) ta.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enter(); } });
       stage.querySelector('[data-sol]').addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-res]'); if (!b) return;

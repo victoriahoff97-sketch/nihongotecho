@@ -17,6 +17,7 @@
       last: Number.isFinite(s.last) ? s.last : 0,
       seen: s.seen && typeof s.seen === 'object' ? Object.assign({}, s.seen) : {},
       miss: Array.isArray(s.miss) ? s.miss.slice() : [],
+      points: Array.isArray(s.points) ? s.points.slice() : [], // Punkte der letzten fertigen Runde (Links, bis es wieder dran ist)
     };
   };
 
@@ -57,7 +58,9 @@
       points.push(g);
       exs = make(points);
     }
-    return { points, exs: exs.slice(0, n) };
+    // Die Sätze sind zufällig gezogen: ein dazugenommener Punkt kann am Ende ohne eigenen Satz bleiben – dann gehört er nicht zur Runde
+    exs = exs.slice(0, n);
+    return { points: points.filter((g) => exs.some((e) => e.g && e.g.id === g.id)), exs };
   };
 
   // Fertige Runde: results = { <grammar-id>: true (alles gewusst) | false }. Nicht Gewusstes steht nächstes Mal vorn.
@@ -69,6 +72,7 @@
       if (!ok) s.miss.push(id);
     });
     s.last = now;
+    s.points = Object.keys(results);
     return s;
   };
 })(window.App = window.App || {});

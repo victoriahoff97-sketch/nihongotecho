@@ -87,39 +87,50 @@
   };
   // NHK und eigene Ziele hakt man selbst ab; alles andere prüft die App
   const manual = (x) => x.own || x.key === 'nhk';
-  const box = (x, on) => (manual(x)
-    ? `<button type="button" class="day-box" data-day-toggle="${esc(x.key)}" aria-pressed="${on}" title="${on ? 'Haken entfernen' : 'Abhaken'}">${icon('check')}</button>`
-    : `<span class="day-box">${icon('check')}</span>`);
 
-  const row = (x, on, g) => `<div class="day-row ${on ? 'on' : ''}">${box(x, on)}
+  // Stempelkarte: jeder Punkt hat einen Stempel – offen gestrichelt mit seinem Zeichen, geschafft ein roter 済-Stempel.
+  // Neu geschaffte Stempel werden einmal „aufgedrückt“ (Animation); was schon beim ersten Zeichnen stand, nicht.
+  const MARK = { review: '復', apply: '書', listen: '聞', new: '新', kanji: '漢', conj: '活', nhk: '読' };
+  const stamped = new Set();
+  let firstDraw = true;
+  const stamp = (x, on) => {
+    const fresh = on && !stamped.has(x.key) && !firstDraw;
+    if (on) stamped.add(x.key); else stamped.delete(x.key);
+    const cls = `day-stamp ${on ? 'on' : ''} ${fresh ? 'fresh' : ''}`, mark = on ? '済' : esc(MARK[x.key] || (x.title || '・').trim().charAt(0));
+    return manual(x)
+      ? `<button type="button" class="${cls}" data-day-toggle="${esc(x.key)}" aria-pressed="${on}" title="${on ? 'Stempel entfernen' : 'Abstempeln'}" lang="ja">${mark}</button>`
+      : `<span class="${cls}" lang="ja">${mark}</span>`;
+  };
+  const row = (x, on, g) => `<div class="day-row ${on ? 'on' : ''}">${stamp(x, on)}
     <span class="grow"><b>${title(x)}</b><small>${sub(x.key, g)}</small></span>${on ? '' : ACTION[x.key] || ''}</div>`;
-  const opt = (x, on) => `<div class="day-row day-opt ${on ? 'on' : ''}">${box(x, on)}<span class="grow">${title(x)}</span>${x.key === 'nhk'
-    ? `<a class="small" href="${NHK_URL}" target="_blank" rel="noopener">${esc('Öffnen →')}</a>` : ''}</div>`;
   const editBtn = (label) => `<button type="button" class="icon-btn sm day-edit-btn" data-day-edit title="${label}" aria-label="${label}">${icon('edit')}</button>`;
 
   const view = () => {
     const g = goals(), st = state(), list = L.list(cfg());
-    const main = list.filter((x) => x.level === 'goal'), more = list.filter((x) => x.level === 'opt');
-    const all = L.allMain(st, cfg());
-    const status = all ? 'お疲れ様 · alles geschafft' : main.length ? 'prüft sich von selbst' : 'noch kein Ziel';
+    const main = list.filter((x) => x.level === 'goal');
+    const done = main.filter((x) => st[x.key]).length;
+    const status = !main.length ? 'noch kein Ziel' : done === main.length ? 'お疲れ様 · alles geschafft' : `${done} von ${main.length}`;
+    const rows = main.map((x) => row(x, st[x.key], g)).join('');
+    firstDraw = false;
     return `<div class="card day-check" data-day-check>
-      <div class="row between"><h3 lang="ja">今日 <span>· Heute</span></h3><span class="row day-head"><span class="small ${all ? 'day-all' : 'muted'}">${status}</span>${editBtn('Ziele anpassen')}</span></div>
-      ${main.map((x) => row(x, st[x.key], g)).join('')}
+      <div class="row between"><h3 lang="ja">今日のスタンプ <span>· Heute</span></h3><span class="row day-head"><span class="small ${done && done === main.length ? 'day-all' : 'muted'}">${status}</span>${editBtn('Ziele anpassen')}</span></div>
+      <div class="day-rows">${rows}</div>
       ${main.length ? '' : '<p class="small muted day-empty">Tippe auf den Stift und stell dir eigene Ziele zusammen.</p>'}
-      ${more.length ? `<div class="day-more">Wenn du magst</div>${more.map((x) => opt(x, st[x.key])).join('')}` : ''}
     </div>`;
   };
 
   // Bearbeiten direkt in der Karte: pro Punkt Ziel / Mag / Aus, Zahlen mit − und +, eigene Ziele dazu oder weg
-  const LEVEL_LABEL = { goal: 'Ziel', opt: 'Mag', off: 'Aus' };
-  const LEVEL_TIP = { goal: 'Zählt fürs Feuerwerk', opt: 'Steht unter „Wenn du magst“', off: 'Wird nicht gezeigt' };
+  // „Mag“ (Wenn du magst) steht seit 2026-10-28 nicht mehr auf der Startseite: gespeichertes „opt“ zählt hier als Aus
+  const LEVEL_LABEL = { goal: 'Ziel', off: 'Aus' };
+  const LEVEL_TIP = { goal: 'Steht auf der Startseite und zählt fürs Feuerwerk', off: 'Wird nicht gezeigt' };
+  const isLevel = (x, l) => (l === 'goal' ? x.level === 'goal' : x.level !== 'goal');
   const stepper = (k, text) => `<span class="day-num"><button type="button" class="icon-btn sm" data-day-bump="${k}:-1" aria-label="Weniger">−</button><b>${text}</b><button type="button" class="icon-btn sm" data-day-bump="${k}:1" aria-label="Mehr">+</button></span>`;
   const editSub = (x, g) => (x.key === 'review' ? stepper('reviews', `${g.reviews} Karten`)
     : x.key === 'listen' ? stepper('listenMin', mins(g.listenMin))
       : `<small>${sub(x.key, g)}</small>`);
   const editRow = (x, g) => `<div class="day-row day-set ${x.level === 'off' ? 'off' : ''}">
     <span class="grow"><b>${title(x)}${x.own ? ` <button type="button" class="day-del" data-day-del="${esc(x.key)}" title="Ziel löschen" aria-label="Ziel löschen">${icon('close')}</button>` : ''}</b>${editSub(x, g)}</span>
-    <span class="seg">${L.LEVELS.map((l) => `<button type="button" class="${x.level === l ? 'on' : ''}" data-day-level="${esc(x.key)}:${l}" aria-pressed="${x.level === l}" title="${LEVEL_TIP[l]}">${LEVEL_LABEL[l]}</button>`).join('')}</span></div>`;
+    <span class="seg">${Object.keys(LEVEL_LABEL).map((l) => `<button type="button" class="${isLevel(x, l) ? 'on' : ''}" data-day-level="${esc(x.key)}:${l}" aria-pressed="${isLevel(x, l)}" title="${LEVEL_TIP[l]}">${LEVEL_LABEL[l]}</button>`).join('')}</span></div>`;
   const editView = () => {
     const g = goals();
     return `<div class="card day-check day-editing" data-day-check>

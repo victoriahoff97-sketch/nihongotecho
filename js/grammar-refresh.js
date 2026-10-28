@@ -26,8 +26,13 @@
       <div data-stage></div></div>`;
     const stage = view.querySelector('[data-stage]');
     const msg = (html) => { stage.innerHTML = `<div class="card">${html}<div class="row" style="margin-top:10px">${homeRow}</div></div>`; };
-    // Noch nicht wieder dran (z. B. mit „←“ zurück nach der Runde): keine neue Runde, die den Termin weiter nach hinten schöbe
-    if (!isDue()) return msg(`Für diese Woche ist aufgefrischt. Nächstes Mal am ${dateDe(G.nextDue(S.settings.grammarRefresh))}.`);
+    const linksOf = (points) => points.map((g) => `<a class="badge sec ${App.SECTIONS.grammar.cls}" style="text-decoration:none" href="${App.link(g)}">文 ${esc(g.title)}</a>`).join(' ');
+    // Noch nicht wieder dran (z. B. mit „←“ zurück nach der Runde): keine neue Runde, die den Termin weiter nach hinten schöbe.
+    // Die Punkte der letzten Runde bleiben verlinkt – so kommt man nach einem Eintrag auch noch zum nächsten
+    if (!isDue()) {
+      const last = G.norm(S.settings.grammarRefresh).points.map(App.item).filter(Boolean);
+      return msg(`Für diese Woche ist aufgefrischt. Nächstes Mal am ${dateDe(G.nextDue(S.settings.grammarRefresh))}.${last.length ? `<p class="muted" style="margin:10px 0 6px">Zuletzt dran – Buchaufgaben und Erklärung beim Eintrag:</p><div class="row" style="gap:6px">${linksOf(last)}</div>` : ''}`);
+    }
     const list = pool();
     if (!list.length) return msg('Hier kommt Grammatik dran, die du auf „kann ich“ gesetzt hast. Im Moment steht noch kein Grammatikpunkt darauf.');
     // Wortvorrat wie bei Übersetzen: Wörter aus der Lernschlange und solche, die du schon lesen kannst
@@ -36,7 +41,7 @@
     const make = (points) => T.build({ grammar: points, pool: words, n: G.SIZE }, kit.BUILD);
     const { points, exs } = G.choose(G.order(list, S.settings.grammarRefresh, App.shuffle), make);
     if (!exs.length) return msg('Für deine Grammatik ließen sich gerade keine Sätze bauen – es fehlen noch Wörter, die du schon kannst.');
-    const links = points.map((g) => `<a class="badge sec ${App.SECTIONS.grammar.cls}" style="text-decoration:none" href="${App.link(g)}">文 ${esc(g.title)}</a>`).join(' ');
+    const links = linksOf(points);
     kit.run(stage, exs, 'de', {
       // Nur eine fertige Runde zählt: dann beginnen die 7 Tage neu, und was nicht saß, kommt nächstes Mal zuerst
       onDone: (wrong) => {
