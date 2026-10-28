@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-bibliothek-2', date: '28. Oktober',
+      items: [
+        { t: 'Notizbücher und Ordner nebeneinander', d: 'In der Bibliothek stehen „Meine Notizbücher“ und „Ordner“ jetzt in einer Reihe. Sind es mehr, wischst oder scrollst du in jedem Bereich zur Seite.' },
+      ],
+    },
+    {
       id: '2026-10-28-grammatik', date: '28. Oktober',
       items: [
         { t: 'Grammatik auffrischen', d: 'Einmal pro Woche steht auf der Startseite „文 Grammatik 5“: fünf Sätze zu Grammatik, die du auf „kann ich“ gesetzt hast. Dein „kann ich“ bleibt dabei, wie es ist.' },
