@@ -90,7 +90,8 @@
     return r.entries.length ? Object.assign(r, { opts: p.opts }) : null;
   };
   const resumeCards = (view, r) => { view.querySelector('[data-setup]').hidden = true; runCards(view.querySelector('[data-stage]'), r.entries, r.opts, r); };
-  const roundStart = (q, dueLabel) => `<button class="btn ${q.due.length || !newMax(q) ? 'btn-primary' : ''}" data-round="due" ${q.due.length ? '' : 'disabled'}>${icon('play')} ${dueLabel} (${q.due.length} fällig)</button>
+  // mid: weiterer Knopf zwischen „Wiederholen“ und „Neue lernen“ (Karteikarten: „Lernschlange üben“)
+  const roundStart = (q, dueLabel, mid = '') => `<button class="btn ${q.due.length || !newMax(q) ? 'btn-primary' : ''}" data-round="due" ${q.due.length ? '' : 'disabled'}>${icon('play')} ${dueLabel} (${q.due.length} fällig)</button>${mid}
           <button class="btn ${q.due.length || !newMax(q) ? '' : 'btn-primary'}" data-round="new" ${newMax(q) ? '' : 'disabled'}>${icon('plus')} Neue lernen (${newMax(q)} neu)</button>`;
   const roundEnd = (q) => `${q.due.length ? `<button class="btn btn-primary" data-round="due">${icon('play')} Weiter wiederholen (${q.due.length})</button>` : ''}${newMax(q) ? `<button class="btn ${q.due.length ? '' : 'btn-primary'}" data-round="new">${icon('plus')} Jetzt ${newMax(q)} neue lernen</button>` : ''}`;
   const bindRoundEnd = (stage) => stage.querySelectorAll('[data-round]').forEach((b) => (b.onclick = () => { nextRound = b.dataset.round; App.render(); }));
@@ -175,6 +176,11 @@
   const learningSum = (parts) => parts.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ');
   // In Häppchen: eine gemischte Reihenfolge, Runde für Runde, bis alles einmal dran war. Größe wählbar (0 = alles in einer Runde).
   const CHUNKS = [10, 20, 30, 50, 0];
+  // Kleine Flaggen für die Kartenrichtung (als SVG – Flaggen-Emojis zeigt Windows nur als Buchstaben)
+  const FLAG = {
+    jp: '<svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#bc002d"/></svg>',
+    de: '<svg class="flag" viewBox="0 0 5 3" aria-hidden="true"><rect width="5" height="1" fill="#000"/><rect y="1" width="5" height="1" fill="#dd0000"/><rect y="2" width="5" height="1" fill="#ffce00"/></svg>',
+  };
   const chunkSize = () => { const v = App.lsGet('learnChunk'); return v !== null && CHUNKS.includes(+v) ? +v : 20; };
   const chunkSelect = () => `<label class="small muted row" style="gap:6px">pro Runde <select class="input" data-chunk>${CHUNKS.map((n) => `<option value="${n}" ${n === chunkSize() ? 'selected' : ''}>${n || 'alle'}</option>`).join('')}</select></label>`;
   const bindChunk = (view) => { const sel = view.querySelector('[data-chunk]'); if (sel) sel.onchange = () => App.lsSet('learnChunk', sel.value); };
@@ -215,7 +221,6 @@
     go.onclick = () => { view.querySelector('[data-setup]').hidden = true; runCards(view.querySelector('[data-stage]'), App.todayQueue(), { more: () => ({ due: App.todayQueue(), fresh: [] }) }); };
     if (auto) go.click();
   });
-  const CRAM_MAX = 100; // so viele Karten hat eine freie Runde höchstens – eine Genki-Lektion passt ganz hinein
   App.route('/ueben/karten', (view, p, q) => {
     const sec = App.SECTIONS.practice;
     const resume = takeParked();
@@ -227,40 +232,47 @@
     const isG = type === 'grammar'; // Grammatik: nur frei üben
     const unchecked = isG ? 0 : active ? items.filter((i) => App.activeStatus(i) === 'unchecked').length : items.filter((i) => i.char !== '々' && App.vocabStatus(i.id) === 'unchecked').length;
     const allOfType = App.itemsOf(type);
-    // Lernschlange frei üben: nur die Auswahl oben (Art, Richtung, Filter) – oder alles gemischt
-    // Kanji schreiben: der ganze Schreib-Stapel der Auswahl, unabhängig von der Quelle für Neues – so passt die Zahl zu „Alle gemischt“
-    const learning = isG ? [] : W.learning(write ? cardFilter(Object.assign({}, q, { type: 'kanji' })) : items, S.srs, write ? 'write' : active ? 'active' : 'read');
-    const lParts = App.learningParts(), ln = lParts.reduce((a, x) => a + x.n, 0);
-    const typeLabel = { vocab: 'Vokabeln', kanji: 'Kanji', grammar: 'Grammatik', phrase: 'Ausdrücke' }[type];
     const groups = type === 'phrase' ? Array.from(new Set(allOfType.map((x) => x.group))) : [];
+    // Lernstand fürs freie Üben (q.st = 'unchecked|learn|known', leer = alle). Schreiben und Deutsch → Japanisch haben einen eigenen Lernstand.
+    const stOf = (i) => { const s = write ? W.status(S.srs, i.id) : active ? App.activeStatus(i) : App.vocabStatus(i.id); return s === 'new' || s === 'locked' ? 'unchecked' : s; };
+    const stKeys = isG ? ['unchecked', 'known'] : ['unchecked', 'learn', 'known'];
+    const stOn = App.qList(q.st).filter((k) => stKeys.includes(k));
+    const stN = {};
+    items.forEach((i) => { const k = stOf(i); stN[k] = (stN[k] || 0) + 1; });
+    const free = stOn.length ? items.filter((i) => stOn.includes(stOf(i))) : items;
+    // Abkürzung „Lernschlange üben“: was du aus der Auswahl oben gerade lernst, auch wenn heute nichts fällig ist (Kanji schreiben: der Schreib-Stapel)
+    const learning = isG ? [] : W.learning(write ? cardFilter(Object.assign({}, q, { type: 'kanji' })) : items, S.srs, write ? 'write' : active ? 'active' : 'read');
+    const learningBtn = `<button class="btn" data-learning ${learning.length ? '' : 'disabled'} title="Alles aus der Auswahl, was du gerade lernst – auch was heute nicht fällig ist. Dein Lernstand bleibt, wie er ist">${icon('practice')} Lernschlange üben (${learning.length})</button>`;
+    // Überall dieselben Namen: „Lernschlange“ auch bei Kanji und beim Schreiben
+    const stLabel = (k) => (k === 'learn' ? 'Lernschlange' : write && k === 'unchecked' ? 'Neu' : App.statusInfo({ type }, k).label);
+    const stChip = (k) => {
+      const cur = stOn.length ? stOn : stKeys, on = cur.includes(k);
+      const next = on ? cur.filter((x) => x !== k) : cur.concat(k);
+      const val = !next.length ? cur.join('|') : next.length === stKeys.length ? '' : stKeys.filter((x) => next.includes(x)).join('|');
+      return `<button class="chip ${on ? 'on' : ''}" data-q-st="${val}">${esc(stLabel(k))} <span class="small">${stN[k] || 0}</span></button>`;
+    };
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Karteikarten</div>
       <div class="page-head"><div class="titles"><h1>Karteikarten <span class="jp-title">札</span></h1><p>${isG ? 'Grammatik wird nicht abgefragt – hier kannst du sie frei üben.' : `${due.length} fällig · ${fresh.length} neu in dieser Auswahl`}</p></div></div>
       <div class="card" data-setup><div class="stack">
         <div class="row"><div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['grammar', 'Grammatik'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div>
-          <div class="seg">${(type === 'kanji' ? [['jp', 'Kanji → Bedeutung (lesen)'], ['de', 'Bedeutung → Kanji (schreiben)']] : [['jp', 'Japanisch → Deutsch'], ['de', 'Deutsch → Japanisch']]).map(([k, l]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k === defDir ? '' : k}">${l}</button>`).join('')}</div>
+          <div class="seg">${(type === 'kanji' ? [['jp', 'Lesen', 'Kanji → Bedeutung'], ['de', 'Schreiben', 'Bedeutung → Kanji']] : [['jp', `JP ${FLAG.jp} → DE ${FLAG.de}`, 'Japanisch → Deutsch'], ['de', `DE ${FLAG.de} → JP ${FLAG.jp}`, 'Deutsch → Japanisch']]).map(([k, l, t]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k === defDir ? '' : k}" title="${t}">${l}</button>`).join('')}</div>
           ${App.sourceSelect(allOfType, q.src)}${App.lessonSelect(allOfType.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}
-          ${groups.length ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${groups.map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}
+          ${groups.length ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${groups.map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}</div>
+        <div class="row">${stKeys.map(stChip).join('')}<span class="karten-sep"></span>
           <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Nur gemerkte</button></div>
-        <div class="row">${isG ? '' : roundStart(cq, 'Wiederholen')}
-          <button class="btn ${isG ? 'btn-primary' : ''}" data-cram ${items.length ? '' : 'disabled'} title="Zählt nicht zur Lernschlange – dein Lernstand bleibt, wie er ist">${icon('shuffle')} Frei üben (${items.length > CRAM_MAX ? CRAM_MAX + ' von ' + items.length : items.length})</button></div>
-        <div class="small muted">${isG ? 'Frei üben geht die Auswahl oben gemischt durch. Den Haken „Kann ich“ setzt du selbst auf der Seite des Grammatikpunkts – Üben ändert ihn nicht.' : 'Frei üben geht die Auswahl oben gemischt durch und zählt nicht zur Lernschlange: Lernstand und Termine bleiben, wie sie sind.'}</div>
-        ${isG ? '' : `<div class="row"><b class="small">Meine Lernschlange üben:</b>
-          <button class="btn" data-learning ${learning.length ? '' : 'disabled'} title="Was du aus der Auswahl oben gerade lernst – auch was heute nicht fällig ist. Dein Lernstand bleibt, wie er ist">${icon('practice')} ${typeLabel} (${learning.length})</button>
-          <button class="btn" data-learning-all ${ln ? '' : 'disabled'} title="Alles, was du gerade lernst, gemischt – auch was heute nicht fällig ist. Dein Lernstand bleibt, wie er ist">${icon('shuffle')} Alle gemischt (${ln})</button>${chunkSelect()}</div>
-        <div class="small muted">Alles, was du gerade lernst – auch wenn heute nichts fällig ist. „${typeLabel}“ richtet sich nach der Auswahl oben${ln ? `, „Alle gemischt“ nimmt alles zusammen: ${learningSum(lParts)}` : ''}. Ändert nichts an Lernstand und Terminen.</div>`}
-        ${write ? `<div class="small muted">Schreiben hat einen eigenen Lernstand: Neu sind Kanji, die du lesen kannst, aber noch nie geschrieben hast. Hier schreibst du auf Papier und drehst die Karte um – <a href="#/ueben/kanji">mit dem Stift in der App schreiben</a>.</div>` : ''}
-        ${active ? `<div class="small muted">Deutsch → Japanisch hat einen eigenen Lernstand, getrennt vom Lesen. Dazu kommen Wörter, sobald du sie lesen kannst – beim Einstufen kommt in die Lernschlange nur, was du aus dem Deutschen heraus noch nicht weißt.</div>` : ''}
-        ${unchecked ? `<div class="card row between" style="background:var(--yamabuki-soft);border-color:transparent;box-shadow:none"><div><b>${unchecked} ${type === 'kanji' ? 'Kanji' : type === 'phrase' ? 'Ausdrücke' : 'Vokabeln'} sind ${active ? 'aktiv noch nicht eingestuft' : 'noch ungeprüft'}.</b><div class="small muted">${type === 'kanji' ? 'Neue Karten kommen nur aus deinem Lernstapel. Prüfe erst, was du schon kannst.' : active ? 'Du kannst sie lesen. „Neue lernen“ holt sie in die Lernschlange – oder sortiere erst aus, was du auch aus dem Deutschen heraus schon weißt.' : '„Neue lernen“ holt sie in die Lernschlange – oder sortiere erst aus, was du schon kannst.'}</div></div>
+        <div class="row between karten-go"><div class="row">${isG ? '' : roundStart(cq, 'Wiederholen', learningBtn)}
+          <button class="btn ${isG ? 'btn-primary' : ''}" data-cram ${free.length ? '' : 'disabled'} title="Zählt nicht zur Lernschlange – dein Lernstand bleibt, wie er ist">${icon('shuffle')} Frei üben (${free.length})</button></div>
+          ${chunkSelect()}</div>
+        <div class="small muted">${isG ? 'Grammatik übst du frei. Den Haken „Kann ich“ setzt du selbst auf der Seite des Grammatikpunkts.' : 'Wiederholen und Neue lernen zählen für deinen Lernstand, Frei üben nicht.'}${write ? ' Hier schreibst du auf Papier – <a href="#/ueben/kanji">mit dem Stift in der App schreiben</a>.' : ''}</div>
+        ${unchecked ? `<div class="row between karten-hint"><span>${unchecked} ${type === 'kanji' ? 'Kanji' : type === 'phrase' ? 'Ausdrücke' : 'Vokabeln'} sind ${active ? 'aktiv noch nicht eingestuft' : 'noch ungeprüft'}.</span>
           ${!App.checkOn() ? '' : `<a class="btn btn-sm" href="#/ueben/einstufen?${new URLSearchParams(Object.fromEntries(Object.entries({ type: type === 'vocab' ? '' : type, dir: active ? 'de' : '', src: q.src, l: q.l, lvl: q.lvl, g: type === 'phrase' ? q.g : '' }).filter(([, v]) => v)))}">${icon('check')} Einstufen</a>`}</div>` : ''}</div></div>
       <div data-stage></div></div>`;
     if (resume) return resumeCards(view, resume);
     const stage = view.querySelector('[data-stage]');
     const start = (queue, cram) => { view.querySelector('[data-setup]').hidden = true; runCards(stage, queue, { type, dir, cram, write, active, more: () => App.cardQueue(q) }); };
-    view.querySelector('[data-cram]').onclick = () => start(App.shuffle(items).slice(0, CRAM_MAX), true);
-    if (!isG) {
-      view.querySelector('[data-learning]').onclick = () => runLearning(view, App.shuffle(learning), { type, dir, write, active });
-      view.querySelector('[data-learning-all]').onclick = () => runLearning(view, App.learningQueue(), {});
-    }
+    // Frei üben: die ganze Auswahl in Runden, so groß wie „pro Runde“, bis alles einmal dran war
+    view.querySelector('[data-cram]').onclick = () => runLearning(view, App.shuffle(free), { type, dir, write, active });
+    if (!isG) view.querySelector('[data-learning]').onclick = () => runLearning(view, App.shuffle(learning), { type, dir, write, active });
     bindChunk(view);
     bindRoundStart(view, cq, q.round || q.auto, (queue) => start(queue, false));
   });

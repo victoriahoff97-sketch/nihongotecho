@@ -75,7 +75,7 @@
     // Das Schreibfeld steht je nach Lage an drei Stellen – gezeigt wird immer nur einer der drei ersten Schritte.
     karten: [
       { target: '#view .ans-mode', heart: true, title: 'Antwort selbst schreiben', text: 'Nicht nur umdrehen und „ungefähr gewusst“: Tippe den Stift an und schreib das Wort selbst. Die App prüft, ob jedes Zeichen stimmt – Kanji, Kana und Mischungen wie 勉きょう.' },
-      { target: DIRSEG, heart: true, title: 'Antwort selbst schreiben', text: 'Wähle „Deutsch → Japanisch“. Dann steht unter jeder Karte ein Stift-Knopf: Damit schreibst du das Wort selbst, und die App prüft, ob jedes Zeichen stimmt.' },
+      { target: DIRSEG, heart: true, title: 'Antwort selbst schreiben', text: 'Wähle „DE → JP“ (Deutsch → Japanisch). Dann steht unter jeder Karte ein Stift-Knopf: Damit schreibst du das Wort selbst, und die App prüft, ob jedes Zeichen stimmt.' },
       { unless: '#view .ans-mode, ' + DIRSEG, heart: true, title: 'Antwort selbst schreiben', text: 'Bei Karten Deutsch → Japanisch steht unter der Karte ein Stift-Knopf: Damit schreibst du das Wort selbst, und die App prüft, ob jedes Zeichen stimmt.' },
       { target: '#view .flash', text: 'Tippen oder Leertaste dreht die Karte um. Mit Schreibfeld drückst du „Prüfen“: Die Karte deckt sich auf und zeigt, was nicht stimmt.' },
       { title: 'Bewerten', text: 'Danach sagst du, wie gut du es wusstest – nach dem Prüfen ist die passende Bewertung schon vorgewählt. Beim Wiederholen kommt die Karte wieder, kurz bevor du sie vergessen würdest.' },

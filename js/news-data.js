@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-karteikarten', date: '28. Oktober',
+      items: [
+        { t: 'Karteikarten aufgeräumt', d: 'Üben › Karteikarten: Unter der Auswahl wählst du jetzt auch den Lernstand (Ungeprüft, Lernschlange, Kann ich). Darunter stehen alle Startknöpfe in einer Reihe.' },
+        { t: 'Lernschlange üben', d: 'Neben „Wiederholen“ übt ein Knopf alles aus deiner Auswahl, was gerade in der Lernschlange ist – auch wenn heute nichts fällig ist.' },
+        { t: 'Frei üben ohne Grenze', d: 'Frei üben geht jetzt die ganze Auswahl durch statt höchstens 100 Karten – in Runden so groß wie bei „pro Runde“ eingestellt.' },
+      ],
+    },
+    {
       id: '2026-10-28-forum-herzen', date: '28. Oktober',
       items: [
         { t: 'Herzen und @ in der Gruppe', d: 'Unter jedem Beitrag und jeder Antwort gibt es ein ♡ zum Liken. Mit „@“ (Knopf oder einfach tippen) erwähnst du jemanden – die Person sieht dann „@ dich“ am Beitrag.' },
