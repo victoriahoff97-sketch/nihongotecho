@@ -7,6 +7,16 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-forum-herzen', date: '28. Oktober',
+      items: [
+        { t: 'Herzen und @ in der Gruppe', d: 'Unter jedem Beitrag und jeder Antwort gibt es ein ♡ zum Liken. Mit „@“ (Knopf oder einfach tippen) erwähnst du jemanden – die Person sieht dann „@ dich“ am Beitrag.' },
+        { t: 'Ungelesenes fällt auf', d: 'Themen mit neuen Antworten sind rötlich hinterlegt. „Besprochen“ setzen nur noch, wer das Thema schrieb oder die Gruppe gründete.' },
+        { t: 'Karteikarte teilen', d: 'Öffnest du die Wolke mitten in den Karteikarten, kannst du die gerade gezeigte Karte samt Beispielsatz mit einem Tipp anhängen.' },
+        { t: 'Anderen Beispielsatz wählen', d: 'Bei deinem eigenen Beitrag steht neben dem Beispielsatz einer angehängten Vokabel ein kleines Zahnrad – damit wählst du einen deiner anderen Sätze.' },
+        { t: 'Neue Avatare', d: 'Acht neue Motive mit Japan-Thema, z. B. Laterne, Ramen, Kimono und Hanafuda (Wolke › ⋯ › Mein Avatar).' },
+      ],
+    },
+    {
       id: '2026-10-28-grammatik-spalte', date: '28. Oktober',
       items: [
         { t: 'Grammatik: Schon selbst benutzt', d: 'Rechts auf jeder Grammatikseite stehen jetzt deine eigenen Sätze aus Tagebuch und Smalltalk, in denen du den Punkt benutzt hast – das passende Stück ist markiert.' },

@@ -98,19 +98,19 @@
   };
 
   // ---------- Beiträge ----------
-  D.addPost = async (code, { name, kind, text, image, refs }) => {
+  D.addPost = async (code, { name, kind, text, image, refs, mentions }) => {
     const b = db.batch();
     const ref = posts(code).doc();
     b.set(ref, {
-      uid: D.uid(), name, kind, text, hasImage: !!image, refs: refs || [], createdAt: now(), editedAt: null,
+      uid: D.uid(), name, kind, text, hasImage: !!image, refs: refs || [], mentions: mentions || [], createdAt: now(), editedAt: null,
       done: false, doneBy: null, doneAt: null, replyCount: 0, lastActivityAt: now(), lastActivityUid: D.uid(),
     });
     if (image) b.set(img(code, ref.id), { data: image });
     await b.commit();
   };
-  D.editPost = async (code, id, { kind, text, image, refs }) => {
+  D.editPost = async (code, id, { kind, text, image, refs, mentions }) => {
     const b = db.batch();
-    b.update(posts(code).doc(id), { kind, text, hasImage: !!image, refs: refs || [], editedAt: now() });
+    b.update(posts(code).doc(id), { kind, text, hasImage: !!image, refs: refs || [], mentions: mentions || [], editedAt: now() });
     if (image) b.set(img(code, id), { data: image }); else b.delete(img(code, id));
     await b.commit();
   };
@@ -123,19 +123,29 @@
     b.delete(posts(code).doc(id));
     await b.commit();
   };
+  // Zahnrad am Beispielsatz: nur die Verweise ändern (Bild und Text bleiben)
+  D.setPostRefs = (code, id, refs) => posts(code).doc(id).update({ refs, editedAt: now() });
+  D.setReplyRefs = (code, postId, rid, refs) => replies(code, postId).doc(rid).update({ refs, editedAt: now() });
+  // Herz an/aus: nur die eigene uid kommt dazu oder geht raus (zählt nicht als Aktivität)
+  const likeOp = (on) => (on ? FV().arrayUnion(D.uid()) : FV().arrayRemove(D.uid()));
+  D.likePost = (code, id, on) => posts(code).doc(id).update({ likes: likeOp(on) });
+  D.likeReply = (code, postId, rid, on) => replies(code, postId).doc(rid).update({ likes: likeOp(on) });
+  // „besprochen“ dürfen Autor und wer die Gruppe gegründet hat
+  D.groupAdmin = async (code) => { const g = await group(code).get(); const by = g.exists ? g.data().createdBy : null; return typeof by === 'string' ? by : null; };
   D.setDone = (code, id, done, name) => posts(code).doc(id).update(done
     ? { done: true, doneBy: name, doneAt: now() }
     : { done: false, doneBy: null, doneAt: null });
 
   // ---------- Antworten ----------
   // Antwort und Zähler/„letzte Aktivität“ am Beitrag in einem Schritt
-  D.addReply = async (code, postId, { name, text, image, refs }) => {
+  // lastMentions: wen die neueste Antwort erwähnt – so zeigt die Liste „@ dich“, ohne Antworten zu laden
+  D.addReply = async (code, postId, { name, text, image, refs, mentions }) => {
     const b = db.batch();
-    b.set(replies(code, postId).doc(), { uid: D.uid(), name, text, image: image || null, refs: refs || [], createdAt: now(), editedAt: null });
-    b.update(posts(code).doc(postId), { replyCount: FV().increment(1), lastActivityAt: now(), lastActivityUid: D.uid() });
+    b.set(replies(code, postId).doc(), { uid: D.uid(), name, text, image: image || null, refs: refs || [], mentions: mentions || [], createdAt: now(), editedAt: null });
+    b.update(posts(code).doc(postId), { replyCount: FV().increment(1), lastActivityAt: now(), lastActivityUid: D.uid(), lastMentions: mentions || [] });
     await b.commit();
   };
-  D.editReply = (code, postId, rid, { text, image, refs }) => replies(code, postId).doc(rid).update({ text, image: image || null, refs: refs || [], editedAt: now() });
+  D.editReply = (code, postId, rid, { text, image, refs, mentions }) => replies(code, postId).doc(rid).update({ text, image: image || null, refs: refs || [], mentions: mentions || [], editedAt: now() });
   D.deleteReply = async (code, postId, rid) => {
     const b = db.batch();
     b.delete(replies(code, postId).doc(rid));

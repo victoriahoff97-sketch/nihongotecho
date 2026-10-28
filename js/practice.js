@@ -543,7 +543,9 @@
       if (['1', '2', '3', '4'].includes(e.key) && ent && !ent.pad) grade(+e.key - 1);
     };
     document.addEventListener('keydown', onKey);
+    App.screenItem = () => cur; // fürs Forum: „Diese Karte anhängen“
     App.onLeave(() => {
+      App.screenItem = null;
       document.removeEventListener('keydown', onKey);
       if (ans && ans.pad) ans.pad.stop();
       if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue), done, right, total, open: flipped };
@@ -776,6 +778,8 @@
       next();
     };
     stage.addEventListener('click', (e) => { if (e.target.closest('[data-kundo]') && last) undo(); });
+    App.screenItem = () => qs[i] || null; // fürs Forum: „Diese Karte anhängen“
+    App.onLeave(() => { App.screenItem = null; });
     const next = () => {
       if (i >= qs.length) {
         stage.innerHTML = `<div class="card pad-lg" style="text-align:center;max-width:640px;margin:0 auto"><div class="score-ring">${score} / ${qs.length}</div><h2>${score >= qs.length * 0.8 ? 'すごい！' : 'がんばって！'}</h2>${queue || free ? `<p class="muted">${qs.length > (queue || free).length ? 'Falsch Geschriebenes kam in dieser Runde gleich noch einmal dran.' : 'Alles auf Anhieb richtig geschrieben.'}</p>` : ''}<div class="row" style="justify-content:center">${undoBtn()}${App.backBtn('Zur Übersicht')}${queue ? roundEnd(more()) : '<button class="btn btn-primary" data-again>Nochmal</button>'}</div></div>`;

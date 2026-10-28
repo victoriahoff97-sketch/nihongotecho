@@ -100,7 +100,8 @@
 
   // ---------- Avatare ----------
   // Pro Mitglied ein Text: „e:<Motiv>:<Farbe>“ (Kawaii-Motiv im Pastellkreis) oder „k:<Kanji>“ (Hanko-Stempel)
-  F.AVATAR_MOTIFS = ['🍙', '🦊', '🐱', '🌸', '🍡', '🎏', '🐼', '🍵', '🗻', '🐟', '🍣', '🐸', '🌙', '🎐', '🐰', '⛩️'];
+  F.AVATAR_MOTIFS = ['🍙', '🦊', '🐱', '🌸', '🍡', '🎏', '🐼', '🍵', '🗻', '🐟', '🍣', '🐸', '🌙', '🎐', '🐰', '⛩️',
+    '🏮', '🍜', '🎋', '🏯', '🍱', '👘', '🍥', '🎴'];
   F.AVATAR_COLORS = ['sakura', 'matcha', 'sora', 'yuzu', 'fuji', 'kumo'];
   const KANJI_RE = /^[㐀-鿿豈-﫿]$/u;
   F.parseAvatar = (s) => {
@@ -111,11 +112,36 @@
   };
   F.makeAvatar = ({ t, v, c }) => (t === 'k' ? `k:${v}` : `e:${v}:${c}`);
 
+  // ---------- Erwähnen und Herzen ----------
+  // „@Marie“ im Text erwähnt das Mitglied mit diesem Namen (Groß-/Kleinschreibung egal, danach kein Buchstabe mehr).
+  // members = { uid: { name } }; man erwähnt sich nicht selbst. Längere Namen zuerst, damit „@Mari“ nicht „@Marie“ schluckt.
+  F.MAX_MENTIONS = 10;
+  F.MAX_LIKES = 50;
+  const LETTER = /[\p{L}\p{N}]/u;
+  const atHits = (text, name) => {
+    // nur Kleinschreibung, kein NFKC: die Stellen müssen zum Originaltext passen
+    const t = String(text ?? '').toLowerCase(), n = ('@' + name).toLowerCase();
+    const out = [];
+    for (let i = t.indexOf(n); i >= 0; i = t.indexOf(n, i + 1)) if (!LETTER.test(t.charAt(i + n.length))) out.push(i);
+    return out;
+  };
+  const byLength = (members) => Object.entries(members || {})
+    .filter(([, m]) => m && typeof m.name === 'string' && m.name.trim())
+    .sort((a, b) => b[1].name.length - a[1].name.length);
+  F.findMentions = (text, members, myUid) => byLength(members)
+    .filter(([uid, m]) => uid !== myUid && atHits(text, m.name).length).map(([uid]) => uid).slice(0, F.MAX_MENTIONS);
+  // Herz an/aus: die eigene uid kommt dazu bzw. geht raus
+  F.toggleLike = (likes, uid) => (likes.includes(uid) ? likes.filter((u) => u !== uid) : likes.concat(uid));
+  F.likeNames = (likes, members) => likes.map((u) => (members[u] && members[u].name) || 'jemand, der nicht mehr dabei ist');
+  // Wer „besprochen“ setzen darf: wer den Beitrag geschrieben hat, und wer die Gruppe gegründet hat
+  F.canSetDone = (post, myUid, adminUid) => !!myUid && (post.uid === myUid || adminUid === myUid);
+
   // ---------- Daten von anderen Geräten ----------
   // Alles, was aus Firebase kommt, hat ein anderes Mitglied geschrieben: jedes Feld auf seinen Typ bringen,
   // bevor es irgendwo angezeigt wird (die Regeln prüfen auch, aber die Anzeige verlässt sich nicht darauf)
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
   const JPEG = 'data:image/jpeg;base64,';
+  const uids = (v, max) => (Array.isArray(v) ? [...new Set(v.filter((u) => typeof u === 'string' && u && u.length <= 128))].slice(0, max) : []);
   F.cleanPost = (d) => ({
     id: str(d.id, 100), uid: str(d.uid, 128), name: str(d.name, F.MAX_NAME), kind: d.kind === 'rede' ? 'rede' : 'zeigen',
     text: str(d.text, F.MAX_TEXT), hasImage: d.hasImage === true,
@@ -123,12 +149,17 @@
     done: d.done === true, doneBy: str(d.doneBy, F.MAX_NAME), doneAt: num(d.doneAt),
     createdAt: num(d.createdAt), editedAt: num(d.editedAt), lastActivityAt: num(d.lastActivityAt),
     lastActivityUid: str(d.lastActivityUid, 128), refs: F.cleanRefs(d.refs),
+    likes: uids(d.likes, F.MAX_LIKES), mentions: uids(d.mentions, F.MAX_MENTIONS), lastMentions: uids(d.lastMentions, F.MAX_MENTIONS),
   });
   F.cleanReply = (d) => ({
     id: str(d.id, 100), uid: str(d.uid, 128), name: str(d.name, F.MAX_NAME), text: str(d.text, F.MAX_TEXT),
     image: typeof d.image === 'string' && d.image.startsWith(JPEG) && d.image.length <= F.MAX_IMAGE ? d.image : null,
     createdAt: num(d.createdAt), editedAt: num(d.editedAt), refs: F.cleanRefs(d.refs),
+    likes: uids(d.likes, F.MAX_LIKES), mentions: uids(d.mentions, F.MAX_MENTIONS),
   });
+  // „@ dich“ in der Liste: im Beitrag selbst erwähnt, oder in der letzten, noch ungelesenen Antwort
+  F.mentionsMe = (post, seen, myUid) => !!myUid && (post.mentions.includes(myUid)
+    || (post.lastMentions.includes(myUid) && F.isNew(post, seen, myUid)));
 
   // ---------- Liste ----------
   // Offene 💬 zuerst, dann alle 💡, besprochene 💬 getrennt – jeweils neueste Aktivität zuerst.
@@ -169,18 +200,28 @@
       return u;
     }
   };
-  const textPart = (s) => esc(s).replace(/\r?\n/g, '<br>');
-  F.linkify = (text) => {
+  // Erwähnungen (@Name der Mitglieder in names) bekommen eine Markierung – nur im Text, nie in Links
+  const textPart = (s, names) => {
+    const hits = [];
+    for (const n of names) for (const i of atHits(s, n)) if (!hits.some((h) => i < h.end && h.i < i + n.length + 1)) hits.push({ i, end: i + n.length + 1 });
+    hits.sort((a, b) => a.i - b.i);
+    const br = (x) => esc(x).replace(/\r?\n/g, '<br>');
+    let out = '', pos = 0;
+    for (const h of hits) { out += br(s.slice(pos, h.i)) + `<span class="forum-at">${esc(s.slice(h.i, h.end))}</span>`; pos = h.end; }
+    return out + br(s.slice(pos));
+  };
+  F.linkify = (text, names = []) => {
     const s = String(text ?? '');
+    const ns = names.filter((n) => typeof n === 'string' && n.trim()).sort((a, b) => b.length - a.length);
     let out = '';
     let pos = 0;
     for (const m of s.matchAll(URL_RE)) {
       const url = trimUrl(m[0]);
-      out += textPart(s.slice(pos, m.index));
+      out += textPart(s.slice(pos, m.index), ns);
       out += `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`;
       pos = m.index + url.length;
     }
-    return out + textPart(s.slice(pos));
+    return out + textPart(s.slice(pos), ns);
   };
 
   const dayStart = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };

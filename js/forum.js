@@ -32,7 +32,8 @@
   let gen = 0;
   let members = {}; // uid → { name, avatar }
   let unsubM = null;
-  const stop = () => { gen++; if (unsub) unsub(); if (unsubM) unsubM(); unsub = unsubM = null; posts = []; members = {}; status = 'idle'; };
+  let adminUid = null; // wer die Gruppe gegründet hat – darf wie der Autor „besprochen“ setzen
+  const stop = () => { gen++; if (unsub) unsub(); if (unsubM) unsubM(); unsub = unsubM = null; posts = []; members = {}; adminUid = null; status = 'idle'; };
   const start = () => {
     if (!D.configured() || !st.code || unsub || status === 'loading') return;
     status = 'loading';
@@ -41,6 +42,7 @@
     D.load().then(mine(() => {
       unsub = D.watchPosts(st.code, mine(onPosts), mine(onError));
       if (!unsubM) unsubM = D.watchMembers(st.code, mine((m) => { members = m; keepAvatar(); if (ui && ui.onMembers) ui.onMembers(); }));
+      D.groupAdmin(st.code).then(mine((a) => { adminUid = a; if (ui && ui.onMembers) ui.onMembers(); }), () => {});
     })).catch(mine(onError));
   };
   // eigenen Avatar auch auf dem Gerät merken: geht die Anmeldung verloren, nimmt das Wiederbeitreten ihn mit
@@ -120,7 +122,10 @@
     ? { on: [].concat(it.on || []).join('、'), kun: [].concat(it.kun || []).map(App.kanjiLogic.kunText).join('、') } : undefined);
   const toRef = (it) => F.makeRef(it, { label: App.itemPlain(it), sub: App.itemSub(it), kanji: kanjiCopy(it) });
   // Eintrag, der gerade unter dem Fenster offen ist (z. B. #/grammatik/g-n5-wa) – für „Diesen Eintrag anhängen“
+  // Lernrunden ohne eigene Adresse (Karteikarten, Kanji schreiben) melden ihre aktuelle Karte über App.screenItem
   const pageItem = () => {
+    const card = App.screenItem && App.screenItem();
+    if (card) return F.REF_TYPES.includes(card.type) ? card : null;
     const parts = App.parseHash().path.split('/').filter(Boolean);
     if (parts.length !== 2) return null;
     const key = decodeURIComponent(parts[1]);
@@ -131,7 +136,9 @@
   const byWord = (w) => { for (const it of App.store.items.values()) if (it.type === 'vocab' && (it.kanji === w || it.kana === w)) return it; return null; };
   const resolve = (ref) => F.resolveRef(ref, { byId: App.item, byWord, byChar: App.kanjiByChar });
   // Kanji stehen rechts neben dem Text (withKanji), alles andere darunter; i bleibt der Platz in refs
-  const refsHtml = (refs, owner) => {
+  // mine: eigener Beitrag – dann lässt sich am Beispielsatz (Zahnrad) ein anderer eigener Satz wählen
+  const otherExamples = (r) => { const it = r.type === 'vocab' && App.item(r.id); return it ? (it.examples || []).filter((x) => x && x.jp) : []; };
+  const refsHtml = (refs, owner, mine) => {
     const list = F.cleanRefs(refs).map((r, i) => [r, i]).filter(([r]) => r.type !== 'kanji');
     if (!list.length) return '';
     return `<div class="forum-refs">${list.map(([r, i]) => {
@@ -144,9 +151,22 @@
       const exHtml = ex ? `<span class="forum-ref-ex"><span lang="ja">${App.jp.ruby(ex.jp)}</span>${ex.de ? `<span class="muted">${esc(ex.de)}</span>` : ''}</span>` : '';
       return `<span class="forum-ref ${sec.cls}"><button type="button" class="forum-ref-open ${exHtml ? 'has-ex' : ''}" data-ref="${esc(owner)}:${i}" title="${take ? 'Hast du noch nicht – danach suchen' : 'Öffnen'}">
           <span class="badge sec">${sec.label}</span><b lang="ja">${esc(r.label)}</b>${reading}${r.sub ? `<span class="muted">${esc(r.sub)}</span>` : ''}${exHtml}</button>
+          ${mine && exHtml && otherExamples(r).length > 1 ? `<button type="button" class="icon-btn forum-exset" data-exset="${esc(owner)}:${i}" title="Anderen Beispielsatz wählen" aria-label="Anderen Beispielsatz wählen">${icon('settings')}</button>` : ''}
           ${take ? `<button type="button" class="btn btn-sm" data-take="${esc(owner)}:${i}">${icon('plus')} Als Vokabel übernehmen</button>` : ''}</span>`;
     }).join('')}</div>`;
   };
+  // Zahnrad: einen der eigenen Beispielsätze wählen → Promise mit dem Satz (oder null)
+  const pickExample = (r) => new Promise((done) => {
+    const list = otherExamples(r);
+    const curJp = r.vocab && r.vocab.examples && r.vocab.examples[0] ? r.vocab.examples[0].jp : '';
+    let chosen = null;
+    const md = App.modal({
+      title: `Beispielsatz zu <span lang="ja">${esc(r.label)}</span>`, foot: false, cls: 'forum-modal',
+      body: `<p class="muted small">Welcher deiner Sätze soll im Beitrag stehen?</p><div class="forum-exlist">${list.map((x, k) => `<button type="button" class="forum-expick ${x.jp === curJp ? 'on' : ''}" data-k="${k}"><span lang="ja">${App.jp.ruby(x.jp)}</span>${x.de ? `<span class="muted">${esc(x.de)}</span>` : ''}</button>`).join('')}</div>`,
+      onClose: () => done(chosen),
+    });
+    md.body.onclick = (e) => { const b = e.target.closest('[data-k]'); if (b) { chosen = list[Number(b.dataset.k)]; md.close(); } };
+  });
   const kanjiHtml = (refs, owner) => {
     const list = F.cleanRefs(refs).map((r, i) => [r, i]).filter(([r]) => r.type === 'kanji');
     if (!list.length) return '';
@@ -200,6 +220,7 @@
     const el = document.createElement('div');
     el.className = 'forum-compose';
     el.innerHTML = `<textarea class="input" maxlength="${F.MAX_TEXT}" placeholder="${esc(placeholder)}"></textarea>
+      <div class="forum-at-pop" hidden></div>
       <div class="forum-img-prev" hidden></div>
       <div class="forum-chosen"></div>
       <div class="forum-row">
@@ -207,6 +228,7 @@
         <label class="btn btn-sm forum-pick">${icon('imagePlus')}<span>Bild</span><input type="file" accept="image/*" hidden></label>
         ${navigator.clipboard && navigator.clipboard.read ? `<button type="button" class="btn btn-sm" data-clip title="Screenshot oder Bild aus der Zwischenablage einfügen (am PC auch Strg+V)">${icon('copy')}<span>Einfügen</span></button>` : ''}
         <button type="button" class="btn btn-sm" data-link>${icon('link')}<span>Eintrag</span></button>
+        <button type="button" class="btn btn-sm forum-atbtn" data-at title="Jemanden aus der Gruppe erwähnen">@</button>
         ${App.dictate.supported() ? `<span class="forum-dict"><button type="button" class="btn btn-sm mic" data-mic title="Sprechen – der Text erscheint im Feld. Bleibt an, bis du auf „Fertig“ tippst.">${icon('mic')}<span class="mic-label">Diktieren</span></button>
           <span class="seg forum-dlang" title="In welcher Sprache diktierst du?">${DLANGS.map(([l, t]) => `<button type="button" data-dlang="${l}">${t}</button>`).join('')}</span></span>` : ''}
         <span class="grow"></span>
@@ -239,7 +261,7 @@
       const offer = here && !refs.some((r) => r.id === here.id) && refs.length < F.MAX_REFS ? here : null;
       chosen.innerHTML = refs.map((r, i) => `<span class="chip on ${App.SECTIONS[r.type].cls}"><span lang="ja">${esc(r.label)}</span>
           <button type="button" class="forum-unref" data-unref="${i}" title="Verknüpfung entfernen" aria-label="Verknüpfung entfernen">✕</button></span>`).join('')
-        + (offer ? `<button type="button" class="chip forum-offer" data-here>${icon('plus')} Diesen Eintrag anhängen: <b lang="ja">${esc(App.itemPlain(offer))}</b></button>` : '');
+        + (offer ? `<button type="button" class="chip forum-offer" data-here>${icon('plus')} ${App.screenItem && App.screenItem() ? 'Diese Karte' : 'Diesen Eintrag'} anhängen: <b lang="ja">${esc(App.itemPlain(offer))}</b></button>` : '');
       chosen.hidden = !chosen.innerHTML;
     };
     const pick = async () => {
@@ -252,13 +274,40 @@
       refs = next.slice(0, F.MAX_REFS);
       drawRefs();
     };
+    // @ getippt oder @-Knopf: die anderen Mitglieder zur Auswahl; gewählt wird „@Name “ an der Schreibstelle eingefügt
+    const atPop = el.querySelector('.forum-at-pop');
+    let atTyped = false;
+    const showAt = (typed) => {
+      atTyped = typed;
+      const others = Object.entries(members).filter(([u, m]) => u !== D.uid() && m.name).sort((a, b) => a[1].name.localeCompare(b[1].name));
+      atPop.innerHTML = others.length
+        ? others.map(([u, m]) => `<button type="button" class="chip" data-atname="${esc(m.name)}">${avatarHtml(F.parseAvatar(m.avatar), m.name)}${esc(m.name)}</button>`).join('')
+        : '<span class="muted small">Noch niemand sonst in der Gruppe.</span>';
+      atPop.hidden = false;
+    };
+    const putAt = (name) => {
+      const at = ta.selectionStart ?? ta.value.length;
+      const add = (atTyped ? '' : '@') + name + ' ';
+      ta.value = ta.value.slice(0, at) + add + ta.value.slice(ta.selectionEnd ?? at);
+      atPop.hidden = true;
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = at + add.length;
+      setErr('');
+      keep();
+    };
     const showLang = () => { const l = dictLang(); $$('[data-dlang]', el).forEach((b) => b.classList.toggle('on', b.dataset.dlang === l)); };
     if (kinds) setKind(kind);
     showLang();
     setImage(image);
     drawRefs();
     const keep = key ? App.debounce(() => saveDraft(key, ta.value), 400) : () => {};
-    ta.addEventListener('input', () => { setErr(''); keep(); });
+    // gerade „@“ getippt (am Anfang oder nach Leerzeichen, nicht in einer Mail-Adresse) → Vorschläge; Leerzeichen schließt sie
+    ta.addEventListener('input', () => {
+      setErr(''); keep();
+      const at = ta.selectionStart, before = ta.value.slice(Math.max(0, at - 2), at);
+      if (/(^|\s)@$/.test(before)) showAt(true); else if (!atPop.hidden && /\s$/.test(before)) atPop.hidden = true;
+    });
+    ta.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !atPop.hidden) { e.stopPropagation(); atPop.hidden = true; } });
     ta.addEventListener('change', keep); // Diktiertes kommt als change
 
     el.addEventListener('click', (e) => {
@@ -267,6 +316,9 @@
       if (e.target.closest('[data-noimg]')) setImage(null);
       if (e.target.closest('[data-cancel]')) { App.dictate.stopFor(ta, { now: true }); onCancel(); }
       if (e.target.closest('[data-link]')) pick();
+      if (e.target.closest('[data-at]')) { if (atPop.hidden) showAt(false); else atPop.hidden = true; }
+      const an = e.target.closest('[data-atname]');
+      if (an) putAt(an.dataset.atname);
       const mic = e.target.closest('[data-mic]');
       if (mic) { setErr(''); App.dictate.toggle(ta, mic, dictLang(), { long: true }); }
       const dl = e.target.closest('[data-dlang]');
@@ -311,8 +363,8 @@
       if (msg) { setErr(msg); return; }
       busy = true;
       try {
-        await onSubmit({ kind, text, image, refs });
-        if (key) { saveDraft(key, ''); ta.value = ''; setImage(null); refs = []; drawRefs(); ta.blur(); setClosed(true); }
+        await onSubmit({ kind, text, image, refs, mentions: F.findMentions(text, members, D.uid()) });
+        if (key) { saveDraft(key, ''); ta.value = ''; setImage(null); refs = []; drawRefs(); atPop.hidden = true; ta.blur(); setClosed(true); }
       } catch (x) {
         setErr(OFFLINE);
       } finally { busy = false; }
@@ -327,6 +379,8 @@
     if (a && a.t === 'k') return `<span class="forum-av av-hanko ${cls}" lang="ja" aria-hidden="true">${esc(a.v)}</span>`;
     return `<span class="forum-av ${cls}" aria-hidden="true">${esc(Array.from(String(name || '?').trim())[0] || '?')}</span>`;
   };
+  const atNames = () => Object.values(members).map((m) => m.name);
+  const textHtml = (text) => F.linkify(text, atNames());
   const avatarOf = (x) => avatarHtml(F.parseAvatar(members[x.uid] && members[x.uid].avatar), x.name);
   const meta = (p) => `${avatarOf(p)}<b>${esc(p.name)}</b> ·${p.createdAt ? esc(F.relTime(p.createdAt, Date.now())) : 'gerade eben'}${p.editedAt ? ' (bearbeitet)' : ''}`;
   const dayMonth = (ms) => { const d = new Date(ms); return `${d.getDate()}.${d.getMonth() + 1}.`; };
@@ -522,11 +576,13 @@
   const row = (p) => {
     const fresh = F.isNew(p, st.seen, D.uid());
     const replies = p.replyCount ? `<span class="badge">${icon('chat')} ${p.replyCount} ${p.replyCount === 1 ? 'Antwort' : 'Antworten'}</span>` : '';
-    const foot = refChips(p.refs) + replies;
+    const likes = p.likes.length ? `<span class="badge forum-likes" title="${esc(F.likeNames(p.likes, members).join(', '))}">♥ ${p.likes.length}</span>` : '';
+    const foot = refChips(p.refs) + replies + likes;
+    const atMe = F.mentionsMe(p, st.seen, D.uid());
     return `<button class="forum-item ${fresh ? 'is-new' : ''}" data-open="${esc(p.id)}">${dateCol(p.createdAt)}
       <span class="forum-item-body">
         <span class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}${p.hasImage ? ` ${icon('image')}` : ''}
-          <span class="grow"></span>${fresh ? '<span class="badge forum-new">neu</span>' : ''}${p.done ? '<span class="badge">besprochen</span>' : ''}</span>
+          <span class="grow"></span>${atMe ? '<span class="badge forum-atme">@ dich</span>' : ''}${fresh ? '<span class="badge forum-new">neu</span>' : ''}${p.done ? '<span class="badge">besprochen</span>' : ''}</span>
         <span class="forum-item-text">${esc(p.text)}</span>
         ${foot ? `<span class="forum-item-foot">${foot}</span>` : ''}
       </span></button>`;
@@ -592,6 +648,15 @@
     let replies = [];
     const me = () => D.uid();
     const own = (x) => x.uid === me();
+    // Herz: Zahl daneben, Namen beim Darüberfahren
+    const likeBtn = (x, what) => {
+      const on = x.likes.includes(me());
+      const n = x.likes.length;
+      return `<button type="button" class="forum-like ${on ? 'on' : ''}" data-like="${what}" aria-pressed="${on}" title="${n ? esc(F.likeNames(x.likes, members).join(', ')) : 'Gefällt mir'}">${on ? '♥' : '♡'}${n ? `<span>${n}</span>` : ''}</button>`;
+    };
+    // Antworten, die seit dem letzten Öffnen dazukamen, bleiben hinterlegt, solange der Beitrag offen ist
+    const seenBefore = st.seen[id] || 0;
+    const isFreshReply = (x) => !own(x) && x.createdAt && x.createdAt > seenBefore;
     const tools = (x, what) => (own(x) ? `<span class="forum-tools"><button class="btn btn-sm" data-edit="${what}">${icon('edit')} Bearbeiten</button><button class="btn btn-sm" data-del="${what}">${icon('trash')} Löschen</button></span>` : '');
 
     // Bild des Beitrags: eigenes Dokument, erst hier geladen (neu, wenn der Beitrag bearbeitet wurde)
@@ -607,16 +672,19 @@
       const p = posts.find((x) => x.id === id);
       if (!p) { if (status === 'live') showList(); return; }
       loadPic(p);
+      // „besprochen“ setzen: wer den Beitrag geschrieben hat und wer die Gruppe gegründet hat
       const done = p.kind === 'rede'
-        ? `<div class="forum-row">${p.done ? `<span class="badge">Besprochen · von ${esc(p.doneBy)}${p.doneAt ? ', ' + dayMonth(p.doneAt) : ''}</span>` : ''}
-            <button class="btn btn-sm" data-done>${p.done ? 'Wieder öffnen' : `${icon('check')} Als besprochen markieren`}</button></div>` : '';
+        ? `${p.done ? `<span class="badge">Besprochen · von ${esc(p.doneBy)}${p.doneAt ? ', ' + dayMonth(p.doneAt) : ''}</span>` : ''}
+            ${F.canSetDone(p, me(), adminUid) ? `<button class="btn btn-sm" data-done>${p.done ? 'Wieder öffnen' : `${icon('check')} Als besprochen markieren`}</button>` : ''}` : '';
       head.innerHTML = `<div class="forum-post-top">${dateCol(p.createdAt)}<div class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}</div></div>
-        ${withKanji(`<div class="forum-text">${F.linkify(p.text)}</div>${p.hasImage ? (id in pics ? imgHtml(pics[id], 'forum-img') : '<p class="muted small">Bild wird geladen …</p>') : ''}${refsHtml(p.refs, 'post')}${done}${tools(p, 'post')}`, p.refs, 'post')}`;
+        ${withKanji(`<div class="forum-text">${textHtml(p.text)}</div>${p.hasImage ? (id in pics ? imgHtml(pics[id], 'forum-img') : '<p class="muted small">Bild wird geladen …</p>') : ''}${refsHtml(p.refs, 'post', own(p))}
+          <div class="forum-row forum-acts">${likeBtn(p, 'post')}${done}<span class="grow"></span>${tools(p, 'post')}</div>`, p.refs, 'post')}`;
     };
     const drawReplies = () => {
       repEl.innerHTML = replies.map((x) => (editing === x.id ? `<div class="forum-reply" data-rid="${esc(x.id)}" data-editing></div>`
-        : `<div class="forum-reply" data-rid="${esc(x.id)}"><div class="forum-item-head">${meta(x)}</div>
-          ${withKanji(`<div class="forum-text">${F.linkify(x.text)}</div>${imgHtml(x.image, 'forum-img')}${refsHtml(x.refs, x.id)}${tools(x, x.id)}`, x.refs, x.id)}</div>`)).join('');
+        : `<div class="forum-reply ${isFreshReply(x) ? 'is-new' : ''}" data-rid="${esc(x.id)}"><div class="forum-item-head">${meta(x)}</div>
+          ${withKanji(`<div class="forum-text">${textHtml(x.text)}</div>${imgHtml(x.image, 'forum-img')}${refsHtml(x.refs, x.id, own(x))}
+          <div class="forum-row forum-acts">${likeBtn(x, x.id)}<span class="grow"></span>${tools(x, x.id)}</div>`, x.refs, x.id)}</div>`)).join('');
       const slot = repEl.querySelector('[data-editing]');
       if (slot) {
         const x = replies.find((y) => y.id === editing);
@@ -629,7 +697,7 @@
     };
     r.querySelector('[data-answer]').appendChild(composer({
       key: 'r:' + id, label: 'Antworten', placeholder: 'Deine Antwort …',
-      onSubmit: (v) => D.addReply(st.code, id, { name: st.name, text: v.text, image: v.image, refs: v.refs }),
+      onSubmit: (v) => D.addReply(st.code, id, { name: st.name, text: v.text, image: v.image, refs: v.refs, mentions: v.mentions }),
     }));
     App.hydrateIcons(r);
 
@@ -640,11 +708,33 @@
       if (ro) { const ref = refAt(ro.dataset.ref); if (ref) openRef(ref); return; }
       const tk = e.target.closest('[data-take]');
       if (tk) { const ref = refAt(tk.dataset.take); if (ref) takeRef(ref, () => { drawHead(); drawReplies(); App.hydrateIcons(r); }); return; }
+      const ex = e.target.closest('[data-exset]');
+      if (ex) {
+        const [o, i] = ex.dataset.exset.split(':');
+        const x = o === 'post' ? posts.find((y) => y.id === id) : replies.find((y) => y.id === o);
+        const ref = x && F.cleanRefs(x.refs)[Number(i)];
+        const pickd = ref && await pickExample(ref);
+        if (!pickd) return;
+        const refs = F.cleanRefs(x.refs);
+        refs[Number(i)].vocab.examples = [{ jp: pickd.jp, de: pickd.de || '' }];
+        try { if (o === 'post') await D.setPostRefs(st.code, id, refs); else await D.setReplyRefs(st.code, id, o, refs); } catch (y) { App.toast(OFFLINE); }
+        return;
+      }
+      const lk = e.target.closest('[data-like]');
+      if (lk) {
+        const w = lk.dataset.like;
+        const x = w === 'post' ? posts.find((y) => y.id === id) : replies.find((y) => y.id === w);
+        if (!x) return;
+        const on = !x.likes.includes(me());
+        try { if (w === 'post') await D.likePost(st.code, id, on); else await D.likeReply(st.code, id, w, on); }
+        catch (y) { App.toast(y && y.code === 'permission-denied' ? 'Herzen gehen erst nach dem nächsten Gruppen-Update.' : OFFLINE); }
+        return;
+      }
       const img = e.target.closest('.forum-img');
       if (img) { showBig(img.getAttribute('src')); return; }
       const p = posts.find((x) => x.id === id);
       if (e.target.closest('[data-done]') && p) {
-        try { await D.setDone(st.code, id, !p.done, st.name); } catch (x) { App.toast(OFFLINE); }
+        try { await D.setDone(st.code, id, !p.done, st.name); } catch (x) { App.toast(x && x.code === 'permission-denied' ? 'Nur wer das Thema geschrieben oder die Gruppe gegründet hat, kann es auf „besprochen“ setzen.' : OFFLINE); }
         return;
       }
       const ed = e.target.closest('[data-edit]');
