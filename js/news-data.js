@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-kanji-striche', date: '28. Oktober',
+      items: [
+        { t: 'Strichzahl bei Kanji berichtigt', d: 'Wer ein neues Kanji per Tastatur eintippt (z. B. „aki“ für 秋), bekam manchmal eine falsche Strichzahl. Behoben – falsche Zahlen wurden von selbst korrigiert.' },
+      ],
+    },
+    {
       id: '2026-10-28-satz-vorschlag', date: '28. Oktober',
       items: [
         { t: 'Satz gleich vorgeschlagen', d: 'Öffnest du die Gruppe aus „Sätze zuordnen“, steht der Satz schon zum Anhängen bereit – und der Link zum Artikel kommt mit in deinen Beitrag.' },

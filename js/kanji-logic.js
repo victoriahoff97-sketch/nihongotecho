@@ -42,6 +42,18 @@
   const kanjiChars = (s) => [...new Set(Array.from(String(s || '')).filter((c) => KANJI_RE.test(c)))];
   const newChars = (q, index, has) => kanjiChars(q).filter((c) => index && index[c] && !has(c));
 
-  const P = { entry, kunParts, kunText, kunRaw, firstKanji, kanjiChars, exampleWords, wordLines, newChars };
+  // Eigene Kanji mit falscher oder fehlender Strichzahl → [Eintrag, richtige Zahl] laut Index.
+  // Fehlerquelle bis 2026-10: beim Tippen „aki“ stand kurz あ im Feld, das Formular übernahm dessen 3 Striche für 秋.
+  const strokeFixes = (index, items) => {
+    const out = [];
+    for (const it of items || []) {
+      if (it.type !== 'kanji' || it._seed || it._pack) continue;
+      const e = entry(index, it.char);
+      if (e && e.strokes && +it.strokes !== e.strokes) out.push([it, e.strokes]);
+    }
+    return out;
+  };
+
+  const P = { entry, kunParts, kunText, kunRaw, firstKanji, kanjiChars, exampleWords, wordLines, newChars, strokeFixes };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.kanjiLogic = P;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -380,6 +380,17 @@
     if (navigator.onLine !== false) App.stroke.has(ch).then((ok) => ok || App.stroke.download(ch)).catch((e) => console.error(e));
     return saved;
   };
+  // Einmalig je Gerät: falsche Strichzahlen eigener Kanji aus dem Index berichtigen (kanjiLogic.strokeFixes)
+  App.kanjiStrokeRepair = async () => {
+    if (await App.db.get('meta', 'kanjiStrokesFixed')) return 0;
+    const idx = await App.kanjiIndex();
+    if (!idx) return 0;
+    const now = Date.now();
+    const puts = App.kanjiLogic.strokeFixes(idx, Array.from(App.store.items.values())).map(([it, n]) => { it.strokes = n; it.updated = now; return it; });
+    if (puts.length) { await App.db.putMany('items', puts); App.emit('items'); }
+    await App.db.put('meta', { key: 'kanjiStrokesFixed', value: true });
+    return puts.length;
+  };
   // Formular: neues Kanji füllt sich aus, sobald das Zeichen dasteht; beim Bearbeiten nur über den Knopf.
   // Gefüllt werden leere Felder und solche, die noch den zuletzt automatisch eingetragenen Wert tragen.
   const bindKanjiAutofill = (root, isNew, onFilled) => {
@@ -401,7 +412,7 @@
       Object.entries(found).forEach(([n, v]) => {
         const el = root.querySelector(`[name="${n}"]`);
         const typed = el.value.trim();
-        if (typed && typed !== filled[n] && typed !== v.trim()) return; // selbst Eingetragenes bleibt
+        if (typed && typed !== filled[n] && typed !== el.dataset.auto && typed !== v.trim()) return; // selbst Eingetragenes bleibt (dataset.auto: Strichzahl aus der Strichfolge)
         if (v || typed) { el.value = v; filled[n] = v.trim(); }
       });
       root._autoWords = a.words; // read(): englische Bedeutung der vorgeschlagenen Wörter bleibt englisch
@@ -596,14 +607,14 @@
       const msg = root.querySelector('[data-kvg-msg]');
       const btn = root.querySelector('[data-kvg-dl]');
       const strokes = root.querySelector('[name=strokes]');
-      const cur = () => Array.from(ch.value.trim())[0] || '';
+      const cur = () => App.kanjiLogic.firstKanji(ch.value); // nicht die Kana beim Tippen (あき → あ hätte 3 Striche eingetragen)
       const check = async () => {
         const c = cur();
         btn.hidden = true;
         if (!c) { msg.textContent = 'Kanji oben eingeben …'; return; }
         const p = await App.stroke.get(c);
         if (c !== cur()) return;
-        if (p) { msg.innerHTML = `✓ vorhanden – ${p.length} Striche`; if (!strokes.value) strokes.value = p.length; }
+        if (p) { msg.innerHTML = `✓ vorhanden – ${p.length} Striche`; if (!strokes.value || strokes.value === strokes.dataset.auto) strokes.value = strokes.dataset.auto = String(p.length); }
         else { msg.textContent = 'Noch nicht gespeichert – zum Laden auf den Button tippen (Internet nötig).'; btn.hidden = false; }
       };
       ch.addEventListener('input', App.debounce(check, 250));

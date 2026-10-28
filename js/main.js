@@ -140,6 +140,8 @@
     if (App.exampleFuriRepair) App.exampleFuriRepair().catch((e) => console.error(e));
     // eigene Verben: Partikel-Muster und Verbklasse aus dem Verb-Index ergänzen (einmal je Index-Version)
     if (App.verbBackfill) App.verbBackfill().catch((e) => console.error(e));
+    // eigene Kanji: falsche Strichzahl aus dem Kanji-Index berichtigen (einmal je Gerät, js/editors.js)
+    if (App.kanjiStrokeRepair) App.kanjiStrokeRepair().catch((e) => console.error(e));
     // Kleines Wörterbuch beim ersten Web-Start von selbst laden (nicht abgewartet)
     if (App.welcome) App.welcome.autoDict();
     // Ordner-Sicherung anschließen – ein Fehler hier darf den Start nie verhindern
