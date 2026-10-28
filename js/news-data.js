@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-strichfolge', date: '28. Oktober',
+      items: [
+        { t: 'Strichfolge laden klappt wieder', d: 'Bei manchen Kanji (z. B. 冬) schlug „Strichfolge laden“ fehl, weil der Download-Dienst streikte. Nun lädt die App aus einer festen Version und notfalls direkt von GitHub.' },
+        { t: 'Kanji-Markierungen mit mehr Platz', d: 'Unter Kanji nutzen die Markierungen jetzt die ganze Breite. Die Farberklärung (Lernstapel, kann ich …) steht rechts neben der ersten Lektions-Überschrift.' },
+      ],
+    },
+    {
       id: '2026-10-28-startseite-zurueck', date: '28. Oktober',
       items: [
         { t: 'Startseite wie vorher', d: 'Die Startseite sieht wieder aus wie bis heute Morgen: einzelne Lernstand-Karten, Schnellaktionen und die Liste 今日 mit „Wenn du magst“.' },

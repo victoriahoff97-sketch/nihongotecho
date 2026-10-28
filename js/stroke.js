@@ -13,13 +13,22 @@
     return cached ? cached.value : null;
   };
   ST.has = async (ch) => !!(await ST.get(ch));
+  ST.SOURCES = [
+    (hex) => `https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@r20260714/kanji/${hex}.svg`,
+    (hex) => `https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${hex}.svg`,
+  ];
   // Auf Klick: Strichfolge aus derselben Quelle (KanjiVG) herunterladen und lokal speichern
   ST.download = async (ch) => {
     if (!ch || !/[぀-ヿ㐀-鿿豈-﫿々]/.test(ch)) return { ok: false, error: 'Kein Kanji/Kana-Zeichen' };
     const hex = ch.codePointAt(0).toString(16).padStart(5, '0');
-    let r;
-    try { r = await fetch(`https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji/${hex}.svg`); }
-    catch (e) { return { ok: false, error: 'Keine Internetverbindung – bitte später nochmal versuchen.' }; }
+    // jsDelivr nur mit fester Version: „@master“ antwortet 403, weil das Paket über 50 MB groß ist
+    // (nur schon zwischengespeicherte Kanji kamen noch durch). GitHub direkt als Ersatz.
+    let r, net = 0;
+    for (const u of ST.SOURCES) {
+      try { r = await fetch(u(hex)); } catch (e) { net++; continue; }
+      if (r.ok) break;
+    }
+    if (net === ST.SOURCES.length) return { ok: false, error: 'Keine Internetverbindung – bitte später nochmal versuchen.' };
     if (r.status === 404) return { ok: false, error: `KanjiVG hat für „${ch}“ keine Strichfolge.` };
     if (!r.ok) return { ok: false, error: 'Download fehlgeschlagen (' + r.status + ')' };
     const txt = await r.text();

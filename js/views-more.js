@@ -70,8 +70,7 @@
       body.innerHTML = `<div class="toolbar"><div class="search-wrap" style="max-width:340px">${icon('search')}<input class="input" style="padding-left:44px;width:100%" data-kf placeholder="Kanji, Bedeutung oder Lesung …" value="${esc(q.f || '')}"></div>
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all, q.l)}${App.levelSelect(q.lvl)}
         <select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st, 'kanji')}</select></div></div>
-        <div class="kanji-marks"><div class="chips scroll">${markRow ? `<button class="chip ${!q.mark ? 'on' : ''}" data-q-mark="">Alle Markierungen</button>${markRow}` : ''}<button class="chip" data-new-mark>${icon('plus')} Markierung</button></div>
-        <span class="small muted kanji-legend">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernstapel · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span><button class="btn btn-sm btn-sec" data-kvg-all hidden></button></div>
+        <div class="kanji-marks"><div class="chips scroll">${markRow ? `<button class="chip ${!q.mark ? 'on' : ''}" data-q-mark="">Alle Markierungen</button>${markRow}` : ''}<button class="chip" data-new-mark>${icon('plus')} Markierung</button></div><button class="btn btn-sm btn-sec" data-kvg-all hidden></button></div>
         <div data-grid style="margin-top:14px"></div>`;
       body.querySelector('[data-new-mark]').onclick = async () => { const m = await App.addKanjiMark(); if (m) App.setQuery({ mark: m }); };
       // Eigene Kanji ohne Strichfolge finden → Sammel-Download anbieten
@@ -98,8 +97,10 @@
       })();
       const byL = new Map();
       items.forEach((it) => { const k = (it.source || 'Eigene') + (it.lesson !== '' && it.lesson != null ? ' · Lektion ' + it.lesson : ''); if (!byL.has(k)) byL.set(k, []); byL.get(k).push(it); });
+      // Legende rechts in der ersten Lektions-Überschrift – so nimmt sie den Markierungen keinen Platz weg
+      const legend = `<span class="small muted kanji-legend">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernstapel · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span>`;
       let html = '';
-      byL.forEach((list, k) => { html += `<div class="group-head"><h2>${esc(k)}</h2><span class="badge">${list.length}</span><span class="line"></span></div><div class="kanji-grid">${list.map(App.kanjiTile).join('')}</div>`; });
+      byL.forEach((list, k) => { html += `<div class="group-head"><h2>${esc(k)}</h2><span class="badge">${list.length}</span><span class="line"></span>${html ? '' : legend}</div><div class="kanji-grid">${list.map(App.kanjiTile).join('')}</div>`; });
       body.querySelector('[data-grid]').innerHTML = html || '<div class="empty-state"><div class="big">漢</div><h3>Keine Kanji gefunden</h3></div>';
       const kf = body.querySelector('[data-kf]');
       App.bindLiveFilter(kf, '[data-kf]');
