@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-satz-vorschlag', date: '28. Oktober',
+      items: [
+        { t: 'Satz gleich vorgeschlagen', d: 'Öffnest du die Gruppe aus „Sätze zuordnen“, steht der Satz schon zum Anhängen bereit – und der Link zum Artikel kommt mit in deinen Beitrag.' },
+        { t: 'Aufgeräumtes Eingabefeld', d: 'In der Gruppe stehen die Knöpfe jetzt über dem Textfeld, „Teilen“ darunter – und zum Diktieren gibt es je einen Knopf für Deutsch und 日本語.' },
+      ],
+    },
+    {
       id: '2026-10-28-einstufen', date: '28. Oktober',
       items: [
         { t: 'Einstufen aufgeräumt', d: 'Üben › Einstufen sieht jetzt aus wie die Karteikarten: Art, Richtung, Quelle, Lektion und Niveau in einer Zeile. Mit gewählter Lektion stufst du Lektion für Lektion ein.' },

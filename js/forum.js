@@ -139,10 +139,15 @@
   // mine: eigener Beitrag – dann lässt sich am Beispielsatz (Zahnrad) ein anderer eigener Satz wählen
   const otherExamples = (r) => { const it = r.type === 'vocab' && App.item(r.id); return it ? (it.examples || []).filter((x) => x && x.jp) : []; };
   // Satz aus „Sätze erkennen“: groß mit Furigana, darunter Deutsch und Quelle
+  // Quelle des Satzes: mit Adresse ein Link zum Artikel (ohne Namen steht die Seite da, z. B. „nhk.or.jp“)
+  const host = (url) => { try { return new URL(url).hostname.replace(/^www\d*\./, ''); } catch (e) { return ''; } };
+  const srcHtml = (s) => {
+    if (!s.url) return s.src ? `<span class="forum-satz-src">${esc(s.src)}</span>` : '';
+    return `<span class="forum-satz-src"><a href="${esc(s.url)}" target="_blank" rel="noopener">${icon('link')} ${esc(s.src || host(s.url) || 'Artikel')} ↗</a></span>`;
+  };
   const satzHtml = (r) => {
     const s = r.satz;
-    const src = s.src || s.url ? `<span class="forum-satz-src">${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.src || 'Quelle')} ↗</a>` : esc(s.src)}</span>` : '';
-    return `<div class="forum-satz ${App.SECTIONS.vocab.cls}"><span lang="ja" class="forum-satz-jp">${App.jp.ruby(s.jp)}</span>${s.de ? `<span class="muted">${esc(s.de)}</span>` : ''}${src}</div>`;
+    return `<div class="forum-satz ${App.SECTIONS.vocab.cls}"><span lang="ja" class="forum-satz-jp">${App.jp.ruby(s.jp)}</span>${s.de ? `<span class="muted">${esc(s.de)}</span>` : ''}${srcHtml(s)}</div>`;
   };
   const refsHtml = (refs, owner, mine) => {
     const all = F.cleanRefs(refs);
@@ -184,7 +189,7 @@
     const draw = () => {
       const s = list[k];
       md.body.innerHTML = `${list.length > 1 ? `<p class="muted small">Welcher Satz?</p><div class="forum-exlist">${list.map((x, i) => `<button type="button" class="forum-expick ${i === k ? 'on' : ''}" data-k="${i}"><span lang="ja">${App.jp.ruby(x.jp)}</span>${x.de ? `<span class="muted">${esc(x.de)}</span>` : ''}</button>`).join('')}</div>`
-          : `<div class="forum-satz ${App.SECTIONS.vocab.cls}"><span lang="ja" class="forum-satz-jp">${App.jp.ruby(s.jp)}</span>${s.de ? `<span class="muted">${esc(s.de)}</span>` : ''}</div>`}
+          : `<div class="forum-satz ${App.SECTIONS.vocab.cls}"><span lang="ja" class="forum-satz-jp">${App.jp.ruby(s.jp)}</span>${s.de ? `<span class="muted">${esc(s.de)}</span>` : ''}${srcHtml(s)}</div>`}
         <p class="muted small" style="margin-top:14px">${s.vocab.length ? `Welche Vokabeln sollen dazu? <span>(höchstens ${room})</span>` : 'In diesem Satz steckt keine deiner Vokabeln – der Satz kommt allein.'}</p>
         <div class="chips ${App.SECTIONS.vocab.cls}">${s.vocab.map((v) => `<button type="button" class="chip ${picked.has(v.id) ? 'on' : ''}" data-v="${esc(v.id)}"><span lang="ja">${esc(v.kanji || v.kana)}</span><span class="small" style="opacity:.8">${esc(App.meaning(v).text.slice(0, 30))}</span></button>`).join('')}</div>
         <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn btn-primary" data-ok>Anhängen</button></div>`;
@@ -252,9 +257,8 @@
     });
   };
 
-  // Diktieren (js/dictate.js): Sprache pro Gerät gemerkt
-  const DLANGS = [['de-DE', 'DE'], ['ja-JP', '日本語']];
-  const dictLang = () => (App.lsGet('forumDictLang') === 'ja-JP' ? 'ja-JP' : 'de-DE');
+  // Diktieren (js/dictate.js): ein Mikro-Knopf je Sprache – die Spracherkennung muss die Sprache vorher kennen
+  const DLANGS = [['de-DE', 'Deutsch'], ['ja-JP', '日本語']];
 
   // ---------- Eingabefeld (neuer Gedanke, Antwort, Bearbeiten) ----------
   // key = Entwurf auf diesem Gerät ('new' bzw. 'r:<postId>'); beim Bearbeiten kein Entwurf
@@ -262,18 +266,20 @@
   const composer = ({ key, kinds, closed, label, placeholder, init = {}, onSubmit, onCancel }) => {
     const el = document.createElement('div');
     el.className = 'forum-compose';
-    el.innerHTML = `<textarea class="input" maxlength="${F.MAX_TEXT}" placeholder="${esc(placeholder)}"></textarea>
-      <div class="forum-at-pop" hidden></div>
-      <div class="forum-img-prev" hidden></div>
-      <div class="forum-chosen"></div>
-      <div class="forum-row">
+    // oben die Werkzeuge (Art, Bild, Eintrag, @, Diktieren), dann der Text, unten nur Abbrechen/Teilen
+    el.innerHTML = `<div class="forum-row forum-tools">
         ${kinds ? `<div class="forum-kinds">${Object.keys(KIND).map((k) => `<button type="button" class="chip" data-kind="${k}">${KIND[k]}</button>`).join('')}</div>` : ''}
         <label class="btn btn-sm forum-pick">${icon('imagePlus')}<span>Bild</span><input type="file" accept="image/*" hidden></label>
         ${navigator.clipboard && navigator.clipboard.read ? `<button type="button" class="btn btn-sm" data-clip title="Screenshot oder Bild aus der Zwischenablage einfügen (am PC auch Strg+V)">${icon('copy')}<span>Einfügen</span></button>` : ''}
         <button type="button" class="btn btn-sm" data-link>${icon('link')}<span>Eintrag</span></button>
         <button type="button" class="btn btn-sm forum-atbtn" data-at title="Jemanden aus der Gruppe erwähnen">@</button>
-        ${App.dictate.supported() ? `<span class="forum-dict"><button type="button" class="btn btn-sm mic" data-mic title="Sprechen – der Text erscheint im Feld. Bleibt an, bis du auf „Fertig“ tippst.">${icon('mic')}<span class="mic-label">Diktieren</span></button>
-          <span class="seg forum-dlang" title="In welcher Sprache diktierst du?">${DLANGS.map(([l, t]) => `<button type="button" data-dlang="${l}">${t}</button>`).join('')}</span></span>` : ''}
+        ${App.dictate.supported() ? DLANGS.map(([l, t]) => `<button type="button" class="btn btn-sm mic" data-mic="${l}" title="Auf ${l === 'ja-JP' ? 'Japanisch' : 'Deutsch'} sprechen – der Text erscheint im Feld. Bleibt an, bis du auf „Fertig“ tippst.">${icon('mic')}<span class="mic-label" lang="${l.slice(0, 2)}">${t}</span></button>`).join('') : ''}
+      </div>
+      <textarea class="input" maxlength="${F.MAX_TEXT}" placeholder="${esc(placeholder)}"></textarea>
+      <div class="forum-at-pop" hidden></div>
+      <div class="forum-img-prev" hidden></div>
+      <div class="forum-chosen"></div>
+      <div class="forum-row forum-send-row">
         <span class="grow"></span>
         ${onCancel ? '<button type="button" class="btn btn-sm" data-cancel>Abbrechen</button>' : ''}
         <button type="button" class="btn btn-sm btn-primary" data-send>${esc(label)}</button>
@@ -302,12 +308,22 @@
     const drawRefs = () => {
       const here = pageItem();
       const offer = here && !refs.some((r) => r.id === here.id) && refs.length < F.MAX_REFS ? here : null;
-      const satzOffer = !refs.some((r) => r.type === 'satz') && refs.length < F.MAX_REFS && App.sentencesOpen().length;
+      const open = !refs.some((r) => r.type === 'satz') && refs.length < F.MAX_REFS ? App.sentencesOpen() : [];
       chosen.innerHTML = refs.map((r, i) => `<span class="chip on ${App.SECTIONS[r.type === 'satz' ? 'vocab' : r.type].cls}"><span lang="ja">${r.type === 'satz' ? '例文 ' : ''}${esc(r.label)}</span>
           <button type="button" class="forum-unref" data-unref="${i}" title="Verknüpfung entfernen" aria-label="Verknüpfung entfernen">✕</button></span>`).join('')
         + (offer ? `<button type="button" class="chip forum-offer" data-here>${icon('plus')} ${App.screenItem && App.screenItem() ? 'Diese Karte' : 'Diesen Eintrag'} anhängen: <b lang="ja">${esc(App.itemPlain(offer))}</b></button>` : '')
-        + (satzOffer ? `<button type="button" class="chip forum-offer" data-satz>${icon('plus')} Satz anhängen</button>` : '');
+        + satzOffer(open);
       chosen.hidden = !chosen.innerHTML;
+    };
+    // aus „Sätze zuordnen“ geöffnet: der Satz steht gleich als Vorschlag da (bei mehreren: wie viele), mit Link zum Artikel
+    const satzOffer = (open) => {
+      if (!open.length) return '';
+      const s = open[0];
+      const head = open.length === 1 ? 'Diesen Satz anhängen' : `Einen der ${open.length} Sätze anhängen`;
+      return `<button type="button" class="forum-satz forum-satz-offer ${App.SECTIONS.vocab.cls}" data-satz><span class="forum-satz-offer-head">${icon('plus')} ${head}</span>`
+        + (open.length === 1 ? `<span lang="ja" class="forum-satz-jp">${App.jp.ruby(s.jp)}</span>${s.de ? `<span class="muted">${esc(s.de)}</span>` : ''}` : '')
+        + (s.url ? `<span class="forum-satz-src">${icon('link')} ${esc(s.src || host(s.url))} – der Artikel wird verlinkt</span>` : s.src ? `<span class="forum-satz-src">${esc(s.src)}</span>` : '')
+        + '</button>';
     };
     const pick = async () => {
       const ids = await App.pickItems({ title: 'Einträge verknüpfen', types: F.REF_TYPES, selected: refs.map((r) => r.id) });
@@ -340,9 +356,7 @@
       setErr('');
       keep();
     };
-    const showLang = () => { const l = dictLang(); $$('[data-dlang]', el).forEach((b) => b.classList.toggle('on', b.dataset.dlang === l)); };
     if (kinds) setKind(kind);
-    showLang();
     setImage(image);
     drawRefs();
     const keep = key ? App.debounce(() => saveDraft(key, ta.value), 400) : () => {};
@@ -365,9 +379,18 @@
       const an = e.target.closest('[data-atname]');
       if (an) putAt(an.dataset.atname);
       const mic = e.target.closest('[data-mic]');
-      if (mic) { setErr(''); App.dictate.toggle(ta, mic, dictLang(), { long: true }); }
-      const dl = e.target.closest('[data-dlang]');
-      if (dl) { App.dictate.stopFor(ta); App.lsSet('forumDictLang', dl.dataset.dlang); showLang(); }
+      if (mic) {
+        setErr('');
+        // läuft gerade die andere Sprache: die beenden und, sobald sie aus ist, in dieser weiter
+        const other = $$('[data-mic].active', el).find((b) => b !== mic);
+        if (!other) App.dictate.toggle(ta, mic, mic.dataset.mic, { long: true });
+        else {
+          App.dictate.stopFor(ta, { now: true });
+          let tries = 0;
+          const go = () => { if (!other.classList.contains('active')) App.dictate.toggle(ta, mic, mic.dataset.mic, { long: true }); else if (++tries < 20) setTimeout(go, 100); };
+          setTimeout(go, 100);
+        }
+      }
       const un = e.target.closest('[data-unref]');
       if (un) { refs.splice(Number(un.dataset.unref), 1); drawRefs(); }
       if (e.target.closest('[data-here]')) { const it = pageItem(); if (it) { refs.push(toRef(it)); setErr(''); drawRefs(); } }
@@ -652,8 +675,8 @@
     r.innerHTML = `<div data-newpost></div><div class="forum-bar" data-tabs><b>Eure Themen</b>
       <input class="input forum-search" type="search" placeholder="Suchen …" aria-label="Im Forum suchen" value="${esc(ui.q)}"><select class="input" aria-label="Welche Themen"></select></div><div data-list class="forum-list"></div>`;
     r.querySelector('[data-newpost]').appendChild(composer({
-      // von einem Eintrag aus geöffnet: gleich aufgeklappt, damit „Diesen Eintrag anhängen“ zu sehen ist
-      key: 'new', kinds: true, closed: !pageItem(), label: 'Teilen', placeholder: 'Neuer Gedanke … was ist dir aufgefallen?',
+      // von einem Eintrag oder aus „Sätze zuordnen“ geöffnet: gleich aufgeklappt, damit der Vorschlag zu sehen ist
+      key: 'new', kinds: true, closed: !pageItem() && !App.sentencesOpen().length, label: 'Teilen', placeholder: 'Neuer Gedanke … was ist dir aufgefallen?',
       onSubmit: (v) => D.addPost(st.code, Object.assign({ name: st.name }, v)),
     }));
     App.hydrateIcons(r);

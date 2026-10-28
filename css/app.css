@@ -1872,9 +1872,8 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .forum-compose.is-closed > :not(textarea) { display: none; }
 .forum-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .forum-row .grow, .forum-item-head .grow { flex: 1; }
-.forum-dict { display: inline-flex; align-items: center; gap: 4px; }
-.forum-dlang { padding: 2px; }
-.forum-dlang button { min-height: 30px; padding: 0 8px; font-size: 13px; }
+.forum-tools { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.forum-send-row { padding-top: 10px; border-top: 1px solid var(--line); }
 .forum-kinds { display: flex; gap: 6px; flex-wrap: wrap; }
 .forum-kinds .chip { --sec: var(--shu); }
 .forum-bar { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
@@ -1965,7 +1964,13 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .forum-satz { display: flex; flex-direction: column; gap: 2px; padding: 4px 0 4px 12px; border-left: 3px solid var(--sec); }
 .forum-satz-jp { font-size: 20px; line-height: 1.9; }
 .forum-satz .muted { font-size: 14px; }
-.forum-satz-src { font-size: 12.5px; color: var(--ink-2); }
+.forum-satz-src { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
+.forum-satz-src a { display: inline-flex; align-items: center; gap: 4px; color: var(--sec); font-weight: 700; }
+.forum-satz-src .ico svg { width: 14px; height: 14px; }
+.forum-satz-offer { flex-basis: 100%; align-items: flex-start; text-align: left; font: inherit; color: var(--ink); cursor: pointer; padding: 8px 12px; border: 1px dashed var(--sec); border-left: 3px solid var(--sec); border-radius: 10px; background: var(--sec-soft); }
+.forum-satz-offer:hover { background: var(--card-2); }
+.forum-satz-offer-head { display: inline-flex; align-items: center; gap: 4px; font-size: 13.5px; font-weight: 800; color: var(--sec); }
+.forum-satz-offer-head .ico svg { width: 15px; height: 15px; }
 /* verknüpfte Kanji rechts neben dem Text */
 .forum-split { display: grid; grid-template-columns: minmax(0, 1fr) 168px; gap: 16px; align-items: start; }
 .forum-split-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
