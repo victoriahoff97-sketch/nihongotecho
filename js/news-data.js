@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-startseite-2', date: '28. Oktober',
+      items: [
+        { t: 'Startseite: Sammlung wieder da', d: 'Die bunten Karten „Deine Sammlung“ stehen wieder auf der Startseite, direkt unter NHK Easy und Co.' },
+        { t: 'Stempelkarte in Rot', d: 'Deine Tagesziele (今日のスタンプ) stehen jetzt auf einer kräftig roten Karte und brauchen etwas weniger Platz.' },
+      ],
+    },
+    {
       id: '2026-10-28-startseite', date: '28. Oktober',
       items: [
         { t: 'Ruhigere Startseite', d: 'Dein Lernstand steht jetzt in einer Karte „Mein Lernstand“. Ein Tipp auf Vokabeln, Kanji oder Genki klappt die Zahlen und Knöpfe auf.' },

@@ -32,7 +32,7 @@
     '/': [
       { target: '[data-welcome]', text: 'Hier richtest du die App auf diesem Gerät ein. Die Karte verschwindet, wenn alles erledigt ist.' },
       { target: '#view .ls-card', text: 'Hier siehst du, wie viel du schon kannst. Ein Tipp auf eine Zeile klappt die Einzelheiten auf – mit „Neue lernen“ und „Einstufen“.' },
-      { target: '#view [data-home-edit]', text: 'Mit „Startseite anpassen“ verschiebst du die Leisten und holst weitere dazu, etwa Schnellaktionen oder deine Sammlung.' },
+      { target: '#view [data-home-edit]', text: 'Mit „Startseite anpassen“ verschiebst du die Leisten und holst weitere dazu, etwa Schnellaktionen.' },
       { target: '[data-genki-card]', title: 'Genki I freischalten', text: 'Trage hier den Code ein, den du bekommen hast. Danach stehen Vokabeln, Kanji und Grammatik aus dem Buch bereit.' },
     ],
     '/grammatik': [

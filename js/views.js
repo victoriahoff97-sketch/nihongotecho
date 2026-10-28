@@ -233,7 +233,7 @@
   window.addEventListener('hashchange', () => { homeEdit = false; });
   const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', read: 'Heute lesen und hören', today: '今日 · Heute', lernstand: 'Mein Lernstand', zuletzt: 'Zuletzt', sammlung: 'Deine Sammlung' };
   // Leisten, die erst über „Startseite anpassen“ dazukommen (gemerkt pro Gerät, localStorage „homeExtra“)
-  const EXTRA_BLOCKS = ['actions', 'sammlung'];
+  const EXTRA_BLOCKS = ['actions'];
   const extraList = () => (HO.parse(App.lsGet('homeExtra')) || []).filter((k) => EXTRA_BLOCKS.includes(k));
   // Mein Lernstand: je Bereich eine Zeile mit Balken; aufgeklappt steht die ganze Karte von früher (Zahlen und Knöpfe).
   // Aufgeklappte Zeilen merkt sich das Gerät (localStorage „homeLsOpen“).
@@ -473,9 +473,9 @@
           <div class="rel-list">${sessions.slice(0, 2).map(App.relItem).join('') || '<p class="muted small">Noch keine Stunde angelegt.</p>'}</div></div>
         <div><h3>Zuletzt gespeichert</h3>
           <div class="rel-list">${recent.slice(0, 4).map(App.relItem).join('') || '<p class="muted small">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div></div>`;
-    const shown = { hero: blocks.hero, actions: blocks.actions, read: blocks.read, today: App.dayCheck.card(),
+    const shown = { hero: blocks.hero, actions: blocks.actions, read: blocks.read, sammlung: blocks.sammlung, today: App.dayCheck.card(),
       lernstand: lernstand ? `<div class="section-title">Mein Lernstand</div><div class="card ls-card">${lernstand}</div>` : '',
-      zuletzt, sammlung: blocks.sammlung };
+      zuletzt };
     view.innerHTML = `<div class="sec-home${homeEdit ? ' home-editing' : ''}">
       ${App.welcome.card()}
       <div data-backup-home>${App.backup.homeCard({ noRestoreHint: !!App.welcome.card() })}</div>

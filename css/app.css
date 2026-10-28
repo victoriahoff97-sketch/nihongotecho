@@ -2037,3 +2037,23 @@ button.day-stamp:not(.on):hover { border-color: var(--shu); color: var(--shu); }
 .ls-lessons i.part { border-color: var(--matcha); color: var(--ink); }
 .ls-lessons i.part::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: var(--p); background: var(--matcha); }
 .ls-lessons i.done { background: var(--matcha); border-color: var(--matcha); color: #fff; }
+
+/* 今日のスタンプ in Zinnoberrot (2026-10-28): kräftige Karte, weiße Stempel, etwas niedriger */
+.day-check { background: var(--shu); border: 0; color: #fff; padding: 12px 18px; }
+.day-check h3, .day-check h3 span, .day-check .day-rows .day-row b { color: #fff; }
+.day-check h3 span { opacity: .8; }
+.day-check .day-head .small, .day-check .day-head .small.muted, .day-check .day-all { color: #fff; opacity: .9; font-weight: 700; }
+.day-check:not(.day-editing) .day-edit-btn { color: #fff; }
+.day-check .day-edit-btn:hover { background: rgba(255, 255, 255, .15); }
+.day-check .day-rows { margin-top: 2px; }
+.day-check .day-rows .day-row { padding: 6px 0; gap: 12px; }
+.day-check .day-rows .day-row + .day-row { border-top: 1px dashed rgba(255, 255, 255, .35); }
+.day-check .day-row small { color: rgba(255, 255, 255, .78); font-size: 12.5px; }
+.day-check .day-stamp { width: 34px; height: 34px; font-size: 16px; border: 2px dashed rgba(255, 255, 255, .6); color: #fff; }
+.day-check .day-stamp.on { background: #fff; color: var(--shu); border: 2px solid #fff; box-shadow: none; }
+.day-check button.day-stamp:not(.on):hover { border-color: #fff; background: rgba(255, 255, 255, .15); color: #fff; }
+.day-check:not(.day-editing) .btn { background: #fff; color: var(--shu); border-color: #fff; }
+.day-check .day-empty { color: rgba(255, 255, 255, .85); }
+.day-check.day-editing { background: var(--card); color: var(--ink); padding: 18px; }
+.day-check.day-editing h3, .day-check.day-editing .day-row b { color: var(--ink); }
+.day-check.day-editing .day-row small { color: var(--muted); }
