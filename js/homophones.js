@@ -102,9 +102,11 @@
   });
 
   // ---------- Kanji: Reiter „Gleiche Lesung“ auf der Kanji-Seite ----------
-  const KIND_FILTER = [['', 'Alle'], ['on', 'On'], ['kun', 'Kun']];
+  const KIND_FILTER = [['', 'Alle'], ['kun', 'Kun'], ['on', 'On']];
+  const ORDER = [['abc', 'あいうえお'], ['neu', 'Neu gelernt zuerst']];
   const kLearned = (k) => App.vocabStatus(k.id) !== 'unchecked';
   const kanjiGroups = () => H.sort(H.visible(H.kanjiGroups(App.itemsOf('kanji'), rank), App.vocabStatus), changedAt, Date.now());
+  let kOrder = 'abc';
   const readText = (r) => (r.kind === 'kun' ? App.kanjiLogic.kunText(r.text) : r.text);
   const kToggled = new Map();
 
@@ -127,12 +129,13 @@
   };
 
   App.kanjiHomophones = (body, q) => {
-    const groups = kanjiGroups();
+    const groups = H.kanjiOrder(kanjiGroups(), kOrder);
     const query = q.r || '';
     const n = groups.reduce((s, g) => s + g.items.length, 0);
     body.innerHTML = `<p class="muted">Kanji, die gleich gelesen werden – On- und Kun-Lesung zusammen. Ein Kanji mit mehreren Lesungen steht in mehreren Gruppen. Die Übersicht wächst von selbst: Sobald du ein Kanji lernst, erscheinen seine Lesungen hier.</p>
       ${groups.length ? `<div class="toolbar"><input class="input" type="search" data-kg-q placeholder="chi, セイ, あける, Blut …" value="${esc(query)}" style="max-width:280px">
           <div class="seg" data-kg-kind>${KIND_FILTER.map(([k, l], i) => `<button class="${i ? '' : 'on'}" data-v="${k}">${l}</button>`).join('')}</div>
+          <select class="input" data-kg-order title="Reihenfolge" style="width:auto">${ORDER.map(([k, l]) => `<option value="${k}" ${kOrder === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
           <span class="grow"></span><span class="small muted" data-kg-count></span></div>
         <div class="gk-list">${groups.map((g) => kGroupHtml(g, query)).join('')}</div>
         <div class="empty-state" data-kg-none hidden><h3>Nichts gefunden</h3></div>
@@ -163,6 +166,12 @@
       apply();
     };
     els.forEach((el) => el.addEventListener('toggle', () => kToggled.set(el.dataset.kg, el.open)));
+    // umsortieren ohne Neuzeichnen: Suche, Filter und Aufgeklapptes bleiben
+    body.querySelector('[data-kg-order]').onchange = (e) => {
+      kOrder = e.target.value;
+      const list = body.querySelector('.gk-list');
+      H.kanjiOrder(groups, kOrder).forEach((g) => list.appendChild(els.find((el) => el.dataset.kg === g.key)));
+    };
     body.querySelector('.gk-list').addEventListener('click', async (e) => {
       const b = e.target.closest('[data-kg-learn]');
       if (!b) return;

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-kanji-lesung-2', date: '28. Oktober',
+      items: [
+        { t: 'Gleiche Lesung nach あいうえお', d: 'Unter Kanji › „同音 Gleiche Lesung“ stehen die Lesungen jetzt nach あいうえお, Kun (Hiragana) immer vor On (Katakana). Das Auswahlfeld holt Neues nach oben.' },
+      ],
+    },
+    {
       id: '2026-10-28-startseite-2', date: '28. Oktober',
       items: [
         { t: 'Startseite: Sammlung wieder da', d: 'Die bunten Karten „Deine Sammlung“ stehen wieder auf der Startseite, direkt unter NHK Easy und Co.' },

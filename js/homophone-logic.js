@@ -120,8 +120,14 @@
     return [...map.values()].filter((g) => g.items.length > 1);
   };
 
-  // die Schreibweisen der Gruppe, wie sie am Kanji stehen: チ · ち
-  H.kanjiLabels = (g) => [...new Set([...g.read.values()].map((r) => r.text))];
+  // die Schreibweisen der Gruppe, wie sie am Kanji stehen – Kun (Hiragana) immer vor On (Katakana): ち · チ
+  H.kanjiLabels = (g) => {
+    const rs = [...g.read.values()];
+    return [...new Set(rs.filter((r) => r.kind === 'kun').concat(rs.filter((r) => r.kind === 'on')).map((r) => r.text))];
+  };
+
+  // Reihenfolge der Liste: 'abc' = nach dem japanischen Alphabet (あいうえお), 'neu' = zuletzt Gelerntes oben
+  H.kanjiOrder = (groups, mode) => groups.slice().sort((a, b) => (mode === 'neu' ? (b.fresh - a.fresh) || (a.fresh ? b.last - a.last : 0) : 0) || a.key.localeCompare(b.key, 'ja'));
 
   // Suche: Lesung (Kana oder Romaji), Zeichen oder Bedeutung
   H.kanjiMatches = (g, query) => {
