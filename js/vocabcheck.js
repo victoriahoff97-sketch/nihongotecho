@@ -16,7 +16,7 @@
   // Eigene Einträge (selbst angelegt, aus Satzerkennung/Suche übernommen) sind nie „ungeprüft“: sie kommen direkt in die Lernschlange.
   // „learn“ heißt bei ihnen immer: in der Lernschlange (queued).
   //
-  // Kanji laufen wie bisher: eigene liegen im Lernstapel und warten auf „neue lernen“; ist Einstufen aus (check: 'off'),
+  // Kanji laufen wie bisher: eigene liegen in der Lernschlange und warten auf „neue lernen“; ist Einstufen aus (check: 'off'),
   // liegen auch die aus Paketen dort. Am Speicher ändert das nichts – wieder eingeschaltet, ist Unberührtes wieder „ungeprüft“.
   //
   // Grammatik wird nicht abgefragt: sie hat nur den Haken von Hand – „offen“ (unchecked) oder „kann ich“ (known).
@@ -42,14 +42,13 @@
   };
   App.STATUS = {
     unchecked: { label: 'Ungeprüft', color: 'var(--muted)', dot: '○' },
-    learn: { label: 'Lernstapel', color: 'var(--ai)', dot: '◐' },
+    learn: { label: 'Lernschlange', color: 'var(--ai)', dot: '◐' },
     known: { label: 'Kann ich', color: 'var(--matcha)', dot: '●' },
   };
-  // Beschriftung je Art: Grammatik kennt nur „Offen“ und „Kann ich“, bei Vokabeln und Ausdrücken heißt „learn“ Lernschlange, bei Kanji Lernstapel
+  // Beschriftung je Art: Grammatik kennt nur „Offen“ und „Kann ich“; „learn“ heißt überall Lernschlange
   App.statusInfo = (it, key) => {
     const s = App.STATUS[key];
     if (it && it.type === 'grammar' && key === 'unchecked') return Object.assign({}, s, { label: 'Offen' });
-    if (it && W.direct(it.type) && key === 'learn') return Object.assign({}, s, { label: 'Lernschlange' });
     return s;
   };
   // Auswahl auf der Seite des Eintrags: [Schlüssel, Beschriftung]
@@ -127,7 +126,7 @@
     return c;
   };
   // Gesamt-Lernstand eines Eintrags – so zählen Startseite und Vokabelliste:
-  // known = kann ich · queue = in der Lernschlange (kommt von selbst wieder) · open = wartet noch (ungeprüft; bei Kanji auch neu im Lernstapel).
+  // known = kann ich · queue = in der Lernschlange (kommt von selbst wieder) · open = wartet noch (ungeprüft; bei Kanji auch neu in der Lernschlange).
   // Eine Vokabel ist erst „kann ich“, wenn beide Richtungen sitzen: lesen (Japanisch → Deutsch) UND aktiv (Deutsch → Japanisch).
   // Solange das Lesen noch läuft, zählt sie zur Lernschlange; kann man sie lesen, entscheidet der Aktiv-Stand.
   // Kanji und Ausdrücke zählen nach dem Lese-Stand, Grammatik nach dem Haken („offen“ zählt als wartet noch).
@@ -271,7 +270,7 @@
         ${type !== 'vocab' ? '' : `<div class="row"><div class="seg">${[['jp', 'Japanisch → Deutsch (lesen)'], ['de', 'Deutsch → Japanisch (aktiv)'], ['mix', 'Beide gemischt']].map(([k, l]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k}">${l}</button>`).join('')}</div></div>`}
         <div class="row between"><div class="row" style="gap:18px">
           <span><b style="font-size:24px;color:var(--muted)">${c.unchecked}</b> ungeprüft</span>
-          <span><b style="font-size:24px;color:var(--ai)">${c.learn}</b> ${type === 'kanji' ? 'im Lernstapel' : 'in der Lernschlange'}</span>
+          <span><b style="font-size:24px;color:var(--ai)">${c.learn}</b> in der Lernschlange</span>
           <span><b style="font-size:24px;color:var(--matcha)">${c.known}</b> kann ich${active ? ' aktiv' : ''}</span></div>
           <span class="small muted">${mix ? `Deutsch → Japanisch: ${ac.unchecked} offen · ${ac.learn} in der Lernschlange · ${ac.known} kann ich aktiv` : q.src || q.l || q.lvl || (isP && q.g) ? `Auswahl · insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
         <div class="progress" style="display:flex;height:10px"><i style="width:${pct(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pct(c.learn)}%;background:var(--ai);border-radius:0"></i></div>

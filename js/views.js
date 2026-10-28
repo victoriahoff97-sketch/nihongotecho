@@ -140,7 +140,7 @@
   // schmale Balken je Bereich (Vokabeln · Kanji · Grammatik) – ohne Zahlen, die stehen im Tooltip
   const miniBars = (p, qs) => `<div class="mini-bars">${p.types.map((t) => { const c = p.pc[t]; return `<a href="${TYPE_INFO[t][1]}?${qs}" title="${c.known} von ${c.total} kann ich · ${c.queue} in der Lernschlange · ${c.open} ungeprüft">${TYPE_INFO[t][0]}</a>${progBar(c, 'thin')}`; }).join('')}</div>`;
   // Die zwei Knöpfe je Karte – alles, was nicht von selbst kommt:
-  // „neue lernen“ holt Neues in die Lernschlange – bei Vokabeln aus dem Ungeprüften, bei Kanji aus dem Lernstapel (erst Lesen: Vokabeln, Kanji – dann Deutsch → Japanisch),
+  // „neue lernen“ holt Neues in die Lernschlange – bei Vokabeln aus dem Ungeprüften, bei Kanji aus der Lernschlange (erst Lesen: Vokabeln, Kanji – dann Deutsch → Japanisch),
   // „einstufen“ geht durch, was noch nicht eingestuft ist (Vokabeln lesen, Kanji, Deutsch → Japanisch). Grammatik hat nur den Haken von Hand.
   const qsObj = (qs) => Object.fromEntries(new URLSearchParams(qs));
   const cardBtns = (sets, qs) => {
@@ -415,7 +415,7 @@
       genki: genkiLevelCard(),
       kanji: (() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `${foldHead('kanji', 'Kanji-Lernstand', `${c.known} / ${c.total} kann ich`)}
       <div class="card sec-kanji${foldCls('kanji')}"><div class="row between"><div class="row" style="gap:22px">
-        <a href="#/kanji?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> im Lernstapel</a>
+        <a href="#/kanji?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> in der Lernschlange</a>
         <a href="#/kanji?st=known" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
         <a href="#/kanji?mark=${encodeURIComponent(App.MARK_CLASS)}" style="text-decoration:none"><b style="font-size:26px;color:var(--shu)">${inClass}</b> im Unterricht</a>
         ${App.checkOn() ? `<a class="small muted" href="#/kanji?st=unchecked" style="text-decoration:none"><b style="font-size:16px">${c.unchecked}</b> ungeprüft</a>` : ''}</div>

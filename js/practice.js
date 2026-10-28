@@ -148,7 +148,7 @@
     const now = W.dayEnd(Date.now()); // fällig gilt für den ganzen Tag
     const due = W.readDue(items, S.srs, now);
     // Neu ist, was noch nicht in der Lernschlange ist. Vokabeln/Ausdrücke: alles Ungeprüfte – „neue lernen“ holt es auch ohne Einstufen.
-    // Kanji: nur der Lernstapel (ungeprüfte erst einstufen; eigene liegen dort ohne Einstufung).
+    // Kanji: nur die Lernschlange (ungeprüfte erst einstufen; eigene liegen dort ohne Einstufung).
     const fresh = items.filter((i) => { const s = S.srs.get(i.id), st = App.vocabStatus(i.id); return !W.inQueue(s) && (st === 'learn' || (st === 'unchecked' && W.direct(i.type))); })
       .sort(learnOrder);
     return { items, due, fresh };
@@ -170,7 +170,7 @@
   App.todayParts = () => mixParts((q) => q.due);
   App.todayQueue = () => W.mixRound(App.todayParts().flatMap((x) => x.entries), App.shuffle);
   // „Meine Lernschlange üben“: alles, was im Wiederholungsplan steckt – dieselben Arten wie „Jetzt wiederholen“, nur ohne „heute fällig“.
-  // Frei geübt: Lernstand und Termine bleiben, wie sie sind. Kanji schreiben: der ganze Schreib-Stapel, unabhängig von der Quelle für Neues.
+  // Frei geübt: Lernstand und Termine bleiben, wie sie sind. Kanji schreiben: die ganze Schreib-Lernschlange, unabhängig von der Quelle für Neues.
   App.learningParts = () => mixParts((q, kind) => W.learning(kind === 'write' ? cardFilter({ type: 'kanji' }) : q.items, S.srs, kind));
   App.learningQueue = () => W.mixRound(App.learningParts().flatMap((x) => x.entries), App.shuffle);
   const learningSum = (parts) => parts.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ');
@@ -240,11 +240,10 @@
     const stN = {};
     items.forEach((i) => { const k = stOf(i); stN[k] = (stN[k] || 0) + 1; });
     const free = stOn.length ? items.filter((i) => stOn.includes(stOf(i))) : items;
-    // Abkürzung „Lernschlange üben“: was du aus der Auswahl oben gerade lernst, auch wenn heute nichts fällig ist (Kanji schreiben: der Schreib-Stapel)
+    // Abkürzung „Lernschlange üben“: was du aus der Auswahl oben gerade lernst, auch wenn heute nichts fällig ist (Kanji schreiben: die Schreib-Lernschlange)
     const learning = isG ? [] : W.learning(write ? cardFilter(Object.assign({}, q, { type: 'kanji' })) : items, S.srs, write ? 'write' : active ? 'active' : 'read');
     const learningBtn = `<button class="btn" data-learning ${learning.length ? '' : 'disabled'} title="Alles aus der Auswahl, was du gerade lernst – auch was heute nicht fällig ist. Dein Lernstand bleibt, wie er ist">${icon('practice')} Lernschlange üben (${learning.length})</button>`;
-    // Überall dieselben Namen: „Lernschlange“ auch bei Kanji und beim Schreiben
-    const stLabel = (k) => (k === 'learn' ? 'Lernschlange' : write && k === 'unchecked' ? 'Neu' : App.statusInfo({ type }, k).label);
+    const stLabel = (k) => (write && k === 'unchecked' ? 'Neu' : App.statusInfo({ type }, k).label);
     const stChip = (k) => {
       const cur = stOn.length ? stOn : stKeys, on = cur.includes(k);
       const next = on ? cur.filter((x) => x !== k) : cur.concat(k);
@@ -745,7 +744,7 @@
     // Schreiben mit Lernstand: unabhängig vom Niveau-Filter, denn neu sind nur Kanji, die du schon lesen kannst
     const wq = App.writeQueue({ l: q.l });
     const wc = W.counts(wq.items, S.srs, wq.unlocked);
-    // „Meinen Stapel üben“: alles, was gerade im Schreib-Übungsstapel liegt – unabhängig von Fälligkeit und gewählter Quelle
+    // „Lernschlange üben“: alles, was gerade in der Lernschlange fürs Schreiben liegt – unabhängig von Fälligkeit und gewählter Quelle
     const stack = all.filter((k) => (!q.l || String(k.lesson) === q.l) && W.status(S.srs, k.id) === 'learn');
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › Kanji-Quiz</div>
       <div class="page-head"><div class="titles"><h1>Kanji-Quiz <span class="jp-title">書</span></h1><p>${pool.length} Kanji in der Auswahl</p></div></div>
@@ -753,7 +752,7 @@
         <div class="seg">${[['write', 'Bedeutung → schreiben'], ['read', 'Kanji → Bedeutung'], ['reading', 'Wort → Lesung']].map(([k, l]) => `<button class="${mode === k ? 'on' : ''}" data-q-mode="${k === defMode ? '' : k}">${l}</button>`).join('')}</div>
         <select class="input" data-q-select="max">${maxLessonOptions(maxL)}</select>${App.lessonSelect(all, q.l)}
         ${mode === 'write' ? `${roundStart(wq, 'Schreiben wiederholen')}
-        <button class="btn" data-stack ${stack.length ? '' : 'disabled'} title="Alles, was du gerade schreiben übst – auch was heute nicht fällig ist. Zählt nicht zur Lernschlange">${icon('pen')} Meinen Stapel üben (${stack.length})</button>
+        <button class="btn" data-stack ${stack.length ? '' : 'disabled'} title="Alles, was du gerade schreiben übst – auch was heute nicht fällig ist. Zählt nicht zur Lernschlange">${icon('pen')} Lernschlange üben (${stack.length})</button>
         <button class="btn" data-go ${pool.length >= 4 ? '' : 'disabled'} title="Zählt nicht zur Lernschlange – dein Lernstand bleibt, wie er ist">${icon('shuffle')} Zufällig üben (10)</button>`
         : `<button class="btn btn-primary" data-go ${pool.length >= 4 ? '' : 'disabled'} title="Zählt nicht zur Lernschlange – dein Lernstand bleibt, wie er ist">${icon('play')} Start (10)</button>`}</div>
         ${mode === 'write' ? '' : '<div class="small muted" style="margin-top:8px">Freie Runde mit zufälligen Kanji aus der Auswahl: zählt nicht zur Lernschlange, Lernstand und Termine bleiben, wie sie sind.</div>'}
@@ -761,7 +760,7 @@
           <span><b style="font-size:22px;color:var(--matcha)">${wc.known}</b> kann ich schreiben</span>
           <span><b style="font-size:22px;color:var(--ai)">${wc.learn}</b> übe ich</span>
           <span><b style="font-size:22px;color:var(--muted)">${wc.new}</b> noch nie geschrieben</span></div>
-        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: Erst schreiben und auflösen, dann „Falsch“, „Richtig“ (kommt in den Übungsstapel) oder „Kann ich schon“ (gilt als gelernt und wird beim Schreiben nicht mehr abgefragt). „Meinen Stapel üben“ geht alles durch, was du gerade übst – auch was heute nicht fällig ist; „Zufällig üben“ zieht 10 aus allen Kanji der Auswahl. Beides zählt nicht zur Lernschlange.${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet${App.checkOn() ? ' – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>' : ''}.` : ''}</div>` : ''}</div>
+        <div class="small muted" style="margin-top:8px">Schreiben hat einen eigenen Lernstand, getrennt vom Lesen. Neu dazu kommen Kanji, die du lesen kannst („Kann ich“ oder mit Karten gelernt). Der erste Versuch ist die Einstufung: Erst schreiben und auflösen, dann „Falsch“, „Richtig“ (kommt in die Lernschlange) oder „Kann ich schon“ (gilt als gelernt und wird beim Schreiben nicht mehr abgefragt). „Lernschlange üben“ geht alles durch, was du gerade übst – auch was heute nicht fällig ist; „Zufällig üben“ zieht 10 aus allen Kanji der Auswahl. Beides zählt nicht zur Lernschlange.${wc.locked ? ` ${wc.locked} Kanji sind noch nicht freigeschaltet${App.checkOn() ? ' – <a href="#/ueben/einstufen?type=kanji">Kanji einstufen</a>' : ''}.` : ''}</div>` : ''}</div>
       <div data-stage style="margin-top:16px"></div></div>`;
     const run = (queue, free) => { view.querySelector('[data-setup]').hidden = true; runKanjiQuiz(view.querySelector('[data-stage]'), pool, mode, queue, () => App.writeQueue({ l: q.l }), free); };
     view.querySelector('[data-go]').onclick = () => run();
@@ -771,7 +770,7 @@
 
   // queue (nur „schreiben“): Lernrunde nach Schreib-Plan – falsch Geschriebenes kommt in derselben Runde noch einmal
   // ohne queue = freie Zufallsrunde (alle drei Arten): nichts wird bewertet, der Lernstand bleibt unberührt – wie „Frei üben“ bei den Karteikarten
-  // free (nur „schreiben“): feste Liste statt 10 zufälliger – „Meinen Stapel üben“; ebenfalls ohne Bewertung, Falsches kommt noch einmal
+  // free (nur „schreiben“): feste Liste statt 10 zufälliger – „Lernschlange üben“; ebenfalls ohne Bewertung, Falsches kommt noch einmal
   function runKanjiQuiz(stage, pool, mode, queue, more, free) {
     // für „Wort → Lesung“ die Beispielwörter sammeln
     const words = [];

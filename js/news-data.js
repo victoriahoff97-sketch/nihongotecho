@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-28-lernschlange', date: '28. Oktober',
+      items: [
+        { t: 'Überall „Lernschlange“', d: 'Was du gerade lernst, heißt jetzt in der ganzen App gleich – auch bei Kanji und beim Kanji-Schreiben (früher „Lernstapel“ oder „Übe ich“).' },
+      ],
+    },
+    {
       id: '2026-10-28-karteikarten', date: '28. Oktober',
       items: [
         { t: 'Karteikarten aufgeräumt', d: 'Üben › Karteikarten: Unter der Auswahl wählst du jetzt auch den Lernstand (Ungeprüft, Lernschlange, Kann ich). Darunter stehen alle Startknöpfe in einer Reihe.' },

@@ -112,7 +112,7 @@
 
   const kCell = (k, r) => `<div class="kg-cell ${kLearned(k) ? '' : 'off'}">${App.kanjiTile(k)}
       <div class="kg-read"><span class="kg-kind">${r.kind === 'on' ? 'On' : 'Kun'}</span><span lang="ja">${esc(readText(r))}</span></div>
-      ${kLearned(k) ? '' : `<button class="btn btn-sm" data-kg-learn="${esc(k.id)}" title="In den Lernstapel">${icon('plus')} Lernen</button>`}</div>`;
+      ${kLearned(k) ? '' : `<button class="btn btn-sm" data-kg-learn="${esc(k.id)}" title="In die Lernschlange">${icon('plus')} Lernen</button>`}</div>`;
 
   const kGroupHtml = (g, q) => {
     // was du schon lernst, steht vorn

@@ -366,7 +366,7 @@
     const e = App.kanjiLogic.entry(await App.kanjiIndex(), ch);
     return e ? Object.assign(e, { words: await kanjiWords(ch) }) : null;
   };
-  // Legt ein Kanji fertig ausgefüllt im Lernstapel an (Auswahl-Dialog „neu anlegen“); null, wenn der Index es nicht kennt
+  // Legt ein Kanji fertig ausgefüllt in der Lernschlange an (Auswahl-Dialog „neu anlegen“); null, wenn der Index es nicht kennt
   App.createKanji = async (ch, defaults = {}) => {
     const have = App.kanjiByChar(ch);
     if (have) return have;
@@ -585,7 +585,7 @@
       <div class="field"><label>Beispielwörter <small>eine Zeile: 日本[にほん] = Japan</small></label><textarea class="input jp-in" name="words" rows="3">${esc((it.words || []).map((w) => `${w.jp} = ${App.meaning(w).text}`).join('\n'))}</textarea></div>
       <div class="field"><label>Eselsbrücke</label><input class="input" name="mnemonic" value="${esc(it.mnemonic || '')}"></div>
       <div class="field"><label>Markierungen</label>${catChips(App.kanjiMarks().map((m) => [esc(m), esc(m)]), (it.marks || []).map(esc), 'kmark')}</div>
-      ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In den Lernstapel'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>` : ''}
+      ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In die Lernschlange'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>` : ''}
       ${commonFields(it)}
       <div class="card row between" style="box-shadow:none;background:var(--murasaki-soft);border-color:transparent;padding:12px 16px">
         <div><b>Strichfolge</b> <span class="small muted">(Quelle: KanjiVG)</span><div class="small" data-kvg-msg>Kanji oben eingeben …</div></div>

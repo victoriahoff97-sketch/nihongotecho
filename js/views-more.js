@@ -98,7 +98,7 @@
       const byL = new Map();
       items.forEach((it) => { const k = (it.source || 'Eigene') + (it.lesson !== '' && it.lesson != null ? ' · Lektion ' + it.lesson : ''); if (!byL.has(k)) byL.set(k, []); byL.get(k).push(it); });
       // Legende rechts in der ersten Lektions-Überschrift – so nimmt sie den Markierungen keinen Platz weg
-      const legend = `<span class="small muted kanji-legend">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernstapel · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span>`;
+      const legend = `<span class="small muted kanji-legend">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernschlange · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span>`;
       let html = '';
       byL.forEach((list, k) => { html += `<div class="group-head"><h2>${esc(k)}</h2><span class="badge">${list.length}</span><span class="line"></span>${html ? '' : legend}</div><div class="kanji-grid">${list.map(App.kanjiTile).join('')}</div>`; });
       body.querySelector('[data-grid]').innerHTML = html || '<div class="empty-state"><div class="big">漢</div><h3>Keine Kanji gefunden</h3></div>';
@@ -555,7 +555,7 @@
         ${row('sec-vocab', 'Vokabeln lesen', 'Der Weg oben, Japanisch → Deutsch.')}
         ${row('sec-vocab', 'Vokabeln Deutsch → Japanisch', 'Derselbe Weg noch einmal. Er beginnt, sobald du das Wort lesen kannst. Erst wenn beide Richtungen sitzen, zählt die Vokabel als „kann ich“.')}
         ${row('sec-phrase', 'Ausdrücke', 'Der Weg oben, eine Richtung.')}
-        ${row('sec-kanji', 'Kanji', 'Eigener Weg: Sie warten im Lernstapel auf „neue lernen“. Schreiben kommt dazu, sobald du ein Kanji lesen kannst – der erste Schreibversuch ist die Einstufung.')}
+        ${row('sec-kanji', 'Kanji', 'Eigener Weg: Sie warten in der Lernschlange auf „neue lernen“. Schreiben kommt dazu, sobald du ein Kanji lesen kannst – der erste Schreibversuch ist die Einstufung.')}
         ${row('sec-grammar', 'Grammatik', 'Wird nicht abgefragt. Den Haken „Kann ich“ setzt du selbst auf der Seite des Grammatikpunkts; er zählt für Genki und JLPT.')}</div></div>
       <div class="card"><h3>Frei üben</h3><p class="small" style="margin:0">Geht jederzeit und ändert nichts an Lernstand und Terminen: „Meine Lernschlange üben“ nimmt alles, was du gerade lernst, auch wenn heute nichts fällig ist. „Frei üben“ bei den <a href="#/ueben/karten">Karteikarten</a> geht eine beliebige Auswahl durch – auch Grammatik.</p></div></div>`;
   });
@@ -576,7 +576,7 @@
       <div class="card"><h3>Lernen</h3><div class="form">
         <div class="two"><div class="field"><label>Neue Karten pro Sitzung</label><input class="input" type="number" min="1" max="100" data-s="newPerDay" value="${st.newPerDay}"></div>
         ${App.checkOn() ? `<div class="field"><label>Wörter pro Einstufungs-Runde</label><input class="input" type="number" min="3" max="100" data-s="checkBatch" value="${st.checkBatch || 15}"></div>` : ''}</div>
-        <div class="field"><label>Einstufen <small>Bekanntes aus Paketen aussortieren, bevor du es lernst. „Neue lernen“ gibt es immer – für Vokabeln und Ausdrücke blendet „Aus“ nur den Einstufen-Knopf aus</small></label><select class="input" data-s="check">${[['on', 'An – Neues erst einstufen'], ['off', 'Aus – ohne Einstufen (Kanji liegen direkt im Lernstapel)']].map(([k, l]) => `<option value="${k}" ${(App.checkOn() ? 'on' : 'off') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="field"><label>Einstufen <small>Bekanntes aus Paketen aussortieren, bevor du es lernst. „Neue lernen“ gibt es immer – für Vokabeln und Ausdrücke blendet „Aus“ nur den Einstufen-Knopf aus</small></label><select class="input" data-s="check">${[['on', 'An – Neues erst einstufen'], ['off', 'Aus – ohne Einstufen (Kanji liegen direkt in der Lernschlange)']].map(([k, l]) => `<option value="${k}" ${(App.checkOn() ? 'on' : 'off') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <details class="adv" data-kanji-adv><summary>Kanji: Lesen, Schreiben, Furigana</summary><div class="form" style="margin-top:10px">
         <div class="field"><label>Kanji-Schwerpunkt <small>was Startseite und „fällig“ in den Vordergrund stellen</small></label><select class="input" data-s="kanjiFocus">${[['both', 'Lesen und Schreiben'], ['write', 'Schreiben – Lesen lerne ich woanders (z. B. WaniKani)'], ['read', 'Lesen – Schreiben brauche ich nicht']].map(([k, l]) => `<option value="${k}" ${App.writeLogic.focus(st) === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         ${writeSrcField()}

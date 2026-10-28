@@ -17,7 +17,7 @@
 
   // „Kann ich“ gilt für jeden Lernstand gleich (Lesen, Schreiben, Aktiv): so eingestuft oder mit Karten bis 3 Wochen Abstand geübt.
   // Was „Kann ich“ ist, wird im Lernplan nicht mehr abgefragt – nur „Zufällig üben“ zieht weiter aus allem;
-  // dort falsch Beantwortetes fällt zurück in den Stapel.
+  // dort falsch Beantwortetes fällt zurück in die Lernschlange.
   W.isKnown = (s) => !!s && (s.check === 'known' || (s.reps > 0 && s.ivl >= W.KNOWN_IVL));
 
   // new = noch nie geschrieben · learn = übe ich · known = kann ich schreiben
@@ -29,11 +29,11 @@
   W.STATUS = {
     locked: { label: 'Noch nicht freigeschaltet', color: 'var(--muted)', dot: '○' },
     new: { label: 'Noch nie geschrieben', color: 'var(--muted)', dot: '○' },
-    learn: { label: 'Übe ich', color: 'var(--ai)', dot: '◐' },
+    learn: { label: 'Lernschlange', color: 'var(--ai)', dot: '◐' },
     known: { label: 'Kann ich schreiben', color: 'var(--matcha)', dot: '●' },
   };
 
-  // Der erste Schreibversuch ist die Einstufung: nach dem Vergleichen „Falsch“, „Richtig“ (kommt in den Übungsstapel)
+  // Der erste Schreibversuch ist die Einstufung: nach dem Vergleichen „Falsch“, „Richtig“ (kommt in die Lernschlange)
   // oder „Kann ich schon“ = als gelernt eingestuft (check: 'known') und beim Schreiben nicht mehr abgefragt
   W.isFirst = (srs, id) => !srs.has(W.id(id));
   W.isMarkedKnown = (srs, id) => { const s = srs.get(W.id(id)); return !!s && s.check === 'known'; };
@@ -61,7 +61,7 @@
   };
 
   // Der gemeinsame Lernweg (ungeprüft → Lernschlange → kann ich) gilt für Vokabeln (beide Richtungen) und Ausdrücke:
-  // alles, was dort „lernen“ sagt, setzt queued – Einstufen, eigene Einträge, jede Bewertung. Kanji laufen wie bisher über den Lernstapel.
+  // alles, was dort „lernen“ sagt, setzt queued – Einstufen, eigene Einträge, jede Bewertung. Kanji laufen wie bisher über die Lernschlange.
   W.direct = (type) => type === 'vocab' || type === 'phrase';
   // Lese-Runde (Japanisch → Deutsch): fällig ist, was in der Lernschlange steckt und noch nicht „Kann ich“ ist.
   // In der Lernschlange: schon einmal gewusst – oder auf „Lernen“ gesetzt (queued): gleich fällig, ohne „neue lernen“.
@@ -148,7 +148,7 @@
     const nDe = Math.min(de.length, jp.length ? Math.max(Math.ceil(n / 2), n - jp.length) : n);
     return shuffle(de.slice(0, nDe).map((item) => ({ item, de: true })).concat(jp.slice(0, n - nDe).map((item) => ({ item, de: false }))));
   };
-  // Einmaliger Umzug auf den gemeinsamen Lernweg: was bei Vokabeln und Ausdrücken bisher im Lernstapel wartete, kommt in die Lernschlange.
+  // Einmaliger Umzug auf den gemeinsamen Lernweg: was bei Vokabeln und Ausdrücken bisher im alten Lernstapel wartete, kommt in die Lernschlange.
   // Lesen: eingestuft/angelegt, aber nie gewusst · eigene Einträge ohne Lernstand. Aktiv (nur Vokabeln): dasselbe unter „w:<Id>“;
   // eigene Wörter ohne Aktiv-Stand werden vorgemerkt (pre) und kommen, sobald sie lesbar sind.
   // Gestaffelt, damit keine Riesenrunde entsteht: perDay Karten pro Tag – erst das Lesen, dann Deutsch → Japanisch, je in der Reihenfolge der Liste. Liefert die zu speichernden Einträge;
