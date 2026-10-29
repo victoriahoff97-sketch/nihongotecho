@@ -609,8 +609,12 @@ window.App = window.App || {};
     srs.forEach((s) => S.srs.set(s.id, s));
     inks.forEach((k) => { if (App.inkImages.hasInk(k)) S.inkCount.set(k.fileId, (S.inkCount.get(k.fileId) || 0) + 1); });
     S.settings = Object.assign({}, DEFAULT_SETTINGS, settings ? settings.value : {});
-    // neue Standardquellen ergänzen
-    App.DEFAULT_SOURCES.forEach((d) => { if (!S.settings.sources.some((s) => s.name === d.name)) S.settings.sources.push(d); });
+    // eigene Kopie, damit Umbenennen/Löschen nie die Standardliste verändert
+    S.settings.sources = (S.settings.sources || []).map((s) => ({ ...s }));
+    // neue Standardquellen ergänzen – nur solche, die dieses Gerät noch nie angeboten hat; gelöschte bleiben weg
+    const seen = new Set(S.settings.sourcesSeen || []);
+    App.DEFAULT_SOURCES.forEach((d) => { if (!seen.has(d.name) && !S.settings.sources.some((s) => s.name === d.name)) S.settings.sources.push({ ...d }); });
+    S.settings.sourcesSeen = App.DEFAULT_SOURCES.map((d) => d.name);
     // Genki-Daten (nur Web-Version): schon freigeschaltet? Ein Fehler hier darf den Start nie verhindern
     if (App.genki) { try { await App.genki.loadIfOpen(); } catch (e) { console.error('Genki: Laden fehlgeschlagen', e); } }
     // WaniKani-Verbindung (nur lokal): ein Fehler hier darf den Start nie verhindern

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-29-quellen-loeschen', date: '29. Oktober',
+      items: [
+        { t: 'Quellen bleiben gelöscht', d: 'Quellen, die du in den Einstellungen mit dem Mülleimer entfernst (z. B. KaniWani), kommen beim nächsten Start nicht mehr zurück.' },
+      ],
+    },
+    {
       id: '2026-10-29-forum-marker', date: '29. Oktober',
       items: [
         { t: 'Textmarker in der Gruppe', d: 'Markier beim Schreiben in der Gruppe ein Stück Text – oben erscheinen vier Farben zum Hinterlegen und „Label“ für ein Fähnchen wie „Partikel“.' },
