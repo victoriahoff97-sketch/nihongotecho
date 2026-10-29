@@ -98,7 +98,7 @@
   // ---------- Suche ----------
   // Alle Wörter müssen irgendwo vorkommen: Text, Name, verknüpfte Einträge (Wort, Lesung, Deutsch)
   const fold = (s) => String(s ?? '').toLowerCase().normalize('NFKC');
-  const postWords = (p) => [p.text, p.name].concat(...F.cleanRefs(p.refs).map((r) => [r.label, r.sub,
+  const postWords = (p) => [F.plainText(p.text), p.name].concat(...F.cleanRefs(p.refs).map((r) => [r.label, r.sub,
     r.vocab && r.vocab.kana, r.vocab && r.vocab.de, r.kanji && r.kanji.de, r.kanji && r.kanji.on, r.kanji && r.kanji.kun, r.satz && r.satz.de, r.satz && r.satz.src]));
   F.matchPost = (p, q) => {
     const words = fold(q).split(/\s+/).filter(Boolean);
@@ -219,9 +219,7 @@
     for (const h of hits) { out += br(s.slice(pos, h.i)) + `<span class="forum-at">${esc(s.slice(h.i, h.end))}</span>`; pos = h.end; }
     return out + br(s.slice(pos));
   };
-  F.linkify = (text, names = []) => {
-    const s = String(text ?? '');
-    const ns = names.filter((n) => typeof n === 'string' && n.trim()).sort((a, b) => b.length - a.length);
+  const linkPart = (s, ns) => {
     let out = '';
     let pos = 0;
     for (const m of s.matchAll(URL_RE)) {
@@ -231,6 +229,63 @@
       pos = m.index + url.length;
     }
     return out + textPart(s.slice(pos), ns);
+  };
+  const markHtml = (m) => {
+    const mk = `<span class="forum-mk${m.c ? ' mk-' + m.c : ''}">${esc(m.text)}</span>`;
+    return m.label ? `<span class="forum-tag"><span class="forum-tag-lab">${esc(m.label)}</span>${mk}</span>` : mk;
+  };
+  F.linkify = (text, names = []) => {
+    const s = String(text ?? '');
+    const ns = names.filter((n) => typeof n === 'string' && n.trim()).sort((a, b) => b.length - a.length);
+    let out = '';
+    let pos = 0;
+    for (const m of F.parseMarks(s)) { out += linkPart(s.slice(pos, m.i), ns) + markHtml(m); pos = m.end; }
+    return out + linkPart(s.slice(pos), ns);
+  };
+
+  // ---------- Textmarker und Labels ----------
+  // Im Text steht „[[と|b|Partikel]]“: markierter Text, Farbe (y gelb, p rosa, b blau, g grün oder leer), Label (optional).
+  // So bleibt alles ein einfacher Text – Firebase-Regeln und ältere Geräte brauchen nichts Neues.
+  F.MARK_COLORS = ['y', 'p', 'b', 'g'];
+  F.MAX_MARK = 80;
+  F.MAX_LABEL = 20;
+  const MARK_RE = /\[\[([^[\]|\n]{1,80})\|([ypbg]?)(?:\|([^[\]|\n]{0,20}))?\]\]/g;
+  F.parseMarks = (text) => Array.from(String(text ?? '').matchAll(MARK_RE),
+    (m) => ({ i: m.index, end: m.index + m[0].length, text: m[1], c: m[2], label: (m[3] || '').trim() }));
+  F.plainText = (text) => String(text ?? '').replace(MARK_RE, '$1');
+  const cleanPart = (s, max) => String(s ?? '').replace(/[[\]|\n]/g, '').trim().slice(0, max);
+  const markRaw = (t, c, label) => (c || label ? `[[${t}|${c}${label ? '|' + label : ''}]]` : t);
+  // Auswahl start..end (im Text mit Klammern) bekommt { c, label }; liegt sie in einer Markierung, ändert sich die.
+  // Ergebnis { text, start, end } mit der neuen Markierung als Auswahl, oder null, wenn sich nichts markieren lässt.
+  F.applyMark = (text, start, end, { c, label } = {}) => {
+    const s = String(text ?? '');
+    const marks = F.parseMarks(s);
+    const col = (v, old) => (v === undefined ? old : F.MARK_COLORS.includes(v) ? v : '');
+    const lab = (v, old) => (v === undefined ? old : cleanPart(v, F.MAX_LABEL));
+    const inside = marks.find((m) => start >= m.i && end <= m.end);
+    if (inside) {
+      const raw = markRaw(inside.text, col(c, inside.c), lab(label, inside.label));
+      return { text: s.slice(0, inside.i) + raw + s.slice(inside.end), start: inside.i, end: inside.i + raw.length };
+    }
+    let a = Math.max(0, Math.min(start, end)), b = Math.min(s.length, Math.max(start, end));
+    for (const m of marks) if (m.i < b && m.end > a) { a = Math.min(a, m.i); b = Math.max(b, m.end); }
+    const inner = F.plainText(s.slice(a, b));
+    const t = inner.trim();
+    if (!t || inner.includes('\n') || /[[\]|]/.test(t) || t.length > F.MAX_MARK) return null;
+    a += inner.length - inner.trimStart().length;
+    b -= inner.length - inner.trimEnd().length;
+    const raw = markRaw(t, col(c, ''), lab(label, ''));
+    return { text: s.slice(0, a) + raw + s.slice(b), start: a, end: a + raw.length };
+  };
+  // Markierungen in der Auswahl (bei leerer Auswahl: unter dem Cursor) werden wieder einfacher Text
+  F.unmark = (text, start, end) => {
+    const s = String(text ?? '');
+    const hit = F.parseMarks(s).filter((m) => (start === end ? start > m.i && start < m.end : m.i < end && m.end > start));
+    if (!hit.length) return null;
+    let out = '', pos = 0;
+    for (const m of hit) { out += s.slice(pos, m.i) + m.text; pos = m.end; }
+    out += s.slice(pos);
+    return { text: out, start: hit[0].i, end: hit[hit.length - 1].end - (s.length - out.length) };
   };
 
   const dayStart = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };

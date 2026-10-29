@@ -263,6 +263,11 @@
   // ---------- Eingabefeld (neuer Gedanke, Antwort, Bearbeiten) ----------
   // key = Entwurf auf diesem Gerät ('new' bzw. 'r:<postId>'); beim Bearbeiten kein Entwurf
   // closed: erst nur eine Zeile, klappt beim Hineintippen auf (und nach dem Teilen wieder zu)
+  // Textmarker: Farben, Vorschläge fürs Label, kleine Emoji-Auswahl
+  const MARK_NAMES = { y: 'Gelb', p: 'Rosa', b: 'Blau', g: 'Grün' };
+  const LABELS = ['Partikel', 'Verb', 'Nomen', 'Adjektiv', 'Zeit', 'Ort', 'Objekt', 'Subjekt'];
+  const EMOJI = ['😊', '😂', '🥹', '😅', '🤔', '😮', '😭', '😍', '🥰', '😎', '🙈', '🙏', '👍', '👏', '💪', '🎉',
+    '✨', '❤️', '💡', '❓', '❗', '🌸', '🍵', '🍙', '📚', '✏️', '🎌', '🗾'];
   const composer = ({ key, kinds, closed, label, placeholder, init = {}, onSubmit, onCancel }) => {
     const el = document.createElement('div');
     el.className = 'forum-compose';
@@ -273,10 +278,26 @@
         ${navigator.clipboard && navigator.clipboard.read ? `<button type="button" class="btn btn-sm" data-clip title="Screenshot oder Bild aus der Zwischenablage einfügen (am PC auch Strg+V)">${icon('copy')}<span>Einfügen</span></button>` : ''}
         <button type="button" class="btn btn-sm" data-link>${icon('link')}<span>Eintrag</span></button>
         <button type="button" class="btn btn-sm forum-atbtn" data-at title="Jemanden aus der Gruppe erwähnen">@</button>
+        <button type="button" class="btn btn-sm forum-emobtn" data-emo title="Emoji einfügen" aria-label="Emoji einfügen">😊</button>
         ${App.dictate.supported() ? DLANGS.map(([l, t]) => `<button type="button" class="btn btn-sm mic" data-mic="${l}" title="Auf ${l === 'ja-JP' ? 'Japanisch' : 'Deutsch'} sprechen – der Text erscheint im Feld. Bleibt an, bis du auf „Fertig“ tippst.">${icon('mic')}<span class="mic-label" lang="${l.slice(0, 2)}">${t}</span></button>`).join('') : ''}
       </div>
-      <textarea class="input" maxlength="${F.MAX_TEXT}" placeholder="${esc(placeholder)}"></textarea>
+      <div class="forum-ta-wrap">
+        <div class="forum-mkbar" hidden>
+          ${F.MARK_COLORS.map((c) => `<button type="button" class="forum-mkdot mk-${c}" data-mkc="${c}" title="${MARK_NAMES[c]} markieren" aria-label="${MARK_NAMES[c]} markieren"></button>`).join('')}
+          <span class="forum-mksep"></span>
+          <button type="button" class="btn btn-sm" data-mklab title="Kurzes Label dranhängen, z. B. „Partikel“">${icon('tag')}<span>Label</span></button>
+          <button type="button" class="icon-btn" data-mkx title="Markierung entfernen" aria-label="Markierung entfernen">${icon('eraser')}</button>
+          <div class="forum-mklab" hidden>
+            <input class="input" maxlength="${F.MAX_LABEL}" placeholder="z. B. Partikel">
+            <button type="button" class="btn btn-sm btn-primary" data-mkok>OK</button>
+            <div class="chips">${LABELS.map((l) => `<button type="button" class="chip" data-mksug="${l}">${l}</button>`).join('')}</div>
+          </div>
+        </div>
+        <textarea class="input" maxlength="${F.MAX_TEXT}" placeholder="${esc(placeholder)}"></textarea>
+      </div>
+      <div class="forum-mkprev" hidden></div>
       <div class="forum-at-pop" hidden></div>
+      <div class="forum-emo-pop" hidden>${EMOJI.map((x) => `<button type="button" class="forum-emo" data-emoji="${x}">${x}</button>`).join('')}</div>
       <div class="forum-img-prev" hidden></div>
       <div class="forum-chosen"></div>
       <div class="forum-row forum-send-row">
@@ -369,6 +390,64 @@
     ta.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !atPop.hidden) { e.stopPropagation(); atPop.hidden = true; } });
     ta.addEventListener('change', keep); // Diktiertes kommt als change
 
+    // Textmarker: Text auswählen → Leiste über dem Feld (Farben, Label, Radierer); darunter die Vorschau
+    const bar = el.querySelector('.forum-mkbar');
+    const labBox = el.querySelector('.forum-mklab');
+    const labIn = labBox.querySelector('input');
+    const mkPrev = el.querySelector('.forum-mkprev');
+    let sel = { s: 0, e: 0 };
+    const drawPrev = () => {
+      const on = F.parseMarks(ta.value).length > 0;
+      mkPrev.hidden = !on;
+      mkPrev.innerHTML = on ? `<span class="muted small">So sieht es aus:</span><div class="forum-text">${textHtml(ta.value)}</div>` : '';
+    };
+    const inMark = (s, e) => F.parseMarks(ta.value).find((m) => s >= m.i && e <= m.end && (s > m.i || e < m.end || s !== e));
+    const showBar = () => {
+      if (!el.isConnected && el.dataset.mkOn) { document.removeEventListener('selectionchange', showBar); return; }
+      el.dataset.mkOn = '1';
+      if (document.activeElement !== ta) return;
+      sel = { s: ta.selectionStart, e: ta.selectionEnd };
+      const on = sel.s !== sel.e || !!inMark(sel.s, sel.e);
+      bar.hidden = !on;
+      if (!on) labBox.hidden = true;
+    };
+    ['select', 'keyup', 'pointerup', 'input'].forEach((ev) => ta.addEventListener(ev, showBar));
+    document.addEventListener('selectionchange', showBar);
+    el.addEventListener('focusout', () => setTimeout(() => { if (!el.contains(document.activeElement)) { bar.hidden = true; labBox.hidden = true; } }, 0));
+    // Knöpfe nehmen dem Feld den Fokus nicht weg – sonst wäre die Auswahl auf dem Tablet weg
+    bar.addEventListener('pointerdown', (e) => { if (!e.target.closest('input')) e.preventDefault(); });
+    const putMark = (r) => {
+      if (!r) { App.toast('Markier ein Stück Text in einer Zeile (ohne [ ] |).'); return; }
+      ta.value = r.text;
+      ta.focus();
+      ta.setSelectionRange(r.start, r.end);
+      sel = { s: r.start, e: r.end };
+      labBox.hidden = true;
+      setErr(''); keep(); drawPrev(); showBar();
+    };
+    const openLabel = () => {
+      const m = inMark(sel.s, sel.e);
+      labIn.value = m ? m.label : '';
+      labBox.hidden = false;
+      labIn.focus();
+    };
+    const takeLabel = (v) => putMark(F.applyMark(ta.value, sel.s, sel.e, { label: v }));
+    labIn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); takeLabel(labIn.value); }
+      if (e.key === 'Escape') { e.stopPropagation(); labBox.hidden = true; ta.focus(); }
+    });
+    ta.addEventListener('input', drawPrev);
+    drawPrev();
+    // Emoji an der Schreibstelle einfügen
+    const emoPop = el.querySelector('.forum-emo-pop');
+    const putEmoji = (x) => {
+      const at = ta.selectionStart ?? ta.value.length;
+      ta.value = ta.value.slice(0, at) + x + ta.value.slice(ta.selectionEnd ?? at);
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = at + x.length;
+      setErr(''); setClosed(false); keep();
+    };
+
     el.addEventListener('click', (e) => {
       const k = e.target.closest('[data-kind]');
       if (k) setKind(k.dataset.kind);
@@ -378,6 +457,19 @@
       if (e.target.closest('[data-at]')) { if (atPop.hidden) showAt(false); else atPop.hidden = true; }
       const an = e.target.closest('[data-atname]');
       if (an) putAt(an.dataset.atname);
+      if (e.target.closest('[data-emo]')) emoPop.hidden = !emoPop.hidden;
+      const em = e.target.closest('[data-emoji]');
+      if (em) putEmoji(em.dataset.emoji);
+      const mc = e.target.closest('[data-mkc]');
+      if (mc) putMark(F.applyMark(ta.value, sel.s, sel.e, { c: mc.dataset.mkc }));
+      if (e.target.closest('[data-mklab]')) { if (labBox.hidden) openLabel(); else labBox.hidden = true; }
+      const sug = e.target.closest('[data-mksug]');
+      if (sug) takeLabel(sug.dataset.mksug);
+      if (e.target.closest('[data-mkok]')) takeLabel(labIn.value);
+      if (e.target.closest('[data-mkx]')) {
+        const r = F.unmark(ta.value, sel.s, sel.e);
+        if (r) putMark(r); else bar.hidden = true;
+      }
       const mic = e.target.closest('[data-mic]');
       if (mic) {
         setErr('');
@@ -439,7 +531,7 @@
       busy = true;
       try {
         await onSubmit({ kind, text, image, refs, mentions: F.findMentions(text, members, D.uid()) });
-        if (key) { saveDraft(key, ''); ta.value = ''; setImage(null); refs = []; drawRefs(); atPop.hidden = true; ta.blur(); setClosed(true); }
+        if (key) { saveDraft(key, ''); ta.value = ''; drawPrev(); bar.hidden = true; emoPop.hidden = true; setImage(null); refs = []; drawRefs(); atPop.hidden = true; ta.blur(); setClosed(true); }
       } catch (x) {
         setErr(OFFLINE);
       } finally { busy = false; }
@@ -658,7 +750,7 @@
       <span class="forum-item-body">
         <span class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}${p.hasImage ? ` ${icon('image')}` : ''}
           <span class="grow"></span>${atMe ? '<span class="badge forum-atme">@ dich</span>' : ''}${fresh ? '<span class="badge forum-new">neu</span>' : ''}${p.done ? '<span class="badge">besprochen</span>' : ''}</span>
-        <span class="forum-item-text">${esc(p.text)}</span>
+        <span class="forum-item-text">${esc(F.plainText(p.text))}</span>
         ${foot ? `<span class="forum-item-foot">${foot}</span>` : ''}
       </span></button>`;
   };

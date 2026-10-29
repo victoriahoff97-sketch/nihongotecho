@@ -1871,7 +1871,7 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .forum-compose textarea { min-height: 96px; font-size: 16px; line-height: 1.55; }
 /* zugeklappt: nur eine Zeile, die Knöpfe kommen beim Hineintippen */
 .forum-compose.is-closed textarea { min-height: 0; height: 52px; resize: none; border-style: dashed; border-color: var(--line-2); }
-.forum-compose.is-closed > :not(textarea) { display: none; }
+.forum-compose.is-closed > :not(.forum-ta-wrap), .forum-compose.is-closed .forum-mkbar { display: none; }
 .forum-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .forum-row .grow, .forum-item-head .grow { flex: 1; }
 .forum-tools { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
@@ -1943,6 +1943,37 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .forum-at-pop[hidden] { display: none; }
 .forum-at-pop .chip { display: inline-flex; align-items: center; gap: 6px; }
 .forum-at-pop .forum-av { width: 22px; height: 22px; font-size: 13px; }
+/* Emoji-Auswahl */
+.forum-emobtn { min-width: 34px; justify-content: center; font-size: 16px; }
+.forum-emo-pop { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px; border: 1px dashed var(--line-2); border-radius: 10px; }
+.forum-emo-pop[hidden] { display: none; }
+.forum-emo { width: 38px; height: 38px; border: 0; border-radius: 8px; background: none; font-size: 22px; cursor: pointer; }
+.forum-emo:hover { background: var(--line); }
+/* Textmarker: durchscheinende Farben, damit sie hell und dunkel passen; Label als Fähnchen über dem Wort.
+   inline-block mit dem Wort als letzter Zeile: das Wort bleibt auf der Grundlinie, nur die Zeile wird nach oben höher */
+.forum-mk { border-radius: 4px; padding: 0 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.mk-y { background: rgba(255, 205, 0, .42); }
+.mk-p { background: rgba(240, 100, 155, .32); }
+.mk-b { background: rgba(70, 150, 240, .32); }
+.mk-g { background: rgba(110, 195, 70, .36); }
+.forum-tag { display: inline-block; text-align: center; line-height: 1.5; }
+.forum-tag-lab { display: block; width: max-content; margin: 0 auto 1px; padding: 0 6px; font-size: 11px; line-height: 1.5; font-weight: 600;
+  color: var(--ink-2); background: var(--card); border: 1px solid var(--line-2); border-radius: 7px; font-family: inherit; }
+.forum-tag .forum-mk:not([class*="mk-"]) { border-bottom: 2px dotted var(--line-2); border-radius: 0; }
+.forum-ta-wrap { position: relative; }
+.forum-ta-wrap textarea { display: block; width: 100%; box-sizing: border-box; }
+.forum-mkbar { position: absolute; z-index: 3; right: 6px; bottom: calc(100% + 4px); display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  max-width: calc(100% - 12px); padding: 5px 8px; background: var(--card); border: 1px solid var(--line-2); border-radius: 18px; box-shadow: 0 4px 14px rgba(0, 0, 0, .12); }
+.forum-mkbar[hidden] { display: none; }
+@media (max-width: 600px) { .forum-mkbar { left: 0; right: 0; max-width: none; gap: 5px; } }
+.forum-mkdot { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-2); padding: 0; cursor: pointer; }
+.forum-mksep { width: 1px; height: 20px; background: var(--line-2); }
+.forum-mklab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; padding-top: 4px; }
+.forum-mklab[hidden] { display: none; }
+.forum-mklab .input { flex: 1; min-width: 120px; height: 32px; font-size: 14px; }
+.forum-mklab .chips { width: 100%; }
+.forum-mkprev { padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: 10px; }
+.forum-mkprev[hidden] { display: none; }
 .forum-exset { width: 28px; height: 28px; opacity: .55; }
 .forum-exset:hover { opacity: 1; }
 .forum-exset .ico { width: 15px; height: 15px; }

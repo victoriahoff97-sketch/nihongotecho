@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-10-29-forum-marker', date: '29. Oktober',
+      items: [
+        { t: 'Textmarker in der Gruppe', d: 'Markier beim Schreiben in der Gruppe ein Stück Text – oben erscheinen vier Farben zum Hinterlegen und „Label“ für ein Fähnchen wie „Partikel“.' },
+        { t: 'Emojis in der Gruppe', d: 'Der 😊-Knopf über dem Schreibfeld öffnet eine kleine Emoji-Auswahl; das Emoji landet dort, wo du gerade schreibst.' },
+      ],
+    },
+    {
       id: '2026-10-28-import-spalten', date: '28. Oktober',
       items: [
         { t: 'Vokabel-Import mit Spaltennamen', d: 'Beim Importieren einer Wortliste steht jetzt über den Spalten, was Japanisch, Deutsch und Beispielsatz ist.' },
