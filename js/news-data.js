@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-01-runde-kann-ich', date: '1. November',
+      items: [
+        { t: 'Kann ich gilt sofort', d: 'Stellst du beim Wiederholen über „Eintrag öffnen“ ein Wort auf „Kann ich“, kommt seine Karte danach nicht mehr dran. Die Runde geht mit der nächsten weiter.' },
+      ],
+    },
+    {
       id: '2026-10-29-quellen-loeschen', date: '29. Oktober',
       items: [
         { t: 'Quellen bleiben gelöscht', d: 'Quellen, die du in den Einstellungen mit dem Mülleimer entfernst (z. B. KaniWani), kommen beim nächsten Start nicht mehr zurück.' },

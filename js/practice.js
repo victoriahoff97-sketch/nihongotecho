@@ -80,10 +80,12 @@
   let parked = null;
   App.parkedRound = () => parked;
   App.dropParked = () => { parked = null; };
+  // Lernstand der Karte in ihrer Richtung; Konjugieren übt Formen und hängt nicht am „Kann ich“ des Worts
+  const cardKnown = (e) => e.kind !== 'conj' && W.isKnown(S.srs.get(e.kind === 'read' ? e.it.id : W.id(e.it.id)));
   // Auf der Seite der geparkten Runde: Herkunft wiederherstellen und den Stand zum Fortsetzen liefern
   const takeParked = () => {
     if (!P.same(parked, location.hash)) return null;
-    const p = parked, r = P.revive(p, App.item);
+    const p = parked, r = P.revive(p, App.item, cardKnown);
     parked = null;
     nextRound = null;
     App.setOrigin(p.origin);
@@ -559,7 +561,7 @@
       App.screenItem = null;
       document.removeEventListener('keydown', onKey);
       if (ans && ans.pad) ans.pad.stop();
-      if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue), done, right, total, open: flipped };
+      if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue).map((e) => Object.assign({}, e, { known: cardKnown(e) })), done, right, total, open: flipped };
     });
     next();
     if (resume && resume.open && cur) { if (ent.pad) stage.querySelector('[data-show]').click(); else flip(); }

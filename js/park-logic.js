@@ -6,9 +6,12 @@
   P.same = (parked, hash) => !!parked && parked.hash === hash;
   P.label = (parked) => `Karte ${parked.done + 1} / ${parked.total}`;
   // Fortsetzen: Einträge frisch aus dem Bestand holen (inzwischen bearbeitet oder gelöscht); entries[0] ist die offene Karte
-  P.revive = (parked, item) => {
-    const entries = parked.entries.map((e) => Object.assign({}, e, { it: item(e.it.id) })).filter((e) => e.it);
-    const curKept = !!item(parked.entries[0].it.id);
+  // known(e): steht die Karte jetzt auf „Kann ich“? Wer das im Eintrag gesetzt hat, will sie nicht mehr sehen.
+  // Was schon beim Parken so stand (e.known), bleibt: freies Üben und Auffrischen fragen bewusst Gekonntes ab.
+  P.revive = (parked, item, known = () => false) => {
+    const fresh = parked.entries.map((e) => Object.assign({}, e, { it: item(e.it.id) }));
+    const entries = fresh.filter((e) => e.it && (e.known || !known(e)));
+    const curKept = entries[0] === fresh[0];
     return { entries, done: parked.done, right: parked.right, total: parked.total - (parked.entries.length - entries.length), open: curKept && !!parked.open };
   };
 })(window.App);
