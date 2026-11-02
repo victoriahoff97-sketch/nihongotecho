@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-02-gleiche-bedeutung', date: '2. November',
+      items: [
+        { t: 'Gleiche Bedeutung', d: 'Neuer Reiter bei den Vokabeln: Wörter, die dasselbe heißen, z. B. 着る und はく für „anziehen“ oder 学生 und 生徒.' },
+        { t: 'Bedeutet ähnlich', d: 'An jeder Vokabel stehen jetzt auch die Wörter mit gleicher Bedeutung.' },
+      ],
+    },
+    {
       id: '2026-11-02-kann-ich-2-monate', date: '2. November',
       items: [
         { t: 'Eine Wiederholung mehr', d: 'Karten gelten jetzt erst ab 2 Monaten Abstand als „Kann ich“ statt ab 3 Wochen. Mit „Gut“ also nach 1, 3, 8, 19 und 47 Tagen. Was schon auf „Kann ich“ steht, bleibt dort.' },

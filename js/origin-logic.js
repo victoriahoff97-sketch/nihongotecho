@@ -19,6 +19,7 @@
   const LABELS = [
     ['/grammatik', 'Grammatik', 'zur Grammatik'], ['/vokabeln', 'Vokabeln', 'zu den Vokabeln'],
     ['/kanji', 'Kanji', 'zu den Kanji'], ['/ausdruecke', 'Ausdrücke', 'zu den Ausdrücken'], ['/gleichklang', 'Gleichklang', 'zum Gleichklang'],
+    ['/bedeutung', 'Gleiche Bedeutung', 'zu „Gleiche Bedeutung“'],
     ['/anwenden', 'Anwenden', 'zu Anwenden'], ['/unterricht', 'Unterricht', 'zum Unterricht'], ['/bibliothek', 'Bibliothek', 'zur Bibliothek'],
     ['/aufgabe', 'Buchaufgabe', 'zur Buchaufgabe'], ['/suche', 'Suche', 'zur Suche'], ['/eingang', 'Eingang', 'zum Eingang'], ['/saetze', 'Sätze', 'zu den Sätzen'],
   ];

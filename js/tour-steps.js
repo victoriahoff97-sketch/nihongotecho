@@ -64,6 +64,10 @@
       { text: 'Hier sammeln sich Wörter, die gleich klingen, aber anders geschrieben werden, zum Beispiel はし (Brücke, Essstäbchen).' },
       { text: 'Die Seite füllt sich von selbst, sobald du gleich klingende Wörter lernst. Du musst nichts anlegen.' },
     ],
+    '/bedeutung': [
+      { text: 'Hier stehen Wörter, die auf Deutsch dasselbe heißen, zum Beispiel 着る und はく für „anziehen“. Die Klammern in der Bedeutung zeigen den Unterschied.' },
+      { text: 'Die Seite füllt sich von selbst, sobald du eines der Wörter lernst. Du musst nichts anlegen.' },
+    ],
     '/ueben': [
       { target: '#view a.mode-card[href^="#/ueben/heute"]', text: 'Der Kern: Karten kommen wieder, kurz bevor du sie vergessen würdest – hier alles Fällige gemischt. Daneben „Karteikarten“: einzeln nach Art oder Lektion üben und Neues lernen.' },
       { target: '#view a.mode-card[href="#/ueben/einstufen"]', text: 'Neues erst einstufen, damit du nichts wiederholst, was du schon kannst.' },

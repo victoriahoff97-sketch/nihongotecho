@@ -26,7 +26,7 @@
       if (!n) return '<div class="nav-sep"></div>';
       const [ic, label, href, cls, jp] = n;
       const base = href.slice(1);
-      const active = base === '/' ? path === '/' : path === base || path.startsWith(base + '/') || (base === '/vokabeln' && path === '/gleichklang');
+      const active = base === '/' ? path === '/' : path === base || path.startsWith(base + '/') || (base === '/vokabeln' && (path === '/gleichklang' || path === '/bedeutung'));
       const extra = ic === 'practice' && due ? `<span class="badge count">${due}</span>` : `<span class="jp-mini">${jp}</span>`;
       return `<a class="nav-link ${cls} ${active ? 'active' : ''}" href="${href}" title="${label}"><span class="dot">${icon(ic)}</span><span class="lbl">${label}</span>${extra}</a>`;
     }).join('');

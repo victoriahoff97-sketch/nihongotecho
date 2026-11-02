@@ -57,6 +57,7 @@
   const tabsHtml = (q, entries, filesN, extra = '') => `<div class="tabs"><button class="tab ${q.tab !== 'files' ? 'on' : ''}" data-q-tab="">Einträge <span class="badge">${entries}</span></button><button class="tab ${q.tab === 'files' ? 'on' : ''}" data-q-tab="files">${icon('file')} Dateien <span class="badge">${filesN}</span></button>${extra}</div>`;
   // Gleichklang ist seit 2026-10-28 ein Reiter der Vokabeln (eigene Seite #/gleichklang, ohne Menüpunkt)
   App.GK_TAB = (on) => `<a class="tab ${on ? 'on' : ''}" href="#/gleichklang" style="text-decoration:none">同音 Gleichklang</a>`;
+  App.GB_TAB = (on) => `<a class="tab ${on ? 'on' : ''}" href="#/bedeutung" style="text-decoration:none">同義 Gleiche Bedeutung</a>`;
 
   // ---------- Startseite: Leiste „Heute lesen“ (externe Seiten, brauchen Internet) ----------
   const NEWS_SVG = `<svg viewBox="0 0 92 84" aria-hidden="true"><g transform="rotate(-6 46 42)">
@@ -461,7 +462,7 @@
     const unchecked = App.vocabCounts(filterItems(all, { src: q.src, l: q.l, lvl: q.lvl })).unchecked;
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Alle Wörter mit Lesung, Kanji, Übersetzung und Beispielsätzen – nach Quelle und Lektion sortiert.',
       `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>${pageMore(`<button class="btn" data-action="import-vocab">${icon('upload')} Wortliste importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a>`)}`)}
-      ${tabsHtml(q, items.length, files.length, App.GK_TAB(false))}
+      ${tabsHtml(q, items.length, files.length, App.GK_TAB(false) + App.GB_TAB(false))}
       <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
         <select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
@@ -549,7 +550,7 @@
           <dl class="kv">${it.level ? `<dt>JLPT</dt><dd>${App.levelBadge(it)}</dd>` : ''}<dt>Lesung</dt><dd lang="ja" style="font-size:18px">${esc(it.kana)}</dd>${App.accentHtml(it) ? `<dt>Pitch Accent</dt><dd>${App.accentHtml(it)}</dd>` : ''}
           ${it.kanji ? `<dt>Kanji</dt><dd lang="ja" style="font-size:18px">${Array.from(it.kanji).map((c) => App.kanjiByChar(c) ? `<a href="#/kanji/${encodeURIComponent(c)}" style="text-decoration:none;border-bottom:2px solid var(--murasaki)">${esc(c)}</a>` : esc(c)).join('')}</dd>` : ''}
           ${it.pos ? `<dt>Wortart</dt><dd>${esc(App.POS[it.pos] || it.pos)} ${App.verbClsBadge(it)}</dd>` : ''}
-          ${App.homophoneHint(it)}
+          ${App.homophoneHint(it)}${App.synonymHint(it)}
           <dt>Quelle</dt><dd>${App.srcBadge(it) || '–'} ${it.sourceRef ? refLink(it.sourceRef) : ''}</dd>
           ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
           <dt>Lesen <small class="muted" style="font-weight:400">Japanisch → Deutsch</small></dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>

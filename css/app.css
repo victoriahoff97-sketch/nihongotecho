@@ -1484,9 +1484,12 @@ body.ink-fit #view { padding-bottom: 16px; }
 .gk-group summary { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; list-style: none; min-height: 56px; }
 .gk-group summary::-webkit-details-marker { display: none; }
 .gk-kana { font-family: var(--font-jp); font-size: 22px; font-weight: 700; color: var(--sec); min-width: 96px; }
+.gb-label { font-size: 18px; font-weight: 700; color: var(--sec); min-width: 140px; max-width: 220px; }
+.gk-hint + .gk-hint { margin-top: 6px; }
+.gk-hint > a.small { align-self: center; margin-right: 2px; }
 .gk-chips, .gk-hint { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
 .gk-chip { display: inline-flex; align-items: baseline; gap: 7px; padding: 3px 11px; border-radius: 10px; background: var(--sec-soft); border: 1px solid transparent; color: var(--ink-2); font-size: 13px; text-decoration: none; }
-.gk-chip b { font-family: var(--font-kanji); font-size: 19px; font-weight: 600; color: var(--sec); }
+.gk-chip b { font-family: var(--font-kanji); font-size: 19px; font-weight: 600; color: var(--sec); white-space: nowrap; }
 .gk-chip.off { background: transparent; border: 1px dashed var(--line-2); color: var(--muted); }
 .gk-chip.off b { color: var(--muted); }
 a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
@@ -1512,7 +1515,7 @@ a.gk-chip:hover { border-color: var(--sec); border-style: solid; }
 .gk-foot { margin-top: auto; padding-top: 6px; }
 .gk-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px; align-items: center; }
 .gk-legend > span { display: inline-flex; align-items: center; gap: 8px; }
-@media (max-width: 640px) { .gk-group summary { flex-wrap: wrap; } .gk-kana { min-width: 0; } }
+@media (max-width: 640px) { .gk-group summary { flex-wrap: wrap; } .gk-kana { min-width: 0; } .gb-label { flex: 1 1 calc(100% - 80px); max-width: none; } }
 /* Kanji mit gleicher Lesung (Reiter auf der Kanji-Seite): Kachel + Lesung darunter */
 .kg-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; margin-top: 10px; }
 .kg-cell { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
