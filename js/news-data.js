@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-02-neu-sticker', date: '2. November',
+      items: [
+        { t: 'Neu-Sticker', d: 'Beim Schreibblatt unter „Sticker“ › Süß: „Neu“ als Stern, Schild, 新-Stempel, Keimling, Sprechblase und „新しい文法“.' },
+        { t: 'Pfeile', d: 'Bunte Pfeile nach rechts und links, auch als Kritzel unter „Normal“.' },
+        { t: 'Weniger doppelt', d: 'Der Reiter „Kawaii“ ist weg, weil er „Süß“ zu ähnlich war. Sticker, die schon auf deinen Blättern kleben, bleiben.' },
+      ],
+    },
+    {
       id: '2026-11-02-gleiche-bedeutung', date: '2. November',
       items: [
         { t: 'Gleiche Bedeutung', d: 'Neuer Reiter bei den Vokabeln: Wörter, die dasselbe heißen, z. B. 着る und はく für „anziehen“ oder 学生 und 生徒.' },

@@ -27,6 +27,20 @@
   const PETALS8 = Array.from({ length: 8 }, (_, i) => circ(n1(50 + 27 * Math.cos((i * Math.PI) / 4)), n1(50 + 27 * Math.sin((i * Math.PI) / 4)), 13)).join('');
   const BRAIN = 'M50 20C40 12 24 16 22 30C10 34 10 54 20 60C18 74 34 82 44 76C48 82 52 82 56 76C66 82 82 74 80 60C90 54 90 34 78 30C76 16 60 12 50 20Z';
   const MIC = 'M24 38C24 68 76 68 76 38H70C70 60 30 60 30 38Z';
+  // Schriftzug „NEU“ als Striche, Mitte bei (cx, cy), Buchstabenhöhe h; bang = Ausrufezeichen dahinter
+  const neu = (cx, cy, h, c, w, bang) => {
+    const lw = h * 0.58, g = h * 0.26, T = 3 * lw + 2 * g + (bang ? g + w : 0), y = cy - h / 2, b = cy + h / 2, r = n1;
+    const x = [0, 1, 2].map((i) => cx - T / 2 + i * (lw + g));
+    const d = `M${r(x[0])} ${r(b)}V${r(y)}L${r(x[0] + lw)} ${r(b)}V${r(y)}`
+      + `M${r(x[1] + lw)} ${r(y)}H${r(x[1])}V${r(b)}H${r(x[1] + lw)}M${r(x[1])} ${r(cy)}H${r(x[1] + lw * 0.8)}`
+      + `M${r(x[2])} ${r(y)}V${r(y + h * 0.62)}C${r(x[2])} ${r(b + h * 0.05)} ${r(x[2] + lw)} ${r(b + h * 0.05)} ${r(x[2] + lw)} ${r(y + h * 0.62)}V${r(y)}`;
+    const bx = cx + T / 2 - w / 2;
+    return ln(d, c, w) + (bang ? ln(`M${r(bx)} ${r(y)}V${r(y + h * 0.6)}`, c, w) + dot(r(bx), r(b), n1(w * 0.6), c) : '');
+  };
+  const BURST = 'M' + Array.from({ length: 24 }, (_, i) => { const a = (i * Math.PI) / 12 - Math.PI / 2, R = i % 2 ? 33 : 42; return n1(50 + R * Math.cos(a)) + ' ' + n1(50 + R * Math.sin(a)); }).join('L') + 'Z';
+  const JP = 'Hiragino Mincho ProN,Yu Mincho,Noto Serif JP,MS Mincho,serif'; // Schrift für Kanji auf Stickern
+  const ARROW ='M14 40H52V24C52 20 56 18 59 21L87 46C90 48 90 52 87 54L59 79C56 82 52 80 52 76V60H14C11 60 9 58 9 55V45C9 42 11 40 14 40Z';
+  const ARROW_L = 'M86 40H48V24C48 20 44 18 41 21L13 46C10 48 10 52 13 54L41 79C44 82 48 80 48 76V60H86C89 60 91 58 91 55V45C91 42 89 40 86 40Z';
   const BOW = 'M50 38C40 14 16 18 20 36C24 48 44 44 50 40C56 44 76 48 80 36C84 18 60 14 50 38Z';
 
   // Sticker im Feld 100 × 100: edge = weißer Stickerrand (sonst sil), pre = hinter der Hauptform, sil + fill = Hauptform, body = darüber,
@@ -65,6 +79,15 @@
     { id: 'schwer', label: 'Schwer', sil: 'M58 8L22 54H44L36 92L78 42H56Z', fill: YEL, body: face(50, 49, 0.5) },
     { id: 'denken', label: 'Gedanke', sil: 'M28 74C14 74 8 64 12 54C8 40 22 30 34 36C38 22 60 20 66 34C80 28 94 42 86 56C92 66 84 74 72 74Z', fill: '#DFF1FF', body: face(50, 55) + p(circ(22, 86, 4), '#DFF1FF'), sx: gl('M28 46Q30 40 36 38') },
     // Lernen
+    // „Neu“ in mehreren Formen: Stern, Schild, Kanji-Stempel, Keimling, Sprechblase
+    { id: 'neu', label: 'Neu', sil: BURST, fill: YEL, body: neu(50, 50, 20, ROSE, 5) + spark(84, 16, PINK, 0.7) + spark(16, 84, MINT, 0.5) },
+    { id: 'neu-schild', label: 'Neu Schild', rot: -12, sil: rr(6, 30, 88, 40, 20), fill: ROSE, body: neu(50, 50, 18, '#fff', 5) + spark(86, 26, YEL, 0.8) + spark(14, 74, LILA, 0.5) + gl('M18 42Q20 37 26 37') },
+    { id: 'neu-kanji', label: '新 Neu', sil: circ(50, 50, 40), fill: '#E0D4FF', body: `<circle cx="50" cy="50" r="33" fill="none" stroke="${PLUM}" stroke-width="2.5" stroke-dasharray="5 5"/><text x="50" y="66" text-anchor="middle" font-size="46" font-weight="700" fill="${PLUM}" font-family="${JP}">新</text>` + spark(84, 18, YEL, 0.8) },
+    { id: 'neu-bunpo', label: '新しい文法', rot: -6, sil: rr(8, 16, 84, 68, 14), fill: '#FFD6AE', body: p(rr(8, 16, 84, 24, 12), '#FFA65C') + `<text x="50" y="34" text-anchor="middle" font-size="15" font-weight="700" fill="#fff" font-family="${JP}">新しい</text><text x="50" y="72" text-anchor="middle" font-size="30" font-weight="700" fill="${DARK}" font-family="${JP}">文法</text>` + spark(88, 12, YEL, 0.8) + spark(12, 88, PINK, 0.5) },
+    { id: 'neu-keim', label: 'Neu gelernt', edge: 'M50 10C68 10 84 26 84 40C84 50 66 54 56 52V58H74L68 90H32L26 58H44V52C34 54 16 50 16 40C16 26 32 10 50 10Z', pre: ln('M50 60V40', '#7FD6B4', 4), body: p('M50 44C40 46 22 46 20 36C18 26 30 20 40 24C46 26 50 34 50 44Z', MINT) + p('M50 40C52 28 62 16 74 18C82 20 82 32 74 38C66 44 58 42 50 40Z', '#CDEBA8') + p('M26 58H74L68 90H32Z', PEACH) + p(rr(31, 66, 38, 16, 5), CREAM, '', 2) + neu(50, 74, 8, ROSE, 2.5) },
+    { id: 'neu-blase', label: 'Neu!', sil: BUBBLE, fill: MINT, body: neu(50, 43, 20, '#fff', 5.5, true) + spark(84, 12, YEL, 0.7) + spark(94, 34, PINK, 0.45) },
+    { id: 'pfeil', label: 'Pfeil rechts', sil: ARROW, fill: SKY, body: gl('M16 46H48') + spark(30, 24, YEL, 0.7) + spark(40, 78, PINK, 0.5) },
+    { id: 'pfeil-links', label: 'Pfeil links', sil: ARROW_L, fill: PINK, body: gl('M52 46H84') + spark(70, 24, YEL, 0.7) + spark(60, 78, MINT, 0.5) },
     { id: 'hanamaru', label: 'Hanamaru', edge: circ(50, 50, 40), body: p(PETALS8, ROSE) + p(circ(50, 50, 25), PINK) + face(50, 50, 0.7), sx: ln('M50 50C50 45 57 45 57 50C57 57 44 58 42 50C40 40 58 36 62 48', ROSE, 3.5) },
     { id: 'hyakuten', label: '100 Punkte', sil: rr(18, 8, 64, 84, 6), fill: CREAM, body: ln('M28 40L35 34V58', ROSE, 5) + ln('M42 46a6 12 0 1 0 12 0a6 12 0 1 0 -12 0ZM60 46a6 12 0 1 0 12 0a6 12 0 1 0 -12 0Z', ROSE, 5) + ln('M26 66Q50 61 74 65M28 72Q50 67 72 71', ROSE, 3) + face(50, 81, 0.5) + spark(80, 12, YEL, 0.8), sx: ln('M28 20H58M28 26H50', '#CDE3F5', 3) },
     { id: 'fehler', label: 'Fehler', sil: circ(50, 50, 40), fill: ROSE, body: ln('M34 34L66 66M66 34L34 66', '#fff', 9) },
@@ -268,8 +291,11 @@
   // „Süß“-Fassung nur für Sticker, die ohne Gesicht anders aussehen – so steht nichts doppelt in zwei Reitern
   const LIST = KW.concat(KW.filter((s) => s.group === 'sticker' && svg(s.id + SU, s.w, s.h) !== svg(s.id, s.w, s.h))
     .map((s) => ({ ...s, id: s.id + SU, style: 'suess' })));
-  // Inhalt eines Reiters: 'zettel' (Merkzettel, Kanji-Feld, Banner), 'kawaii' oder 'suess' (Sticker)
-  const tab = (name) => (name === 'zettel' ? LIST.filter((s) => s.group === 'zettel') : LIST.filter((s) => s.group === 'sticker' && s.style === name));
+  // Inhalt eines Reiters: 'zettel' (Merkzettel, Kanji-Feld, Banner) oder 'suess' (alle Sticker, ohne Gesicht, wo es eine Fassung ohne gibt).
+  // Die Kawaii-Fassung mit Gesicht steht nicht mehr zur Wahl, wird aber weiter gezeichnet, damit schon aufgeklebte Sticker bleiben
+  const SUESS = new Set(LIST.filter((s) => s.style === 'suess').map((s) => s.id));
+  const tab = (name) => (name === 'zettel' ? LIST.filter((s) => s.group === 'zettel')
+    : name === 'suess' ? LIST.filter((s) => s.group === 'sticker' && s.style === 'kawaii').map((s) => LIST.find((x) => x.id === (SUESS.has(s.id + SU) ? s.id + SU : s.id))) : []);
   // Bild-Eintrag { k, w, h } → Daten-URL; key ändert sich, sobald das Bild neu gezeichnet werden muss
   const src = (im) => { const s = svg(im.k, im.w, im.h); return s ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s) : ''; };
   const key = (im) => (free(im.k) ? im.k + ':' + Math.round(im.w * 1000) + 'x' + Math.round(im.h * 1000) : im.k);
