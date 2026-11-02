@@ -308,8 +308,11 @@
     if (s.reps === 0) d = g === 1 ? 0.5 : g === 2 ? 1 : 4;
     else if (s.reps === 1) d = g === 1 ? 2 : g === 2 ? 3 : 6;
     else d = s.ivl * (g === 1 ? 1.2 : g === 2 ? s.ease : s.ease * 1.3);
+    if (d >= W.KNOWN_IVL) return KANN; // ab 2 Monaten gilt die Karte als „kann ich“ und kommt nicht mehr dran
     return d < 1 ? 'morgen' : d < 30 ? Math.round(d) + ' T' : Math.round(d / 30) + ' Mon';
   };
+  const KANN = 'kann ich ✓';
+  const againTxt = (id, g) => { const l = ivlLabel(id, g, true); return l === KANN ? l : 'wieder in ' + l; };
   // ---------- Antwort auf Japanisch (Deutsch → Japanisch): aus · mit dem Stift · getippt – pro Gerät gemerkt ----------
   const AL = App.answerLogic;
   const AMODES = [['off', 'eyeOff', 'Nur umdrehen, nichts schreiben'], ['pen', 'pen', 'Antwort mit dem Stift schreiben'], ['key', 'keyboard', 'Antwort tippen']];
@@ -471,7 +474,7 @@
         flipped = true;
         pad.then((p) => p.reveal());
         App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
-        stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · ${cram ? 'kommt gleich noch einmal' : 'wieder in ' + ivlLabel(cur.id, 0, true)}</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig${cram ? '' : ' · wieder in ' + ivlLabel(cur.id, 2, true)}</button><a class="btn btn-ghost" href="${App.link(cur)}" data-park>Kanji öffnen</a>`;
+        stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · ${cram ? 'kommt gleich noch einmal' : againTxt(cur.id, 0)}</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig${cram ? '' : ' · ' + againTxt(cur.id, 2)}</button><a class="btn btn-ghost" href="${App.link(cur)}" data-park>Kanji öffnen</a>`;
       };
     };
     let busy = false;
@@ -832,7 +835,7 @@
           pad.then((p) => p.reveal());
           App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
           if (!queue) { stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig</button><a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`; return; }
-          stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · wieder in ${ivlLabel(cur.id, 0, true)}</button><button class="btn" style="background:var(--${W.isFirst(S.srs, cur.id) ? 'ai' : 'matcha'}-soft)" data-r="2">✓ Richtig${W.isMarkedKnown(S.srs, cur.id) ? '' : ` · wieder in ${ivlLabel(cur.id, 2, true)}`}</button>${W.isFirst(S.srs, cur.id) ? `<button class="btn" style="background:var(--matcha-soft)" data-r="known" title="Als gelernt einstufen – wird beim Schreiben nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
+          stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · ${againTxt(cur.id, 0)}</button><button class="btn" style="background:var(--${W.isFirst(S.srs, cur.id) ? 'ai' : 'matcha'}-soft)" data-r="2">✓ Richtig${W.isMarkedKnown(S.srs, cur.id) ? '' : ` · ${againTxt(cur.id, 2)}`}</button>${W.isFirst(S.srs, cur.id) ? `<button class="btn" style="background:var(--matcha-soft)" data-r="known" title="Als gelernt einstufen – wird beim Schreiben nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-ghost" href="${App.link(cur)}" target="_blank">Kanji öffnen</a>`;
         };
       } else {
         const correct = mode === 'reading' ? JP.kana(cur.w.jp) : App.meaning(cur).text;

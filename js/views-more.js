@@ -548,7 +548,7 @@
         <div class="lw-col">${box('lw-src', 'Aus Paket oder Import', 'Genki, JLPT, Listen')}${arrow()}
           ${box('lw-wait', 'Ungeprüft', 'liegt hier, so lange du willst')}${arrow()}
           <div class="lw-pair">${box('lw-step', 'Einstufen', '„Kann ich“ → fertig<br>„Lernen“ → Lernschlange')}<span class="lw-or">oder</span>${box('lw-step', 'Neue lernen', `die nächsten ${+S.settings.newPerDay || 15} als Karten,<br>beim ersten Mal auch „Kann ich schon“`)}</div>${arrow()}</div>
-        <div class="lw-wide">${box('lw-queue', 'Lernschlange', 'kommt von selbst in „Jetzt wiederholen“ – „Nochmal“ lässt es hier')}${arrow('ab 3 Wochen Abstand')}
+        <div class="lw-wide">${box('lw-queue', 'Lernschlange', 'kommt von selbst in „Jetzt wiederholen“ – „Nochmal“ lässt es hier')}${arrow('ab 2 Monaten Abstand')}
           ${box('lw-known', 'Kann ich', 'wird nicht mehr abgefragt')}</div></div>
         <div class="lw-legend small muted"><span><i class="lw-wait"></i> wartet auf dich</span><span><i class="lw-queue"></i> läuft von selbst</span><span><i class="lw-known"></i> geschafft</span></div></div>
       <div class="card"><h3>Was für welchen Bereich gilt</h3><div class="lw-rules">

@@ -4,7 +4,7 @@
   // Der Schreib-Stand liegt im selben Speicher „srs“ wie der Lese-Stand, unter der Kennung „w:<Kanji-Id>“.
   // So bleiben Backup und Import unverändert, und Lesen und Schreiben verschieben sich nicht gegenseitig.
   const W = App.writeLogic = {};
-  W.KNOWN_IVL = 21; // ab 3 Wochen Abstand gilt ein geübtes Kanji als „kann ich schreiben“
+  W.KNOWN_IVL = 60; // ab 2 Monaten Abstand gilt ein geübtes Kanji als „kann ich schreiben“
   W.id = (id) => 'w:' + id;
   W.isId = (id) => typeof id === 'string' && id.startsWith('w:');
   W.itemId = (wid) => wid.slice(2);
@@ -15,7 +15,7 @@
   // Freigeschaltet fürs Schreiben ist, was man lesen kann: als „Kann ich“ eingestuft oder mit Karten schon gewusst
   W.unlocked = (srs, id) => { const s = srs.get(id); return !!s && s.check !== 'unchecked' && (s.check === 'known' || s.reps > 0); };
 
-  // „Kann ich“ gilt für jeden Lernstand gleich (Lesen, Schreiben, Aktiv): so eingestuft oder mit Karten bis 3 Wochen Abstand geübt.
+  // „Kann ich“ gilt für jeden Lernstand gleich (Lesen, Schreiben, Aktiv): so eingestuft oder mit Karten bis 2 Monate Abstand geübt.
   // Was „Kann ich“ ist, wird im Lernplan nicht mehr abgefragt – nur „Zufällig üben“ zieht weiter aus allem;
   // dort falsch Beantwortetes fällt zurück in die Lernschlange.
   W.isKnown = (s) => !!s && (s.check === 'known' || (s.reps > 0 && s.ivl >= W.KNOWN_IVL));

@@ -455,7 +455,7 @@ window.App = window.App || {};
     if (App.dayCheck) App.dayCheck.graded(id, wasNew);
     return s;
   };
-  App.srsStage = (id) => { const s = S.srs.get(id); if (!s || !s.reps) return 0; return s.ivl >= 21 ? 2 : 1; };
+  App.srsStage = (id) => { const s = S.srs.get(id); if (!s || !s.reps) return 0; return s.ivl >= App.writeLogic.KNOWN_IVL ? 2 : 1; };
 
   // ---------- Seed-Daten einspielen ----------
   const ORD = new Map();

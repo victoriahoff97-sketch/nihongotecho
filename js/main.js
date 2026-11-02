@@ -122,6 +122,7 @@
     }
     try { await App.lernwegMigrate(); } catch (e) { console.error(e); } // einmaliger Umzug auf den gemeinsamen Lernweg (js/vocabcheck.js)
     try { await App.wkKanjiMigrate(); } catch (e) { console.error(e); } // einmalig: WaniKani-Kanji nicht mehr zum Lesen (js/vocabcheck.js)
+    try { await App.knownIvlMigrate(); } catch (e) { console.error(e); } // einmalig: schon gelernte Karten bleiben „Kann ich“, als die Grenze auf 2 Monate stieg (js/vocabcheck.js)
     if (App.store.settings.sidebarCollapsed) document.body.classList.add('sidebar-collapsed');
     App.applyTheme();
     App.initSearch();

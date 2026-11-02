@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-02-kann-ich-2-monate', date: '2. November',
+      items: [
+        { t: 'Eine Wiederholung mehr', d: 'Karten gelten jetzt erst ab 2 Monaten Abstand als „Kann ich“ statt ab 3 Wochen. Mit „Gut“ also nach 1, 3, 8, 19 und 47 Tagen. Was schon auf „Kann ich“ steht, bleibt dort.' },
+        { t: 'Klare Anzeige beim Bewerten', d: 'Ist eine Karte mit dem Knopf fertig, steht darunter „kann ich ✓“ statt einer Zeitangabe.' },
+      ],
+    },
+    {
       id: '2026-11-01-runde-kann-ich', date: '1. November',
       items: [
         { t: 'Kann ich gilt sofort', d: 'Stellst du beim Wiederholen über „Eintrag öffnen“ ein Wort auf „Kann ich“, kommt seine Karte danach nicht mehr dran. Die Runde geht mit der nächsten weiter.' },

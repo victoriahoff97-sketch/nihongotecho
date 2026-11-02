@@ -8,7 +8,7 @@
 
   // ---------- Status ----------
   // unchecked = noch nie geprüft · learn = wird gelernt · known = kann ich schon
-  // „Kann ich“ ist, was so eingestuft wurde – oder was mit den Karten bis 3 Wochen Abstand gelernt ist (springt von allein um).
+  // „Kann ich“ ist, was so eingestuft wurde – oder was mit den Karten bis 2 Monate Abstand gelernt ist (springt von allein um).
   //
   // Vokabeln und Ausdrücke gehen einen gemeinsamen Weg: ungeprüft → Lernschlange → kann ich.
   // „Ungeprüft“ sind nur Einträge aus Paketen (Genki, JLPT) und importierten Listen; dort liegen sie, bis man sie einstuft
@@ -119,6 +119,15 @@
     for (const id of ids) { S.srs.delete(id); await App.db.del('srs', id); }
     await App.saveSettings({ wkKanjiRead: 1 });
     return ids.length;
+  };
+  // Einmalig beim Wechsel der „Kann ich“-Grenze von 3 Wochen auf 2 Monate: was schon mit Karten gelernt war, bleibt „Kann ich“
+  App.knownIvlMigrate = async () => {
+    if (S.settings.knownIvl60 === 1) return 0;
+    const list = [...S.srs.values()].filter((s) => s.reps > 0 && s.ivl >= 21 && s.check !== 'known' && s.check !== 'unchecked');
+    for (const s of list) { s.check = 'known'; await App.db.put('srs', s); }
+    await App.saveSettings({ knownIvl60: 1 });
+    if (list.length && App.backup && App.backup.noteChange) App.backup.noteChange();
+    return list.length;
   };
   App.vocabCounts = (items = App.itemsOf('vocab')) => {
     const c = { unchecked: 0, learn: 0, known: 0, total: items.length };

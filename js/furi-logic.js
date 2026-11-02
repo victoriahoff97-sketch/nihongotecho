@@ -3,7 +3,7 @@
 (function (App) {
   const JP = App.jp;
   const F = App.furiLogic = {};
-  F.KNOWN_IVL = 21; // ab 3 Wochen Abstand gilt ein mit Karten geübtes Kanji als „kann ich lesen“ – wie beim Schreiben
+  F.KNOWN_IVL = 60; // ab 2 Monaten Abstand gilt ein mit Karten geübtes Kanji als „kann ich lesen“ – wie beim Schreiben
 
   // Gelernt: als „Kann ich“ eingestuft oder mit Karten bis zum langen Abstand geübt – daran hängt auch der Lernstand „Kann ich“
   F.readKnown = (srs, id) => { const s = srs.get(id); return !!s && s.check !== 'unchecked' && (s.check === 'known' || (s.reps > 0 && s.ivl >= F.KNOWN_IVL)); };
