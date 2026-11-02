@@ -32,6 +32,7 @@
 
   // Bedeutungstext in Stichwörter zerlegen: Trennung an ; und , außerhalb von Klammern,
   // Klammern, Artikel, „sich“ und Auslassungspunkte weg. „anziehen; tragen (Oberkörper, Kleid)“ → anziehen, tragen
+  // Groß und klein bleiben verschieden: „das Leben“ (生活, 人生) und „leben“ (住む, 生きる) sind zwei Gruppen
   S.keys = (de) => {
     const parts = [];
     let depth = 0, cur = '';
@@ -43,10 +44,13 @@
     parts.push(cur);
     const out = [];
     for (let p of parts) {
-      p = p.replace(/\([^)]*\)|（[^）]*）|\[[^\]]*\]/g, '').replace(/[…~〜～.!?]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-      p = p.replace(/^(der|die|das|ein|eine|einen|sich|zu|etw\.?|jdn\.?|jdm\.?)\s+/g, '').replace(/^(der|die|das|sich)\s+/g, '');
+      p = p.replace(/\([^)]*\)|（[^）]*）|\[[^\]]*\]/g, '').replace(/[…~〜～.!?]/g, ' ').replace(/\s+/g, ' ').trim();
+      // mit Artikel ist es ein Nomen: groß, auch wenn es klein eingetragen ist
+      const noun = /^(der|die|das|ein|eine|einen)\s/i.test(p);
+      p = p.replace(/^(der|die|das|ein|eine|einen|sich|zu|etw\.?|jdn\.?|jdm\.?)\s+/i, '').replace(/^(der|die|das|sich)\s+/i, '');
+      if (noun) p = p.charAt(0).toUpperCase() + p.slice(1);
       // lange Umschreibungen sind keine Stichwörter
-      if (p.length < 3 || p.split(' ').length > 2 || S.STOP.includes(p)) continue;
+      if (p.length < 3 || p.split(' ').length > 2 || S.STOP.includes(p.toLowerCase())) continue;
       if (!out.includes(p)) out.push(p);
     }
     return out;
