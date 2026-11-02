@@ -32,8 +32,11 @@
 
   // Bedeutungstext in Stichwörter zerlegen: Trennung an ; und , außerhalb von Klammern,
   // Klammern, Artikel, „sich“ und Auslassungspunkte weg. „anziehen; tragen (Oberkörper, Kleid)“ → anziehen, tragen
-  // Groß und klein bleiben verschieden: „das Leben“ (生活, 人生) und „leben“ (住む, 生きる) sind zwei Gruppen
-  S.keys = (de) => {
+  // Groß und klein bleiben verschieden: „das Leben“ (生活, 人生) und „leben“ (住む, 生きる) sind zwei Gruppen.
+  // Ob groß oder klein, entscheidet die Wortart des japanischen Worts (pos), nicht die Schreibung im Text –
+  // maschinell übersetztes Deutsch (WaniKani) schreibt 生きる auch mal „Leben“. Ohne Wortart: Artikel → groß, sonst wie geschrieben.
+  const NOUNS = ['noun', 'counter'], AS_WRITTEN = ['', 'expression', 'prefix-suffix'];
+  S.keys = (de, pos = '') => {
     const parts = [];
     let depth = 0, cur = '';
     for (const c of String(de ?? '')) {
@@ -48,13 +51,21 @@
       // mit Artikel ist es ein Nomen: groß, auch wenn es klein eingetragen ist
       const noun = /^(der|die|das|ein|eine|einen)\s/i.test(p);
       p = p.replace(/^(der|die|das|ein|eine|einen|sich|zu|etw\.?|jdn\.?|jdm\.?)\s+/i, '').replace(/^(der|die|das|sich)\s+/i, '');
-      if (noun) p = p.charAt(0).toUpperCase() + p.slice(1);
+      const big = NOUNS.includes(pos) || (AS_WRITTEN.includes(pos) && noun);
+      const small = !NOUNS.includes(pos) && !AS_WRITTEN.includes(pos);
+      if (big) p = p.charAt(0).toUpperCase() + p.slice(1);
+      else if (small) p = p.charAt(0).toLowerCase() + p.slice(1);
       // lange Umschreibungen sind keine Stichwörter
       if (p.length < 3 || p.split(' ').length > 2 || S.STOP.includes(p.toLowerCase())) continue;
       if (!out.includes(p)) out.push(p);
     }
     return out;
   };
+
+  // Englische Stichwörter (für Wörter ohne Deutsch): „to live; to exist (formal)“ → live, exist
+  S.enKeys = (en) => String(en ?? '').replace(/\([^)]*\)/g, '').split(/[;,]/)
+    .map((p) => p.trim().toLowerCase().replace(/^(to|a|an|the)\s+/, ''))
+    .filter((p, i, a) => p.length > 2 && p.split(' ').length <= 3 && !['be', 'do', 'have', 'thing', 'one'].includes(p) && a.indexOf(p) === i);
 
   // Alle Gruppen: mindestens zwei verschiedene Wörter mit demselben Stichwort, dazu die von Hand verbundenen.
   // Je Schreibung zählt ein Eintrag (Genki und JLPT): der mit dem höchsten rank. Gleiche Wortmengen werden eine Gruppe.
@@ -73,7 +84,21 @@
     };
     // von Hand zuerst: bei gleichen Wörtern gilt ihre Überschrift
     S.EXTRA.forEach((x) => x.words.forEach((w) => best.has(w) && add('＊' + x.label, x.label, best.get(w))));
-    best.forEach((it) => S.keys(it.de).forEach((k) => add(k, k, it)));
+    best.forEach((it) => S.keys(it.de, it.pos || '').forEach((k) => add(k, k, it)));
+    // Nur Englisch (WaniKani, noch nicht übersetzt): über die englische Bedeutung zu Wörtern mit Deutsch finden und
+    // deren häufigstes Stichwort übernehmen (gleiche Wortart). Ohne solchen Partner: Gruppe unter dem englischen Stichwort.
+    const noun = (it) => NOUNS.includes(it.pos || '');
+    const enIdx = new Map();
+    best.forEach((it) => { if (String(it.de || '').trim()) S.enKeys(it.en).forEach((k) => enIdx.set(k, (enIdx.get(k) || []).concat(it))); });
+    best.forEach((it) => {
+      if (String(it.de || '').trim() || !it.en) return;
+      const count = new Map();
+      S.enKeys(it.en).forEach((e) => (enIdx.get(e) || []).filter((p) => noun(p) === noun(it))
+        .forEach((p) => S.keys(p.de, p.pos || '').forEach((k) => count.set(k, (count.get(k) || 0) + 1))));
+      const top = Math.max(0, ...count.values());
+      if (top) count.forEach((n, k) => n === top && add(k, k, it));
+      else S.enKeys(it.en).forEach((e) => add('en:' + e, e, it));
+    });
     // die Stichwörter der Überschrift gehören zur Gruppe von Hand: ein neues Wort mit „anziehen“ kommt dorthin
     S.EXTRA.forEach((x) => S.keys(x.label.replace(/ · /g, ';')).forEach((k) => {
       if (!map.has(k)) return;
@@ -91,7 +116,16 @@
       out.push(g);
     });
     // Gruppen von Hand stecken die automatischen mit denselben (oder weniger) Wörtern ein
-    return out.filter((g) => g.key.startsWith('＊') || !out.some((h) => h !== g && h.key.startsWith('＊') && g.items.every((it) => h.items.includes(it))));
+    const kept = out.filter((g) => g.key.startsWith('＊') || !out.some((h) => h !== g && h.key.startsWith('＊') && g.items.every((it) => h.items.includes(it))));
+    // Gegenstück zu Nomen/Verb: gibt es „Essen“ als Gruppe, steht „essen“ auch da, selbst mit nur einem Wort (食べる)
+    const heads = (g) => g.labels.flatMap((l) => S.keys(l.replace(/ · /g, ';')));
+    const flip = (k) => (k[0] === k[0].toUpperCase() ? k[0].toLowerCase() : k[0].toUpperCase()) + k.slice(1);
+    map.forEach((g) => {
+      if (g.items.length !== 1 || g.key.startsWith('＊') || flip(g.key) === g.key) return;
+      const other = kept.find((h) => heads(h).includes(flip(g.key)));
+      if (other && !other.items.includes(g.items[0])) kept.push(Object.assign(g, { single: true }));
+    });
+    return kept;
   };
 
   S.label = (g) => g.labels.join(' · ');
