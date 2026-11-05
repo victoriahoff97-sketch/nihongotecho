@@ -535,6 +535,19 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .hero .btn:hover { background: rgba(255,255,255,.25); }
 .hero .btn.solid { background: #fff; color: #2b3a63; }
 .hero p a { color: inherit; font-weight: 700; }
+/* Prognose: kleines Diagramm-Icon im Hero, Popup mit Balken je Tag */
+.fc-btn { display: inline-flex; vertical-align: middle; margin-left: 8px; padding: 3px; border: 0; border-radius: 8px; background: none; color: inherit; opacity: .7; cursor: pointer; }
+.fc-btn:hover { opacity: 1; background: rgba(255,255,255,.15); }
+.fc-btn .ico svg { width: 16px; height: 16px; }
+.modal.forecast { max-width: 460px; }
+.fc-row { display: grid; grid-template-columns: 58px 1fr 52px 52px; align-items: center; gap: 10px; padding: 5px 0; }
+.fc-head { padding: 0 0 2px; }
+.fc-head span:nth-child(n+3) { text-align: right; }
+.fc-day { font-weight: 600; font-size: 14px; }
+.fc-bar { height: 14px; border-radius: 7px; background: var(--paper-2); overflow: hidden; }
+.fc-bar i { display: block; height: 100%; border-radius: 7px; background: linear-gradient(90deg, #3c3163, #8a3a4a); }
+.fc-n { text-align: right; font-variant-numeric: tabular-nums; }
+.fc-sum { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .home-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 6px; }
 .home-act { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); text-decoration: none; text-align: left; cursor: pointer; color: inherit; font: inherit; }
 .home-act:hover { background: var(--paper-2); }

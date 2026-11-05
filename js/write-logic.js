@@ -110,6 +110,16 @@
     return n;
   };
 
+  // Prognose: wie viele Karten an den nächsten Tagen neu fällig werden (Tag 1 = morgen). Zählt nur, was schon geplant ist –
+  // heute Fälliges und Karten, die nach einer Antwort neu eingeplant werden, stecken nicht drin.
+  W.forecast = (srs, items, focus, now, days = 7) => {
+    const end = W.dayEnd(now);
+    const upto = (d) => W.dueCount(srs, items, focus, end + d * 864e5);
+    const out = [];
+    for (let d = 1, prev = upto(0); d <= days; d++) { const n = upto(d); out.push(n - prev); prev = n; }
+    return out;
+  };
+
   // ---------- Vokabeln aktiv (Deutsch → Japanisch) ----------
   // Zweiter Lernstand je Vokabel, ebenfalls unter „w:<Id>“. Anders als beim Kanji-Schreiben läuft er wie der Lese-Stand:
   // einstufen („Kann ich“ wird nicht mehr abgefragt, „Lernen“ geht in die Lernschlange) oder mit „neue lernen“ holen.

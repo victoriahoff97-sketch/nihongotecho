@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-05-prognose', date: '5. November',
+      items: [
+        { t: 'Prognose für die nächsten 7 Tage', d: 'Auf der Startseite neben „morgen kommen … dazu“: Das kleine Balken-Symbol zeigt pro Tag, wie viele Karten neu fällig werden, und wie viele es insgesamt wären.' },
+      ],
+    },
+    {
       id: '2026-11-02-neu-sticker', date: '2. November',
       items: [
         { t: 'Neu-Sticker', d: 'Beim Schreibblatt unter „Sticker“ › Süß: „Neu“ als Stern, Schild, 新-Stempel, Keimling, Sprechblase und „新しい文法“.' },

@@ -199,6 +199,24 @@
   const learningBtn = (n) => `<button class="btn" data-learning ${n ? '' : 'disabled'} title="Alles, was du gerade lernst – auch was heute nicht fällig ist. Dein Lernstand bleibt, wie er ist">${icon('practice')} Meine Lernschlange üben (${n})</button>`;
   // Was morgen dazukommt: fällig bis morgen Abend, abzüglich dessen, was heute schon dran ist
   App.dueTomorrow = () => { const end = W.dayEnd(Date.now()); return W.dueCount(S.srs, S.items, kanjiFocus(), end + 864e5) - W.dueCount(S.srs, S.items, kanjiFocus(), end); };
+  // Prognose (Startseite): je Tag ein Balken mit dem, was neu fällig wird, rechts die Summe bis dahin – wie bei WaniKani
+  App.forecastModal = () => {
+    const days = W.forecast(S.srs, S.items, kanjiFocus(), Date.now()), max = Math.max(1, ...days);
+    const wd = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'], today = new Date();
+    let sum = App.dueCount();
+    const rows = days.map((n, i) => {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i + 1);
+      sum += n;
+      return `<div class="fc-row"><span class="fc-day">${i ? `${wd[d.getDay()]} ${d.getDate()}.` : 'Morgen'}</span>
+        <span class="fc-bar"><i style="width:${n ? Math.max(3, Math.round((n / max) * 100)) : 0}%"></i></span>
+        <b class="fc-n">${n ? `+${n}` : '–'}</b><span class="fc-sum">${sum}</span></div>`;
+    }).join('');
+    App.modal({
+      title: 'Die nächsten 7 Tage', foot: false, cls: 'forecast',
+      body: `<div class="fc-row fc-head small muted"><span></span><span></span><span>neu</span><span>gesamt</span></div>${rows}
+        <p class="small muted" style="margin-top:14px">„Gesamt“ = alles, was bis dahin fällig ist, wenn du nichts wiederholst. Was du wiederholst, wird neu eingeplant – die Zahlen ändern sich also mit.</p>`,
+    });
+  };
   App.route('/ueben/heute', (view, p, q) => {
     const sec = App.SECTIONS.practice;
     const resume = takeParked();
