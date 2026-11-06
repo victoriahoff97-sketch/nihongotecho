@@ -75,13 +75,26 @@
     return MOVE.test(after) ? ['へ', 'に'] : [g];
   };
 
+  // は ⇔ が: oft gehen beide, nur mit anderer Nuance – dann „geht auch“ statt falsch.
+  // Streng bleibt es nach einem Fragewort (誰が, nie 誰は) und bei は vor einer Frage (これは何ですか).
+  const QW = /(何|誰|だれ|なに|なん|どこ|どれ|どちら|どっち|どの|いつ|どう|どんな|いくら)/;
+  const softOf = (segs, i) => {
+    const g = segs[i].g;
+    if (g !== 'は' && g !== 'が') return [];
+    const before = plain(segs.slice(0, i).map((x) => x.t || x.g || '').join(''));
+    const after = plain(segs.slice(i + 1).map((x) => x.t || x.g || '').join('')).split(/[。、？！?!]/)[0];
+    if (/(何|誰|だれ|なに|なん|どこ|どれ|どちら|どっち|いつ)$/.test(before)) return [];
+    if (g === 'は' && QW.test(after)) return [];
+    return [g === 'は' ? 'が' : 'は'];
+  };
+
   // Höchstens MAX_GAPS Lücken je Satz (nach Vorrang), übrige Partikeln werden wieder Text
   const pick = (segs) => {
     const idx = segs.map((x, i) => (x.g ? i : -1)).filter((i) => i >= 0);
     const keep = new Set(idx.slice().sort((a, b) => PRT.indexOf(segs[a].g) - PRT.indexOf(segs[b].g) || a - b).slice(0, MAX_GAPS));
     const out = [];
     segs.forEach((x, i) => {
-      if (x.g && keep.has(i)) out.push({ g: x.g, ok: altsOf(segs, i) });
+      if (x.g && keep.has(i)) out.push({ g: x.g, ok: altsOf(segs, i), soft: softOf(segs, i) });
       else { const t = x.g || x.t; if (out.length && out[out.length - 1].t != null) out[out.length - 1].t += t; else out.push({ t }); }
     });
     return out;
@@ -100,7 +113,7 @@
         if (!key || seen.has(key) || !segs.some((x) => x.g)) return;
         if (kind === 'satz' && !opts.long && plain(jp).length > LONG) return;
         seen.add(key);
-        out.push({ kind, jp, de: de || '', id: it.id, segs: pick(segs) });
+        out.push({ kind, jp, de: de || '', id: it.id, segs: kind === 'muster' ? pick(segs).map((x) => (x.g ? Object.assign(x, { soft: [] }) : x)) : pick(segs) });
       };
       for (const ex of Array.isArray(it.examples) ? it.examples : []) if (ex && ex.jp) add('satz', ex.jp, ex.de, fromSentence(ex.jp));
       for (const u of Array.isArray(it.use) ? it.use : []) if (u && u.jp && u.jp.includes('|')) add('muster', u.jp, u.de, fromPattern(u.jp));
@@ -124,6 +137,8 @@
   };
 
   const right = (gap, val) => !!val && gap.ok.includes(val);
+  // 'ok' richtig · 'soft' geht auch (は ⇔ が, andere Nuance) · 'bad' falsch · '' leer
+  const grade = (gap, val) => (!val ? '' : gap.ok.includes(val) ? 'ok' : (gap.soft || []).includes(val) ? 'soft' : 'bad');
   const lessons = (all, items) => {
     const by = new Map(items.map((it) => [it.id, it]));
     const n = new Map();
@@ -131,7 +146,7 @@
     return [...n.entries()].filter(([, c]) => c >= 3).map(([l]) => l).sort((a, b) => a - b);
   };
 
-  const api = { PRT, LONG, plain, fromSentence, fromPattern, pick, pool, sheet, bank, right, lessons };
+  const api = { PRT, LONG, plain, fromSentence, fromPattern, pick, pool, sheet, bank, right, grade, lessons };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.App.gapLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -17,6 +17,7 @@
       id: '2026-11-06-lueckensaetze', date: '6. November',
       items: [
         { t: 'Lückensätze: Partikeln üben', d: 'Üben › Weitere Übungen › Lückensätze: In Sätzen aus deinen Vokabeln fehlen を, に, で und Co. Du ziehst sie aus der Wortbank in die Lücken.' },
+        { t: 'は oder が?', d: 'Wo in den Lückensätzen beide gehen, wird die andere Partikel gelb statt rot – mit einer kurzen Erklärung, was sich an der Bedeutung ändert.' },
       ],
     },
     {

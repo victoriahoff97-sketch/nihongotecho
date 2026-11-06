@@ -50,12 +50,14 @@
     const tasks = G.sheet(all, N, App.shuffle);
     const chips = G.bank(tasks, App.shuffle);
     let gi = 0;
-    const segHtml = (x) => (x.g ? `<span class="gap-slot" data-gap="${gi++}" role="button" tabindex="0" aria-label="Lücke"></span>` : JP.ruby(x.t.replace(/\|/g, '')));
+    let ri = 0;
+    const rowOf = [];
+    const segHtml = (x) => (x.g ? (rowOf.push(ri), '') + `<span class="gap-slot" data-gap="${gi++}" role="button" tabindex="0" aria-label="Lücke"></span>` : JP.ruby(x.t.replace(/\|/g, '')));
     stage.innerHTML = `<div class="card gap-sheet">
       <div class="gap-top"><div class="gap-bank" data-bank>${chips.map((c, i) => `<button class="gap-chip" data-chip="${i}" lang="ja">${esc(c)}</button>`).join('')}</div>
       <div class="small muted gap-how">Partikel antippen, dann Lücke antippen – oder hinziehen. Lücke antippen leert sie wieder.</div></div>
       ${tasks.map((t) => `<div class="gap-row"><div class="gap-jp" lang="ja">${t.segs.map(segHtml).join('')} ${App.speakBtn(sayOf(t))}</div>
-        <div class="small muted">${esc(t.de)}${t.kind === 'muster' ? ' · <span class="gap-kind">Muster</span>' : ''} · <a href="${App.link(App.item(t.id))}">${esc((App.item(t.id) || {}).kanji || (App.item(t.id) || {}).kana || '')}</a></div></div>`).join('')}
+        <div class="small muted">${esc(t.de)}${t.kind === 'muster' ? ' · <span class="gap-kind">Muster</span>' : ''} · <a href="${App.link(App.item(t.id))}">${esc((App.item(t.id) || {}).kanji || (App.item(t.id) || {}).kana || '')}</a></div><div class="gap-note small" data-note="${ri++}" hidden></div></div>`).join('')}
       <div class="row gap-foot"><button class="btn btn-primary" data-check>${icon('check')} Prüfen</button><button class="btn btn-ghost" data-show>Lösung zeigen</button><button class="btn" data-new>Neue Sätze</button><span class="small" data-msg></span></div>
     </div>`;
     const gaps = tasks.flatMap((t) => t.segs.filter((x) => x.g));
@@ -69,7 +71,11 @@
       slots.forEach((s, i) => { s.textContent = fill[i] == null ? '' : chips[fill[i]]; s.classList.toggle('f', fill[i] != null); });
       chipEls.forEach((c, i) => { c.classList.toggle('used', fill.includes(i)); c.classList.toggle('sel', sel === i); });
     };
-    const clearMarks = () => { slots.forEach((s) => s.classList.remove('ok', 'bad')); msg.textContent = ''; };
+    const notes = [...stage.querySelectorAll('[data-note]')];
+    const clearMarks = () => { slots.forEach((s) => s.classList.remove('ok', 'bad', 'soft')); notes.forEach((n) => { n.hidden = true; n.innerHTML = ''; }); msg.textContent = ''; };
+    // は ⇔ が: nicht falsch, nur andere Nuance – Hinweis unter dem Satz
+    const NUANCE = '<b>は</b>: „was … angeht“ – Thema, oft im Kontrast zu anderem. <b>が</b>: hebt hervor, <i>wer</i> oder <i>was</i> – oft neue Information.';
+    const softNote = (i, mine) => { const n = notes[rowOf[i]]; n.hidden = false; n.innerHTML = `<span lang="ja">${esc(mine)}</span> geht hier auch – im Satz stand <span lang="ja">${esc(gaps[i].g)}</span>. ${NUANCE}`; };
     const put = (gapIdx, chipIdx) => {
       if (shown || chipIdx == null || fill.includes(chipIdx)) return;
       fill[gapIdx] = chipIdx; sel = null; clearMarks(); draw();
@@ -120,25 +126,28 @@
       if (shown) return;
       if (fill.every((x) => x == null)) { msg.textContent = 'Zieh erst Partikeln in die Lücken.'; return; }
       // Leere Lücken bleiben unmarkiert – man kann auch Satz für Satz prüfen
-      let ok = 0, bad = 0;
+      let ok = 0, bad = 0, soft = 0;
+      notes.forEach((n) => { n.hidden = true; n.innerHTML = ''; });
       slots.forEach((s, i) => {
-        const empty = fill[i] == null;
-        const r = !empty && G.right(gaps[i], chips[fill[i]]);
-        if (r) ok++; else if (!empty) bad++;
-        s.classList.toggle('ok', r); s.classList.toggle('bad', !empty && !r);
+        const mine = fill[i] == null ? '' : chips[fill[i]];
+        const r = G.grade(gaps[i], mine);
+        if (r === 'ok') ok++; else if (r === 'bad') bad++; else if (r === 'soft') { soft++; softNote(i, mine); }
+        s.classList.toggle('ok', r === 'ok'); s.classList.toggle('bad', r === 'bad'); s.classList.toggle('soft', r === 'soft');
       });
-      const open = gaps.length - ok - bad;
+      const open = gaps.length - ok - bad - soft;
       msg.textContent = ok === gaps.length ? `完璧！ Alle ${ok} richtig.`
-        : `${ok} richtig${bad ? `, ${bad} falsch – rote Lücke antippen und neu füllen` : ''}${open ? ` · ${open} noch leer` : ''}.`;
+        : `${ok} richtig${soft ? `, ${soft} geht auch (gelb)` : ''}${bad ? `, ${bad} falsch – rote Lücke antippen und neu füllen` : ''}${open ? ` · ${open} noch leer` : ''}.`;
     };
     stage.querySelector('[data-show]').onclick = () => {
       shown = true; sel = null;
       slots.forEach((s, i) => {
         const mine = fill[i] == null ? '' : chips[fill[i]];
-        const r = G.right(gaps[i], mine);
-        s.textContent = r ? mine : gaps[i].g;
+        const g = G.grade(gaps[i], mine);
+        const r = g === 'ok';
+        s.textContent = r || g === 'soft' ? mine : gaps[i].g;
         s.classList.add('f');
-        s.classList.toggle('ok', r); s.classList.toggle('sol', !r); s.classList.toggle('miss', !!mine && !r); s.classList.remove('bad');
+        s.classList.toggle('ok', r); s.classList.toggle('soft', g === 'soft'); s.classList.toggle('sol', !r && g !== 'soft'); s.classList.toggle('miss', g === 'bad'); s.classList.remove('bad');
+        if (g === 'soft') softNote(i, mine);
         if (gaps[i].ok.length > 1) s.title = 'Hier geht ' + gaps[i].ok.join(' oder ');
       });
       chipEls.forEach((c) => c.classList.add('used'));

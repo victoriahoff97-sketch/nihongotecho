@@ -2150,3 +2150,5 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .gap-slot.sol.miss { border-color: var(--shu); color: var(--shu); }
 .gap-kind { color: var(--sec); font-weight: 700; }
 .gap-foot { margin-top: 12px; flex-wrap: wrap; align-items: center; }
+.gap-slot.soft { border-color: var(--yamabuki); background: var(--yamabuki-soft); border-style: solid; }
+.gap-note { margin-top: 6px; padding: 8px 10px; border-left: 3px solid var(--yamabuki); background: var(--yamabuki-soft); border-radius: 0; color: var(--ink); }
