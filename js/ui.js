@@ -124,12 +124,22 @@
     const rows = list.map((u) => `<div class="use-row"><span class="use-jp" lang="ja">${JP.useRuby(u.jp)}</span><span class="use-de">${esc(u.de || u.en || '')}</span></div>`).join('');
     return `${compact ? '' : '<div class="section-title">Partikeln</div>'}<div class="use-list${compact ? ' compact' : ''}">${rows}</div>`;
   };
-  App.exampleHtml = (ex) => {
+  // tools: weitere Knöpfe neben dem Vorlesen (nur Text – als map-Rückruf kommen hier Index und Liste an)
+  App.exampleHtml = (ex, _i, _all, tools) => {
     const hasN = JP.hasNotation(ex.jp);
     const kana = ex.kana || (hasN ? JP.kana(ex.jp) : '');
     return `<div class="example"><div class="grow"><div class="jp-s" lang="ja">${JP.ruby(ex.jp)}</div>
       ${kana && kana !== ex.jp && !hasN ? `<div class="kana-s">${esc(kana)}</div>` : ''}
-      <div class="de-s">${esc(App.exMeaning(ex))}</div>${ex.src ? `<div class="small muted">Quelle: ${esc(ex.src)}</div>` : ''}</div>${App.speakBtn(ex.jp)}</div>`;
+      <div class="de-s">${esc(App.exMeaning(ex))}</div>${ex.src ? `<div class="small muted">Quelle: ${esc(ex.src)}</div>` : ''}</div>${typeof tools === 'string' ? tools : ''}${App.speakBtn(ex.jp)}</div>`;
+  };
+  // Beispielsatz einer Vokabel als Ausdruck übernehmen: Formular schon ausgefüllt, die Gruppe wählt man dort.
+  // Gibt es den Satz schon als Ausdruck, öffnet sich der vorhandene.
+  App.exampleToPhrase = (ex) => {
+    const plain = JP.plain(ex.jp);
+    const have = App.itemsOf('phrase').find((p) => JP.plain(p.jp || '') === plain);
+    if (have) { App.toast('Diesen Satz gibt es schon unter Ausdrücke'); App.go(App.link(have)); return; }
+    // Furigana-Notation im Satz ergibt im Formular die Lesung
+    App.editItem({ type: 'phrase', defaults: { jp: ex.jp, de: App.exMeaning(ex) }, title: 'Beispielsatz als Ausdruck übernehmen', single: true });
   };
   App.itemMain = (it) => {
     switch (it.type) {

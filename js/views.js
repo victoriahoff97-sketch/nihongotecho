@@ -380,6 +380,9 @@
     // Vokabeln aktiv (Deutsch → Japanisch): eigener Lernstand, direkt hinter den Vokabeln
     const aq = App.activeQueue();
     queues.splice(1, 0, { label: 'Vokabeln aktiv', due: aq.due.length, fresh: aq.fresh.length, href: '#/ueben/karten?dir=de&auto=1' });
+    // Ausdrücke aktiv ebenso, direkt hinter den Ausdrücken (ganz am Ende)
+    const pq = App.activeQueue({ type: 'phrase' });
+    queues.push({ label: pq.due.length === 1 ? 'Ausdruck aktiv' : 'Ausdrücke aktiv', due: pq.due.length, fresh: pq.fresh.length, href: '#/ueben/karten?type=phrase&dir=de&auto=1' });
     const wq = App.writeQueue();
     if (focus !== 'read') queues.splice(focus === 'write' ? 0 : 3, 0, { label: 'Kanji schreiben', due: wq.due.length, fresh: wq.fresh.length, href: '#/ueben/kanji?auto=1' });
     // Fälliges läuft über einen Knopf: eine gemischte Runde quer durch alles (auch Kanji schreiben). Fällig gilt für den ganzen Tag.
@@ -560,7 +563,7 @@
             <div class="small muted" style="margin-top:4px">${ast === 'locked' ? 'kommt dran, sobald du das Wort lesen kannst' : App.writeLogic.activeAsked(S.srs, it) ? App.srsNote(as) : ast === 'learn' ? 'kommt mit „neue lernen“ in die Lernschlange' : 'noch ungeprüft – einstufen oder „neue lernen“ holt es in die Lernschlange'}</div>`; })()}</dd></dl></div>
         ${(it.contexts || []).length ? `<div class="section-title">Kontext – wo du das Wort gefunden hast</div>${it.contexts.map((c) => { const s = c.sessionId && App.item(c.sessionId); const o = !s && c.itemId && App.item(c.itemId); const x = !s && !o && c.exerciseId; return `<div class="ctx"><div class="small"><b>${s ? `<a href="${App.link(s)}">授業 ${esc(s.number ? 'Stunde ' + s.number : s.title || 'Unterricht')}</a>` : o ? `<a href="${App.link(o)}">${esc(c.label || 'Anwenden')}</a>` : x ? `<a href="#/aufgabe/${encodeURIComponent(x)}">${esc(c.label || 'Buchaufgabe')}</a>` : esc(c.label || 'Notiz')}</b> · ${App.fmtDate(c.date)}</div>${c.text ? `<div class="jp-s" lang="ja">${App.highlightWord(c.text, it)}</div>` : ''}</div>`; }).join('')}` : ''}
         ${App.useHtml(it)}
-        ${it.examples && it.examples.length ? `<div class="section-title">Beispielsätze</div>${it.examples.map(App.exampleHtml).join('')}` : ''}
+        ${it.examples && it.examples.length ? `<div class="section-title">Beispielsätze</div><div data-exs>${it.examples.map((ex, i) => App.exampleHtml(ex, i, null, `<button class="btn btn-sm btn-ghost" data-ex-phrase="${i}" title="Diesen Satz unter Ausdrücke übernehmen – die Gruppe wählst du gleich">${icon('plus')} Ausdruck</button>`)).join('')}</div>` : ''}
         ${conjTable(it)}
         ${it.notes ? `<div class="section-title">Notizen</div><div class="card prose">${JP.md(it.notes)}</div>` : ''}
         ${App.attachmentsHtml(it)}
@@ -568,6 +571,8 @@
     App.hydrateThumbs(view);
     view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { const snap = App.srsSnap([it.id]); await App.setCheck(it.id, b.dataset.v); App.undoToast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label, snap, () => App.render(true)); App.render(true); } };
     view.querySelector('[data-ast]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { const snap = App.srsSnap([App.writeLogic.id(it.id)]); await App.setCheck(App.writeLogic.id(it.id), b.dataset.v); App.undoToast('Aktiv-Lernstand: ' + App.statusInfo(it, b.dataset.v).label, snap, () => App.render(true)); App.render(true); } };
+    const exs = view.querySelector('[data-exs]');
+    if (exs) exs.onclick = (e) => { const b = e.target.closest('[data-ex-phrase]'); if (b) App.exampleToPhrase(it.examples[+b.dataset.exPhrase]); };
   });
 
   // =========================================================
@@ -753,11 +758,14 @@
         ${it.note ? `<div class="pitfall" style="background:var(--yamabuki-soft);border-color:var(--yamabuki)">${JP.ruby(it.note)}</div>` : ''}
         <dl class="kv" style="margin-top:14px"><dt>Lesung</dt><dd lang="ja">${esc(JP.kana(it.jp))}</dd><dt>Gruppe</dt><dd>${esc(it.group)}</dd><dt>Quelle</dt><dd>${App.srcBadge(it) || '–'}</dd>
         ${it.tags && it.tags.length ? `<dt>Schlagwörter</dt><dd>${App.tagsHtml(it.tags)}</dd>` : ''}
-          <dt>Lernstand</dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
-            <div class="small muted" style="margin-top:4px">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'kommt mit „neue lernen“ in die Lernschlange' : 'noch ungeprüft – einstufen oder „neue lernen“ holt es in die Lernschlange'}</div></dd></dl></div>
+          <dt>Lesen <small class="muted" style="font-weight:400">Japanisch → Deutsch</small></dt><dd><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
+            <div class="small muted" style="margin-top:4px">${App.writeLogic.inQueue(srs) ? App.srsNote(srs) : App.vocabStatus(it.id) === 'learn' ? 'kommt mit „neue lernen“ in die Lernschlange' : 'noch ungeprüft – einstufen oder „neue lernen“ holt es in die Lernschlange'}</div></dd>
+          <dt>Aktiv <small class="muted" style="font-weight:400">Deutsch → Japanisch</small></dt><dd>${(() => { const ast = App.activeStatus(it), as = App.srsOf(App.writeLogic.id(it.id)); return `<div class="seg" data-ast>${App.statusChoices(it).map(([k, s]) => `<button class="${ast === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
+            <div class="small muted" style="margin-top:4px">${ast === 'locked' ? 'kommt dran, sobald du den Ausdruck lesen kannst' : App.writeLogic.activeAsked(S.srs, it) ? App.srsNote(as) : ast === 'learn' ? 'kommt mit „neue lernen“ in die Lernschlange' : 'noch ungeprüft – einstufen oder „neue lernen“ holt es in die Lernschlange'}</div>`; })()}</dd></dl></div>
         ${App.attachmentsHtml(it)}</div>${App.sideAside(App.relatedHtml(it))}</div></div>`;
     App.hydrateThumbs(view);
     view.querySelector('[data-vst]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { const snap = App.srsSnap([it.id]); await App.setCheck(it.id, b.dataset.v); App.undoToast('Lernstand: ' + App.statusInfo(it, b.dataset.v).label, snap, () => App.render(true)); App.render(true); } };
+    view.querySelector('[data-ast]').onclick = async (e) => { const b = e.target.closest('[data-v]'); if (b) { const snap = App.srsSnap([App.writeLogic.id(it.id)]); await App.setCheck(App.writeLogic.id(it.id), b.dataset.v); App.undoToast('Aktiv-Lernstand: ' + App.statusInfo(it, b.dataset.v).label, snap, () => App.render(true)); App.render(true); } };
   });
 
   // =========================================================

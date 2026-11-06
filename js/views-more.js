@@ -554,7 +554,7 @@
       <div class="card"><h3>Was für welchen Bereich gilt</h3><div class="lw-rules">
         ${row('sec-vocab', 'Vokabeln lesen', 'Der Weg oben, Japanisch → Deutsch.')}
         ${row('sec-vocab', 'Vokabeln Deutsch → Japanisch', 'Derselbe Weg noch einmal. Er beginnt, sobald du das Wort lesen kannst. Erst wenn beide Richtungen sitzen, zählt die Vokabel als „kann ich“.')}
-        ${row('sec-phrase', 'Ausdrücke', 'Der Weg oben, eine Richtung.')}
+        ${row('sec-phrase', 'Ausdrücke', 'Genau wie Vokabeln: beide Richtungen. Deutsch → Japanisch beginnt, sobald du den Ausdruck lesen kannst.')}
         ${row('sec-kanji', 'Kanji', 'Eigener Weg: Sie warten in der Lernschlange auf „neue lernen“. Schreiben kommt dazu, sobald du ein Kanji lesen kannst – der erste Schreibversuch ist die Einstufung.')}
         ${row('sec-grammar', 'Grammatik', 'Wird nicht abgefragt. Den Haken „Kann ich“ setzt du selbst auf der Seite des Grammatikpunkts; er zählt für Genki und JLPT.')}</div></div>
       <div class="card"><h3>Frei üben</h3><p class="small" style="margin:0">Geht jederzeit und ändert nichts an Lernstand und Terminen: „Meine Lernschlange üben“ nimmt alles, was du gerade lernst, auch wenn heute nichts fällig ist. „Frei üben“ bei den <a href="#/ueben/karten">Karteikarten</a> geht eine beliebige Auswahl durch – auch Grammatik.</p></div></div>`;

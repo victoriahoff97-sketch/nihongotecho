@@ -98,8 +98,8 @@
       if (W.isId(s.id)) {
         const wi = items.get(W.itemId(s.id));
         if (!wi || s.due > now || W.isKnown(s)) return;
-        // Vokabeln aktiv · Kanji schreiben – andere Einträge (Ausdrücke …) haben keinen zweiten Lernstand
-        if (wi.type === 'vocab' ? W.activeAsked(srs, wi) : wi.type === 'kanji' && focus !== 'read') n++;
+        // Vokabeln und Ausdrücke aktiv · Kanji schreiben – andere Einträge (Grammatik …) haben keinen zweiten Lernstand
+        if (W.direct(wi.type) ? W.activeAsked(srs, wi) : wi.type === 'kanji' && focus !== 'read') n++;
         return;
       }
       const it = items.get(s.id);
@@ -120,8 +120,8 @@
     return out;
   };
 
-  // ---------- Vokabeln aktiv (Deutsch → Japanisch) ----------
-  // Zweiter Lernstand je Vokabel, ebenfalls unter „w:<Id>“. Anders als beim Kanji-Schreiben läuft er wie der Lese-Stand:
+  // ---------- Vokabeln und Ausdrücke aktiv (Deutsch → Japanisch) ----------
+  // Zweiter Lernstand je Vokabel und je Ausdruck (gleiche Regeln), ebenfalls unter „w:<Id>“. Anders als beim Kanji-Schreiben läuft er wie der Lese-Stand:
   // einstufen („Kann ich“ wird nicht mehr abgefragt, „Lernen“ geht in die Lernschlange) oder mit „neue lernen“ holen.
   // locked = kann ich noch nicht lesen · unchecked = aktiv noch nicht eingestuft · learn = wird aktiv gelernt · known = kann ich aktiv
   // needsCheck(it): wird der Eintrag überhaupt eingestuft? Eigene Wörter gehen wie beim Lesen direkt in die Lernschlange.

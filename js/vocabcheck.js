@@ -100,7 +100,7 @@
   App.enqueueOwn = async (it) => {
     if (!it || !W.direct(it.type) || !App.isOwn(it)) return;
     if (!S.srs.has(it.id)) await App.setCheck(it.id, 'learn');
-    if (it.type === 'vocab' && !S.srs.has(W.id(it.id))) await App.setCheck(W.id(it.id), 'learn', { pre: 1 });
+    if (!S.srs.has(W.id(it.id))) await App.setCheck(W.id(it.id), 'learn', { pre: 1 }); // Vokabeln und Ausdrücke
   };
   // Einmaliger Umzug auf den gemeinsamen Lernweg (write-logic.js: lernwegPlan) – beim Start, solange der Vermerk in den Einstellungen fehlt
   App.lernwegMigrate = async () => {
@@ -138,12 +138,12 @@
   // known = kann ich · queue = in der Lernschlange (kommt von selbst wieder) · open = wartet noch (ungeprüft; bei Kanji auch neu in der Lernschlange).
   // Eine Vokabel ist erst „kann ich“, wenn beide Richtungen sitzen: lesen (Japanisch → Deutsch) UND aktiv (Deutsch → Japanisch).
   // Solange das Lesen noch läuft, zählt sie zur Lernschlange; kann man sie lesen, entscheidet der Aktiv-Stand.
-  // Kanji und Ausdrücke zählen nach dem Lese-Stand, Grammatik nach dem Haken („offen“ zählt als wartet noch).
+  // Ausdrücke genauso (beide Richtungen). Kanji zählen nach dem Lese-Stand, Grammatik nach dem Haken („offen“ zählt als wartet noch).
   App.wordState = (it) => {
     const r = App.vocabStatus(it.id), s = S.srs.get(it.id);
     if (r === 'unchecked') return 'open';
     if (r === 'learn') return W.inQueue(s) ? 'queue' : 'open';
-    if (it.type !== 'vocab') return 'known';
+    if (!W.direct(it.type)) return 'known';
     const a = W.activeStatus(S.srs, it, App.needsCheck);
     return a === 'known' ? 'known' : a === 'learn' && W.activeAsked(S.srs, it) ? 'queue' : 'open';
   };
@@ -182,7 +182,7 @@
   // Vokabel, die man lesen kann, aber aktiv noch nicht: „Kann ich lesen“ – „Kann ich“ heißt beide Richtungen
   App.statusBadge = (id) => {
     const it = S.items.get(id), st = App.statusInfo(it, App.vocabStatus(id));
-    const half = it && it.type === 'vocab' && App.vocabStatus(id) === 'known' && App.wordState(it) !== 'known';
+    const half = it && W.direct(it.type) && App.vocabStatus(id) === 'known' && App.wordState(it) !== 'known';
     return `<span class="badge vst" style="color:${st.color}" title="${half ? 'Lesen kannst du es – Deutsch → Japanisch fehlt noch' : 'Lernstand'}">${half ? '◐ Kann ich lesen' : `${st.dot} ${st.label}`}</span>`;
   };
 
@@ -252,7 +252,7 @@
     // Richtung: lesen, aktiv oder beide gemischt (mix: beide Richtungen in einer Runde – siehe writeLogic.lessonRound);
     // ohne Vorgabe pro Lektion gemischt, sonst lesen.
     const perLesson = type === 'vocab' && !!q.l;
-    const dir = type !== 'vocab' ? 'jp' : ['jp', 'de', 'mix'].includes(q.dir) ? q.dir : perLesson ? 'mix' : 'jp';
+    const dir = isK ? 'jp' : ['jp', 'de', 'mix'].includes(q.dir) ? q.dir : perLesson ? 'mix' : 'jp';
     const mix = dir === 'mix', active = dir === 'de';
     const W = App.writeLogic;
     const statusOf = active ? App.activeStatus : (v) => App.vocabStatus(v.id);
@@ -281,7 +281,7 @@
         <p>Was kannst du schon? Was du noch lernen musst, kommt gleich in die Lernschlange.</p></div></div>
       <div class="card" data-setup><div class="stack">
         <div class="row"><div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div>
-          ${type !== 'vocab' ? '' : `<div class="seg">${[['jp', `JP ${F.jp} → DE ${F.de}`, 'Japanisch → Deutsch (lesen)'], ['de', `DE ${F.de} → JP ${F.jp}`, 'Deutsch → Japanisch (aktiv)'], ['mix', 'Beide', 'Beide Richtungen gemischt']].map(([k, l, t]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k}" title="${t}">${l}</button>`).join('')}</div>`}
+          ${isK ? '' : `<div class="seg">${[['jp', `JP ${F.jp} → DE ${F.de}`, 'Japanisch → Deutsch (lesen)'], ['de', `DE ${F.de} → JP ${F.jp}`, 'Deutsch → Japanisch (aktiv)'], ['mix', 'Beide', 'Beide Richtungen gemischt']].map(([k, l, t]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k}" title="${t}">${l}</button>`).join('')}</div>`}
           ${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}${isP ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${App.phraseGroups().map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}</div>
         <div class="row between"><div class="row" style="gap:18px">
           <span><b style="font-size:22px;color:var(--muted)">${c.unchecked}</b> ungeprüft</span>
@@ -339,6 +339,7 @@
     };
     const answer = (e) => {
       const v = e.item;
+      if (e.de && type === 'phrase') return `<b lang="ja" style="font-family:var(--font-jp);font-size:26px;font-weight:500">${JP.ruby(v.jp)}</b>${v.note ? `<div class="small muted" lang="ja">${JP.ruby(v.note)}</div>` : ''}`;
       if (e.de) { const ex = v.examples && v.examples[0]; return `<b lang="ja" style="font-family:var(--font-jp);font-size:26px;font-weight:500">${JP.wordRuby(v)}</b>${App.levelBadge(v)}${App.accentHtml(v)}${ex ? `<div class="small muted" lang="ja">${JP.ruby(ex.jp)}</div>` : ''}`; }
       if (isK) return `<b>${App.meaningHtml(v)}</b>${App.levelBadge(v)}<div lang="ja" class="small muted">${(v.on || []).length ? 'On: ' + esc(v.on.join('、')) : ''}${(v.kun || []).length ? ' · Kun: ' + esc(v.kun.map(App.kanjiLogic.kunText).join('、')) : ''}</div>${(v.words || [])[0] ? `<div class="small muted" lang="ja">${JP.ruby(v.words[0].jp)} – ${App.meaningHtml(v.words[0])}</div>` : ''}`;
       if (type === 'phrase') return `<div lang="ja" class="muted">${JP.kana(v.jp) !== JP.plain(v.jp) ? esc(JP.kana(v.jp)) : ''}</div><b>${App.meaningHtml(v)}</b>${v.note ? `<div class="small muted" lang="ja">${JP.ruby(v.note)}</div>` : ''}`;

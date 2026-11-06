@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-06-ausdruecke-aktiv', date: '6. November',
+      items: [
+        { t: 'Ausdrücke in beide Richtungen', d: 'Ausdrücke werden jetzt wie Vokabeln auch von Deutsch nach Japanisch abgefragt – gut für Sätze, die du auswendig lernen willst.' },
+        { t: 'Beispielsatz als Ausdruck übernehmen', d: 'Auf der Seite einer Vokabel steht bei jedem Beispielsatz „＋ Ausdruck“: Der Satz kommt fertig ausgefüllt ins Formular, du wählst nur noch die Gruppe.' },
+      ],
+    },
+    {
       id: '2026-11-05-prognose', date: '5. November',
       items: [
         { t: 'Prognose für die nächsten 7 Tage', d: 'Auf der Startseite neben „morgen kommen … dazu“: Das kleine Balken-Symbol zeigt pro Tag, wie viele Karten neu fällig werden, und wie viele es insgesamt wären.' },

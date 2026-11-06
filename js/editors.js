@@ -670,7 +670,8 @@
       <div class="field"><label>Lesung <small>ergibt Furigana</small></label><input class="input jp-in" name="kana" value="${esc(it.jp && JP.hasNotation(it.jp) ? JP.kana(it.jp) : '')}" placeholder="げつようび"></div></div>
       <div class="field"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}"></div>
       <div class="field"><label>Hinweis / Merkhilfe</label><input class="input" name="note" value="${esc(it.note || '')}"></div>
-      ${commonFields(it)}</div>`;
+      ${commonFields(it)}
+      ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In die Lernschlange'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}" ${(it._check || 'learn') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}</div>`;
     },
     bind: (root) => {
       const sel = root.querySelector('[name=group]');
@@ -688,8 +689,11 @@
       if (!it.group || it.group === '__new') it.group = 'Sonstiges';
       const jp = val(root, 'jp'); const kana = val(root, 'kana');
       if (!jp) throw new Error('Bitte den japanischen Ausdruck eingeben.');
-      it.jp = autoNotate(jp, kana);
+      // unverändert: vorhandene Furigana behalten (z. B. aus einem übernommenen Beispielsatz – die sitzen genauer als neu ausgerichtete)
+      const same = it.jp && JP.hasNotation(it.jp) && JP.plain(it.jp) === jp && JP.kana(it.jp) === kana;
+      it.jp = same ? it.jp : autoNotate(jp, kana);
       it.de = val(root, 'de'); it.note = val(root, 'note');
+      if (root.querySelector('[name=check]')) it._check = val(root, 'check');
       if (!it.order) it.order = App.itemsOf('phrase').filter((p) => p.group === it.group).length + 1;
       readCommon(root, it);
     },
@@ -722,7 +726,7 @@
         const chk = it._check; delete it._check;
         if (type === 'kanji' && isNew) it.id = 'k-' + it.char.codePointAt(0).toString(16);
         const saved = await App.saveItem(it);
-        if ((type === 'vocab' || type === 'kanji') && isNew && chk && chk !== 'unchecked') await App.setCheck(saved.id, chk);
+        if ((type === 'vocab' || type === 'kanji' || type === 'phrase') && isNew && chk && chk !== 'unchecked') await App.setCheck(saved.id, chk);
         // von Hand eingetippt, in keinem Paket: den Satz im Hintergrund von Tatoeba nachtragen
         if (type === 'vocab' && isNew && App.exampleLater) App.exampleLater(saved.id).catch((e) => console.error(e));
         App.toast(isNew ? `${sec.one} gespeichert` : 'Änderungen gespeichert');

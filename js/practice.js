@@ -47,7 +47,7 @@
       ${externStrip()}<div class="section-title">In der App</div><div class="practice-home">
         <a class="mode-card sec-practice" href="#/ueben/heute${due ? '?auto=1' : ''}"><span class="k">復</span><h3>Jetzt wiederholen</h3><span class="muted">Alles, was heute fällig ist, gemischt in einer Runde – Vokabeln, Kanji & Ausdrücke.</span>${due ? `<span class="badge count">${due} fällig</span>` : '<span class="badge">für heute alles wiederholt</span>'}</a>
         <a class="mode-card sec-practice" href="#/ueben/karten"><span class="k">札</span><h3>Karteikarten</h3><span class="muted">Einzeln nach Art, Lektion oder Quelle: wiederholen, Neues lernen oder frei üben.</span></a>
-        ${!App.checkOn() ? '' : `<a class="mode-card sec-vocab" href="#/ueben/einstufen"><span class="k">確</span><h3>Einstufen</h3><span class="muted">Vokabeln, Kanji &amp; Ausdrücke: Kenne ich das? In Runden prüfen, was du schon kannst und was in die Lernschlange kommt.</span>${(() => { const n = App.vocabCounts().unchecked + App.vocabCounts(App.itemsOf('phrase')).unchecked + W.activeCounts(App.itemsOf('vocab'), S.srs, App.needsCheck).unchecked; return n ? `<span class="badge">${n} ungeprüft</span>` : ''; })()}</a>`}
+        ${!App.checkOn() ? '' : `<a class="mode-card sec-vocab" href="#/ueben/einstufen"><span class="k">確</span><h3>Einstufen</h3><span class="muted">Vokabeln, Kanji &amp; Ausdrücke: Kenne ich das? In Runden prüfen, was du schon kannst und was in die Lernschlange kommt.</span>${(() => { const n = App.vocabCounts().unchecked + App.vocabCounts(App.itemsOf('phrase')).unchecked + W.activeCounts(App.itemsOf('vocab').concat(App.itemsOf('phrase')), S.srs, App.needsCheck).unchecked; return n ? `<span class="badge">${n} ungeprüft</span>` : ''; })()}</a>`}
         <a class="mode-card sec-grammar" href="#/ueben/konjugieren"><span class="k">活</span><h3>Konjugieren</h3><span class="muted">Formen von Verben und Adjektiven selbst bilden – welche, wählst du aus.</span></a>
       </div>
       <div class="section-title">Weitere Übungen</div><div class="practice-home">
@@ -132,9 +132,9 @@
     const unlocked = (i) => WK.unlocked(source, i, ctx, readUnlocked);
     return Object.assign({ items, unlocked }, W.queue(items, S.srs, W.dayEnd(Date.now()), unlocked, all));
   };
-  // Vokabeln aktiv (Deutsch → Japanisch) haben ebenfalls einen eigenen Lernstand: neu ist, was lesbar, aber noch nicht in der Aktiv-Lernschlange ist
+  // Vokabeln und Ausdrücke aktiv (Deutsch → Japanisch) haben ebenfalls einen eigenen Lernstand: neu ist, was lesbar, aber noch nicht in der Aktiv-Lernschlange ist
   App.activeQueue = (q = {}) => {
-    const items = cardFilter(Object.assign({}, q, { type: 'vocab' })).sort(learnOrder);
+    const items = cardFilter(Object.assign({}, q, { type: q.type === 'phrase' ? 'phrase' : 'vocab' })).sort(learnOrder);
     return Object.assign({ items }, W.activeQueue(items, S.srs, W.dayEnd(Date.now()), App.needsCheck));
   };
   App.activeStatus = (it) => W.activeStatus(S.srs, it, App.needsCheck);
@@ -143,7 +143,7 @@
   App.cardQueue = (q = {}) => {
     const type = q.type || 'vocab';
     if (type === 'kanji' && cardDir(q) === 'de') return App.writeQueue(q);
-    if (type === 'vocab' && cardDir(q) === 'de') return App.activeQueue(q);
+    if (W.direct(type) && cardDir(q) === 'de') return App.activeQueue(Object.assign({}, q, { type }));
     const items = cardFilter(q);
     // Grammatik wird nicht abgefragt (nur der Haken von Hand): keine Runden, Karteikarten nur frei
     if (type === 'grammar') return { items, due: [], fresh: [] };
@@ -167,6 +167,7 @@
       focus === 'write' ? null : part('Kanji', 'Kanji', 'read', App.cardQueue({ type: 'kanji', dir: 'jp' }), { dir: 'jp' }),
       focus === 'read' ? null : part('Kanji schreiben', 'Kanji schreiben', 'write', App.writeQueue(), { pad: true }),
       part('Ausdrücke', 'Ausdruck', 'read', App.cardQueue({ type: 'phrase', dir: 'jp' }), { dir: 'jp' }),
+      part('Ausdrücke aktiv', 'Ausdruck aktiv', 'active', App.activeQueue({ type: 'phrase' }), { dir: 'de' }),
     ].filter((x) => x && x.n);
   };
   App.todayParts = () => mixParts((q) => q.due);
@@ -248,7 +249,7 @@
     const cq = App.cardQueue(q), { items, due, fresh } = cq;
     const dir = cardDir(q), defDir = cardDir(Object.assign({}, q, { dir: '' }));
     const write = type === 'kanji' && dir === 'de';
-    const active = type === 'vocab' && dir === 'de';
+    const active = W.direct(type) && dir === 'de';
     const isG = type === 'grammar'; // Grammatik: nur frei üben
     const unchecked = isG ? 0 : active ? items.filter((i) => App.activeStatus(i) === 'unchecked').length : items.filter((i) => i.char !== '々' && App.vocabStatus(i.id) === 'unchecked').length;
     const allOfType = App.itemsOf(type);
