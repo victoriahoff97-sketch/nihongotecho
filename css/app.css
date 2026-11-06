@@ -998,6 +998,7 @@ body.ink-fit #view { padding-bottom: 16px; }
 .verdict { font-weight: 800; padding: 8px 14px; border-radius: 10px; display: inline-flex; gap: 8px; align-items: center; }
 .verdict.ok { background: var(--matcha-soft); color: var(--matcha); }
 .verdict.no { background: var(--shu-soft); color: var(--shu); }
+.verdict.half { background: var(--yamabuki-soft); color: var(--yamabuki); }
 /* Antwort auf Karteikarten (Deutsch → Japanisch): Auswahl als drei kleine Symbole, Feld unter der Karte */
 .seg.ans-mode { padding: 2px; }
 .seg.ans-mode button { min-height: 30px; padding: 0 8px; }
@@ -2152,3 +2153,7 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .gap-foot { margin-top: 12px; flex-wrap: wrap; align-items: center; }
 .gap-slot.soft { border-color: var(--yamabuki); background: var(--yamabuki-soft); border-style: solid; }
 .gap-note { margin-top: 6px; padding: 8px 10px; border-left: 3px solid var(--yamabuki); background: var(--yamabuki-soft); border-radius: 0; color: var(--ink); }
+
+/* Karten mit Muster (js/pattern-card-logic.js): Platzhalter-Zeile auf der deutschen Seite */
+.slot-line { margin-top: 6px; font-size: 1.05rem; color: var(--matcha); font-weight: 700; }
+.ph-fill .ex-note { margin-top: -6px; }

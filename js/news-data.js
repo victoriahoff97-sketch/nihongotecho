@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-06-muster', date: '6. November',
+      items: [
+        { t: 'Wendungen aus dem Tagebuch merken', d: 'Im Tagebuch und beim Smalltalk Text markieren → „＋ Ausdruck“: Lesung und Übersetzung füllen sich selbst, der Ausdruck kommt in die Lernschlange.' },
+        { t: 'Ausdruck mit austauschbarem Wort', d: 'Im Ausdruck-Formular unter „Wort austauschbar machen“: Die Karte fragt dann jedes Mal mit einem anderen Wort ab, z. B. 犬の世話 statt ペットの世話.' },
+        { t: 'Verben mit Partikel abfragen', d: 'Einstellungen › Lernen: Wer mag, bekommt bei Deutsch → Japanisch „jemanden treffen → 人に会う“ statt nur „会う“. Standardmäßig aus.' },
+      ],
+    },
+    {
       id: '2026-11-06-blatt-uebersicht', date: '6. November',
       items: [
         { t: 'Blätter auf einen Blick', d: 'Bei einer Unterrichtsstunde und im Tagebuch siehst du deine Blätter jetzt als große Vorschau. Antippen öffnet das Blatt groß zum Schreiben.' },

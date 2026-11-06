@@ -360,7 +360,7 @@ window.App = window.App || {};
     // Verweise in Antworten/Tagebucheinträgen entfernen (dieselben Schlüssel wie bei Unterrichtsstunden)
     for (const a of [...App.itemsOf('answer'), ...App.itemsOf('journal')]) {
       let ch = false;
-      ['vocabIds', 'grammarIds', 'newIds'].forEach((k) => {
+      ['vocabIds', 'grammarIds', 'kanjiIds', 'phraseIds', 'newIds'].forEach((k) => {
         if (a[k] && a[k].includes(id)) { a[k] = a[k].filter((x) => x !== id); ch = true; }
       });
       if (ch) await App.saveItem(a, { silent: true });

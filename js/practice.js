@@ -312,6 +312,16 @@
       if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it, true)}</div><div class="muted">Wie schreibt man das Kanji?</div>`, back: `<div class="ans" style="font-family:var(--font-kanji);font-size:80px;font-weight:400">${esc(it.char)}</div><div lang="ja">${esc((it.on || []).join('、'))} · ${esc((it.kun || []).map(App.kanjiLogic.kunText).join('、'))}</div>`, speak: '' };
       return { front: `<div class="front kanji-front">${esc(it.char)}</div>`, back: `<div class="ans">${App.meaningHtml(it)}${App.levelBadge(it)}</div><div lang="ja" style="font-size:18px">On: ${esc((it.on || []).join('、') || '–')} · Kun: ${esc((it.kun || []).map(App.kanjiLogic.kunText).join('、') || '–')}</div>${(it.words || []).slice(0, 3).map((w) => `<div lang="ja">${JP.ruby(w.jp)} – ${App.meaningHtml(w)}</div>`).join('')}`, speak: '' };
     }
+    if (dir === 'de' && it.pat) {
+      const ex = it.examples && it.examples[0];
+      return { front: `<div class="front de-front">${esc(it.pat.de)}</div><div class="muted">Mit Partikel antworten</div>`,
+        back: `<div class="ans jp use-line" lang="ja">${JP.useRuby(it.pat.jp)}</div><div lang="ja">${JP.wordRuby(it)} – ${App.meaningHtml(it)}</div>${App.levelBadge(it)} ${App.verbClsBadge(it)}${ex ? `<div style="margin-top:6px">${App.exampleHtml(ex)}</div>` : ''}`,
+        speak: JP.plain(it.pat.jp.split('|').join('')) };
+    }
+    if (dir === 'de' && it.slotLine) {
+      return { front: `<div class="front de-front">${esc(it.de)}</div><div class="slot-line">${esc(it.slotLine)}</div>`,
+        back: `<div class="ans jp" lang="ja">${JP.ruby(it.jp)}</div>${it.note ? `<div class="small muted">${esc(it.note)}</div>` : ''}`, speak: JP.plain(it.jp) };
+    }
     const jpHtml = it.type === 'vocab' ? JP.wordRuby(it) : JP.ruby(it.jp);
     const reading = it.type === 'vocab' ? it.kana : JP.kana(it.jp);
     const ex = it.examples && it.examples[0];
@@ -321,6 +331,20 @@
     if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it, true)}</div>`, back: `<div class="ans jp" lang="ja">${jpHtml}</div>${badges}${extra}`, speak: speakTxt };
     return { front: `<div class="front" lang="ja">${App.askHtml(it)}</div>`, back: `<div class="jp" lang="ja" style="font-size:20px;color:var(--muted)">${esc(reading)}</div><div class="ans">${App.meaningHtml(it)}</div>${badges}${extra}`, speak: speakTxt };
   }
+  // Deutsch → Japanisch: Ausdruck mit Platzhalter wechselt das Wort, Verben fragen (Einstellung) das Partikel-Muster ab
+  const PC = App.patternCard;
+  const cardShown = (it, ent) => {
+    if (ent.dir !== 'de') return it;
+    if (it.type === 'phrase') return PC.slotVariant(it);
+    if (it.type === 'vocab' && S.settings.verbPattern) return PC.verbVariant(it);
+    return it;
+  };
+  // Prüfen: beim Verb-Muster zählen das ganze Muster und das Muster ab der Partikel
+  const shownForCheck = (it) => {
+    if (!it.pat) return it;
+    const [full, tail] = PC.patForms(it.pat);
+    return { type: 'phrase', jp: '', also: [{ kanji: full[0], kana: full[1] }, { kanji: tail[0], kana: tail[1] }] };
+  };
   const ivlLabel = (id, g, write) => {
     const s = S.srs.get(write ? W.id(id) : id) || { ivl: 0, ease: 2.5, reps: 0 };
     let d;
@@ -376,6 +400,7 @@
     queue = queue.map((x) => (x.it ? x : { it: x, kind: write ? 'write' : active ? 'active' : 'read', dir }));
     let total = resume ? resume.total : queue.length; // wächst, wenn nicht Gewusstes in derselben Runde noch einmal kommt
     let done = resume ? resume.done : 0, right = resume ? resume.right : 0, flipped = false, cur = null, ent = null;
+    let shown = null; // Karte, wie sie gezeigt wird: Platzhalter getauscht oder Verb-Muster (sonst = cur)
     let wantPark = false; // „Eintrag öffnen“ angetippt: beim Verlassen der Seite wird die Runde geparkt
     let ans = null, suggest = null, readingsOf = null; // Antwortfeld der Karte · vorgeschlagene Bewertung nach dem Prüfen
     let last = null; // zuletzt bewertete Karte – „Rückgängig“ holt sie mit ihrem alten Lernstand zurück
@@ -406,7 +431,8 @@
         return;
       }
       if (ent.pad) return padCard();
-      const f = ent.kind === 'conj' ? App.conjFaces(cur, ent.form) : cardFaces(cur, ent.dir); // Konjugieren (conj.js) bringt eigene Kartenseiten mit
+      shown = ent.kind === 'conj' ? cur : cardShown(cur, ent);
+      const f = ent.kind === 'conj' ? App.conjFaces(cur, ent.form) : cardFaces(shown, ent.dir); // Konjugieren (conj.js) bringt eigene Kartenseiten mit
       stage.innerHTML = `<div class="flash-stage ${App.furiClass()}">${head()}
         <div class="flash" data-flip>${f.front}<div class="back" hidden>${f.back}</div><span class="tap-hint">Tippen oder Leertaste zum Umdrehen</span></div>
         ${answerable(ent) ? '<div class="ans-box" data-answer></div>' : ''}
@@ -466,18 +492,20 @@
       const val = ans.inp.value;
       if (!val.trim()) return false;
       if (!readingsOf) readingsOf = kanjiReadings();
-      const forms = AL.forms(cur, readingsOf);
+      const forms = AL.forms(shownForCheck(shown || cur), readingsOf);
       // Stift: unverändert übernommen = auch die nächsten Vorschläge der Erkennung zählen
       const r = ans.mode === 'pen' && ans.list.length && val === ans.list[0] ? AL.checkAny(ans.list, forms) : AL.check(val, forms);
       if (!r) return false;
+      // Verb-Muster: nur das Wort ohne Partikel = halb richtig
+      const half = !r.ok && shown && shown.pat && (() => { const w = AL.check(val, AL.forms(cur, readingsOf)); return w && w.ok; })();
       ans.checked = true;
       if (r.ok && r.answer !== AL.clean(val)) ans.inp.value = r.answer;
       ans.inp.readOnly = true; ans.inp.blur();
       if (ans.pad) { ans.pad.stop(); stage.querySelector('[data-hwpad]').hidden = true; ans.cands.hidden = true; } // nach dem Prüfen zählt nur noch das Ergebnis
-      stage.querySelector('[data-averdict]').innerHTML = verdictHtml(r);
+      stage.querySelector('[data-averdict]').innerHTML = half ? '<div class="verdict half">◐ Das Wort stimmt – die Partikel fehlt</div>' : verdictHtml(r);
       stage.querySelector('[data-acheck]').hidden = true;
       stage.querySelector('[data-answer]').classList.add('done');
-      suggest = r.ok ? 2 : 0;
+      suggest = r.ok ? 2 : half ? 1 : 0;
       flip();
       const sb = stage.querySelector(`.grade-row [data-g="${suggest}"]`); if (sb) sb.classList.add('suggest');
       return true;

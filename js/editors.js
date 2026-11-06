@@ -75,7 +75,7 @@
     const bonus = (e, base, r) => LV_BONUS[((window.JLPT_INDEX || {}).v || {})[App.vocabKey({ kanji: base, kana: r })]] || 0;
     return App.exfillLogic.reading(jp, { lookup: LL.combineLookups(LL.ownIndex(App.store.items.values()), App.dict.installed() ? App.dict.lookup : null), deinflect: App.deinflect, posMatches: App.posMatches, notate: JP.notate, bonus });
   };
-  const bindExFill = (root) => {
+  const bindExFill = (root, ROW = '.ex-row') => { // ROW: Zeile mit [data-ex=jp|kana|de] und [data-ex-note] (Ausdruck-Formular: .ph-fill)
     const X = App.exfillLogic;
     let declined = false; // „Nein“ zur Übersetzung gilt für dieses Formular
     const field = (row, k) => row.querySelector(`[data-ex="${k}"]`);
@@ -125,7 +125,7 @@
       note(row, msgs.filter(Boolean).join(' '));
     };
 
-    root.addEventListener('change', (e) => { if (e.target.matches('.ex-row [data-ex="jp"]')) fill(e.target.closest('.ex-row')); });
+    root.addEventListener('change', (e) => { if (e.target.matches(ROW + ' [data-ex="jp"]')) fill(e.target.closest(ROW)); });
     // „Zeile leeren“: mit dem japanischen Satz verschwinden auch Lesung und Übersetzung, soweit sie noch die automatischen sind
     const clear = (row, k) => {
       row._fill = (row._fill || 0) + 1; // laufendes Ausfüllen verwerfen
@@ -134,11 +134,11 @@
       note(row, '');
     };
     root.addEventListener('click', async (e) => {
-      const clr = e.target.closest('.ex-row [data-clr]');
-      if (clr) return clear(clr.closest('.ex-row'), clr.closest('.mic-field').querySelector('input').dataset.ex);
+      const clr = e.target.closest(ROW + ' [data-clr]');
+      if (clr) return clear(clr.closest(ROW), clr.closest('.mic-field').querySelector('input').dataset.ex);
       const yes = e.target.closest('[data-tr-yes]'), no = e.target.closest('[data-tr-no]');
       if (!yes && !no) return;
-      const row = e.target.closest('.ex-row');
+      const row = e.target.closest(ROW);
       note(row, '');
       if (no) { declined = true; return; }
       await App.saveSettings({ trConsent: true });
@@ -659,6 +659,42 @@
       readCommon(root, it);
     },
   };
+  // ---------- Ausdruck: ein Wort austauschbar (Karte Deutsch → Japanisch wechselt es jedes Mal, js/pattern-card-logic.js) ----------
+  const slotFields = (it) => {
+    const s = it.slot || {};
+    return `<details class="adv" data-slot ${s.w ? 'open' : ''}><summary>Wort austauschbar machen <small class="muted">&nbsp;– die Karte fragt jedes Mal mit einem anderen Wort ab</small></summary><div class="form" style="margin-top:10px">
+      <div class="two"><div class="field"><label>Austauschbares Wort <small>so wie es im Ausdruck steht</small></label><input class="input jp-in" name="slotw" value="${esc(s.w || '')}" placeholder="ペット"></div>
+      <div class="field"><label>Auf Deutsch <small>so wie es im deutschen Satz steht</small></label><input class="input" name="slotde" value="${esc(s.de || '')}" placeholder="ein Haustier"></div></div>
+      <div class="field"><label>Auch mit <small>ein Wort pro Zeile: 犬 = den Hund · ohne „=“ kommt das Deutsch aus deinen Vokabeln</small></label><textarea class="input jp-in" name="slotalts" rows="3" placeholder="犬 = den Hund&#10;子ども = die Kinder">${esc((s.alts || []).map((a) => `${JP.plain(a.jp)} = ${a.de || ''}`).join('\n'))}</textarea></div>
+    </div></details>`;
+  };
+  // eigene Vokabel zu einer Schreibung (Kanji oder Kana)
+  const ownWord = (w) => App.itemsOf('vocab').find((v) => v.kanji === w || (!v.kanji && v.kana === w)) || App.itemsOf('vocab').find((v) => v.kana === w);
+  const bindSlot = (root) => {
+    const alts = root.querySelector('[name=slotalts]'), sde = root.querySelector('[name=slotde]'), sw = root.querySelector('[name=slotw]');
+    if (!alts) return;
+    sw.addEventListener('change', () => { const v = ownWord(sw.value.trim()); if (v && !sde.value.trim()) sde.value = v.de || ''; });
+    alts.addEventListener('change', () => {
+      alts.value = alts.value.split('\n').map((l) => {
+        if (!l.trim() || l.includes('=')) return l;
+        const v = ownWord(l.trim());
+        return v && v.de ? `${l.trim()} = ${v.de}` : l;
+      }).join('\n');
+    });
+  };
+  const readSlot = (root, it) => {
+    const w = val(root, 'slotw');
+    if (!w) { delete it.slot; return; }
+    if (!App.patternCard.locate(it.jp, w)) throw new Error(`Das austauschbare Wort „${w}“ steht so nicht im Ausdruck.`);
+    const alts = val(root, 'slotalts').split('\n').map((l) => {
+      const [a, ...b] = l.split('=');
+      const jp = (a || '').trim();
+      if (!jp) return null;
+      const v = ownWord(jp);
+      return { jp: v && v.kanji && v.kana && JP.hasKanji(jp) ? JP.notate(v.kanji, v.kana) : jp, de: b.join('=').trim() || (v && v.de) || '' };
+    }).filter(Boolean);
+    it.slot = { w, de: val(root, 'slotde'), alts };
+  };
   FORMS.phrase = {
     html: (it) => {
       const groups = App.phraseGroups();
@@ -666,14 +702,21 @@
       const cur = it.group || App.parseHash().query.g || groups[0] || '';
       return `<div class="form">
       <div class="field"><label>Gruppe *</label><select class="input" name="group">${groups.map((g) => `<option ${g === cur ? 'selected' : ''}>${esc(g)}</option>`).join('')}<option value="__new">＋ Neue Gruppe …</option></select></div>
-      <div class="two"><div class="field"><label>Japanisch *</label><input class="input jp-in" name="jp" value="${esc(it.jp ? JP.plain(it.jp) : '')}" placeholder="月曜日"></div>
-      <div class="field"><label>Lesung <small>ergibt Furigana</small></label><input class="input jp-in" name="kana" value="${esc(it.jp && JP.hasNotation(it.jp) ? JP.kana(it.jp) : '')}" placeholder="げつようび"></div></div>
-      <div class="field"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}"></div>
+      <div class="ph-fill"><div class="two"><div class="field"><label>Japanisch *</label><input class="input jp-in" name="jp" data-ex="jp" value="${esc(it.jp ? JP.plain(it.jp) : '')}" placeholder="月曜日"></div>
+      <div class="field"><label>Lesung <small>ergibt Furigana</small></label><input class="input jp-in" name="kana" data-ex="kana" value="${esc(it.jp && JP.hasNotation(it.jp) ? JP.kana(it.jp) : '')}" placeholder="げつようび"></div></div>
+      <div class="field"><label>Deutsch *</label><input class="input" name="de" data-ex="de" value="${esc(it.de || '')}"></div>
+      <div class="small muted ex-note" data-ex-note hidden></div></div>
+      ${slotFields(it)}
       <div class="field"><label>Hinweis / Merkhilfe</label><input class="input" name="note" value="${esc(it.note || '')}"></div>
       ${commonFields(it)}
       ${!it._existing ? `<div class="field"><label>Lernstand</label><select class="input" name="check">${[['learn', '◐ In die Lernschlange'], ['known', '● Kann ich schon']].map(([k, l]) => `<option value="${k}" ${(it._check || 'learn') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}</div>`;
     },
-    bind: (root) => {
+    bind: (root, it) => {
+      bindExFill(root, '.ph-fill');
+      bindSlot(root);
+      // aus dem Tagebuch/Unterricht markiert: Lesung und Übersetzung gleich vorschlagen
+      const jpIn = root.querySelector('[name=jp]');
+      if (!it._existing && jpIn.value.trim() && !root.querySelector('[name=de]').value.trim()) setTimeout(() => jpIn.dispatchEvent(new Event('change', { bubbles: true })), 0);
       const sel = root.querySelector('[name=group]');
       let last = sel.value;
       sel.addEventListener('change', async () => {
@@ -693,6 +736,7 @@
       const same = it.jp && JP.hasNotation(it.jp) && JP.plain(it.jp) === jp && JP.kana(it.jp) === kana;
       it.jp = same ? it.jp : autoNotate(jp, kana);
       it.de = val(root, 'de'); it.note = val(root, 'note');
+      readSlot(root, it);
       if (root.querySelector('[name=check]')) it._check = val(root, 'check');
       if (!it.order) it.order = App.itemsOf('phrase').filter((p) => p.group === it.group).length + 1;
       readCommon(root, it);

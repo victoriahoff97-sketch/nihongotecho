@@ -17,7 +17,7 @@
     .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || 0) - (a.created || 0));
   const lvlBadge = (p) => (isOwn(p) && !p.level ? '<span class="badge">eigene</span>' : App.levelBadge(p));
   // Kurzname für Abzeichen: Grammatik-Titel nur bis zur Erklärung („〜たり〜たりする – …“)
-  const itemName = (it) => (it.title ? it.title.split(' – ')[0] : '') || it.kanji || it.kana || it.jp || it.char || '';
+  const itemName = (it) => (it.title ? it.title.split(' – ')[0] : '') || it.kanji || it.kana || (it.jp ? App.jp.plain(it.jp) : '') || it.char || '';
   const notebookOf = (it) => App.filesFor({ itemId: it.id }).find((f) => App.fileKind(f) === 'notebook');
   // Steht etwas drin? Getippter Text oder Handschrift auf dem Blatt – ein leer angelegter Eintrag zählt nicht (Tagesliste)
   App.applyHasContent = (it) => { if (AL.plainText(it.html || '').trim()) return true; const nb = notebookOf(it); return !!(nb && App.store.inkCount.get(nb.id)); };
@@ -450,9 +450,9 @@
   };
 
   // ---------- Schreibbereich: Antwort / Tagebucheintrag ----------
-  const LINK_KEYS = { vocab: 'vocabIds', grammar: 'grammarIds', kanji: 'kanjiIds' };
-  const linkedIds = (item) => (item.grammarIds || []).concat(item.vocabIds || [], item.kanjiIds || []);
-  const TYPE_ORDER = { grammar: 0, vocab: 1, kanji: 2 };
+  const LINK_KEYS = { vocab: 'vocabIds', grammar: 'grammarIds', kanji: 'kanjiIds', phrase: 'phraseIds' };
+  const linkedIds = (item) => (item.grammarIds || []).concat(item.phraseIds || [], item.vocabIds || [], item.kanjiIds || []);
+  const TYPE_ORDER = { grammar: 0, phrase: 1, vocab: 2, kanji: 3 };
   const uniq = (a) => Array.from(new Set(a));
   // Wochentag aus ISO-Datum per Split (keine Zeitzonen-Verschiebung)
   const weekday = (iso) => {
@@ -476,14 +476,14 @@
     ? Object.assign(baseDefaults(item), { contexts: [{ itemId: item.id, label: sourceOf(item) + ' · ' + App.fmtDate(item.date), date: item.date, text: '' }] })
     : baseDefaults(item));
   const unlinkFrom = async (item, id) => {
-    ['vocabIds', 'grammarIds', 'kanjiIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => v !== id); });
+    ['vocabIds', 'grammarIds', 'kanjiIds', 'phraseIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => v !== id); });
     await App.saveItem(item, { silent: true });
   };
   // Das Blatt einer Antwort/eines Eintrags verknüpft auch dann mit ihm, wenn es als ganzes Blatt geöffnet wird (z. B. aus der Bibliothek)
   App.sheetHome((f) => {
     const item = f.itemId && App.item(f.itemId);
     if (!item || !['answer', 'journal'].includes(item.type)) return null;
-    return { newDefaults: sheetDefaults(item), onLinked: (it, isNew) => linkInto(item, it, isNew), onUnlinked: (id) => unlinkFrom(item, id) };
+    return { newDefaults: sheetDefaults(item), onLinked: (it, isNew) => linkInto(item, it, isNew), onUnlinked: (id) => unlinkFrom(item, id), newPhrase: true };
   });
 
   const renderWrite = (view, item, q) => {
@@ -531,7 +531,7 @@
       const group = (label, list, cls) => (list.length ? `<div class="w-sec ${cls}">${label}</div><div class="w-chips">${list.map(chip).join('')}</div>` : '');
       const nNew = all.filter((it) => news.has(it.id)), nUsed = all.filter((it) => !news.has(it.id));
       side.innerHTML = `<h3>${isAnswer ? 'In dieser Antwort' : 'In diesem Eintrag'}</h3>
-        ${all.length ? group('NEU', nNew, 'new') + group('ANGEWENDET', nUsed, '') : '<div class="small muted" style="margin:6px 0">Noch nichts verknüpft. Neue Wörter mit „+ Vokabel“ / „+ Grammatik“ anlegen – oder ein geschriebenes Wort mit „Erkennen“ einkreisen und verknüpfen.</div>'}
+        ${all.length ? group('NEU', nNew, 'new') + group('ANGEWENDET', nUsed, '') : '<div class="small muted" style="margin:6px 0">Noch nichts verknüpft. Neue Wörter oder Wendungen mit „+ Vokabel“ / „+ Ausdruck“ anlegen – oder ein geschriebenes Wort mit „Erkennen“ einkreisen und verknüpfen.</div>'}
         <button class="btn btn-ghost btn-sm w-pick" data-w-pick>${icon('link')} Vorhandenes verknüpfen</button>`;
     };
     drawSide();
@@ -549,11 +549,11 @@
       if (x) { await unlink(x.dataset.wUnlink); return; }
       if (!e.target.closest('[data-w-pick]')) return;
       const before = new Set(linkedIds(item));
-      const ids = await App.pickItems({ title: 'Vorhandenes verknüpfen', types: ['grammar', 'vocab', 'kanji'], selected: Array.from(before), kanjiDefaults: baseDefaults(item) });
+      const ids = await App.pickItems({ title: 'Vorhandenes verknüpfen', types: ['grammar', 'phrase', 'vocab', 'kanji'], selected: Array.from(before), kanjiDefaults: baseDefaults(item) });
       if (!ids) return;
       const keep = new Set(ids);
       // Abgewählte entfernen, neu gewählte als „angewendet“ übernehmen
-      ['vocabIds', 'grammarIds', 'kanjiIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => keep.has(v)); });
+      ['vocabIds', 'grammarIds', 'kanjiIds', 'phraseIds', 'newIds'].forEach((k) => { item[k] = (item[k] || []).filter((v) => keep.has(v)); });
       for (const id of before) if (!keep.has(id)) await dropMarks(id);
       ids.filter((id) => !before.has(id)).forEach((id) => {
         const it = App.item(id), k = it && LINK_KEYS[it.type];
@@ -623,12 +623,12 @@
         sheetMeta: (paper) => ({ itemId: item.id, role: item.type, section: 'apply', paper, name: (isAnswer ? 'Antwort ' : 'Tagebuch ') + App.uLogic.jpDate(item.date) }),
         onSelect: () => App.render(true),
         newDefaults: sheetDefaults(item),
-        onLinked, onUnlinked: (id) => unlink(id, true),
+        onLinked, onUnlinked: (id) => unlink(id, true), newPhrase: true,
       });
     } else {
       typedEd = App.typedArea(body, {
         html: item.html, onSave: async (h) => { if (!App.item(item.id)) return; /* inzwischen gelöscht: nicht wiederbeleben */ item.html = h; await App.saveItem(item, { silent: true }); },
-        newDefaults, onLinked, linkLabel, linkRefs: true, dictate: 'ja-JP',
+        newDefaults, onLinked, linkLabel, linkRefs: true, dictate: 'ja-JP', newPhrase: true,
         contextInfo: () => ({ itemId: item.id, label: source + ' · ' + App.fmtDate(item.date), date: item.date }),
         placeholder: `Auf Japanisch ${isAnswer ? 'antworten' : 'schreiben'} … neues Wort markieren → „＋ Vokabel“`,
       });
