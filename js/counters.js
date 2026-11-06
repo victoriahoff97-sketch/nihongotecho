@@ -78,7 +78,7 @@
   App.route('/ueben/zaehler', (view, p, q) => {
     const sec = App.SECTIONS.phrase;
     const c = C.byId(q.c);
-    if (!c) { view.innerHTML = '<div class="empty-state"><h3>Zähler nicht gefunden</h3></div>'; return; }
+    if (!c) { view.innerHTML = `<div class="empty-state"><h3>Zähler nicht gefunden</h3><p class="muted">Wähle einen Zähler unter Ausdrücke › Zähler.</p><div class="row" style="justify-content:center">${App.backBtn()}</div></div>`; return; }
     view.innerHTML = `<div class="${sec.cls}"><div class="crumbs">${App.backCrumb()} › 〜${esc(c.k)} üben</div>
       <div class="page-head"><div class="titles"><h1>〜${esc(c.k)} üben <span class="jp-title" lang="ja">${esc(c.kana)}</span></h1><p>${esc(c.de)}: alle Zahlen gemischt, Deutsch → Japanisch. Freies Üben – ändert nichts an deinem Lernstand.</p></div></div>
       <div data-stage></div></div>`;

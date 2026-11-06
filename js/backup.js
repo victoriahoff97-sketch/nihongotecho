@@ -446,7 +446,7 @@
     if (!dir) {
       const h = K.hand();
       if (handSaving) { mark = 'busy'; title = 'Sichert …'; }
-      else if (h.dirty) { mark = 'warn'; title = 'Noch nicht gesichert – antippen'; }
+      else if (h.dirty) { mark = 'warn'; title = 'Nicht gesichert – antippen'; }
       else if (h.saved && R()) title = R().savedText(h.saved, Date.now());
     } else {
       mark = st.kind === 'busy' ? 'busy' : st.kind === 'paused' ? 'warn' : st.kind === 'error' ? 'bad' : '';

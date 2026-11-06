@@ -42,7 +42,7 @@
     const head = `<div class="crumbs">${App.backCrumb()} › ${esc(k.crumb)}</div>
       <div class="page-head"><div class="titles"><h1>${esc(k.title)} <span class="jp-title">練習</span></h1><p>${g ? `<a href="${App.link(g)}">${esc(g.title)}</a> · ` : ''}${esc(k.sub)}</p></div></div>`;
     const page = (body) => { view.innerHTML = `<div class="sec-grammar ${App.furiClass()}">${head}${body}</div>`; };
-    if (!kind) return page(`<div class="card muted">Für diesen Grammatikpunkt gibt es noch keine Umform-Aufgaben.</div><div class="row" style="margin-top:12px">${App.backBtn()}</div>`);
+    if (!kind) return page(`<div class="card muted">${g ? 'Für diesen Grammatikpunkt gibt es noch keine Umform-Aufgaben.' : 'Kein Grammatikpunkt gewählt – öffne Umformen über „Üben“ bei einem Grammatikeintrag.'}</div><div class="row" style="margin-top:12px">${App.backBtn()}</div>`);
 
     if (!kind.make().length) return page(`<div class="card"><div class="stack"><div>Für diese Übung brauchst du Verben, Adjektive oder Nomen auf „kann ich“ – noch steht keines darauf.</div>
       <div class="small muted">Wörter kommen auf „kann ich“, wenn du sie einstufst oder in der Lernschlange sicher weißt.</div>

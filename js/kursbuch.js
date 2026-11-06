@@ -83,7 +83,7 @@
 
     // Ansicht pro Notizbuch: Buch (Standard) oder normale Seiten untereinander
     const flat = stored.layout === 'pages';
-    const layoutSwitch = cfg.look ? `<span class="kb-mode" role="group" aria-label="Ansicht"><button class="btn btn-sm${flat ? '' : ' btn-sec'}" data-kb-layout="" title="Als Buch zum Blättern">📖 Buch</button><button class="btn btn-sm${flat ? ' btn-sec' : ''}" data-kb-layout="pages" title="Als normale Seiten untereinander">${icon('list')} Seiten</button></span>` : '';
+    const layoutSwitch = cfg.look ? `<span class="kb-mode" role="group" aria-label="Ansicht"><button class="btn btn-sm${flat ? '' : ' btn-sec'}" data-kb-layout="" title="Als Buch zum Blättern">${icon('openBook')} Buch</button><button class="btn btn-sm${flat ? ' btn-sec' : ''}" data-kb-layout="pages" title="Als normale Seiten untereinander">${icon('list')} Seiten</button></span>` : '';
     const jumpSelect = `<select class="input" data-kb-jump title="${esc(texts.jumpTitle)}"><option value="">${esc(texts.jump)}</option>${sections.map((s, i) => KL.sessionPage(pages, s.id) >= 0 ? `<option value="${esc(s.id)}">${i + 1} · ${esc(s.title)}${s.sub ? ' – ' + esc(s.sub) : ''}</option>` : '').join('')}</select>`;
     const bindLayout = () => view.querySelectorAll('[data-kb-layout]').forEach((b) => {
       b.onclick = async () => {

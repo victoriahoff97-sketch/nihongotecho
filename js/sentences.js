@@ -135,7 +135,7 @@
     const sec = App.SECTIONS.vocab;
     // von außen belegt: auch „keine Quelle“ gilt (fremde Seite ≠ zuletzt benutzte Quelle)
     const lastSrc = state && state.srcFixed ? state.src : (state && state.src) || App.lsGet('sentSource') || 'NHK Easy';
-    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/vokabeln">Vokabeln</a> › Beispielsätze zuordnen</div>
+    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/vokabeln">Vokabeln</a> › Sätze zuordnen</div>
       <div class="page-head"><div class="titles"><h1>Sätze zuordnen <span class="jp-title">例文</span></h1>
         <p>Füge einen Text ein – z. B. einen NHK-Easy-Artikel, Untertitel oder Sätze aus dem Buch. Die App findet die enthaltenen Vokabeln, du entscheidest, wo jeder Satz als Beispiel landet.</p></div></div>
       <div class="card" data-in><div class="form">

@@ -9,7 +9,7 @@
   const UL = App.uLogic;
   const sessions = () => App.itemsOf('session').sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.number || 0) - (a.number || 0));
   const sessionTitle = (s) => s.title || UL.jpDate(s.date) || 'Ohne Datum';
-  const bookRef = (s) => s.bookSource ? `${s.bookSource}${s.bookLesson !== '' && s.bookLesson != null ? ' L' + s.bookLesson : ''}` : '';
+  const bookRef = (s) => s.bookSource ? `${s.bookSource}${s.bookLesson !== '' && s.bookLesson != null ? ' · L' + s.bookLesson : ''}` : '';
 
   // Neu angelegte/verknüpfte Einträge landen in der passenden Liste der Stunde. „Lektion“ bleibt leer:
   // die laufende Nummer der Stunde ist keine Lehrbuch-Lektion.
@@ -83,7 +83,7 @@
     const folded = (c) => (S.settings.coursesFolded || []).includes(c);
     view.innerHTML = `<div class="${sec.cls}">${App.pageHead(sec, 'Deine Kursstunden: mit dem Stift mitschreiben, Präsentationen ablegen, Hausaufgaben lösen.',
       `<button class="btn btn-sec" data-action="new-session">${icon('plus')} Neue Stunde</button>`)}
-      ${groups.length ? groups.map((gr) => `<div class="course-group"><div class="section-title"><button type="button" class="fold-btn" data-fold-course="${esc(gr.course)}" aria-expanded="${!folded(gr.course)}" title="Kurs ein- oder ausklappen"><span class="chev"></span>${esc(gr.course)}<span class="fold-sum">· ${esc(UL.courseSummary(gr.sessions, App.fmtDate))}</span></button> <span class="badge">${gr.sessions.length}</span><a class="btn btn-sm kb-open" href="${App.kursbuchLink(gr.course)}" title="Alle Mitschriften dieses Kurses als ein Notizbuch zum Blättern">📖 Notizbuch</a></div>
+      ${groups.length ? groups.map((gr) => `<div class="course-group"><div class="section-title"><button type="button" class="fold-btn" data-fold-course="${esc(gr.course)}" aria-expanded="${!folded(gr.course)}" title="Kurs ein- oder ausklappen"><span class="chev"></span>${esc(gr.course)}<span class="fold-sum">· ${esc(UL.courseSummary(gr.sessions, App.fmtDate))}</span></button> <span class="badge">${gr.sessions.length}</span><a class="btn btn-sm kb-open" href="${App.kursbuchLink(gr.course)}" title="Alle Mitschriften dieses Kurses als ein Notizbuch zum Blättern">${icon('openBook')} Notizbuch</a></div>
         <div class="timeline${folded(gr.course) ? ' is-folded' : ''}">${gr.sessions.map(sessionCard).join('')}</div></div>`).join('')
       : `<div class="empty-state"><div class="big">授</div><h3>Noch keine Stunde angelegt</h3><p>Lege zu jeder VHS-Stunde einen Eintrag an. Dort schreibst du mit dem Stift mit, legst die PowerPoint ab und erledigst Hausaufgaben.</p><button class="btn btn-primary" data-action="new-session">${icon('plus')} Erste Stunde anlegen</button></div>`}</div>`;
     // Kurs über die Überschrift ein-/ausklappen; gemerkt in den Einstellungen (coursesFolded: Namen der eingeklappten Kurse)

@@ -106,7 +106,7 @@ window.App = window.App || {};
     box: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 3v18"/>',
     image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
     folder: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
-    notebook: '<path d="M6 3h13v18H6z"/><path d="M3 7h3M3 12h3M3 17h3M10 8h6M10 12h6"/>',
+    notebook: '<path d="M6 3h13v18H6z"/><path d="M3 7h3M3 12h3M3 17h3M10 8h6M10 12h6"/>', openBook: '<path d="M12 6c-2-1.5-5-2-9-2v14c4 0 7 .5 9 2 2-1.5 5-2 9-2V4c-4 0-7 .5-9 2z"/><path d="M12 6v14"/>', columns: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
     shuffle: '<path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>',
     grid: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/>',
     lines: '<path d="M3 6h18M3 12h18M3 18h18"/>',

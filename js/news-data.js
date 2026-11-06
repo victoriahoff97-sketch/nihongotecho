@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-06-feinschliff', date: '6. November',
+      items: [
+        { t: 'Aufgeräumt und besser lesbar', d: 'Viele kleine Korrekturen: Im Dunkelmodus sind die farbigen Knöpfe jetzt gut lesbar, und beim Seitenwechsel springt die Breite nicht mehr.' },
+        { t: 'Gleiche Namen überall', d: 'Seiten heißen jetzt überall gleich, z. B. „Sätze zuordnen“ und „Übersetzen“. Bei Ausdrücken siehst du alle Gruppen auf einmal, ohne seitlich zu wischen.' },
+        { t: 'Besser am Handy', d: 'Vokabel- und Grammatikseiten passen jetzt aufs Handy, das Suchfeld oben ist nutzbar, und hinter dem geöffneten Menü wird die Seite abgedunkelt.' },
+      ],
+    },
+    {
       id: '2026-11-06-muster', date: '6. November',
       items: [
         { t: 'Wendungen aus dem Tagebuch merken', d: 'Im Tagebuch und beim Smalltalk Text markieren → „＋ Ausdruck“: Lesung und Übersetzung füllen sich selbst, der Ausdruck kommt in die Lernschlange.' },

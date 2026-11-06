@@ -47,11 +47,11 @@
       ${externStrip()}<div class="section-title">In der App</div><div class="practice-home">
         <a class="mode-card sec-practice" href="#/ueben/heute${due ? '?auto=1' : ''}"><span class="k">復</span><h3>Jetzt wiederholen</h3><span class="muted">Alles, was heute fällig ist, gemischt in einer Runde – Vokabeln, Kanji & Ausdrücke.</span>${due ? `<span class="badge count">${due} fällig</span>` : '<span class="badge">für heute alles wiederholt</span>'}</a>
         <a class="mode-card sec-practice" href="#/ueben/karten"><span class="k">札</span><h3>Karteikarten</h3><span class="muted">Einzeln nach Art, Lektion oder Quelle: wiederholen, Neues lernen oder frei üben.</span></a>
-        ${!App.checkOn() ? '' : `<a class="mode-card sec-vocab" href="#/ueben/einstufen"><span class="k">確</span><h3>Einstufen</h3><span class="muted">Vokabeln, Kanji &amp; Ausdrücke: Kenne ich das? In Runden prüfen, was du schon kannst und was in die Lernschlange kommt.</span>${(() => { const n = App.vocabCounts().unchecked + App.vocabCounts(App.itemsOf('phrase')).unchecked + W.activeCounts(App.itemsOf('vocab').concat(App.itemsOf('phrase')), S.srs, App.needsCheck).unchecked; return n ? `<span class="badge">${n} ungeprüft</span>` : ''; })()}</a>`}
+        ${!App.checkOn() ? '' : `<a class="mode-card sec-vocab" href="#/ueben/einstufen"><span class="k">確</span><h3>Einstufen</h3><span class="muted">Vokabeln, Kanji &amp; Ausdrücke: Kenne ich das? In Runden prüfen, was du schon kannst und was in die Lernschlange kommt.</span>${(() => { const n = App.vocabCounts().unchecked + App.vocabCounts(App.itemsOf('phrase')).unchecked + App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')).unchecked + W.activeCounts(App.itemsOf('vocab').concat(App.itemsOf('phrase')), S.srs, App.needsCheck).unchecked; return n ? `<span class="badge">${n} ungeprüft</span>` : ''; })()}</a>`}
         <a class="mode-card sec-grammar" href="#/ueben/konjugieren"><span class="k">活</span><h3>Konjugieren</h3><span class="muted">Formen von Verben und Adjektiven selbst bilden – welche, wählst du aus.</span></a>
       </div>
       <div class="section-title">Weitere Übungen</div><div class="practice-home">
-        <a class="mode-card sec-grammar" href="#/ueben/saetze"><span class="k">訳</span><h3>Übersetzungsübungen</h3><span class="muted">Sätze aus deinen Grammatik- und Vokabelbausteinen – nur mit dem, was du schon kennst.</span></a>
+        <a class="mode-card sec-grammar" href="#/ueben/saetze"><span class="k">訳</span><h3>Übersetzen</h3><span class="muted">Sätze aus deinen Grammatik- und Vokabelbausteinen – nur mit dem, was du schon kennst.</span></a>
         <a class="mode-card sec-grammar" href="#/ueben/luecken"><span class="k">助</span><h3>Lückensätze</h3><span class="muted">Welche Partikel gehört in die Lücke? Mehrere Sätze auf einer Seite, Partikeln aus der Wortbank hineinziehen.</span></a>
         <a class="mode-card sec-kanji" href="#/ueben/kanji"><span class="k">書</span><h3>Kanji-Quiz</h3><span class="muted">Bedeutung sehen → mit dem Stift schreiben, oder Lesungen erkennen.</span>${wDue ? `<span class="badge count">${wDue} zu schreiben</span>` : ''}</a>
       </div></div>`;
@@ -265,7 +265,7 @@
     // Abkürzung „Lernschlange üben“: was du aus der Auswahl oben gerade lernst, auch wenn heute nichts fällig ist (Kanji schreiben: die Schreib-Lernschlange)
     const learning = isG ? [] : W.learning(write ? cardFilter(Object.assign({}, q, { type: 'kanji' })) : items, S.srs, write ? 'write' : active ? 'active' : 'read');
     const learningBtn = `<button class="btn" data-learning ${learning.length ? '' : 'disabled'} title="Alles aus der Auswahl, was du gerade lernst – auch was heute nicht fällig ist. Dein Lernstand bleibt, wie er ist">${icon('practice')} Lernschlange üben (${learning.length})</button>`;
-    const stLabel = (k) => (write && k === 'unchecked' ? 'Neu' : App.statusInfo({ type }, k).label);
+    const stLabel = (k) => App.statusInfo({ type }, k).label;
     const stChip = (k) => {
       const cur = stOn.length ? stOn : stKeys, on = cur.includes(k);
       const next = on ? cur.filter((x) => x !== k) : cur.concat(k);
@@ -329,7 +329,10 @@
     const speakTxt = it.type === 'vocab' ? (it.kana || it.kanji) : it.jp;
     const badges = App.levelBadge(it) + (it.type === 'vocab' ? ' ' + App.verbClsBadge(it) : '');
     if (dir === 'de') return { front: `<div class="front de-front">${App.meaningHtml(it, true)}</div>`, back: `<div class="ans jp" lang="ja">${jpHtml}</div>${badges}${extra}`, speak: speakTxt };
-    return { front: `<div class="front" lang="ja">${App.askHtml(it)}</div>`, back: `<div class="jp" lang="ja" style="font-size:20px;color:var(--muted)">${esc(reading)}</div><div class="ans">${App.meaningHtml(it)}</div>${badges}${extra}`, speak: speakTxt };
+    // Lesung auf der Rückseite nur, wenn sie vorne nicht schon vollständig steht (reine Kana oder Furigana über jedem Kanji)
+    const askH = App.askHtml(it);
+    const readShown = !/[㐀-鿿々]/.test(askH.replace(/<ruby>[\s\S]*?<\/ruby>/g, '').replace(/<[^>]+>/g, ''));
+    return { front: `<div class="front" lang="ja">${askH}</div>`, back: `${readShown ? '' : `<div class="jp" lang="ja" style="font-size:20px;color:var(--muted)">${esc(reading)}</div>`}<div class="ans">${App.meaningHtml(it)}</div>${badges}${extra}`, speak: speakTxt };
   }
   // Deutsch → Japanisch: Ausdruck mit Platzhalter wechselt das Wort, Verben fragen (Einstellung) das Partikel-Muster ab
   const PC = App.patternCard;
@@ -648,7 +651,7 @@
     const selected = new Set(byQueue ? (pot.grammar.length ? pot.grammar : pot.grammarKnown).map((g) => g.id) : preset && preset.length ? preset : listG.map((g) => g.id));
     const dir = q.dir || 'de';
     const srcSeg = fixed ? '' : `<div class="seg">${[['', 'Lernschlange'], ['niveau', 'Niveau']].map(([k, l]) => `<button class="${(byQueue ? '' : 'niveau') === k ? 'on' : ''}" data-q-src="${k}">${l}</button>`).join('')}</div>`;
-    const head = `<div class="crumbs">${App.backCrumb()} › Übersetzungsübungen</div>
+    const head = `<div class="crumbs">${App.backCrumb()} › Übersetzen</div>
       <div class="page-head"><div class="titles"><h1>Übersetzen <span class="jp-title">翻訳</span></h1><p>${session ? `Zur Stunde „${esc(session.title || session.number)}“ – ` : ''}${byQueue ? 'Sätze aus dem, was gerade in deiner Lernschlange ist.' : 'Sätze nur aus Grammatik & Vokabeln bis zu deinem Niveau.'}</p></div></div>`;
     if (byQueue && !pot.queue.size) {
       view.innerHTML = `<div class="${sec.cls}">${head}
@@ -802,7 +805,7 @@
     const stN = {};
     pool.forEach((k) => { const s = stOf(k); stN[s] = (stN[s] || 0) + 1; });
     const free = stOn.length ? pool.filter((k) => stOn.includes(stOf(k))) : pool;
-    const stLabel = (k) => (write && k === 'unchecked' ? 'Neu' : App.statusInfo({ type: 'kanji' }, k).label);
+    const stLabel = (k) => App.statusInfo({ type: 'kanji' }, k).label;
     const stChip = (k) => {
       const cur = stOn.length ? stOn : stKeys, on = cur.includes(k);
       const next = on ? cur.filter((x) => x !== k) : cur.concat(k);

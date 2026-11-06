@@ -235,7 +235,7 @@
   const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert · 今日' };
   // Schnellaktionen: [Farbe, Attribute, Symbol, Titel, Untertitel] – die ersten drei stehen von Anfang an da
   const QUICK = {
-    saetze: ['sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze erkennen', 'Text einfügen, Vokabeln finden'],
+    saetze: ['sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze zuordnen', 'Text einfügen, Vokabeln finden'],
     vokabel: ['sec-vocab', 'data-new-vocab', 'plus', 'Neue Vokabel', 'Ein Wort schnell speichern'],
     stunde: ['sec-session', 'data-action="new-session"', 'session', 'Neue Unterrichts­stunde', 'Mitschrift für heute anlegen'],
     kanji: ['sec-kanji', 'data-new="kanji"', 'plus', 'Neues Kanji', 'Ein Zeichen speichern'],
@@ -405,7 +405,7 @@
       actions: quickHtml(),
       read: readStrip(),
       sammlung: `<div class="section-title">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>
-      ${fitRow('stat-grid', [stat('grammar', count('grammar'), 'Grammatikpunkte'), stat('vocab', count('vocab'), 'Wörter'), stat('session', count('session'), 'Stunden mitgeschrieben'), stat('kanji', count('kanji'), 'Kanji'), stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')], 5)}`,
+      ${fitRow('stat-grid', [stat('grammar', count('grammar'), 'Grammatikpunkte'), stat('vocab', count('vocab'), 'Wörter'), stat('session', count('session'), count('session') === 1 ? 'Stunde mitgeschrieben' : 'Stunden mitgeschrieben'), stat('kanji', count('kanji'), 'Kanji'), stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')], 5)}`,
       vocab: (() => { // Jedes Wort zählt einmal: „kann ich“ erst, wenn Lesen und Deutsch → Japanisch sitzen – wie beim JLPT- und Genki-Lernstand
         const c = progOf({ vocab }).tot;
         const num = (n, color, label, st, title) => `<a href="#/vokabeln?st=${st}" style="text-decoration:none" title="${title}"><b style="font-size:26px;color:${color}">${n}</b> ${label}</a>`;
@@ -420,15 +420,15 @@
       genki: genkiLevelCard(),
       kanji: (() => { const c = App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')); const pc = (n) => (c.total ? (n / c.total) * 100 : 0); const inClass = App.itemsOf('kanji').filter((k) => App.hasMark(k, App.MARK_CLASS)).length; return `${foldHead('kanji', 'Kanji-Lernstand', `${c.known} / ${c.total} kann ich`)}
       <div class="card sec-kanji${foldCls('kanji')}"><div class="row between"><div class="row" style="gap:22px">
-        <a href="#/kanji?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> in der Lernschlange</a>
         <a href="#/kanji?st=known" style="text-decoration:none"><b style="font-size:26px;color:var(--matcha)">${c.known}</b> kann ich</a>
+        <a href="#/kanji?st=learn" style="text-decoration:none"><b style="font-size:26px;color:var(--ai)">${c.learn}</b> in der Lernschlange</a>
         <a href="#/kanji?mark=${encodeURIComponent(App.MARK_CLASS)}" style="text-decoration:none"><b style="font-size:26px;color:var(--shu)">${inClass}</b> im Unterricht</a>
         ${App.checkOn() ? `<a class="small muted" href="#/kanji?st=unchecked" style="text-decoration:none"><b style="font-size:16px">${c.unchecked}</b> ungeprüft</a>` : ''}</div>
         <div class="row">${focus === 'write' ? '' : repeatBtn('play', App.cardQueue({ type: 'kanji', dir: 'jp' }).due.length, '#/ueben/karten?type=kanji&dir=jp&round=due')}${c.unchecked ? `<a class="btn" href="#/ueben/einstufen?type=kanji&auto=1">${icon('check')} Nächste ${Math.min(c.unchecked, S.settings.checkBatch || 15)} einstufen</a>` : ''}</div></div>
         <div class="progress" style="display:flex;height:10px;margin-top:12px"><i style="width:${pc(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pc(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
         ${(() => { if (focus === 'read') return ''; const w = App.writeLogic.counts(wq.items, S.srs, wq.unlocked); const newN = Math.min(wq.fresh.length, S.settings.newPerDay); return `<div class="row between" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><div class="row" style="gap:22px"><b>Schreiben</b>
           <span><b style="font-size:20px;color:var(--matcha)">${w.known}</b> kann ich</span>
-          <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> übe ich</span>
+          <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> in der Lernschlange</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
           <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}</div></div>`; })()}</div>`; })(),
       bottom: fitRow('home-bottom', [`<div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
@@ -631,7 +631,7 @@
           <div lang="ja" style="font-size:30px;color:var(--sec);line-height:1.6">${JP.ruby(it.jp || '')}</div>
           <h1 style="font-size:26px;margin-top:4px">${esc(it.title)}</h1></div><div class="row">${detailActions(it)}</div></div>
           <p style="font-size:17px;color:var(--ink-2);margin:10px 0 12px">${esc(it.summary || '')}</p>
-          <div class="row">${App.srcBadge(it)} ${App.tagsHtml(it.tags)}</div>
+          <div class="row">${App.levelBadge(it)}${App.srcBadge(it)} ${App.tagsHtml(it.tags)}</div>
           <div class="row" style="margin-top:14px;align-items:center"><span class="small muted">Lernstand</span><div class="seg" data-vst>${App.statusChoices(it).map(([k, s]) => `<button class="${App.vocabStatus(it.id) === k ? 'on' : ''}" data-v="${k}" style="color:${s.color}">${s.dot} ${s.label}</button>`).join('')}</div>
             <span class="small muted">${App.vocabStatus(it.id) === 'known' ? 'zählt für deinen Lernstand bei Genki und JLPT' : 'Setz den Haken selbst, wenn du den Punkt kannst – Grammatik wird nicht abgefragt'}</span></div></div>
         ${it.structure && it.structure.length ? `<div class="section-title">Aufbau</div><div class="structure">${it.structure.map((s) => `<div>${JP.ruby(s)}</div>`).join('')}</div>` : ''}
@@ -715,7 +715,7 @@
       `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?type=phrase${q.g ? '&g=' + encodeURIComponent(q.g) : ''}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?type=phrase${q.g ? '&g=' + encodeURIComponent(q.g) : ''}">${icon('practice')} Karteikarten</a><button class="btn" data-new-group>${icon('plus')} Neue Gruppe</button><button class="btn btn-sec" data-new="phrase">${icon('plus')} Ausdruck</button>`)}
       ${tabsHtml(q, items.length, files.length)}
       <div class="toolbar">${filterInput(q, 'Suchen, z. B. Montag, 3 Uhr, ひとつ …')}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st, 'phrase')}</select></div>
-      <div class="chips scroll" style="margin-bottom:16px"><button class="chip ${!q.g ? 'on' : ''}" data-q-g="">Alle Gruppen</button>${groupsOrder.map((g) => `<button class="chip ${q.g === g ? 'on' : ''}" data-q-g="${esc(g)}">${esc(g)}</button>`).join('')}<button class="chip" data-new-group>${icon('plus')} Gruppe</button></div>
+      <div class="chips" style="margin-bottom:16px"><button class="chip ${!q.g ? 'on' : ''}" data-q-g="">Alle Gruppen</button>${groupsOrder.map((g) => `<button class="chip ${q.g === g ? 'on' : ''}" data-q-g="${esc(g)}">${esc(g)}</button>`).join('')}<button class="chip" data-new-group>${icon('plus')} Gruppe</button></div>
       <div data-body></div></div>`;
     const body = view.querySelector('[data-body]');
     if (q.tab === 'files') body.innerHTML = filesTab('phrase', q);
@@ -777,6 +777,8 @@
       ${r.hits.map((h) => `<button class="pdf-hit-row" data-open-file="${r.file.id}" data-open-page="${h.page}"><span class="pno">S. ${h.page}</span><span class="snip">${esc(h.before)}<mark>${esc(h.match)}</mark>${esc(h.after)}</span></button>`).join('')}
       ${r.count > r.hits.length ? `<div class="small muted">… und ${r.count - r.hits.length} weitere Seiten</div>` : ''}</div>`;
   App.route('/suche', (view, p, q) => {
+    const gs = document.getElementById('global-search'); // Aufruf per Link: Suchbegriff auch oben ins Feld
+    if (gs && document.activeElement !== gs && q.q && gs.value !== q.q) gs.value = q.q;
     const res = App.search(q.q || '', { limit: 300 });
     const groups = groupBy(res, (i) => i.type);
     // PDF-Inhalt (Textebene); diese Dateien erscheinen nur dort, nicht nochmal bei den Datei-Namen

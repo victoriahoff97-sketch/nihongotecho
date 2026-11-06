@@ -298,7 +298,7 @@
       <div class="section-title">Paket hochladen</div>
       <div class="card" data-pack-upload><h3>Paket-Datei öffnen</h3>
         <p class="small muted">Für Pakete, die du als Datei bekommst: die Unterrichtsfolien (Grammatik-Übersichten), Pakete von Freunden und die Genki-Buchaufgaben (.ntpaket). Eine ZIP-Datei mit genau einem Paket darin geht auch. Was schon da ist, kommt nicht doppelt dazu.</p>
-        <label class="btn btn-primary">${icon('upload')} Paket hochladen<input type="file" accept=".json,.ntpaket,.zip,application/json,application/zip" hidden data-pack-imp></label></div>
+        <label class="btn btn-primary">${icon('upload')} Paket-Datei wählen<input type="file" accept=".json,.ntpaket,.zip,application/json,application/zip" hidden data-pack-imp></label></div>
       <div class="section-title">Lehrbuch</div>
       <div class="stack">${App.genki && App.genki.present() ? App.genki.card() : ''}${App.exercises.card()}</div>
       <div class="section-title">JLPT-Niveaus</div>
