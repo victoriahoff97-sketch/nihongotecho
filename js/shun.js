@@ -62,9 +62,10 @@
     const body = `<p class="small muted">Japanese with Shun · ${esc(where(e))} · ca. ${S.minutes(e)} Min.${at ? ` · weiter ab ${App.listening.mmss(at)}` : ''}</p>
       <audio class="listen-audio" controls autoplay preload="auto" src="${esc(e.url)}"></audio>
       <p class="small shun-err" hidden>Die Folge lässt sich gerade nicht laden. Bist du online?</p>`;
+    App.closePlayers(); // läuft schon etwas im Mini-Fenster: das zuerst schließen
     cur = { id, t: at, cnt: App.listening.playCounter() };
     const md = App.modal({
-      title: esc(e.ja ? `${e.ja} · ${e.title}` : e.title), body, cls: 'listen-modal shun-modal',
+      title: esc(e.ja ? `${e.ja} · ${e.title}` : e.title), body, cls: 'listen-modal shun-modal', mini: true,
       foot: `<button class="btn" data-shun-close>Schließen</button><button class="btn btn-primary" data-shun-done>${icon('check')} Gehört</button>`,
       onClose: () => { const was = cur; remember(); if (cur) cur.cnt.done(); cur = null; if (was) App.dayCheck.check(); },
     });

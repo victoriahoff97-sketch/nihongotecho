@@ -46,27 +46,90 @@
     $('#toasts').appendChild(t);
     setTimeout(() => t.remove(), action ? action.ms || 6000 : 3200);
   };
-  App.modal = ({ title, body, foot, wide, cls = '', onClose }) => {
+  // mini: Knopf „Verkleinern“ – das Fenster wird zu einem kleinen, verschiebbaren Player (Hören), der weiterläuft,
+  // während man den Rest der App bedient. Verkleinert heißt der Hintergrund „mini-back“ statt „modal-back“,
+  // damit Tastenkürzel, Neuzeichnen und Tour die App nicht für „Fenster offen“ halten.
+  App.modal = ({ title, body, foot, wide, cls = '', onClose, mini }) => {
     const back = document.createElement('div');
     back.className = 'modal-back';
+    const miniBtns = mini ? `<button class="icon-btn" data-mini title="Verkleinern – läuft weiter, du kannst die App bedienen" aria-label="Verkleinern">${icon('mini')}</button>
+      <button class="icon-btn" data-maxi title="Wieder groß" aria-label="Wieder groß">${icon('expand')}</button>` : '';
     back.innerHTML = `<div class="modal ${wide ? 'wide' : ''} ${cls}" role="dialog" aria-modal="true">
-      <div class="modal-head"><h2>${title}</h2><button class="icon-btn" data-x>${icon('close')}</button></div>
+      <div class="modal-head"><h2>${title}</h2>${miniBtns}<button class="icon-btn" data-x>${icon('close')}</button></div>
       <div class="modal-body"></div>${foot !== false ? '<div class="modal-foot"></div>' : ''}</div>`;
     const m = back.querySelector('.modal');
     const bodyEl = m.querySelector('.modal-body');
     if (typeof body === 'string') bodyEl.innerHTML = body; else if (body) bodyEl.appendChild(body);
     if (foot) m.querySelector('.modal-foot').innerHTML = foot;
-    const close = () => { back.remove(); document.removeEventListener('keydown', onKey); onClose && onClose(); };
-    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    const isMini = () => back.classList.contains('mini-back');
+    let unmini = null;
+    const close = () => { if (unmini) unmini(); back.remove(); document.removeEventListener('keydown', onKey); onClose && onClose(); };
+    const onKey = (e) => { if (e.key === 'Escape' && !isMini()) close(); }; // verkleinert: Esc gehört dem Fenster darüber
     document.addEventListener('keydown', onKey);
     back.addEventListener('pointerdown', (e) => { if (e.target === back) back._downOnBack = true; });
     back.addEventListener('click', (e) => { if (e.target === back && back._downOnBack) close(); back._downOnBack = false; });
     m.querySelector('[data-x]').onclick = close;
+    if (mini) {
+      // Gleiches Element bleibt im DOM (nur Klassen + Position ändern sich), damit Video/Audio nicht neu lädt
+      const L = App.miniLogic;
+      const KEY = 'nt-miniPos';
+      const head = m.querySelector('.modal-head');
+      const vp = () => ({ vw: document.documentElement.clientWidth, vh: window.innerHeight });
+      const place = (p) => { m.style.left = `${p.x}px`; m.style.top = `${p.y}px`; };
+      const fit = () => { const { vw, vh } = vp(); place(L.clamp({ x: m.offsetLeft, y: m.offsetTop }, m.offsetWidth, m.offsetHeight, vw, vh)); };
+      const shrink = () => {
+        if (isMini()) return;
+        back.classList.replace('modal-back', 'mini-back');
+        m.removeAttribute('aria-modal');
+        const { vw, vh } = vp();
+        m.style.width = `${L.width(vw)}px`;
+        let saved = null;
+        try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { /* egal */ }
+        place(L.start(saved, m.offsetWidth, m.offsetHeight, vw, vh));
+        window.addEventListener('resize', fit);
+        unmini = () => { window.removeEventListener('resize', fit); unmini = null; };
+      };
+      const grow = () => {
+        if (!isMini()) return;
+        if (unmini) unmini();
+        back.classList.replace('mini-back', 'modal-back');
+        m.setAttribute('aria-modal', 'true');
+        m.style.left = m.style.top = m.style.width = '';
+      };
+      m.querySelector('[data-mini]').onclick = shrink;
+      m.querySelector('[data-maxi]').onclick = grow;
+      // Ziehen an der Kopfleiste (Maus, Stift, Finger); ein Tippen ohne Bewegung lässt die Knöpfe arbeiten
+      head.addEventListener('pointerdown', (e) => {
+        if (!isMini() || e.button > 0 || e.target.closest('button')) return;
+        e.preventDefault();
+        const sx = e.clientX, sy = e.clientY, ox = m.offsetLeft, oy = m.offsetTop;
+        head.setPointerCapture(e.pointerId);
+        m.classList.add('dragging');
+        const move = (ev) => {
+          const { vw, vh } = vp();
+          place(L.clamp({ x: ox + ev.clientX - sx, y: oy + ev.clientY - sy }, m.offsetWidth, m.offsetHeight, vw, vh));
+        };
+        const up = () => {
+          head.removeEventListener('pointermove', move);
+          head.removeEventListener('pointerup', up);
+          head.removeEventListener('pointercancel', up);
+          m.classList.remove('dragging');
+          try { localStorage.setItem(KEY, JSON.stringify({ x: m.offsetLeft, y: m.offsetTop })); } catch (err) { /* egal */ }
+        };
+        head.addEventListener('pointermove', move);
+        head.addEventListener('pointerup', up);
+        head.addEventListener('pointercancel', up);
+      });
+      // Doppelklick auf die Kopfleiste: wieder groß
+      head.addEventListener('dblclick', (e) => { if (isMini() && !e.target.closest('button')) grow(); });
+    }
     $('#overlay-root').appendChild(back);
     App.hydrateIcons(m);
     setTimeout(() => { const f = m.querySelector('[autofocus]'); if (f) f.focus(); }, 30);
     return { el: m, body: bodyEl, close };
   };
+  // Ein laufender Mini-Player (oder offenes Hör-Fenster) schließen, bevor ein anderes Stück startet
+  App.closePlayers = () => document.querySelectorAll('#overlay-root .listen-modal [data-x]').forEach((x) => x.click());
   App.confirm = (msg, { ok = 'Löschen', danger = true, title = 'Bist du sicher?' } = {}) => new Promise((res) => {
     const md = App.modal({
       title, body: `<p>${esc(msg)}</p>`,

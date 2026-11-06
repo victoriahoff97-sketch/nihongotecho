@@ -94,9 +94,11 @@
       body = `<div class="listen-video"><iframe src="${esc(L.embedUrl(p, at))}" title="${esc(L.head(p))}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
         <p class="small muted">${esc(L.detail(p))} · stoppt am Ende des Stücks${atNote} · <a href="${esc(L.watchUrl(p))}" target="_blank" rel="noopener">Auf YouTube öffnen ${icon('link')}</a></p>`;
     }
+    App.closePlayers(); // läuft schon etwas im Mini-Fenster: das zuerst schließen (Stelle wird gemerkt)
     cur = { pos: at0, t: at, free, cnt: L.playCounter() };
     const md = App.modal({
-      title: esc(L.head(p)), body, wide: p.kind === 'video', cls: 'listen-modal',
+      // Verkleinern nur, wenn wirklich etwas in der App läuft (Tablet-ZIP: Video öffnet auf YouTube)
+      title: esc(L.head(p)), body, wide: p.kind === 'video', cls: 'listen-modal', mini: p.kind === 'audio' || location.protocol !== 'file:',
       // Shadowing-Tipp links im Fuß, damit das Fenster nicht höher wird
       foot: `${p.kind === 'video' ? `<span class="listen-shadow-tip" title="${esc(SHADOW_TIP)}">Gut fürs Shadowing: laut nachsprechen</span>` : ''}<button class="btn" data-listen-close>Schließen</button>${free
         ? `<button class="btn btn-primary" data-listen-jump="${at0}">Ab hier weitermachen</button>`
@@ -125,8 +127,8 @@
   // „Gehört“: ein Stück weiter, gemerkte Stelle vergessen; kurz danach lässt sich das rückgängig machen
   const done = async () => {
     const old = pos();
-    const back = document.querySelector('.listen-modal');
-    if (back) back.closest('.modal-back').querySelector('[data-x]').click();
+    const back = document.querySelector('.listen-modal [data-x]'); // groß oder verkleinert
+    if (back) back.click();
     const oldAt = App.store.settings.listenAt || null;
     await App.saveSettings({ listenPos: old + 1, listenAt: null });
     App.dayCheck.mark('listen'); // Tagesliste: „Listening“
@@ -135,8 +137,8 @@
 
   // „Ab hier weitermachen“ (Seite „Hören“): Position auf dieses Stück setzen, gemerkte Stelle vergessen; mit Rückgängig
   const jump = async (at) => {
-    const back = document.querySelector('.listen-modal');
-    if (back) back.closest('.modal-back').querySelector('[data-x]').click();
+    const back = document.querySelector('.listen-modal [data-x]');
+    if (back) back.click();
     const old = pos(), oldAt = App.store.settings.listenAt || null;
     await App.saveSettings({ listenPos: at, listenAt: null });
     App.toast('Ab hier geht es weiter', { label: 'Rückgängig', fn: () => App.saveSettings({ listenPos: old, listenAt: oldAt }) });

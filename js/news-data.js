@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-06-mini-player', date: '6. November',
+      items: [
+        { t: 'Hören im kleinen Fenster', d: 'Im Hör-Fenster oben das Symbol neben ✕: Video oder Folge läuft klein weiter, lässt sich verschieben – und du kannst nebenbei z. B. eine Vokabel anlegen.' },
+      ],
+    },
+    {
       id: '2026-11-06-ausdruecke-aktiv', date: '6. November',
       items: [
         { t: 'Ausdrücke in beide Richtungen', d: 'Ausdrücke werden jetzt wie Vokabeln auch von Deutsch nach Japanisch abgefragt – gut für Sätze, die du auswendig lernen willst.' },

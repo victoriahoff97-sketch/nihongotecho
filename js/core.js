@@ -40,6 +40,8 @@ window.App = window.App || {};
     menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
     sidebar: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
     close: '<path d="M18 6L6 18M6 6l12 12"/>',
+    mini: '<rect x="3" y="4" width="18" height="16" rx="2"/><rect x="12" y="12" width="7" height="6" rx="1" fill="currentColor" stroke="none"/>',
+    expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
     mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',
     back: '<path d="M15 18l-6-6 6-6"/>',
     next: '<path d="M9 18l6-6-6-6"/>',
