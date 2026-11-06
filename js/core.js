@@ -385,6 +385,7 @@ window.App = window.App || {};
     };
     if (meta.bookId) f.bookId = meta.bookId; // Kapitel eines eigenen Notizbuchs (heft.js)
     if (meta.folder) f.folder = meta.folder; // Ordner in der Bibliothek (js/library-logic.js)
+    if (meta.orient === 'land') f.orient = 'land'; // Notizblatt im Querformat (js/unterricht-logic.js, sheetRatio)
     await App.db.put('blobs', { id, blob });
     await App.db.put('files', f);
     S.files.set(id, f);

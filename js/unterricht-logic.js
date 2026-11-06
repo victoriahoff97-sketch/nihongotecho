@@ -78,8 +78,16 @@
     if (isNotebook) f.pagePapers = Array.from({ length: f.pages || 1 }, (_, i) => (i === idx ? paper : pagePaper(f, i)));
     else f.extraPapers = Array.from({ length: f.extraPages || 0 }, (_, j) => (j === idx ? paper : extraPaper(f, j)));
   };
+  // Format eines Notizblatts: Hochkant (Standard) oder Quer – gilt für alle Seiten der Datei (f.orient = 'land').
+  // Seitenhöhe als Vielfaches der Breite; Striche und Bilder sind breitenrelativ gespeichert, ein Querblatt ist also nur kürzer.
+  const ORIENT = { port: 842 / 595, land: 595 / 842 };
+  const orientOf = (f) => (f && f.orient === 'land' ? 'land' : 'port');
+  const sheetRatio = (f) => ORIENT[orientOf(f)];
+  // Reicht Geschriebenes (Striche, Bilder) tiefer als eine Seite der Höhe ratio? rows: ink-Zeilen { strokes, images }
+  const inkBelow = (rows, ratio) => (rows || []).some((r) => (r.strokes || []).some((s) => (s.pts || []).some((pt) => pt[1] > ratio))
+    || (r.images || []).some((im) => im.y + im.h > ratio));
   const knownPaper = (p) => (PAPERS.some(([k]) => k === p) ? p : 'lines');
 
-  const L = { DEFAULT_COURSE, PAPERS, NO_COURSE, jpDate, isAutoTitle, suggestCourse, nextNumber, groupByCourse, courseNeighbors, courseSummary, toggleFolded, CLASS_SOURCE, clearClassLessons, pagePaper, extraPaper, appendPaper, setPaper, knownPaper };
+  const L = { DEFAULT_COURSE, PAPERS, NO_COURSE, jpDate, isAutoTitle, suggestCourse, nextNumber, groupByCourse, courseNeighbors, courseSummary, toggleFolded, CLASS_SOURCE, clearClassLessons, pagePaper, extraPaper, appendPaper, setPaper, knownPaper, ORIENT, orientOf, sheetRatio, inkBelow };
   if (typeof module !== 'undefined' && module.exports) module.exports = L; else root.App.uLogic = L;
 })(this);

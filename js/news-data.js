@@ -7,6 +7,19 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-06-blatt-uebersicht', date: '6. November',
+      items: [
+        { t: 'Blätter auf einen Blick', d: 'Bei einer Unterrichtsstunde und im Tagebuch siehst du deine Blätter jetzt als große Vorschau. Antippen öffnet das Blatt groß zum Schreiben.' },
+        { t: 'Hochkant oder quer', d: 'Jedes Blatt kann hochkant oder quer sein: beim Anlegen wählen, an der Vorschau umschalten oder im Blatt über „Papier“.' },
+      ],
+    },
+    {
+      id: '2026-11-06-lueckensaetze', date: '6. November',
+      items: [
+        { t: 'Lückensätze: Partikeln üben', d: 'Üben › Weitere Übungen › Lückensätze: In Sätzen aus deinen Vokabeln fehlen を, に, で und Co. Du ziehst sie aus der Wortbank in die Lücken.' },
+      ],
+    },
+    {
       id: '2026-11-06-mini-player', date: '6. November',
       items: [
         { t: 'Hören im kleinen Fenster', d: 'Im Hör-Fenster oben das Symbol neben ✕: Video oder Folge läuft klein weiter, lässt sich verschieben – und du kannst nebenbei z. B. eine Vokabel anlegen.' },

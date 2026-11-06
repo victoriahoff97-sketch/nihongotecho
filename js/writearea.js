@@ -106,16 +106,25 @@
   // newPhrase: zusätzlich „＋ Ausdruck“ in der Stiftleiste (nur wo onLinked Ausdrücke verknüpft, z. B. Unterricht)
   // onUnlinked(itemId): die letzte Markierung eines Wortes wurde auf dem Blatt gelöst
   // Liefert { dropLinks(itemId) }: Markierungen eines Wortes vom Blatt nehmen (Verknüpfung wurde woanders entfernt)
+  // Erste Ansicht = Blätter-Übersicht: große Vorschau je Blatt (Seite 1 mit Schrift), darunter „Blatt n · x S.“ und Hochkant/Quer.
+  // Antippen öffnet das Blatt im Vollbild – geschrieben wird dort (die eingebettete Stiftleiste war zu voll).
+  // page + activeId (aus dem Kurs-Notizbuch): dieses Blatt gleich auf dieser Seite im Vollbild öffnen
   App.inkArea = (host, { sheets = [], activeId, page, sheetMeta, multiSheet = true, onSelect, newDefaults = {}, onLinked, onUnlinked, newPhrase = false } = {}) => {
     const defaultsFor = (type) => (typeof newDefaults === 'function' ? newDefaults(type) : newDefaults);
     const linkWord = App.wordLinker(defaultsFor, onLinked);
     const UL = App.uLogic;
-    let ctrl = null, left = false;
-    const api = { dropLinks: (itemId) => (ctrl ? ctrl.dropLinks(itemId) : Promise.all(sheets.map((f) => App.ink.dropLinks(f.id, itemId)))) };
+    const api = { dropLinks: (itemId) => Promise.all(sheets.map((f) => App.ink.dropLinks(f.id, itemId))) };
+    const extraTools = linkTools(defaultsFor, onLinked, newPhrase);
+    // Vollbild mit denselben Werkzeugen wie früher aus der eingebetteten Fläche: „+ Vokabel …“ im „⋯“-Menü, Erkennen → verknüpfen
+    const open = (id, pg) => App.ink.open(id, {
+      extraTools, extraInMenu: true, onLinkWord: linkWord, onUnlinkWord: onUnlinked, ...(pg > 1 ? { page: pg } : {}),
+      afterClose: () => (onSelect ? onSelect(id) : App.render(true)),
+    });
     if (!sheets.length) {
       host.innerHTML = `<div class="card pad-lg"><h3 style="margin-top:0">Auf welchem Papier schreibst du?</h3>
-        ${App.ink.paperTiles()}</div>`;
+        ${App.ink.orientSwitch('port')}${App.ink.paperTiles()}</div>`;
       App.ink.drawPaperTiles(host);
+      const getOrient = App.ink.bindOrient(host);
       let busy = false; // Doppeltipp darf kein zweites Blatt anlegen
       host.addEventListener('click', async (e) => {
         const b = e.target.closest('[data-paper]'); if (!b || busy) return;
@@ -123,45 +132,46 @@
         const paper = b.dataset.paper;
         let f;
         try {
-          f = await App.addFile(new Blob(['{}'], { type: 'application/x-notebook' }), Object.assign(sheetMeta(paper, 1), { mime: 'application/x-notebook', pages: 1 }));
+          f = await App.addFile(new Blob(['{}'], { type: 'application/x-notebook' }), Object.assign(sheetMeta(paper, 1), { mime: 'application/x-notebook', pages: 1 }, getOrient() === 'land' ? { orient: 'land' } : {}));
           f.mime = 'application/x-notebook'; f.pagePapers = [paper]; await App.updateFile(f);
         } catch (err) { busy = false; throw err; }
-        onSelect && onSelect(f.id);
+        // gleich zum Schreiben öffnen, danach steht es in der Übersicht
+        open(f.id);
       });
       return api;
     }
-    const active = sheets.find((f) => f.id === activeId) || sheets[sheets.length - 1];
-    host.innerHTML = `${multiSheet ? `<div class="nb-switch chips">${sheets.length > 1 ? sheets.map((f, i) => `<button class="chip ${f === active ? 'on' : ''}" data-nb="${f.id}">Blatt ${i + 1}</button>`).join('') : ''}
-      <button class="chip" data-nb-new>${icon('plus')} Neues Blatt</button></div>` : ''}<div data-ink></div>`;
-    if (multiSheet) {
-      host.querySelectorAll('[data-nb]').forEach((b) => (b.onclick = () => onSelect && onSelect(b.dataset.nb)));
-      host.querySelector('[data-nb-new]').onclick = async () => {
-        const f = await App.newNotebook(Object.assign(sheetMeta(active.paper, sheets.length + 1), { askName: false }), { open: false });
-        if (f && onSelect) onSelect(f.id);
-      };
-    }
-    // Schreibfläche einbetten; beim Verlassen/Neuzeichnen sauber abbauen
-    App.onLeave(() => { left = true; if (ctrl) ctrl.destroy(); });
-    // Schreibfläche füllt genau den restlichen Bildschirm (nicht darüber hinaus)
-    // Dazu entfällt der untere Seitenrand (body.ink-fit) – sonst ließe sich die ganze Seite unter der Fläche weiterscrollen
-    document.body.classList.add('ink-fit');
-    App.onLeave(() => document.body.classList.remove('ink-fit'));
-    const inkEl = host.querySelector('[data-ink]');
-    const fit = () => { const top = inkEl.getBoundingClientRect().top + window.scrollY; inkEl.style.minHeight = '0'; inkEl.style.height = Math.max(360, window.innerHeight - top - 16) + 'px'; };
-    fit();
-    window.addEventListener('resize', fit);
-    App.onLeave(() => window.removeEventListener('resize', fit));
-    // Werkzeug-Zustand übernehmen, wenn man gerade aus dem Vollbild dieses Blatts kommt
-    const last = App.ink.lastState && App.ink.lastState.fileId === active.id ? App.ink.lastState : {};
-    const extraTools = linkTools(defaultsFor, onLinked, newPhrase);
-    App.ink.mount(inkEl, active.id, {
-      embedded: true, ...last, ...(page > 1 && active.id === activeId ? { page } : {}),
-      extraTools,
-      onLinkWord: linkWord, onUnlinkWord: onUnlinked,
-      // Vollbild: eingebettete Fläche abbauen, damit sie nach dem Schließen frisch geladen wird.
-      // Die „+“-Knöpfe gehen mit – im „⋯“-Menü, damit die Leiste dort einzeilig bleibt (wie bei den Buchaufgaben)
-      onFullscreen: () => { const tools = ctrl ? ctrl.state() : {}; if (ctrl) ctrl.destroy(); App.ink.open(active.id, { ...tools, extraTools, extraInMenu: true, onLinkWord: linkWord, onUnlinkWord: onUnlinked }); },
-    }).then((c) => { ctrl = c; if (left && c) c.destroy(); });
+    const pagesLbl = (n) => `${n} S.`;
+    const orientIc = (f) => `<span class="orient-ic ${UL.orientOf(f) === 'land' ? 'land' : ''}"></span>`;
+    host.innerHTML = `<div class="sheet-grid ${multiSheet ? '' : 'single'}">${sheets.map((f, i) => `<div class="sheet-card">
+        <button type="button" class="sheet-thumb ${UL.orientOf(f) === 'land' ? 'land' : ''}" data-open="${f.id}" title="Zum Schreiben öffnen (Vollbild)">
+          <canvas data-thumb="${f.id}"></canvas><span class="sheet-go">${icon('pen')} Schreiben</span></button>
+        <div class="sheet-meta"><span><b>${multiSheet ? `Blatt ${i + 1}` : 'Blatt'}</b> · ${pagesLbl(f.pages || 1)}</span>
+          <button type="button" class="btn btn-sm btn-ghost" data-orient-of="${f.id}" title="Hochkant oder quer – gilt für alle Seiten">${orientIc(f)}${UL.orientOf(f) === 'land' ? 'Quer' : 'Hochkant'}</button></div>
+      </div>`).join('')}
+      ${multiSheet ? `<button type="button" class="sheet-new" data-nb-new>${icon('plus')}<span>Neues Blatt</span></button>` : ''}</div>`;
+    const draw = () => host.querySelectorAll('[data-thumb]').forEach((cv) => App.ink.preview(cv, cv.dataset.thumb, { page: 0, crop: false, maxH: 1e5, always: true }));
+    draw(); // clientWidth erzwingt das Layout – die Vorschau kennt ihre Breite schon
+    const redraw = App.debounce(draw, 200);
+    window.addEventListener('resize', redraw);
+    App.onLeave(() => window.removeEventListener('resize', redraw));
+    host.addEventListener('click', async (e) => {
+      const o = e.target.closest('[data-open]');
+      if (o) { open(o.dataset.open); return; }
+      const t = e.target.closest('[data-orient-of]');
+      if (t) {
+        const f = App.store.files.get(t.dataset.orientOf);
+        if (f && await App.ink.setOrient(f.id, UL.orientOf(f) === 'land' ? 'port' : 'land')) App.render(true);
+        return;
+      }
+      if (e.target.closest('[data-nb-new]')) {
+        const last = sheets[sheets.length - 1];
+        const f = await App.newNotebook(Object.assign(sheetMeta(last.paper, sheets.length + 1), { askName: false, orient: last.orient }), { open: false });
+        if (f) open(f.id);
+      }
+    });
+    // aus dem Kurs-Notizbuch: die gewählte Seite gleich zum Schreiben öffnen (nur einmal – danach ohne pg weiter)
+    const target = activeId && sheets.find((f) => f.id === activeId);
+    if (target && page > 1) { history.replaceState(history.state, '', location.hash.replace(/([?&])pg=\d+&?/, '$1').replace(/[?&]$/, '')); open(target.id, page); }
     return api;
   };
 

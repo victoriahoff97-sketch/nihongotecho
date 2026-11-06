@@ -52,6 +52,7 @@
       </div>
       <div class="section-title">Weitere Übungen</div><div class="practice-home">
         <a class="mode-card sec-grammar" href="#/ueben/saetze"><span class="k">訳</span><h3>Übersetzungsübungen</h3><span class="muted">Sätze aus deinen Grammatik- und Vokabelbausteinen – nur mit dem, was du schon kennst.</span></a>
+        <a class="mode-card sec-grammar" href="#/ueben/luecken"><span class="k">助</span><h3>Lückensätze</h3><span class="muted">Welche Partikel gehört in die Lücke? Mehrere Sätze auf einer Seite, Partikeln aus der Wortbank hineinziehen.</span></a>
         <a class="mode-card sec-kanji" href="#/ueben/kanji"><span class="k">書</span><h3>Kanji-Quiz</h3><span class="muted">Bedeutung sehen → mit dem Stift schreiben, oder Lesungen erkennen.</span>${wDue ? `<span class="badge count">${wDue} zu schreiben</span>` : ''}</a>
       </div></div>`;
   });

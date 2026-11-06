@@ -15,8 +15,8 @@
     const base = '/' + parts[0];
     if (ALIAS[base]) return ALIAS[base];
     if (base === '/unterricht' && parts[1] === 'buch') return 'notizbuch';
-    // eine einzelne Unterrichtsstunde ist vor allem ihr Schreibblatt
-    if (base === '/unterricht' && parts.length > 1) return 'blatt';
+    // eine einzelne Unterrichtsstunde: die Blätter-Übersicht (die Stiftleiste erklärt „blatt“ im Vollbild, „⋯ › Hilfe“)
+    if (base === '/unterricht' && parts.length > 1) return 'stunde';
     // Karteikarten und „Jetzt wiederholen“: eigene Hilfe mit dem Schreibfeld
     if (base === '/ueben' && (parts[1] === 'karten' || parts[1] === 'heute')) return 'karten';
     return PAGES.includes(base) ? base : 'rundgang';

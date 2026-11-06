@@ -883,8 +883,9 @@
   // Neues handschriftliches Notizbuch
   // d.askName === false → ohne Titel-Abfrage (d.name); { open: false } → Viewer nicht öffnen
   App.newNotebook = async (d = {}, { open = true } = {}) => {
-    const paper = await App.ink.pickPaper({ title: 'Neues Notizblatt', current: d.paper });
-    if (!paper) return null;
+    const pick = await App.ink.pickSheet({ title: 'Neues Notizblatt', current: d.paper, orient: d.orient === 'land' ? 'land' : 'port' });
+    if (!pick) return null;
+    const { paper } = pick;
     let name = d.name;
     if (d.askName !== false) {
       const r = await App.ask('Neues Notizblatt', [{ label: 'Titel', value: d.name || 'Notizen ' + App.fmtDate(new Date()) }]);
@@ -893,7 +894,8 @@
     }
     const blob = new Blob(['{}'], { type: 'application/x-notebook' });
     const meta = Object.assign({}, d, { name: name || 'Notizen', mime: 'application/x-notebook', pages: 1, paper });
-    delete meta.askName;
+    delete meta.askName; delete meta.orient;
+    if (pick.orient === 'land') meta.orient = 'land';
     const f = await App.addFile(blob, meta);
     f.mime = 'application/x-notebook'; f.pagePapers = [paper]; await App.updateFile(f);
     if (open) App.ink.open(f.id);

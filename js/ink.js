@@ -57,13 +57,37 @@
 
   // ---------- Papierwahl ----------
   // Kacheln mit Papier-Vorschau – überall dieselben (neues Blatt in Mitschrift/Anwenden, Popup für Notizblatt, Seite anhängen, Papier ändern)
-  INK.paperTiles = (current) => `<div class="paper-pick">${UL.PAPERS.map(([k, l]) => `<button class="paper-tile ${k === current ? 'on' : ''}" data-paper="${k}"><canvas width="120" height="170"></canvas><span>${l}</span></button>`).join('')}</div>`;
+  INK.paperTiles = (current, orient = 'port') => `<div class="paper-pick">${UL.PAPERS.map(([k, l]) => `<button class="paper-tile ${k === current ? 'on' : ''}" data-paper="${k}"><canvas width="${orient === 'land' ? 170 : 120}" height="${orient === 'land' ? 120 : 170}"></canvas><span>${l}</span></button>`).join('')}</div>`;
   INK.drawPaperTiles = (root) => root.querySelectorAll('.paper-tile canvas').forEach((cv) => INK.drawPaper(cv.getContext('2d'), cv.width, cv.height, cv.parentElement.dataset.paper));
+  // Hochkant/Quer-Schalter über den Papier-Kacheln (Format gilt fürs ganze Blatt); dreht die Kacheln gleich mit
+  INK.orientSwitch = (orient) => `<div class="orient-pick chips" role="group" aria-label="Format"><span class="small muted">Format</span>
+    <button type="button" class="chip ${orient !== 'land' ? 'on' : ''}" data-orient="port"><span class="orient-ic"></span>Hochkant</button>
+    <button type="button" class="chip ${orient === 'land' ? 'on' : ''}" data-orient="land"><span class="orient-ic land"></span>Quer</button></div>`;
+  INK.bindOrient = (root, onChange) => {
+    let orient = root.querySelector('[data-orient].on').dataset.orient;
+    root.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-orient]'); if (!b) return;
+      orient = b.dataset.orient;
+      root.querySelectorAll('[data-orient]').forEach((x) => x.classList.toggle('on', x === b));
+      root.querySelectorAll('.paper-tile canvas').forEach((cv) => { cv.width = orient === 'land' ? 170 : 120; cv.height = orient === 'land' ? 120 : 170; });
+      INK.drawPaperTiles(root);
+      if (onChange) onChange(orient);
+    });
+    return () => orient;
+  };
   INK.pickPaper = ({ title, current } = {}) => new Promise((res) => {
     let done = false;
     const md = App.modal({ title, cls: 'paper-modal', body: `<p class="muted">Welches Papier?</p>${INK.paperTiles(current)}`, foot: false, onClose: () => { if (!done) res(null); } });
     INK.drawPaperTiles(md.el);
     md.el.addEventListener('click', (ev) => { const b = ev.target.closest('[data-paper]'); if (b) { done = true; res(b.dataset.paper); md.close(); } });
+  });
+  // Papier + Format für ein Notizblatt → { paper, orient } oder null. note: Zusatzzeile unter dem Schalter
+  INK.pickSheet = ({ title, current, orient = 'port', note = '' } = {}) => new Promise((res) => {
+    let done = false;
+    const md = App.modal({ title, cls: 'paper-modal', body: `${INK.orientSwitch(orient)}${note ? `<p class="small muted" style="text-align:center;margin:4px 0 0">${note}</p>` : ''}<p class="muted">Welches Papier?</p>${INK.paperTiles(current, orient)}`, foot: false, onClose: () => { if (!done) res(null); } });
+    INK.drawPaperTiles(md.el);
+    const getOrient = INK.bindOrient(md.el);
+    md.el.addEventListener('click', (ev) => { const b = ev.target.closest('[data-paper]'); if (b) { done = true; res({ paper: b.dataset.paper, orient: getOrient() }); md.close(); } });
   });
 
   // ---------- Striche zeichnen ----------
@@ -184,7 +208,7 @@
     // Nur Notizblatt-Seiten haben ein Papiermuster; PDF-/Bildseiten bekommen nur weißen Grund (kein pdf.js-Rendern in Vorschauen)
     const paper = kind === 'notebook' ? ((f.pagePapers || [])[page] ?? f.paper ?? 'lines') : null;
     const cssW = canvas.clientWidth || canvas.width || 300;
-    const fullH = cssW * A4;
+    const fullH = cssW * (kind === 'notebook' ? UL.sheetRatio(f) : A4);
     let cssH;
     if (crop) {
       let maxY = 0;
@@ -424,7 +448,7 @@
           pageDefs.push({ kind: 'image', ratio: img.naturalHeight / img.naturalWidth });
         }
       } else {
-        for (let i = 0; i < (f.pages || 1); i++) pageDefs.push({ kind: 'paper', ratio: A4, paper: UL.pagePaper(f, i) });
+        for (let i = 0; i < (f.pages || 1); i++) pageDefs.push({ kind: 'paper', ratio: UL.sheetRatio(f), paper: UL.pagePaper(f, i) });
       }
     } catch (e) {
       console.error(e);
@@ -468,7 +492,9 @@
       });
     };
 
-    const baseWidth = () => (st.book ? BK.fitWidth(scroller.clientWidth, scroller.clientHeight, A4) : Math.min(scroller.clientWidth - 44, 1100));
+    // Buchlayout gibt es nur für Notizblätter – alle Seiten haben dort dasselbe Format (Hochkant oder Quer)
+    const bookRatio = () => (kind === 'notebook' ? UL.sheetRatio(f) : A4);
+    const baseWidth = () => (st.book ? BK.fitWidth(scroller.clientWidth, scroller.clientHeight, bookRatio()) : Math.min(scroller.clientWidth - 44, 1100));
     const buildPage = (def, i) => {
       const el = document.createElement('div');
       el.className = 'vpage';
@@ -587,7 +613,7 @@
         }
         placeEx();
         // Einband, Falz und Ecken sind in em bemessen: 1em = 1/30 Seitenbreite
-        if (st.book) { pagesEl.style.fontSize = W / 30 + 'px'; bk.ghost.style.width = W + 'px'; bk.ghost.style.height = W * A4 + 'px'; }
+        if (st.book) { pagesEl.style.fontSize = W / 30 + 'px'; bk.ghost.style.width = W + 'px'; bk.ghost.style.height = W * bookRatio() + 'px'; }
         else pagesEl.style.fontSize = '';
       }
       root.querySelector('[data-v=fit]').textContent = Math.round(st.zoom * 100) + '%';
@@ -1432,7 +1458,7 @@
       const added = [];
       for (let k = 0; k < plan.count; k++) {
         UL.appendPaper(f, paper, kind === 'notebook');
-        added.push(buildPage({ kind: 'paper', ratio: A4, paper, extra: kind !== 'notebook' }, st.pages.length));
+        added.push(buildPage({ kind: 'paper', ratio: kind === 'notebook' ? UL.sheetRatio(f) : A4, paper, extra: kind !== 'notebook' }, st.pages.length));
       }
       await App.updateFile(f);
       const pg = added[0];
@@ -1461,7 +1487,9 @@
         for (const im of p.images) { imgEl(im); try { await imgCache.get(im.id).decode(); } catch (e) { /* kaputtes Bild auslassen */ } }
         drawImages(ctx, p, W);
         p.strokes.forEach((s) => drawStroke(ctx, s, W));
-        const im = document.createElement('img'); im.src = cv.toDataURL('image/jpeg', 0.9); pr.appendChild(im);
+        const im = document.createElement('img'); im.src = cv.toDataURL('image/jpeg', 0.9);
+        if (p.def.ratio < 1) im.className = 'land'; // breite Seite → Druckseite im Querformat (@page land)
+        pr.appendChild(im);
       }
       setTimeout(() => { window.print(); }, 300);
       App.toast('Tipp: Drucker „Microsoft Print to PDF“ wählen, um die Hausaufgabe als PDF zu speichern.');
@@ -1479,7 +1507,21 @@
         targets = [isPaper(top) ? top : after.find((p) => p.visible) || after[0] || sheets[sheets.length - 1]].filter(Boolean);
       }
       if (!targets.length) { note('Hier gibt es noch kein Schreibblatt – mit „Leere Seite anhängen“ kommt eines dazu', 3200); return; }
-      const paper = await INK.pickPaper({ title: st.book ? 'Papier dieser Doppelseite' : `Papier von Seite ${targets[0].i + 1}`, current: targets[0].def.paper });
+      const title = st.book ? 'Papier dieser Doppelseite' : `Papier von Seite ${targets[0].i + 1}`;
+      // Notizblätter: zusätzlich Hochkant/Quer (für alle Seiten des Blatts); Zusatzseiten an PDFs bleiben hochkant
+      let paper;
+      if (kind === 'notebook') {
+        const r = await INK.pickSheet({ title, current: targets[0].def.paper, orient: UL.orientOf(f), note: 'Das Format gilt für alle Seiten dieses Blatts.' });
+        if (!r || destroyed) return;
+        paper = r.paper;
+        if (r.orient !== UL.orientOf(f)) {
+          flushAll();
+          if (await INK.setOrient(f.id, r.orient, st.pages.map((p) => ({ strokes: p.strokes, images: p.images }))) && !destroyed) {
+            st.pages.forEach((p) => { if (p.def.kind === 'paper') { p.def.ratio = UL.sheetRatio(f); p.renderedW = 0; } });
+            layout(); st.pages.forEach((p) => { if (p.visible) renderPage(p); });
+          }
+        }
+      } else paper = await INK.pickPaper({ title, current: targets[0].def.paper });
       if (!paper || destroyed) return;
       const firstExtra = st.pages.findIndex((p) => p.def.extra);
       targets.forEach((p) => {
@@ -1506,6 +1548,21 @@
       row.links = row.links.filter((l) => l.itemId !== itemId);
       await App.db.put('ink', row);
     }
+  };
+
+  // Format eines Notizblatts wechseln (alle Seiten). Reicht beim Wechsel auf Quer Geschriebenes tiefer als die neue Seite,
+  // wird vorher gefragt – es bleibt gespeichert, liegt dann aber unterhalb der Seite. rows: Seiteninhalt, wenn das Blatt gerade offen ist.
+  // Liefert true, wenn gewechselt wurde.
+  INK.setOrient = async (fileId, orient, rows) => {
+    const f = App.store.files.get(fileId);
+    if (!f || UL.orientOf(f) === orient) return false;
+    if (orient === 'land') {
+      const all = rows || (await App.db.all('ink')).filter((r) => r.fileId === fileId);
+      if (UL.inkBelow(all, UL.ORIENT.land) && !await App.confirm('Im Querformat ist die Seite kürzer – ein Teil deiner Schrift steht weiter unten und wäre nicht mehr zu sehen. Trotzdem auf Quer stellen?', { ok: 'Auf Quer stellen', danger: false, title: 'Querformat?' })) return false;
+    }
+    if (orient === 'land') f.orient = 'land'; else delete f.orient;
+    await App.updateFile(f);
+    return true;
   };
 
   // ---------- Vollbild-Viewer ----------

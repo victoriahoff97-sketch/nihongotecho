@@ -72,7 +72,7 @@
       { target: '#view a.mode-card[href^="#/ueben/heute"]', text: 'Der Kern: Karten kommen wieder, kurz bevor du sie vergessen würdest – hier alles Fällige gemischt. Daneben „Karteikarten“: einzeln nach Art oder Lektion üben und Neues lernen.' },
       { target: '#view a.mode-card[href="#/ueben/einstufen"]', text: 'Neues erst einstufen, damit du nichts wiederholst, was du schon kannst.' },
       { target: '#view a.mode-card[href="#/ueben/kanji"]', text: 'Kanji mit dem Stift schreiben oder Lesungen erkennen.' },
-      { target: '#view a.mode-card[href="#/ueben/saetze"]', text: 'Ganze Sätze, gebaut nur aus Wörtern und Grammatik, die du schon hast.' },
+      { target: '#view a.mode-card[href="#/ueben/saetze"]', text: 'Ganze Sätze, gebaut nur aus Wörtern und Grammatik, die du schon hast. Daneben „Lückensätze“: Partikeln wie を, に, で in die Lücken ziehen.' },
       { target: '#view a.mode-card[href="#/ueben/konjugieren"]', text: 'Formen bilden: Du wählst eine Mischung, zum Beispiel nur die て-Form, bildest die Formen im Kopf oder auf Papier und deckst auf.' },
     ],
     // Karteikarten und „Jetzt wiederholen“ (Auswahl oder laufende Runde). heart: als Herzstück hervorgehoben.
@@ -100,13 +100,21 @@
       { target: '#view .fold-btn[data-fold-course]', text: 'Die Stunden sind nach Kurs geordnet. Ein Tipp auf eine Stunde öffnet ihr Blatt.' },
       { target: '#view .kb-open', text: 'Das Notizbuch zeigt alle Mitschriften eines Kurses als Buch zum Blättern, mit Inhaltsverzeichnis für Stunden und Grammatik.' },
     ],
-    // Schreibblatt: „?“ auf einer Unterrichtsstunde und „⋯ > Hilfe“ in jedem Blatt
+    // Unterrichtsstunde: „?“ auf der Stunde – Blätter-Übersicht (geschrieben wird im Vollbild)
+    stunde: [
+      { target: '#view .tabs', text: 'Zu jeder Stunde: Handschrift, getippte Notizen, Material, Hausaufgaben und was du gelernt hast.' },
+      { target: '#view .sheet-thumb', title: 'Deine Blätter', text: 'Jedes Blatt mit deiner Schrift auf Seite 1. Tipp darauf: Es geht groß auf, dort schreibst du mit dem Stift.' },
+      { target: '#view [data-orient-of]', title: 'Hochkant oder quer', text: 'Für jedes Blatt einzeln. Das Format gilt für alle Seiten dieses Blatts.' },
+      { target: '#view [data-nb-new]', text: 'Noch ein Blatt für dieselbe Stunde, z. B. für ein anderes Papier oder Querformat.' },
+      { target: '#view .sheet-thumb', text: 'Stifte, Erkennen und Papier erklärt „⋯ › Hilfe“ im geöffneten Blatt.' },
+    ],
+    // Schreibblatt: „⋯ > Hilfe“ in jedem Blatt
     blatt: [
       { target: '.viewer-bar [data-pens]', title: 'Meine Stifte', text: 'Tippe einen Stift an, um zu schreiben. Nochmal antippen: Stiftart, Dicke, Deckkraft und Farbe einstellen oder ihn zum Standard machen. „Neu“ legt einen weiteren Stift an.' },
       { target: '.viewer-bar [data-tool="lasso"]', title: 'Erkennen', text: 'Kreise ein handgeschriebenes Wort ein. Die App schlägt vor, was dort steht – tippe den passenden Vorschlag an.' },
       { target: '.viewer-bar [data-tool="lasso"]', title: 'Verknüpfen', text: 'Im Nachschlagen-Fenster tippst du „Mit dem Wort verknüpfen“. Gibt es die Vokabel, Grammatik oder das Kanji noch nicht, legst du es dort gleich an.' },
       { target: '.viewer-bar [data-tool="lasso"]', title: 'Wiederfinden', text: 'Verknüpfte Stellen sind farbig markiert: Vokabeln lila, Grammatik orange, Kanji pink. Ein Tipp darauf zeigt den Eintrag.' },
-      { target: '.viewer-bar [data-v="paper"]', title: 'Papier', text: 'Liniert, kariert, Kanji-Raster, Punkte oder blanko, für jede Seite einzeln.', link: { label: 'Sticker, Buch und Aufgaben zeigen', tour: 'blattMehr' } },
+      { target: '.viewer-bar [data-v="paper"]', title: 'Papier', text: 'Liniert, kariert, Kanji-Raster, Punkte oder blanko, für jede Seite einzeln. Hochkant oder quer stellst du hier fürs ganze Blatt ein.', link: { label: 'Sticker, Buch und Aufgaben zeigen', tour: 'blattMehr' } },
     ],
     // zweiter Teil, erreichbar über den letzten Schritt von „blatt“; „Buch“ gibt es nur im Notizblatt, „Nebeneinander“ nur bei Buchaufgaben
     blattMehr: [
