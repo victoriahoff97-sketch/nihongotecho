@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-forum-ausdruck', date: '7. November',
+      items: [
+        { t: 'Ausdrücke aus dem Forum übernehmen', d: 'Hängt jemand im Forum einen Ausdruck an, den du nicht hast, steht darunter „＋ Als Ausdruck übernehmen“ – Satz, Deutsch und Gruppe sind schon ausgefüllt.' },
+      ],
+    },
+    {
       id: '2026-11-07-sortieren', date: '7. November',
       items: [
         { t: 'Nach Niveau sortieren', d: 'Bei Vokabeln, Grammatik und Kanji sitzt am Ende der Filterzeile ein Pfeil-Knopf: Nach Lektion, Niveau N5 → N1 oder N1 → N5. Die Wahl merkt sich jedes Gerät.' },

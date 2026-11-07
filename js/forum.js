@@ -139,7 +139,9 @@
     return it && F.REF_TYPES.includes(it.type) && App.link(it) === '#/' + parts.join('/') ? it : null;
   };
   const byWord = (w) => { for (const it of App.store.items.values()) if (it.type === 'vocab' && (it.kanji === w || it.kana === w)) return it; return null; };
-  const resolve = (ref) => F.resolveRef(ref, { byId: App.item, byWord, byChar: App.kanjiByChar });
+  // label ist auf 60 Zeichen gekürzt – lange Sätze nur am Anfang vergleichen
+  const byPhrase = (s) => App.itemsOf('phrase').find((p) => App.jp.plain(p.jp || '').slice(0, 60) === s) || null;
+  const resolve = (ref) => F.resolveRef(ref, { byId: App.item, byWord, byChar: App.kanjiByChar, byPhrase });
   // Kanji stehen rechts neben dem Text (withKanji), alles andere darunter; i bleibt der Platz in refs
   // mine: eigener Beitrag – dann lässt sich am Beispielsatz (Zahnrad) ein anderer eigener Satz wählen
   const otherExamples = (r) => { const it = r.type === 'vocab' && App.item(r.id); return it ? (it.examples || []).filter((x) => x && x.jp) : []; };
@@ -167,10 +169,14 @@
       const reading = v && v.kana && v.kana !== r.label ? `<span class="forum-ref-kana" lang="ja">${esc(v.kana)}</span>` : '';
       const ex = v && v.examples && v.examples[0] && v.examples[0].jp ? v.examples[0] : null;
       const exHtml = ex ? `<span class="forum-ref-ex"><span lang="ja">${App.jp.ruby(ex.jp)}</span>${ex.de ? `<span class="muted">${esc(ex.de)}</span>` : ''}</span>` : '';
+      // Ausdrücke bringen ihren Satz mit Furigana mit
+      const ph = r.phrase && r.phrase.jp ? r.phrase : null;
+      const main = ph ? App.jp.ruby(ph.jp) : esc(r.label);
+      const takeLbl = r.type === 'phrase' ? 'Als Ausdruck übernehmen' : 'Als Vokabel übernehmen';
       return `<span class="forum-ref ${sec.cls}"><button type="button" class="forum-ref-open ${exHtml ? 'has-ex' : ''}" data-ref="${esc(owner)}:${i}" title="${take ? 'Hast du noch nicht – danach suchen' : 'Öffnen'}">
-          <span class="badge sec">${sec.label}</span><b lang="ja">${esc(r.label)}</b>${reading}${r.sub ? `<span class="muted">${esc(r.sub)}</span>` : ''}${exHtml}</button>
+          <span class="badge sec">${sec.label}</span><b lang="ja">${main}</b>${reading}${r.sub ? `<span class="muted">${esc(r.sub)}</span>` : ''}${exHtml}</button>
           ${mine && exHtml && otherExamples(r).length > 1 ? `<button type="button" class="icon-btn forum-exset" data-exset="${esc(owner)}:${i}" title="Anderen Beispielsatz wählen" aria-label="Anderen Beispielsatz wählen">${icon('settings')}</button>` : ''}
-          ${take ? `<button type="button" class="btn btn-sm" data-take="${esc(owner)}:${i}">${icon('plus')} Als Vokabel übernehmen</button>` : ''}</span>`;
+          ${take ? `<button type="button" class="btn btn-sm" data-take="${esc(owner)}:${i}">${icon('plus')} ${takeLbl}</button>` : ''}</span>`;
     }).join('')}</div>`;
   };
   // Zahnrad: einen der eigenen Beispielsätze wählen → Promise mit dem Satz (oder null)
@@ -251,6 +257,16 @@
         type: 'kanji', title: 'Kanji übernehmen', single: true,
         defaults: { char: k.char || ref.label, de: k.de || ref.sub, source: 'Eigene', tags: [] },
         onSaved: () => { App.toast(`„${k.char || ref.label}“ ist jetzt in deinen Kanji`); if (after) after(); },
+      });
+      return;
+    }
+    if (ref.type === 'phrase') {
+      // alte Verweise ohne Kopie: Satz aus label, Deutsch aus sub; die Gruppe legt das Formular notfalls neu an
+      const p = ref.phrase || {};
+      App.editItem({
+        type: 'phrase', title: 'Ausdruck übernehmen', single: true,
+        defaults: { jp: p.jp || ref.label, de: p.de || ref.sub, note: p.note || '', group: p.group || '', source: 'Eigene', tags: [] },
+        onSaved: () => { App.toast('Der Ausdruck ist jetzt in deinen Ausdrücken'); if (after) after(); },
       });
       return;
     }

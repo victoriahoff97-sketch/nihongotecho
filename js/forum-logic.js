@@ -55,11 +55,14 @@
       .map((x) => ({ jp: str(x.jp, 200), de: str(x.de, 200) })),
   });
   // Kanji: Zeichen, Bedeutung und Lesungen (als fertiger Text) – so sehen alle das Kanji, auch ohne es selbst zu haben
+  // Ausdruck: Satz (mit Furigana-Notation), Deutsch, Merkhilfe, Gruppe – zum Übernehmen bei den anderen
+  const cleanPhrase = (p) => ({ jp: str(p.jp, 300), de: str(p.de, 200), note: str(p.note, 200), group: str(p.group, 60) });
   const cleanKanji = (k) => ({ char: str(k.char, 4), de: str(k.de, 120), on: str(k.on, 80), kun: str(k.kun, 120) });
   F.makeRef = (it, { label, sub, kanji }) => {
     const ref = { type: it.type, id: it.id, label: str(label, 60), sub: str(sub, 80) };
     if (it.type === 'vocab') ref.vocab = cleanVocab(it);
     if (it.type === 'kanji') ref.kanji = cleanKanji(Object.assign({ char: it.char, de: sub }, kanji));
+    if (it.type === 'phrase') ref.phrase = cleanPhrase(it);
     return ref;
   };
   // Satz aus „Sätze erkennen“ (z. B. aus einem Zeitungsartikel): kein Eintrag, sondern eine Kopie des Satzes;
@@ -77,13 +80,14 @@
         const out = { type: r.type, id: r.id, label: str(r.label, 60), sub: str(r.sub, 80) };
         if (r.type === 'vocab' && r.vocab && typeof r.vocab === 'object') out.vocab = cleanVocab(r.vocab);
         if (r.type === 'kanji' && r.kanji && typeof r.kanji === 'object') out.kanji = cleanKanji(r.kanji);
+        if (r.type === 'phrase' && r.phrase && typeof r.phrase === 'object') out.phrase = cleanPhrase(r.phrase);
         if (r.type === 'satz') out.satz = cleanSatz(r.satz);
         return out;
       });
   };
   // Antippen: derselbe Eintrag → öffnen · eigene Vokabel mit demselben Wort bzw. eigenes Kanji mit demselben
   // Zeichen → das öffnen · fremde Vokabel / fremdes Kanji → übernehmen anbieten · sonst danach suchen
-  F.resolveRef = (ref, { byId, byWord, byChar = () => null }) => {
+  F.resolveRef = (ref, { byId, byWord, byChar = () => null, byPhrase = () => null }) => {
     const same = byId(ref.id);
     if (same) return { kind: 'open', id: same.id };
     if (ref.type === 'vocab' && ref.vocab) {
@@ -96,6 +100,12 @@
       const mine = ch ? byChar(ch) : null;
       if (mine) return { kind: 'open', id: mine.id };
       if (ch) return { kind: 'take' };
+    }
+    // Ausdruck: label ist der Satz ohne Furigana (auch bei alten Verweisen ohne Kopie)
+    if (ref.type === 'phrase' && ref.label) {
+      const mine = byPhrase(ref.label);
+      if (mine) return { kind: 'open', id: mine.id };
+      return { kind: 'take' };
     }
     return { kind: 'search', q: ref.label };
   };
