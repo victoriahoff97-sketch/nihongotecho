@@ -110,6 +110,18 @@
     return { kind: 'search', q: ref.label };
   };
 
+  // Fremder Satz zur eigenen Vokabel: der mitgeschickte Beispielsatz, sonst der angehängte Satz des Beitrags
+  // (Vokabeln aus „Satz anhängen“ haben keinen eigenen) – null, wenn keiner da ist oder die eigene Vokabel ihn schon hat
+  F.sentenceForMine = (ref, satzRef, mine, plain) => {
+    if (!ref || ref.type !== 'vocab' || !mine) return null;
+    const own = ref.vocab && ref.vocab.examples && ref.vocab.examples[0];
+    const s = own && own.jp ? own : satzRef && satzRef.satz && satzRef.satz.jp ? satzRef.satz : null;
+    if (!s) return null;
+    const key = plain(s.jp);
+    if ((mine.examples || []).some((x) => x && x.jp && plain(x.jp) === key)) return null;
+    return { jp: s.jp, de: s.de || '' };
+  };
+
   // ---------- Suche ----------
   // Alle Wörter müssen irgendwo vorkommen: Text, Name, verknüpfte Einträge (Wort, Lesung, Deutsch)
   const fold = (s) => String(s ?? '').toLowerCase().normalize('NFKC');

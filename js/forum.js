@@ -176,7 +176,8 @@
       return `<span class="forum-ref ${sec.cls}"><button type="button" class="forum-ref-open ${exHtml ? 'has-ex' : ''}" data-ref="${esc(owner)}:${i}" title="${take ? 'Hast du noch nicht – danach suchen' : 'Öffnen'}">
           <span class="badge sec">${sec.label}</span><b lang="ja">${main}</b>${reading}${r.sub ? `<span class="muted">${esc(r.sub)}</span>` : ''}${exHtml}</button>
           ${mine && exHtml && otherExamples(r).length > 1 ? `<button type="button" class="icon-btn forum-exset" data-exset="${esc(owner)}:${i}" title="Anderen Beispielsatz wählen" aria-label="Anderen Beispielsatz wählen">${icon('settings')}</button>` : ''}
-          ${take ? `<button type="button" class="btn btn-sm" data-take="${esc(owner)}:${i}">${icon('plus')} ${takeLbl}</button>` : ''}</span>`;
+          ${take ? `<button type="button" class="btn btn-sm" data-take="${esc(owner)}:${i}">${icon('plus')} ${takeLbl}</button>` : ''}
+          ${!take && !mine && F.sentenceForMine(r, satz, mineFor(r), App.jp.plain) ? `<button type="button" class="btn btn-sm" data-addex="${esc(owner)}:${i}" title="Den Satz als weiteren Beispielsatz bei deiner Vokabel speichern">${icon('plus')} Satz zu meiner Vokabel</button>` : ''}</span>`;
     }).join('')}</div>`;
   };
   // Zahnrad: einen der eigenen Beispielsätze wählen → Promise mit dem Satz (oder null)
@@ -248,6 +249,17 @@
     const to = r.kind === 'open' ? App.link(App.item(r.id)) : '#/suche?' + new URLSearchParams({ q: ref.label });
     if (ui) ui.md.close();
     App.go(to);
+  };
+  // Wort hab ich schon, den Satz noch nicht: fremden Satz als weiteren Beispielsatz an die eigene Vokabel hängen
+  const mineFor = (r) => { const x = resolve(r); return x.kind === 'open' ? App.item(x.id) : null; };
+  const addExample = async (ref, satzRef, from) => {
+    const mine = ref && mineFor(ref);
+    const s = mine && F.sentenceForMine(ref, satzRef, mine, App.jp.plain);
+    if (!s) return false;
+    mine.examples = (mine.examples || []).concat([{ jp: s.jp, de: s.de, src: from ? `Forum · ${from}` : 'Forum' }]);
+    await App.saveItem(mine, { silent: true });
+    App.toast(`Satz bei „${App.itemPlain(mine)}“ gespeichert`);
+    return true;
   };
   const takeRef = (ref, after) => {
     if (ref.type === 'kanji') {
@@ -929,6 +941,14 @@
       if (ro) { const ref = refAt(ro.dataset.ref); if (ref) openRef(ref); return; }
       const tk = e.target.closest('[data-take]');
       if (tk) { const ref = refAt(tk.dataset.take); if (ref) takeRef(ref, () => { drawHead(); drawReplies(); App.hydrateIcons(r); }); return; }
+      const ax = e.target.closest('[data-addex]');
+      if (ax) {
+        const [o, i] = ax.dataset.addex.split(':');
+        const x = o === 'post' ? posts.find((y) => y.id === id) : replies.find((y) => y.id === o);
+        const refs = x ? F.cleanRefs(x.refs) : [];
+        if (await addExample(refs[Number(i)], refs.find((y) => y.type === 'satz'), x && x.name)) { drawHead(); drawReplies(); App.hydrateIcons(r); }
+        return;
+      }
       const ex = e.target.closest('[data-exset]');
       if (ex) {
         const [o, i] = ex.dataset.exset.split(':');

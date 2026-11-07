@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-forum-satz', date: '7. November',
+      items: [
+        { t: 'Sätze aus dem Forum sammeln', d: 'Verlinkt jemand im Forum ein Wort, das du schon hast, mit einem neuen Satz? „＋ Satz zu meiner Vokabel“ speichert ihn als weiteren Beispielsatz.' },
+      ],
+    },
+    {
       id: '2026-11-07-forum-ausdruck', date: '7. November',
       items: [
         { t: 'Ausdrücke aus dem Forum übernehmen', d: 'Hängt jemand im Forum einen Ausdruck an, den du nicht hast, steht darunter „＋ Als Ausdruck übernehmen“ – Satz, Deutsch und Gruppe sind schon ausgefüllt.' },
