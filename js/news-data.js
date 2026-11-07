@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-konjugieren-auswahl', date: '7. November',
+      items: [
+        { t: 'Konjugieren mit Auswahl', d: 'Unter Üben › Konjugieren kannst du jetzt aus vier Antworten wählen. Die falschen sind typische Fehler wie 飲みて oder 高いでした, du musst also wirklich die Regel kennen.' },
+        { t: 'Oder selbst schreiben', d: '„Schreiben“ gibt dir das Antwortfeld mit Stift oder Tastatur, die App prüft deine Form.' },
+        { t: 'Start bei irgendeiner Form', d: 'Die Karte startet bei der Grundform, bei der ます-Form oder bei einer zufälligen Form, z. B. 飲みました → て-Form.' },
+      ],
+    },
+    {
       id: '2026-11-07-forum-satz', date: '7. November',
       items: [
         { t: 'Sätze aus dem Forum sammeln', d: 'Verlinkt jemand im Forum ein Wort, das du schon hast, mit einem neuen Satz? „＋ Satz zu meiner Vokabel“ speichert ihn als weiteren Beispielsatz.' },

@@ -135,4 +135,147 @@
     return s;
   };
   C.summary = (stats) => F.FORMS.filter((f) => stats && stats[f.id]).map((f) => ({ form: f.id, asked: stats[f.id].asked, right: stats[f.id].right }));
+
+  // ---------- Womit die Karte startet und wie geantwortet wird (pro Gerät gemerkt) ----------
+  C.STARTS = [
+    { id: 'dict', label: 'Grundform' },
+    { id: 'masu', label: 'ます-Form' },
+    { id: 'any', label: 'Zufällig' },
+  ];
+  C.ANSWERS = [
+    { id: 'head', label: 'Im Kopf', icon: 'eye' },
+    { id: 'write', label: 'Schreiben', icon: 'pen' },
+    { id: 'mc', label: 'Auswahl', icon: 'list' },
+  ];
+  C.cleanStart = (id) => (C.STARTS.some((s) => s.id === id) ? id : 'dict');
+  C.cleanAnswer = (id) => (C.ANSWERS.some((s) => s.id === id) ? id : 'head');
+
+  const conj = (form, w) => F.example(form, w).to; // Notation, z. B. 書[か]いて
+  const kanaOf = (form, w) => JP.toHira(JP.kana(conj(form, w)));
+  const startStation = (pos) => F.FORMS.find((x) => !x.from.length && C.posOf(x) === pos);
+  // Von welcher Form aus gefragt wird: Grundform · ます-Form (Adjektive haben keine, sie starten in der Grundform) ·
+  // zufällig irgendeine andere Form desselben Wortes. Nie die gesuchte Form selbst und nie eine, die gleich aussieht
+  C.startOf = (w, formId, start, rnd = Math.random) => {
+    const f = F.form(formId);
+    const base = startStation(C.posOf(f));
+    if (start === 'masu' && f.map === 'verb' && formId !== 'v-masu') return 'v-masu';
+    if (start !== 'any') return base.id;
+    const target = kanaOf(f, w);
+    const list = [base].concat(C.forms(C.posOf(f))).filter((x) => x.id !== formId && x.id !== 'v-stem' && (x === base || C.applies(x, w)) && kanaOf(x, w) !== target);
+    return list.length ? list[Math.floor(rnd() * list.length)].id : base.id;
+  };
+
+  // ---------- Auswahl-Antworten: drei falsche, die der richtigen zum Verwechseln ähneln ----------
+  // Sie entstehen aus den typischen Fehlern: falsche Verbgruppe, falscher Lautwechsel (飲みて, 飲いで), falsche Vokalreihe
+  // (書きない), falsche Endung bei Adjektiven (高いでした, 元気くない) oder eine Nachbarform desselben Wortes.
+  // Damit man die Lösung nicht an der Form ablesen kann, kommen die Fehler nach vorn, die gleich enden und gleich lang sind.
+  const ROWS = ['かきくけこ', 'がぎぐげご', 'さしすせそ', 'たちつてと', 'なにぬねの', 'ばびぶべぼ', 'まみむめも', 'らりるれろ', 'わいうえお'];
+  const GODAN_END = 'うくぐすつぬぶむる';
+  // Wortstamm in Kanji und Kana (書く → 書 / か), damit ein falsches Kana-Wort dieselben Kanji bekommt wie die Lösung
+  const stems = (w) => {
+    const k = w.kanji || '', r = w.kana || '';
+    if (w.pos === 'verb' && w.v && w.v.cls === 'irr' && /来る$/.test(k)) return { k: k.slice(0, -1), r: r.slice(0, -2), kuru: true };
+    let n = 0;
+    while (n < k.length && n < r.length && k[k.length - 1 - n] === r[r.length - 1 - n]) n++;
+    return { k: k.slice(0, k.length - n), r: r.slice(0, r.length - n) };
+  };
+  // Kana-Wort → Notation mit den Kanji des Wortes; null, wenn es sich nicht so schreiben lässt (dann fiele es neben der Lösung auf)
+  const mk = (w, kana) => {
+    if (!w.kanji || w.kanji === w.kana) return kana;
+    const s = stems(w);
+    if (!kana.startsWith(s.r)) return null;
+    const rest = kana.slice(s.r.length + (s.kuru ? 1 : 0));
+    if (s.kuru && !/^[くこき]/.test(kana.slice(s.r.length))) return null;
+    const out = JP.notate(s.k + rest, kana);
+    return JP.kana(out) === kana || !JP.hasNotation(out) ? out : null;
+  };
+  const fakeVerb = (w, cls, kana, kanji) => Object.assign({}, w, { kana: kana || w.kana, kanji: kanji === undefined ? w.kanji : kanji, v: Object.assign({}, w.v, { cls }) });
+  const TE_LINE = ['te', 'ta', 'tari', 'teimasu', 'teimashita'];
+
+  const verbWrongs = (w, f) => {
+    const cls = w.v.cls, k = w.kana, out = [];
+    const add = (s, src) => { if (s) out.push({ s, src }); };
+    const sol = JP.toHira(JP.kana(JP.conj(w, f.conj)));
+    // falsche Verbgruppe: る-Verb wie う-Verb (食べって) und umgekehrt; する/くる wie ein normales Verb
+    if (cls === 'ru' || (cls === 'u' && /る$/.test(k))) add(JP.conj(fakeVerb(w, cls === 'ru' ? 'u' : 'ru'), f.conj), 'cls');
+    if (cls === 'irr') { add(JP.conj(fakeVerb(w, 'ru'), f.conj), 'cls'); add(JP.conj(fakeVerb(w, 'u'), f.conj), 'cls'); }
+    // る-Verben: das る bleibt einfach stehen (食べるない, 食べるて)
+    if (cls === 'ru') { const st = JP.toHira(JP.kana(JP.conj(w, 'stem'))); if (sol.startsWith(st)) add(mk(w, k + sol.slice(st.length)), 'ru'); }
+    if (cls === 'u') {
+      // falscher Lautwechsel: so gebeugt, als ende das Verb auf einen anderen Laut (飲む → 飲いて, 飲って, 飲して)
+      const end = k.slice(-1), kjEnd = (w.kanji || '').slice(-1);
+      if (TE_LINE.includes(f.conj)) {
+        GODAN_END.split('').filter((e) => e !== end).forEach((e) => {
+          add(JP.conj(fakeVerb(w, 'u', k.slice(0, -1) + e, kjEnd === end ? w.kanji.slice(0, -1) + e : ''), f.conj), 'te');
+        });
+        // ます-Stamm + て (書きて) und bei 行く die „regelmäßige“ Form (行いて)
+        const stem = JP.toHira(JP.kana(JP.conj(w, 'stem')));
+        const teK = JP.toHira(JP.kana(JP.conj(w, 'te'))), taK = teK.replace(/て$/, 'た').replace(/で$/, 'だ');
+        const swap = (to) => (sol.startsWith(teK) ? to + 'て' + sol.slice(teK.length) : sol.startsWith(taK) ? to + 'た' + sol.slice(taK.length) : null);
+        const st = swap(stem); if (st) add(mk(w, st), 'te');
+        if (/(行く|いく)$/.test(w.kanji || k)) add(mk(w, sol.replace(/^(.*)っ([てた])/, '$1い$2')), 'te');
+      }
+    }
+    if (cls === 'u' || cls === 'irr') {
+      // falsche Vokalreihe direkt hinter dem Stamm (書かない → 書きない, 書けない; しない → さない)
+      let n = 0;
+      while (n < k.length && n < sol.length && k[n] === sol[n]) n++;
+      const first = sol[n], row = ROWS.find((x) => x.includes(first));
+      if (row && (cls === 'irr' || row.includes(k.slice(-1)))) row.split('').filter((c) => c !== first).forEach((c) => add(mk(w, sol.slice(0, n) + c + sol.slice(n + 1)), 'row'));
+    }
+    // る-Verben: Potential ohne ら (食べれる) ist umgangssprachlich üblich – nicht als falsch anbieten
+    return out.filter((x) => !(f.conj === 'potential' && cls === 'ru' && JP.kana(x.s) === k.slice(0, -1) + 'れる'));
+  };
+
+  const I_END = { negp: 'くない', neg: 'くないです', pastp: 'かった', past: 'かったです', pastnegp: 'くなかった', pastneg: 'くなかったです', te: 'くて' };
+  const NA_END = { negp: 'じゃない', neg: 'じゃないです', pastp: 'だった', past: 'でした', pastnegp: 'じゃなかった', pastneg: 'じゃなかったです', te: 'で' };
+  const adjWrongs = (w, f) => {
+    const out = [], k = w.kana, c = f.conj;
+    const add = (kana, src) => { const s = mk(w, kana); if (s) out.push({ s, src }); };
+    if (w.pos === 'i-adj') {
+      add(k + I_END[c], 'adj');                         // い bleibt stehen: 高いくない
+      add(k + NA_END[c], 'adj');                        // wie ein な-Adjektiv: 高いじゃない, 高いでした
+      if (c === 'past') add(k.slice(0, -1) + 'かったでした', 'adj');
+      if (c === 'neg') add(k.slice(0, -1) + 'くないでした', 'adj');
+      if (c === 'pastneg') add(k + 'くなかったです', 'adj');
+      if (/いい$/.test(k)) add(k.slice(0, -1) + I_END[c], 'adj'); // いい → いくない statt よくない
+    } else {
+      const b = k.replace(/な$/, '');
+      add(b + I_END[c], 'adj');                         // wie ein い-Adjektiv: 元気くない
+      add(b + 'な' + NA_END[c], 'adj');                 // な bleibt stehen: 元気なじゃない
+      if (c === 'past') add(b + 'だったです', 'adj');
+      if (c === 'pastneg') add(b + 'じゃないでした', 'adj');
+    }
+    return out;
+  };
+
+  const unvoice = (s) => s.replace(/で/g, 'て').replace(/だ/g, 'た');
+  const tailSame = (a, b) => { let n = 0; a = unvoice(a); b = unvoice(b); while (n < a.length && n < b.length && a[a.length - 1 - n] === b[b.length - 1 - n]) n++; return n; };
+  // Antworten für die Auswahl (Notation), die richtige darunter, gemischt. avoid = Formen, die schon auf der Karte stehen
+  C.choices = (w, formId, { n = 4, avoid = [], rnd = Math.random } = {}) => {
+    const f = F.form(formId);
+    const sol = conj(f, w), solK = JP.toHira(JP.kana(sol));
+    const seen = new Set([solK].concat(avoid.map((a) => JP.toHira(JP.kana(a)))));
+    const raw = f.map === 'verb' ? verbWrongs(w, f) : adjWrongs(w, f);
+    // Nachbarformen desselben Wortes (書きました ↔ 書きませんでした) – höchstens eine, sie prüft das Wissen, welche Form welche ist
+    C.forms(C.posOf(f)).filter((x) => x.id !== formId && x.id !== 'v-stem' && C.applies(x, w)).forEach((x) => raw.push({ s: conj(x, w), src: 'form' }));
+    const cands = [];
+    raw.forEach((x) => {
+      const r = JP.toHira(JP.kana(x.s));
+      if (!r || seen.has(r) || /undefined/.test(x.s)) return;
+      seen.add(r);
+      cands.push(Object.assign(x, { score: Math.min(tailSame(r, solK), 3) * 2 - Math.abs(r.length - solK.length), rnd: rnd() }));
+    });
+    cands.sort((a, b) => b.score - a.score || a.rnd - b.rnd);
+    const pick = [];
+    const by = (src) => pick.filter((x) => x.src === src).length;
+    cands.forEach((x) => { if (pick.length < n - 1 && !(x.src === 'form' && by('form')) && by(x.src) < 2) pick.push(x); });
+    cands.forEach((x) => { if (pick.length < n - 1 && !pick.includes(x) && !(x.src === 'form' && by('form'))) pick.push(x); });
+    cands.forEach((x) => { if (pick.length < n - 1 && !pick.includes(x)) pick.push(x); }); // zu wenige Fehler: weitere Nachbarformen
+    // 来る: 来ない und 来きない sähen in Kanji gleich aus – hier stehen alle Antworten in Kana
+    const show = w.pos === 'verb' && stems(w).kuru ? (s) => JP.toHira(JP.kana(s)) : (s) => s;
+    const all = pick.map((x) => show(x.s)).concat(show(sol));
+    for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [all[i], all[j]] = [all[j], all[i]]; }
+    return { list: all, answer: show(sol) };
+  };
 })(window.App);

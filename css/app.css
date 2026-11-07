@@ -1730,6 +1730,17 @@ a.r:hover { border-color: var(--sec); color: var(--sec); }
 .conj-forms .picker-row { min-height: 44px; padding: 6px 10px; }
 .conj-ask { margin-top: 14px; font-size: 26px; font-weight: 800; color: var(--c); }
 .conj-rule { max-width: 520px; margin: 10px auto 0; }
+.conj-from { font-size: 14px; color: var(--muted); }
+.conj-from b { color: var(--ink); font-weight: 600; }
+.conj-setting { align-items: center; }
+/* Auswahl: vier gleich große Antworten unter der Karte */
+.conj-mc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 620px; margin: 10px auto 0; }
+.conj-opt { position: relative; min-height: 52px; padding: 8px 12px 8px 34px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); font: inherit; font-size: 22px; cursor: pointer; }
+.conj-opt:hover:not(:disabled) { background: var(--paper-2); border-color: var(--sec, var(--line)); }
+.conj-opt kbd { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font: 600 12px/1 var(--font, inherit); color: var(--muted); }
+.conj-opt:disabled { cursor: default; opacity: .55; }
+.conj-opt.ok { opacity: 1; background: var(--matcha-soft); border: 2px solid var(--matcha); }
+.conj-opt.no { opacity: 1; background: var(--shu-soft); border: 2px solid var(--shu); }
 .conj-summary { display: grid; gap: 4px; max-width: 320px; margin: 4px auto 16px; text-align: left; }
 .conj-summary > div { display: flex; justify-content: space-between; gap: 16px; border-left: 4px solid var(--c); padding: 2px 0 2px 10px; }
 

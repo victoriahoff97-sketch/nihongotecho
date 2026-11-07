@@ -73,7 +73,7 @@
       { target: '#view a.mode-card[href="#/ueben/einstufen"]', text: 'Neues erst einstufen, damit du nichts wiederholst, was du schon kannst.' },
       { target: '#view a.mode-card[href="#/ueben/kanji"]', text: 'Kanji mit dem Stift schreiben oder Lesungen erkennen.' },
       { target: '#view a.mode-card[href="#/ueben/saetze"]', text: 'Ganze Sätze, gebaut nur aus Wörtern und Grammatik, die du schon hast. Daneben „Lückensätze“: Partikeln wie を, に, で in die Lücken ziehen.' },
-      { target: '#view a.mode-card[href="#/ueben/konjugieren"]', text: 'Formen bilden: Du wählst eine Mischung, zum Beispiel nur die て-Form, bildest die Formen im Kopf oder auf Papier und deckst auf.' },
+      { target: '#view a.mode-card[href="#/ueben/konjugieren"]', text: 'Formen bilden: Du wählst eine Mischung, zum Beispiel nur die て-Form, bildest die Formen im Kopf, schreibst sie oder wählst aus vier Antworten. Starten kannst du auch bei einer zufälligen Form.' },
     ],
     // Karteikarten und „Jetzt wiederholen“ (Auswahl oder laufende Runde). heart: als Herzstück hervorgehoben.
     // Das Schreibfeld steht je nach Lage an drei Stellen – gezeigt wird immer nur einer der drei ersten Schritte.

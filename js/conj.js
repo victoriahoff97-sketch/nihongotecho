@@ -10,13 +10,22 @@
 
   // Kartenseiten für die Kartenrunde (practice.js): vorne Grundform + gesuchte Form, hinten Lösung, Verbgruppe und Regel.
   // Die Verbgruppe steht bewusst erst hinten – sie zu erkennen gehört zur Aufgabe
-  App.conjFaces = (it, formId) => {
+  // ent.from = Form, mit der die Karte startet (sonst die Grundform) · ent.answer = 'head' | 'write' | 'mc'
+  App.conjFaces = (it, formId, ent = {}) => {
     const f = F.form(formId);
     const sol = F.example(f, it).to;
+    const from = ent.from && F.form(ent.from);
+    const fromStart = !from || !from.from.length;
+    const shown = fromStart ? null : F.example(from, it).to;
+    // Startet die Karte nicht in der Grundform, steht klein dabei, welche Form zu sehen ist (書いた allein wäre mehrdeutig)
+    const word = fromStart ? JP.wordRuby(it) : JP.ruby(shown);
+    const mc = ent.answer === 'mc' ? C.choices(it, formId, { avoid: shown ? [shown] : [] }) : null;
     return {
-      front: `<div class="front" lang="ja">${JP.wordRuby(it)}</div><div class="muted">${App.meaningHtml(it)}</div><div class="conj-ask" style="--c:${lineColor(f)}">→ ${esc(f.ask || f.label)}</div>`,
+      front: `<div class="front" lang="ja">${word}</div><div class="muted">${App.meaningHtml(it)}${fromStart ? '' : ` <span class="conj-from">· <b>${esc(from.ask || from.label)}</b></span>`}</div><div class="conj-ask" style="--c:${lineColor(f)}">→ ${esc(f.ask || f.label)}</div>`,
       back: `<div class="ans jp" lang="ja">${JP.ruby(sol)}</div>${it.pos === 'verb' ? `<div><span class="badge">${VERB_CLS[it.v.cls]}</span></div>` : ''}<p class="small muted conj-rule">${esc(f.rule)}</p>`,
       speak: sol,
+      choices: mc,
+      check: { type: 'vocab', pos: 'conj', kanji: JP.plain(sol), kana: JP.kana(sol) }, // fürs Antwortfeld: die gesuchte Form
     };
   };
 
@@ -41,6 +50,10 @@
     let mixId = C.cleanMix(App.lsGet('conjMix'));
     const custom = C.clean(App.lsGet('conjSel2')) || C.defaults();
     let sel = C.mixSel(mixId, custom);
+    let start = C.cleanStart(App.lsGet('conjStart'));
+    let answer = C.cleanAnswer(App.lsGet('conjAnswer'));
+    const START_NOTE = { dict: 'z. B. 書く', masu: 'z. B. 書きます · Adjektive in der Grundform', any: 'irgendeine Form, z. B. 書かなかった' };
+    const ANS_NOTE = { head: 'aufdecken und selbst bewerten', write: 'mit Stift oder Tastatur, wird geprüft', mc: 'vier Antworten zum Antippen' };
 
     const byChoice = q.w === 'wahl';
     const all = App.itemsOf('vocab').filter((it) => C.POS.some((x) => x.id === it.pos));
@@ -58,13 +71,15 @@
         <label class="picker-row conj-group-head"><input type="checkbox" data-line-check><b>${esc(g.label)}</b><span class="small muted" data-count></span></label>
         <div class="conj-forms" ${g.forms.length > 1 ? '' : 'hidden'}>${g.forms.map((f) => `<label class="picker-row"><input type="checkbox" data-form value="${f.id}" ${custom.forms.includes(f.id) ? 'checked' : ''}><span>${esc(f.label)}</span><span class="jp muted" lang="ja">${esc(JP.plain(F.example(f, F.sampleWord(f)).to))}</span></label>`).join('')}</div></div>`;
     view.innerHTML = `<div class="sec-grammar"><div class="crumbs">${App.backCrumb()} › Konjugieren</div>
-      <div class="page-head"><div class="titles"><h1>Konjugieren <span class="jp-title">活用</span></h1><p>Du siehst ein Wort in der Grundform und bildest die gesuchte Form – im Kopf oder auf Papier. Dann deckst du auf. An deinem Lernstand ändert das nichts.</p></div></div>
+      <div class="page-head"><div class="titles"><h1>Konjugieren <span class="jp-title">活用</span></h1><p>Du siehst ein Wort und bildest die gesuchte Form – im Kopf, geschrieben oder aus vier Antworten. An deinem Lernstand ändert das nichts.</p></div></div>
       <div class="card" data-setup><div class="stack">
         <h3>Was möchtest du üben?</h3>
         <div class="conj-mixes">${C.MIXES.map(mixHtml).join('')}</div>
         <div class="conj-custom" data-custom><div class="conj-groups">${C.groups().map(groupHtml).join('')}</div></div>
         <div class="row conj-words"><span class="small muted">Mit welchen Wörtern?</span><div class="seg"><button class="${byChoice ? '' : 'on'}" data-q-w="">Meine Wörter</button><button class="${byChoice ? 'on' : ''}" data-q-w="wahl">Nach Lektion oder Niveau</button></div>
           ${byChoice ? `${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}` : '<span class="small muted">alles, was du gerade lernst oder schon kannst</span>'}</div>
+        <div class="row conj-setting"><span class="small muted">Die Karte startet mit</span><div class="seg">${C.STARTS.map((s) => `<button data-start="${s.id}">${esc(s.label)}</button>`).join('')}</div><span class="small muted" data-start-note></span></div>
+        <div class="row conj-setting"><span class="small muted">Du antwortest</span><div class="seg">${C.ANSWERS.map((s) => `<button data-ans="${s.id}">${icon(s.icon)} ${esc(s.label)}</button>`).join('')}</div><span class="small muted" data-ans-note></span></div>
         <div class="small muted" data-hint></div>
         <div class="row"><button class="btn btn-primary" data-go></button>${App.cards.chunkSelect()}</div>
       </div></div>
@@ -80,6 +95,10 @@
         b.setAttribute('aria-pressed', on);
       });
       setup.querySelector('[data-custom]').hidden = mixId !== 'custom';
+      setup.querySelectorAll('[data-start]').forEach((b) => b.classList.toggle('on', b.dataset.start === start));
+      setup.querySelectorAll('[data-ans]').forEach((b) => b.classList.toggle('on', b.dataset.ans === answer));
+      setup.querySelector('[data-start-note]').textContent = START_NOTE[start];
+      setup.querySelector('[data-ans-note]').textContent = ANS_NOTE[answer];
       setup.querySelectorAll('.conj-group').forEach((el) => {
         const boxes = [...el.querySelectorAll('[data-form]')], on = boxes.filter((c) => c.checked).length;
         const head = el.querySelector('[data-line-check]');
@@ -103,6 +122,9 @@
       setup.querySelector('[data-hint]').innerHTML = hints.map((h) => `<div>${h}</div>`).join('');
     };
     setup.addEventListener('click', (e) => {
+      const st = e.target.closest('[data-start]'), an = e.target.closest('[data-ans]');
+      if (st) { start = C.cleanStart(st.dataset.start); App.lsSet('conjStart', start); return refresh(); }
+      if (an) { answer = C.cleanAnswer(an.dataset.ans); App.lsSet('conjAnswer', answer); return refresh(); }
       const b = e.target.closest('[data-mix]');
       if (!b) return;
       mixId = b.dataset.mix;
@@ -127,7 +149,7 @@
     const startRound = () => {
       const n = App.cards.chunkSize();
       const words = pool().words;
-      const entries = C.tasks(words, sel, words.length < n ? n : 0).map((t) => ({ it: t.it, kind: 'conj', form: t.form, dir: 'jp' }));
+      const entries = C.tasks(words, sel, words.length < n ? n : 0).map((t) => ({ it: t.it, kind: 'conj', form: t.form, dir: 'jp', from: C.startOf(t.it, t.form, start), answer }));
       let stats = {};
       const opts = {
         cram: true,

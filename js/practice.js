@@ -364,7 +364,10 @@
   const AL = App.answerLogic;
   const AMODES = [['off', 'eyeOff', 'Nur umdrehen, nichts schreiben'], ['pen', 'pen', 'Antwort mit dem Stift schreiben'], ['key', 'keyboard', 'Antwort tippen']];
   const answerMode = () => { const m = App.lsGet('answerMode'); return AMODES.some(([k]) => k === m) ? m : 'off'; };
-  const answerable = (ent) => !ent.pad && ent.kind !== 'conj' && ent.dir === 'de' && (ent.it.type === 'vocab' || ent.it.type === 'phrase');
+  // Konjugieren mit „Schreiben“: immer ein Antwortfeld (Stift oder Tastatur, „aus“ gibt es dort nicht)
+  const conjWrite = (ent) => ent.kind === 'conj' && ent.answer === 'write';
+  const answerable = (ent) => !ent.pad && (conjWrite(ent) || (ent.kind !== 'conj' && ent.dir === 'de' && (ent.it.type === 'vocab' || ent.it.type === 'phrase')));
+  const modeFor = (ent) => { const m = answerMode(); return conjWrite(ent) && m === 'off' ? 'pen' : m; };
   // Kanji schreiben: „Auflösen“ (danach Falsch/Richtig) in die Knopfspalte neben dem Schreibfeld – so bleibt alles ohne Scrollen erreichbar
   const padButtons = (stage) => {
     const col = stage.querySelector('[data-pad] .stack'), b = stage.querySelector('[data-btns]');
@@ -406,6 +409,7 @@
     let shown = null; // Karte, wie sie gezeigt wird: Platzhalter getauscht oder Verb-Muster (sonst = cur)
     let wantPark = false; // „Eintrag öffnen“ angetippt: beim Verlassen der Seite wird die Runde geparkt
     let ans = null, suggest = null, readingsOf = null; // Antwortfeld der Karte · vorgeschlagene Bewertung nach dem Prüfen
+    let faces = null; // Kartenseiten der aktuellen Karte (bei Konjugieren mit Auswahl-Antworten und Lösung fürs Antwortfeld)
     let last = null; // zuletzt bewertete Karte – „Rückgängig“ holt sie mit ihrem alten Lernstand zurück
     const own = () => ent.kind !== 'read';
     const srsKey = () => (ent.kind === 'read' ? cur.id : W.id(cur.id));
@@ -420,7 +424,7 @@
       flipped = false;
       wantPark = false;
       if (ans && ans.pad) ans.pad.stop();
-      ans = null; suggest = null;
+      ans = null; suggest = null; faces = null;
       if (!cur) {
         if (opts.onEnd) opts.onEnd();
         const rest = left ? left() : 0; // Lernschlange in Häppchen: so viel ist noch nicht dran gewesen
@@ -435,17 +439,19 @@
       }
       if (ent.pad) return padCard();
       shown = ent.kind === 'conj' ? cur : cardShown(cur, ent);
-      const f = ent.kind === 'conj' ? App.conjFaces(cur, ent.form) : cardFaces(shown, ent.dir); // Konjugieren (conj.js) bringt eigene Kartenseiten mit
+      const f = faces = ent.kind === 'conj' ? App.conjFaces(cur, ent.form, ent) : cardFaces(shown, ent.dir); // Konjugieren (conj.js) bringt eigene Kartenseiten mit
+      const mc = f.choices;
       stage.innerHTML = `<div class="flash-stage ${App.furiClass()}">${head()}
-        <div class="flash" data-flip>${f.front}<div class="back" hidden>${f.back}</div><span class="tap-hint">Tippen oder Leertaste zum Umdrehen</span></div>
+        <div class="flash" data-flip>${f.front}<div class="back" hidden>${f.back}</div><span class="tap-hint">${mc ? 'Wähle eine Antwort (Taste 1–4) – oder tippe hier zum Aufdecken' : 'Tippen oder Leertaste zum Umdrehen'}</span></div>
+        ${mc ? `<div class="conj-mc" data-mc>${mc.list.map((s, i) => `<button class="conj-opt" data-mci="${i}" lang="ja"><kbd>${i + 1}</kbd>${JP.ruby(s)}</button>`).join('')}</div>` : ''}
         ${answerable(ent) ? '<div class="ans-box" data-answer></div>' : ''}
         <div class="grade-row"${cram ? ' style="grid-template-columns:repeat(2,1fr)"' : ''} hidden>${cram ? '<button class="g0" data-g="0">Nicht gewusst<small>kommt gleich noch einmal</small></button><button class="g2" data-g="2">Gewusst</button>' : [['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, own())}</small></button>`).join('')}</div>
-        <div class="row" style="justify-content:center;margin-top:10px">${canSkip() ? `<button class="btn btn-sm check-known" data-known hidden title="Gilt als gelernt und wird in dieser Richtung nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-sm btn-ghost" href="${App.link(cur)}" data-park>${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}${answerable(ent) ? `<span class="seg ans-mode" title="Antwort aufschreiben?">${AMODES.map(([k, ic, t]) => `<button data-amode="${k}" title="${t}" aria-label="${t}">${icon(ic)}</button>`).join('')}</span>` : ''}</div></div>`;
+        <div class="row" style="justify-content:center;margin-top:10px">${mc ? `<button class="btn btn-primary" data-g-mc hidden>Weiter ${icon('next')}</button>` : ''}${canSkip() ? `<button class="btn btn-sm check-known" data-known hidden title="Gilt als gelernt und wird in dieser Richtung nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-sm btn-ghost" href="${App.link(cur)}" data-park>${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}${answerable(ent) ? `<span class="seg ans-mode" title="Antwort aufschreiben?">${AMODES.filter(([k]) => !conjWrite(ent) || k !== 'off').map(([k, ic, t]) => `<button data-amode="${k}" title="${t}" aria-label="${t}">${icon(ic)}</button>`).join('')}</span>` : ''}</div></div>`;
       if (answerable(ent)) answerBox();
     };
     // Antwortfeld unter der Karte: Stift (Schreibfeld + Vorschläge) oder Tastatur (Romaji wird zu かな); Prüfen deckt die Karte auf
     const answerBox = () => {
-      const box = stage.querySelector('[data-answer]'), mode = answerMode();
+      const box = stage.querySelector('[data-answer]'), mode = modeFor(ent);
       if (ans && ans.pad) ans.pad.stop();
       if (ans) App.dictate.stopFor(ans.inp, { now: true });
       stage.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b.dataset.amode === mode));
@@ -495,7 +501,7 @@
       const val = ans.inp.value;
       if (!val.trim()) return false;
       if (!readingsOf) readingsOf = kanjiReadings();
-      const forms = AL.forms(shownForCheck(shown || cur), readingsOf);
+      const forms = AL.forms(ent.kind === 'conj' ? faces.check : shownForCheck(shown || cur), readingsOf);
       // Stift: unverändert übernommen = auch die nächsten Vorschläge der Erkennung zählen
       const r = ans.mode === 'pen' && ans.list.length && val === ans.list[0] ? AL.checkAny(ans.list, forms) : AL.check(val, forms);
       if (!r) return false;
@@ -545,10 +551,26 @@
       flipped = true;
       stage.querySelector('.back').hidden = false;
       stage.querySelector('.tap-hint').hidden = true;
+      // Auswahl: die richtige Antwort leuchtet grün, bewertet wird nach der Wahl – nur noch „Weiter“ (ohne Wahl aufgedeckt = nicht gewusst)
+      if (faces && faces.choices) {
+        if (suggest === null) suggest = 0;
+        stage.querySelectorAll('[data-mci]').forEach((b) => { b.disabled = true; if (faces.choices.list[+b.dataset.mci] === faces.choices.answer) b.classList.add('ok'); });
+        const go = stage.querySelector('[data-g-mc]');
+        go.hidden = false; go.focus({ preventScroll: true });
+        return;
+      }
       stage.querySelector('.grade-row').hidden = false;
       const kb = stage.querySelector('[data-known]'); if (kb) kb.hidden = false;
       // ohne Antwort aufgedeckt: kein leeres Schreibfeld unter der Karte
       if (ans && !ans.checked) { stage.querySelector('[data-answer]').hidden = true; if (ans.pad) ans.pad.stop(); }
+    };
+    // Auswahl-Antwort angetippt: gewählte rot, wenn falsch; flip() färbt die richtige grün
+    const choose = (i) => {
+      if (flipped || !faces || !faces.choices) return;
+      const ok = faces.choices.list[i] === faces.choices.answer;
+      suggest = ok ? 2 : 0;
+      if (!ok) { const b = stage.querySelector(`[data-mci="${i}"]`); if (b) b.classList.add('no'); }
+      flip();
     };
     // Konjugieren zählt eigene Treffer mit (onGrade) – dort gibt es kein Zurück
     const remember = (keys, again) => { last = opts.onGrade ? null : { ent, snap: cram ? null : App.srsSnap(keys), done, right, total, again }; };
@@ -597,6 +619,9 @@
       if (mic) { if (ans && !ans.checked && !flipped) App.dictate.toggle(ans.inp, mic, 'ja-JP'); return; }
       const ac = e.target.closest('[data-acand]');
       if (ac && ans && !ans.checked) { ans.cands.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === ac)); ans.inp.value = ac.dataset.acand; return; }
+      const mci = e.target.closest('[data-mci]');
+      if (mci) return choose(+mci.dataset.mci);
+      if (e.target.closest('[data-g-mc]')) return grade(suggest === null ? 0 : suggest);
       if (e.target.closest('[data-known]')) return markKnown();
       const r = e.target.closest('[data-r]'); if (r && ent && ent.pad) return gradePad(+r.dataset.r);
       const b = e.target.closest('[data-g]'); if (b) grade(+b.dataset.g);
@@ -604,6 +629,12 @@
     const onKey = (e) => {
       if (e.target.matches('input, textarea')) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+      // Auswahl: 1–4 wählt eine Antwort, danach gehen Enter und Leertaste weiter
+      if (faces && faces.choices && ent && !ent.pad) {
+        if (!flipped && /^[1-9]$/.test(e.key) && +e.key <= faces.choices.list.length) { e.preventDefault(); choose(+e.key - 1); return; }
+        if (flipped && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); grade(suggest === null ? 0 : suggest); return; }
+        if (flipped) return;
+      }
       // nach dem Prüfen: Enter nimmt die vorgeschlagene Bewertung
       if (e.key === 'Enter' && flipped && suggest !== null && ent && !ent.pad) { e.preventDefault(); grade(suggest); return; }
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
