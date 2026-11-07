@@ -274,7 +274,7 @@
     // oben die Werkzeuge (Art, Bild, Eintrag, @, Diktieren), dann der Text, unten nur Abbrechen/Teilen
     el.innerHTML = `<div class="forum-row forum-tools">
         ${kinds ? `<div class="forum-kinds">${Object.keys(KIND).map((k) => `<button type="button" class="chip" data-kind="${k}">${KIND[k]}</button>`).join('')}</div>` : ''}
-        <label class="btn btn-sm forum-pick">${icon('imagePlus')}<span>Bild</span><input type="file" accept="image/*" hidden></label>
+        <label class="btn btn-sm forum-pick">${icon('imagePlus')}<span>Bild</span><input type="file" accept="image/*" multiple hidden></label>
         ${navigator.clipboard && navigator.clipboard.read ? `<button type="button" class="btn btn-sm" data-clip title="Screenshot oder Bild aus der Zwischenablage einfügen (am PC auch Strg+V)">${icon('copy')}<span>Einfügen</span></button>` : ''}
         <button type="button" class="btn btn-sm" data-link>${icon('link')}<span>Eintrag</span></button>
         <button type="button" class="btn btn-sm forum-atbtn" data-at title="Jemanden aus der Gruppe erwähnen">@</button>
@@ -310,7 +310,7 @@
     const prev = el.querySelector('.forum-img-prev');
     const err = el.querySelector('.forum-err');
     let kind = init.kind || 'rede';
-    let image = init.image || null;
+    let images = (init.images || []).slice(0, F.MAX_IMAGES);
     let busy = false;
     ta.value = key ? draft(key) : (init.text || '');
     const setClosed = (on) => el.classList.toggle('is-closed', !!closed && on);
@@ -318,10 +318,12 @@
     ['focus', 'pointerdown', 'input'].forEach((ev) => ta.addEventListener(ev, () => setClosed(false)));
     const setErr = (msg) => { err.textContent = msg; err.hidden = !msg; };
     const setKind = (k) => { kind = k; $$('[data-kind]', el).forEach((b) => b.classList.toggle('on', b.dataset.kind === k)); };
-    const setImage = (src) => {
-      image = src;
-      prev.hidden = !src;
-      prev.innerHTML = src ? `${imgHtml(src, 'forum-thumb')}<button type="button" class="icon-btn" data-noimg title="Bild entfernen" aria-label="Bild entfernen">${icon('close')}</button>` : '';
+    // Vorschau: alle angehängten Bilder nebeneinander, jedes mit eigenem ✕
+    const setImages = (list) => {
+      images = list.slice(0, F.MAX_IMAGES);
+      prev.hidden = !images.length;
+      prev.innerHTML = images.map((src, i) => `<span class="forum-thumb-wrap">${imgHtml(src, 'forum-thumb')}<button type="button" class="icon-btn" data-noimg="${i}" title="Bild entfernen" aria-label="Bild entfernen">${icon('close')}</button></span>`).join('');
+      el.classList.toggle('imgs-full', images.length >= F.MAX_IMAGES);
     };
     // Verknüpfte Einträge: gewählte als Kärtchen mit ✕, dazu der gerade offene Eintrag als Vorschlag
     let refs = F.cleanRefs(init.refs);
@@ -378,7 +380,7 @@
       keep();
     };
     if (kinds) setKind(kind);
-    setImage(image);
+    setImages(images);
     drawRefs();
     const keep = key ? App.debounce(() => saveDraft(key, ta.value), 400) : () => {};
     // gerade „@“ getippt (am Anfang oder nach Leerzeichen, nicht in einer Mail-Adresse) → Vorschläge; Leerzeichen schließt sie
@@ -451,7 +453,8 @@
     el.addEventListener('click', (e) => {
       const k = e.target.closest('[data-kind]');
       if (k) setKind(k.dataset.kind);
-      if (e.target.closest('[data-noimg]')) setImage(null);
+      const noimg = e.target.closest('[data-noimg]');
+      if (noimg) setImages(images.filter((_, i) => i !== Number(noimg.dataset.noimg)));
       if (e.target.closest('[data-cancel]')) { App.dictate.stopFor(ta, { now: true }); onCancel(); }
       if (e.target.closest('[data-link]')) pick();
       if (e.target.closest('[data-at]')) { if (atPop.hidden) showAt(false); else atPop.hidden = true; }
@@ -494,15 +497,24 @@
         setErr(''); setClosed(false); drawRefs();
       });
     });
+    const FULL = `Höchstens ${F.MAX_IMAGES} Bilder – nimm erst eins raus.`;
     const takeImage = async (file) => {
       setErr('');
       setClosed(false);
-      try { setImage(await shrinkImage(file)); } catch (x) { setErr('Dieses Bild ist zu groß. Probier einen Ausschnitt.'); }
+      if (images.length >= F.MAX_IMAGES) { setErr(FULL); return; }
+      try {
+        const src = await shrinkImage(file);
+        if (images.length >= F.MAX_IMAGES) { setErr(FULL); return; }
+        setImages(images.concat(src));
+      } catch (x) { setErr('Dieses Bild ist zu groß. Probier einen Ausschnitt.'); }
     };
+    // mehrere auf einmal wählbar; was über 4 hinausgeht, bleibt weg
     el.querySelector('input[type=file]').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
+      const files = Array.from(e.target.files || []);
       e.target.value = '';
-      if (file) takeImage(file);
+      const room = F.MAX_IMAGES - images.length;
+      for (const f of files.slice(0, Math.max(0, room))) await takeImage(f);
+      if (files.length > room) setErr(room > 0 ? `Nur die ersten ${room} genommen – höchstens ${F.MAX_IMAGES} Bilder.` : FULL);
     });
     // Screenshot aus der Zwischenablage: Strg+V im Textfeld oder der Knopf „Einfügen“ (fragt beim ersten Mal nach Erlaubnis)
     ta.addEventListener('paste', (e) => {
@@ -526,12 +538,12 @@
       if (navigator.onLine === false) { setErr(OFFLINE); return; }
       App.dictate.stopFor(ta, { now: true });
       const text = ta.value.trim();
-      const msg = F.checkPost({ text, image, refs });
+      const msg = F.checkPost({ text, images, refs });
       if (msg) { setErr(msg); return; }
       busy = true;
       try {
-        await onSubmit({ kind, text, image, refs, mentions: F.findMentions(text, members, D.uid()) });
-        if (key) { saveDraft(key, ''); ta.value = ''; drawPrev(); bar.hidden = true; emoPop.hidden = true; setImage(null); refs = []; drawRefs(); atPop.hidden = true; ta.blur(); setClosed(true); }
+        await onSubmit({ kind, text, images, refs, mentions: F.findMentions(text, members, D.uid()) });
+        if (key) { saveDraft(key, ''); ta.value = ''; drawPrev(); bar.hidden = true; emoPop.hidden = true; setImages([]); refs = []; drawRefs(); atPop.hidden = true; ta.blur(); setClosed(true); }
       } catch (x) {
         setErr(OFFLINE);
       } finally { busy = false; }
@@ -826,14 +838,26 @@
     const isFreshReply = (x) => !own(x) && x.createdAt && x.createdAt > seenBefore;
     const tools = (x, what) => (own(x) ? `<span class="forum-tools"><button class="btn btn-sm" data-edit="${what}">${icon('edit')} Bearbeiten</button><button class="btn btn-sm" data-del="${what}">${icon('trash')} Löschen</button></span>` : '');
 
-    // Bild des Beitrags: eigenes Dokument, erst hier geladen (neu, wenn der Beitrag bearbeitet wurde)
+    // Bilder des Beitrags: eigene Dokumente, erst hier geladen (neu, wenn der Beitrag bearbeitet wurde)
     const pics = {};
     let picVersion;
     const loadPic = (p) => {
       if (!p.hasImage || picVersion === p.editedAt) return;
       picVersion = p.editedAt;
-      D.getImage(st.code, id).then((src) => { pics[id] = src; drawHead(); }, () => {});
+      D.getImages(st.code, id).then((list) => { pics[id] = list; drawHead(); }, () => {});
     };
+    // weitere Bilder einer Antwort (2.–4.): ebenso erst beim Öffnen, neu nach dem Bearbeiten
+    const more = {}; // rid → { v: editedAt, list }
+    const loadMore = (x) => {
+      if (!x.moreImages || (more[x.id] && more[x.id].v === x.editedAt)) return;
+      more[x.id] = { v: x.editedAt, list: null };
+      D.getReplyImages(st.code, id, x.id).then((list) => { if (more[x.id] && more[x.id].v === x.editedAt) { more[x.id].list = list; if (editing !== x.id) drawReplies(); } }, () => {});
+    };
+    const replyImages = (x) => [x.image].filter(Boolean).concat((x.moreImages && more[x.id] && more[x.id].list) || []);
+    const replyLoading = (x) => x.moreImages > 0 && !(more[x.id] && more[x.id].list);
+    // ein Bild groß, mehrere als Raster (antippen = groß)
+    const imgsHtml = (list, loading) => (list.length ? `<div class="forum-imgs n-${Math.min(list.length + (loading ? 1 : 0), F.MAX_IMAGES)}">${list.map((s) => imgHtml(s, 'forum-img')).join('')}</div>` : '')
+      + (loading ? `<p class="muted small">${list.length ? 'Weitere Bilder werden geladen …' : 'Bild wird geladen …'}</p>` : '');
     const drawHead = () => {
       if (editing === 'post') return;
       const p = posts.find((x) => x.id === id);
@@ -844,27 +868,28 @@
         ? `${p.done ? `<span class="badge">Besprochen · von ${esc(p.doneBy)}${p.doneAt ? ', ' + dayMonth(p.doneAt) : ''}</span>` : ''}
             ${F.canSetDone(p, me(), adminUid) ? `<button class="btn btn-sm" data-done>${p.done ? 'Wieder öffnen' : `${icon('check')} Als besprochen markieren`}</button>` : ''}` : '';
       head.innerHTML = `<div class="forum-post-top">${dateCol(p.createdAt)}<div class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}</div></div>
-        ${withKanji(`<div class="forum-text">${textHtml(p.text)}</div>${p.hasImage ? (id in pics ? imgHtml(pics[id], 'forum-img') : '<p class="muted small">Bild wird geladen …</p>') : ''}${refsHtml(p.refs, 'post', own(p))}
+        ${withKanji(`<div class="forum-text">${textHtml(p.text)}</div>${p.hasImage ? imgsHtml(pics[id] || [], !(id in pics)) : ''}${refsHtml(p.refs, 'post', own(p))}
           <div class="forum-row forum-acts">${likeBtn(p, 'post')}${done}<span class="grow"></span>${tools(p, 'post')}</div>`, p.refs, 'post')}`;
     };
     const drawReplies = () => {
+      replies.forEach(loadMore);
       repEl.innerHTML = replies.map((x) => (editing === x.id ? `<div class="forum-reply" data-rid="${esc(x.id)}" data-editing></div>`
         : `<div class="forum-reply ${isFreshReply(x) ? 'is-new' : ''}" data-rid="${esc(x.id)}"><div class="forum-item-head">${meta(x)}</div>
-          ${withKanji(`<div class="forum-text">${textHtml(x.text)}</div>${imgHtml(x.image, 'forum-img')}${refsHtml(x.refs, x.id, own(x))}
+          ${withKanji(`<div class="forum-text">${textHtml(x.text)}</div>${imgsHtml(replyImages(x), replyLoading(x))}${refsHtml(x.refs, x.id, own(x))}
           <div class="forum-row forum-acts">${likeBtn(x, x.id)}<span class="grow"></span>${tools(x, x.id)}</div>`, x.refs, x.id)}</div>`)).join('');
       const slot = repEl.querySelector('[data-editing]');
       if (slot) {
         const x = replies.find((y) => y.id === editing);
         slot.appendChild(composer({
-          label: 'Speichern', placeholder: '', init: x,
-          onSubmit: async (v) => { await D.editReply(st.code, id, x.id, v); editing = null; drawReplies(); },
+          label: 'Speichern', placeholder: '', init: Object.assign({}, x, { images: replyImages(x) }),
+          onSubmit: async (v) => { await D.editReply(st.code, id, x.id, v, x.moreImages); editing = null; drawReplies(); },
           onCancel: () => { editing = null; drawReplies(); },
         }));
       }
     };
     r.querySelector('[data-answer]').appendChild(composer({
       key: 'r:' + id, label: 'Antworten', placeholder: 'Deine Antwort …',
-      onSubmit: (v) => D.addReply(st.code, id, { name: st.name, text: v.text, image: v.image, refs: v.refs, mentions: v.mentions }),
+      onSubmit: (v) => D.addReply(st.code, id, { name: st.name, text: v.text, images: v.images, refs: v.refs, mentions: v.mentions }),
     }));
     App.hydrateIcons(r);
 
@@ -908,16 +933,21 @@
       if (ed) {
         if (ed.dataset.edit === 'post') {
           // Bild noch nicht da: beim Speichern ginge es sonst verloren
-          if (p && p.hasImage && !(id in pics)) { App.toast('Das Bild lädt noch – gleich nochmal versuchen'); return; }
+          if (p && p.hasImage && !(id in pics)) { App.toast('Die Bilder laden noch – gleich nochmal versuchen'); return; }
           editing = 'post';
           head.innerHTML = '';
           head.appendChild(composer({
-            kinds: true, label: 'Speichern', placeholder: '', init: Object.assign({}, p, { image: pics[id] || null }),
-            onSubmit: async (v) => { await D.editPost(st.code, id, v); pics[id] = v.image || null; editing = null; drawHead(); },
+            kinds: true, label: 'Speichern', placeholder: '', init: Object.assign({}, p, { images: pics[id] || [] }),
+            onSubmit: async (v) => { await D.editPost(st.code, id, v); pics[id] = v.images; editing = null; drawHead(); },
             onCancel: () => { editing = null; drawHead(); },
           }));
           App.hydrateIcons(head);
-        } else { editing = ed.dataset.edit; drawReplies(); App.hydrateIcons(repEl); }
+        } else {
+          // weitere Bilder noch nicht da: beim Speichern gingen sie sonst verloren
+          const x = replies.find((y) => y.id === ed.dataset.edit);
+          if (x && replyLoading(x)) { App.toast('Die Bilder laden noch – gleich nochmal versuchen'); return; }
+          editing = ed.dataset.edit; drawReplies(); App.hydrateIcons(repEl);
+        }
         return;
       }
       const del = e.target.closest('[data-del]');
@@ -925,7 +955,7 @@
         const isPost = del.dataset.del === 'post';
         if (!(await App.confirm(isPost ? 'Diesen Beitrag und alle Antworten löschen?' : 'Diese Antwort löschen?'))) return;
         try {
-          if (isPost) { await D.deletePost(st.code, id); saveDraft('r:' + id, ''); showList(); } else await D.deleteReply(st.code, id, del.dataset.del);
+          if (isPost) { await D.deletePost(st.code, id); saveDraft('r:' + id, ''); showList(); } else { const x = replies.find((y) => y.id === del.dataset.del); await D.deleteReply(st.code, id, del.dataset.del, x ? x.moreImages : 0); }
         } catch (x) { App.toast(OFFLINE); }
       }
     };

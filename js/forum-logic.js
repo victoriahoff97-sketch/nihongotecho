@@ -11,6 +11,9 @@
   F.MAX_TEXT = 4000;
   F.MAX_NAME = 30;
   F.MAX_IMAGE = 450000;
+  // bis zu 4 Bilder pro Beitrag bzw. Antwort, jedes in einem eigenen Dokument (bei Antworten steht das erste in der Antwort selbst)
+  F.MAX_IMAGES = 4;
+  F.IMG_SLOTS = ['main', '2', '3', '4'];
   F.SIZES = [1280, 1024, 800];
   F.QUALITIES = [0.8, 0.7, 0.6, 0.5];
 
@@ -25,9 +28,11 @@
   F.isCode = (s) => CODE_RE.test(F.normCode(s));
 
   // ---------- Eingaben ----------
-  F.checkPost = ({ text, image, refs } = {}) => {
+  F.checkPost = ({ text, image, images, refs } = {}) => {
     const t = String(text ?? '');
-    if (!t.trim() && !image && !(refs && refs.length)) return 'Schreib etwas oder häng ein Bild an.';
+    const pics = images ? images.length : (image ? 1 : 0);
+    if (pics > F.MAX_IMAGES) return `Höchstens ${F.MAX_IMAGES} Bilder.`;
+    if (!t.trim() && !pics && !(refs && refs.length)) return 'Schreib etwas oder häng ein Bild an.';
     if (t.length > F.MAX_TEXT) return `Der Text ist zu lang (höchstens ${F.MAX_TEXT} Zeichen).`;
     return '';
   };
@@ -160,9 +165,12 @@
     lastActivityUid: str(d.lastActivityUid, 128), refs: F.cleanRefs(d.refs),
     likes: uids(d.likes, F.MAX_LIKES), mentions: uids(d.mentions, F.MAX_MENTIONS), lastMentions: uids(d.lastMentions, F.MAX_MENTIONS),
   });
+  F.cleanImage = (v) => (typeof v === 'string' && v.startsWith(JPEG) && v.length <= F.MAX_IMAGE ? v : null);
   F.cleanReply = (d) => ({
     id: str(d.id, 100), uid: str(d.uid, 128), name: str(d.name, F.MAX_NAME), text: str(d.text, F.MAX_TEXT),
-    image: typeof d.image === 'string' && d.image.startsWith(JPEG) && d.image.length <= F.MAX_IMAGE ? d.image : null,
+    image: F.cleanImage(d.image),
+    // weitere Bilder (2.–4.) liegen unter der Antwort in img/2 … img/4
+    moreImages: Math.max(0, Math.min(F.MAX_IMAGES - 1, Math.floor(num(d.moreImages) || 0))),
     createdAt: num(d.createdAt), editedAt: num(d.editedAt), refs: F.cleanRefs(d.refs),
     likes: uids(d.likes, F.MAX_LIKES), mentions: uids(d.mentions, F.MAX_MENTIONS),
   });

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-forum-bilder', date: '7. November',
+      items: [
+        { t: 'Forum: bis zu 4 Bilder', d: 'An einen Beitrag oder eine Antwort in der Gedankenwolke passen jetzt bis zu 4 Bilder – über „Bild“ (auch mehrere auf einmal) oder „Einfügen“.' },
+      ],
+    },
+    {
       id: '2026-11-07-todos', date: '7. November',
       items: [
         { t: 'Heute-Liste nur noch mit festen To-dos', d: 'Startseite › 今日: „Wenn du magst“ ist weg. Über den Stift schaltest du Punkte an oder aus, legst beliebig viele eigene To-dos an und benennst sie um.' },

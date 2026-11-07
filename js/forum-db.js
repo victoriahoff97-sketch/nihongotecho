@@ -46,7 +46,10 @@
   const group = (code) => db.collection('groups').doc(code);
   const posts = (code) => group(code).collection('posts');
   const replies = (code, postId) => posts(code).doc(postId).collection('replies');
-  const img = (code, postId) => posts(code).doc(postId).collection('img').doc('main');
+  const imgs = (code, postId) => posts(code).doc(postId).collection('img');
+  // 2.–4. Bild einer Antwort (das erste steht in der Antwort selbst, so sehen es auch ältere App-Versionen)
+  const replyImgs = (code, postId, rid) => replies(code, postId).doc(rid).collection('img');
+  const SLOTS = () => F().IMG_SLOTS;
   const ms = (ts) => (ts && ts.toMillis ? ts.toMillis() : null);
   const TIMES = ['createdAt', 'editedAt', 'doneAt', 'lastActivityAt'];
   // Rohdaten → ms-Zeiten, dann über forum-logic auf ihre Typen gebracht (alles stammt von anderen Geräten)
@@ -91,35 +94,44 @@
   D.watchReplies = (code, postId, onReplies, onError) => replies(code, postId).orderBy('createdAt', 'asc')
     .onSnapshot((snap) => onReplies(snap.docs.map((d) => F().cleanReply(raw(d)))), onError);
   // Bilder der Beiträge liegen in einem eigenen Dokument: die Liste lädt so keine Bilder mit, erst der offene Beitrag
-  D.getImage = async (code, postId) => {
-    const snap = await img(code, postId).get();
-    const data = snap.exists ? snap.data().data : null;
-    return F().cleanReply({ image: data }).image;
+  const readSlots = async (col, slots) => {
+    const snap = await col.get();
+    const by = {};
+    snap.docs.forEach((d) => { by[d.id] = F().cleanImage(d.data().data); });
+    return slots.map((s) => by[s]).filter(Boolean);
   };
+  D.getImages = (code, postId) => readSlots(imgs(code, postId), SLOTS());
+  D.getReplyImages = (code, postId, rid) => readSlots(replyImgs(code, postId, rid), SLOTS().slice(1));
 
   // ---------- Beiträge ----------
-  D.addPost = async (code, { name, kind, text, image, refs, mentions }) => {
+  D.addPost = async (code, { name, kind, text, images, refs, mentions }) => {
     const b = db.batch();
     const ref = posts(code).doc();
+    images = (images || []).slice(0, F().MAX_IMAGES);
     b.set(ref, {
-      uid: D.uid(), name, kind, text, hasImage: !!image, refs: refs || [], mentions: mentions || [], createdAt: now(), editedAt: null,
+      uid: D.uid(), name, kind, text, hasImage: images.length > 0, refs: refs || [], mentions: mentions || [], createdAt: now(), editedAt: null,
       done: false, doneBy: null, doneAt: null, replyCount: 0, lastActivityAt: now(), lastActivityUid: D.uid(),
     });
-    if (image) b.set(img(code, ref.id), { data: image });
+    images.forEach((src, i) => b.set(imgs(code, ref.id).doc(SLOTS()[i]), { data: src }));
     await b.commit();
   };
-  D.editPost = async (code, id, { kind, text, image, refs, mentions }) => {
+  // alle vier Plätze neu: belegte schreiben, übrige löschen
+  D.editPost = async (code, id, { kind, text, images, refs, mentions }) => {
     const b = db.batch();
-    b.update(posts(code).doc(id), { kind, text, hasImage: !!image, refs: refs || [], mentions: mentions || [], editedAt: now() });
-    if (image) b.set(img(code, id), { data: image }); else b.delete(img(code, id));
+    images = (images || []).slice(0, F().MAX_IMAGES);
+    b.update(posts(code).doc(id), { kind, text, hasImage: images.length > 0, refs: refs || [], mentions: mentions || [], editedAt: now() });
+    SLOTS().forEach((s, i) => { if (images[i]) b.set(imgs(code, id).doc(s), { data: images[i] }); else b.delete(imgs(code, id).doc(s)); });
     await b.commit();
   };
   // Antworten anderer gehen mit: die Regeln erlauben das dem Autor des Beitrags
   D.deletePost = async (code, id) => {
     const snap = await replies(code, id).get();
     const b = db.batch();
-    snap.docs.forEach((d) => b.delete(d.ref));
-    b.delete(img(code, id));
+    snap.docs.forEach((d) => {
+      SLOTS().slice(1, 1 + F().cleanReply(d.data()).moreImages).forEach((s) => b.delete(replyImgs(code, id, d.id).doc(s)));
+      b.delete(d.ref);
+    });
+    SLOTS().forEach((s) => b.delete(imgs(code, id).doc(s)));
     b.delete(posts(code).doc(id));
     await b.commit();
   };
@@ -139,15 +151,33 @@
   // ---------- Antworten ----------
   // Antwort und Zähler/„letzte Aktivität“ am Beitrag in einem Schritt
   // lastMentions: wen die neueste Antwort erwähnt – so zeigt die Liste „@ dich“, ohne Antworten zu laden
-  D.addReply = async (code, postId, { name, text, image, refs, mentions }) => {
+  const replyPics = (images) => { const l = images || []; return { image: l[0] || null, more: l.slice(1, F().MAX_IMAGES) }; };
+  D.addReply = async (code, postId, { name, text, images, refs, mentions }) => {
     const b = db.batch();
-    b.set(replies(code, postId).doc(), { uid: D.uid(), name, text, image: image || null, refs: refs || [], mentions: mentions || [], createdAt: now(), editedAt: null });
+    const { image, more } = replyPics(images);
+    const ref = replies(code, postId).doc();
+    b.set(ref, Object.assign({ uid: D.uid(), name, text, image, refs: refs || [], mentions: mentions || [], createdAt: now(), editedAt: null },
+      more.length ? { moreImages: more.length } : {}));
+    more.forEach((src, i) => b.set(replyImgs(code, postId, ref.id).doc(SLOTS()[i + 1]), { data: src }));
     b.update(posts(code).doc(postId), { replyCount: FV().increment(1), lastActivityAt: now(), lastActivityUid: D.uid(), lastMentions: mentions || [] });
     await b.commit();
   };
-  D.editReply = (code, postId, rid, { text, image, refs, mentions }) => replies(code, postId).doc(rid).update({ text, image: image || null, refs: refs || [], mentions: mentions || [], editedAt: now() });
-  D.deleteReply = async (code, postId, rid) => {
+  // had = wie viele weitere Bilder die Antwort bisher hatte (nur deren Plätze werden geleert)
+  D.editReply = async (code, postId, rid, { text, images, refs, mentions }, had = 0) => {
     const b = db.batch();
+    const { image, more } = replyPics(images);
+    const ch = { text, image, refs: refs || [], mentions: mentions || [], editedAt: now() };
+    if (more.length || had) ch.moreImages = more.length;
+    b.update(replies(code, postId).doc(rid), ch);
+    SLOTS().slice(1, 1 + Math.max(more.length, had)).forEach((s, i) => {
+      const doc = replyImgs(code, postId, rid).doc(s);
+      if (more[i]) b.set(doc, { data: more[i] }); else b.delete(doc);
+    });
+    await b.commit();
+  };
+  D.deleteReply = async (code, postId, rid, had = 0) => {
+    const b = db.batch();
+    SLOTS().slice(1, 1 + had).forEach((s) => b.delete(replyImgs(code, postId, rid).doc(s)));
     b.delete(replies(code, postId).doc(rid));
     b.update(posts(code).doc(postId), { replyCount: FV().increment(-1) });
     await b.commit();
