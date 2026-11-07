@@ -192,6 +192,7 @@
   // Vorbelegung für „neu anlegen“ aus dem Suchfeld: Deutsch → Bedeutung, Japanisch → Schreibung
   const newDefaults = (type, q) => {
     q = String(q || '').trim();
+    if (type === 'phrase') return isJp(q) ? { jp: q } : { de: q };
     if (type === 'grammar') return isJp(q) ? { title: '〜' + q.replace(/^[〜~]/, ''), jp: '〜' + q.replace(/^[〜~]/, '') } : { title: q };
     if (!isJp(q)) return { de: q };
     return /[㐀-鿿豈-﫿々]/.test(q) ? { kanji: q } : { kana: q };

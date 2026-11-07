@@ -49,9 +49,9 @@
     // ein eingekreistes Kanji, das noch nicht in der Sammlung ist: fertig ausgefüllt anlegen
     if (r.create === 'kanji') { App.linkKanji(r.q, defaultsFor('kanji'), onLinked, { quiet: true }).then((l) => l[0] && res(l[0])); return; }
     if (r.create) {
-      const type = r.create === 'grammar' ? 'grammar' : 'vocab';
+      const type = r.create === 'grammar' || r.create === 'phrase' ? r.create : 'vocab';
       App.editItem({
-        type, single: true, title: type === 'grammar' ? 'Neue Grammatik verknüpfen' : 'Neue Vokabel verknüpfen',
+        type, single: true, title: { grammar: 'Neue Grammatik verknüpfen', phrase: 'Neuen Ausdruck verknüpfen', vocab: 'Neue Vokabel verknüpfen' }[type],
         defaults: Object.assign({}, defaultsFor(type), App.lookupLogic.newDefaults(type, r.q)),
         onSaved: async (it) => { if (onLinked) await onLinked(it, true); res(it); },
       });
@@ -80,10 +80,12 @@
   });
 
   // „＋ Vokabel / Grammatik (/ Ausdruck)“ einer Schreibfläche; menuLabel: Beschriftung im „⋯“-Menü (Vollbild) – dort steht kein „+“ davor
+  // onClick(text): text = markierter Text (getippte Antwort einer Buchaufgabe) – füllt das Formular vor
+  App.selDefaults = (type, defaults, text) => Object.assign({}, defaults, typeof text === 'string' && text.trim() ? App.lookupLogic.newDefaults(type, text) : {});
   const linkTools = (defaultsFor, onLinked, newPhrase) => [
-    { id: 'vocab', label: 'Vokabel', menuLabel: 'Neue Vokabel', icon: 'plus', onClick: () => App.newLinked('vocab', defaultsFor('vocab'), onLinked) },
-    { id: 'grammar', label: 'Grammatik', menuLabel: 'Neue Grammatik', icon: 'plus', onClick: () => App.newLinked('grammar', defaultsFor('grammar'), onLinked) },
-  ].concat(newPhrase ? [{ id: 'phrase', label: 'Ausdruck', menuLabel: 'Neuer Ausdruck', icon: 'plus', onClick: () => App.newLinked('phrase', defaultsFor('phrase'), onLinked) }] : []);
+    { id: 'vocab', label: 'Vokabel', menuLabel: 'Neue Vokabel', icon: 'plus', onClick: (t) => App.newLinked('vocab', App.selDefaults('vocab', defaultsFor('vocab'), t), onLinked) },
+    { id: 'grammar', label: 'Grammatik', menuLabel: 'Neue Grammatik', icon: 'plus', onClick: (t) => App.newLinked('grammar', App.selDefaults('grammar', defaultsFor('grammar'), t), onLinked) },
+  ].concat(newPhrase ? [{ id: 'phrase', label: 'Ausdruck', menuLabel: 'Neuer Ausdruck', icon: 'plus', onClick: (t) => App.newLinked('phrase', App.selDefaults('phrase', defaultsFor('phrase'), t), onLinked) }] : []);
 
   // ---------- Wohin ein Blatt gehört ----------
   // Ein Blatt, das zu einer Stunde, einer Antwort/einem Tagebucheintrag oder einer Buchaufgabe gehört, bringt seine

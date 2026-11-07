@@ -918,7 +918,7 @@
           if (selText) insertHtml(`<a class="ref" href="${App.link(it)}" data-ref="${it.id}" contenteditable="false">${esc(App.itemPlain(it))}</a>&nbsp;`);
         });
       } else if (c === 'newphrase') {
-        onNewItem('phrase', { jp: selText.trim() }, (it) => {
+        onNewItem('phrase', App.lookupLogic.newDefaults('phrase', selText), (it) => {
           if (selText) insertHtml(`<a class="ref" href="${App.link(it)}" data-ref="${it.id}" contenteditable="false">${esc(App.itemPlain(it))}</a>&nbsp;`);
         });
       }

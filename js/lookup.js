@@ -103,7 +103,7 @@
 
   // Ein Fenster pro Schreibfläche; erneutes Öffnen holt das vorhandene nach vorn
   // onLink(r) (optional): Treffer mit dem zuletzt eingekreisten Wort verknüpfen – zeigt in der Detailansicht „Verknüpfen“;
-  // onLink({ create: 'vocab' | 'grammar' | 'kanji', q }): die Eingabe als neuen Eintrag anlegen und verknüpfen
+  // onLink({ create: 'vocab' | 'grammar' | 'phrase' | 'kanji', q }): die Eingabe als neuen Eintrag anlegen und verknüpfen
   LK.open = (root, q = '', { onLink = null } = {}) => {
     // q leer = Knopf in der Leiste (Feld fokussieren, Eingabe behalten); q gesetzt = Vorschlag aus „Erkennen“ (keine Bildschirmtastatur)
     if (root._lookup) { root._lookup.setLink(onLink); if (q) root._lookup.setQuery(q); else root._lookup.focus(); return root._lookup; }
@@ -148,6 +148,7 @@
       const create = onLink ? `<div class="lk-new"><div class="lk-sec">Nicht dabei?</div>
         <button class="btn btn-sm ${App.SECTIONS.vocab.cls}" data-lknew="vocab">${icon('plus')} „${esc(res.q)}“ als neue Vokabel</button>
         <button class="btn btn-sm ${App.SECTIONS.grammar.cls}" data-lknew="grammar">${icon('plus')} „${esc(res.q)}“ als neue Grammatik</button>
+        <button class="btn btn-sm ${App.SECTIONS.phrase.cls}" data-lknew="phrase">${icon('plus')} „${esc(res.q)}“ als neuer Ausdruck</button>
         ${newKanji(res.q) ? `<button class="btn btn-sm ${App.SECTIONS.kanji.cls}" data-lknew="kanji">${icon('plus')} „${esc(res.q.trim())}“ als neues Kanji</button>` : ''}</div>` : '';
       const any = res.own.length || res.grammar.length || res.dict.length;
       const ownHtml = res.own.length ? `<div class="lk-sec">Deine Wörter</div>${res.own.map((r, i) => rowHtml(r, i, 'own')).join('')}` : '';

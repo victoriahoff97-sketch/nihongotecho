@@ -960,6 +960,9 @@ body.ink-fit #view { padding-bottom: 16px; }
 .ex-typed label { font-size: 13px; font-weight: 800; color: var(--muted); }
 .ex-typed textarea { flex: 1 0 auto; box-sizing: border-box; width: 100%; min-height: 220px; resize: none; overflow: hidden; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg); color: var(--ink); font-family: var(--font-jp); font-size: 22px; line-height: 1.7; touch-action: manipulation; }
 .ex-typed textarea:focus { outline: 2px solid var(--sec); outline-offset: 1px; }
+.ex-typed-sel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ex-typed-sel[hidden] { display: none; }
+.ex-typed-sel .btn { background: var(--sec-soft); border-color: transparent; color: var(--ink); }
 .viewer-pages.split > .ex-typed { grid-column: 2; grid-row: 1; }
 .viewer-pages.split.split-r > .ex-typed { grid-column: 1; }
 .vpage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }

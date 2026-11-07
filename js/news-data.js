@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-ausdruck-markieren', date: '7. November',
+      items: [
+        { t: 'Ausdruck aus der Handschrift', d: 'Auf dem Schreibblatt einen Satzteil mit „Erkennen“ einkreisen und im Fenster „als neuer Ausdruck“ wählen: Er wird angelegt und auf dem Blatt verknüpft.' },
+        { t: 'Auch bei den Buchaufgaben', d: 'In den Genki-Aufgaben gibt es jetzt „Neuer Ausdruck“; in der getippten Antwort Text markieren → darunter ＋ Vokabel, Grammatik oder Ausdruck.' },
+      ],
+    },
+    {
       id: '2026-11-07-luecken', date: '7. November',
       items: [
         { t: 'Lückensätze schneller ausfüllen', d: 'Üben › Lückensätze: Partikel antippen reicht – sie kommt in die markierte Lücke, dann geht es von oben nach unten weiter.' },

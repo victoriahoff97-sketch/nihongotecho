@@ -513,7 +513,7 @@
     if (splittable && st.pages.length > 1) {
       ty.el = document.createElement('div');
       ty.el.className = 'ex-typed'; ty.el.hidden = true;
-      ty.el.innerHTML = '<div class="row between"><label for="ex-typed-ta">Deine Antwort</label><button class="btn btn-sm btn-ghost" data-ty-pen title="Zurück zum Schreibblatt – der Text bleibt am Versuch">✎ Mit dem Stift schreiben</button></div><textarea id="ex-typed-ta" lang="ja" spellcheck="false" autocapitalize="off" placeholder="Hier tippen …"></textarea>';
+      ty.el.innerHTML = '<div class="row between"><label for="ex-typed-ta">Deine Antwort</label><button class="btn btn-sm btn-ghost" data-ty-pen title="Zurück zum Schreibblatt – der Text bleibt am Versuch">✎ Mit dem Stift schreiben</button></div><textarea id="ex-typed-ta" lang="ja" spellcheck="false" autocapitalize="off" placeholder="Hier tippen …"></textarea><div class="ex-typed-sel" hidden><span class="small muted">Markiert:</span></div>';
       pagesEl.appendChild(ty.el);
       ty.ta = ty.el.querySelector('textarea');
       ty.ta.value = f.typed || '';
@@ -524,6 +524,21 @@
       ty.ta.addEventListener('input', () => { f.typed = ty.ta.value; ty.dirty = true; ty.save(); ty.grow(); });
       st.typed = typeof opts.typed === 'boolean' ? opts.typed : XL.startTyped(f, Array.from(inkMap.values()).some((r) => App.inkImages.hasInk(r)), S.exTyped);
       ty.el.querySelector('[data-ty-pen]').addEventListener('click', () => setTyped(false));
+      // Text markieren → „＋ Vokabel / Grammatik / Ausdruck“ mit dem markierten Text (wie im getippten Unterricht/Tagebuch)
+      const selBar = ty.el.querySelector('.ex-typed-sel');
+      const selTools = (opts.extraTools || []).filter((t) => ['vocab', 'grammar', 'phrase'].includes(t.id));
+      if (selTools.length) {
+        selBar.insertAdjacentHTML('beforeend', selTools.map((t) => `<button type="button" class="btn btn-sm ${App.SECTIONS[t.id].cls}" data-ty-new="${t.id}">${icon('plus')} ${{ vocab: 'Vokabel', grammar: 'Grammatik', phrase: 'Ausdruck' }[t.id]}</button>`).join(''));
+        const selText = () => ty.ta.value.slice(ty.ta.selectionStart, ty.ta.selectionEnd).trim();
+        const syncSel = () => { selBar.hidden = !selText(); };
+        ['select', 'keyup', 'pointerup', 'input'].forEach((ev) => ty.ta.addEventListener(ev, syncSel));
+        selBar.addEventListener('pointerdown', (e) => e.preventDefault()); // Antippen hebt die Markierung nicht auf
+        selBar.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-ty-new]'); if (!b) return;
+          const t = selTools.find((x) => x.id === b.dataset.tyNew), text = selText();
+          if (t && text) t.onClick(text);
+        });
+      }
     }
     const applyTyped = () => {
       if (!ty.el) { const b = root.querySelector('[data-v=typed]'); if (b) b.hidden = true; return; }

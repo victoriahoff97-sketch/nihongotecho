@@ -95,7 +95,7 @@
       : base);
   };
   // auch wenn ein Versuch als Datei geöffnet wird (Bibliothek, Suche)
-  App.sheetHome((f) => (f.exerciseId ? { newDefaults: attemptDefaults(f) } : null));
+  App.sheetHome((f) => (f.exerciseId ? { newDefaults: attemptDefaults(f), newPhrase: true } : null));
   // typed: true = mit dem Antwortfeld öffnen (Knopf „Tippen“); sonst so, wie der Versuch geschrieben wurde bzw. wie zuletzt
   const openAttempt = async (fileId, typed) => {
     const f = App.store.files.get(fileId);
@@ -103,7 +103,9 @@
     const root = document.createElement('div');
     $('#overlay-root').appendChild(root);
     const ctrl = await App.ink.mount(root, fileId, { embedded: false, extraInMenu: true, typed, // die Leiste bleibt einzeilig
-      extraTools: ['vocab', 'grammar'].map((type) => ({ id: type, label: type === 'vocab' ? 'Neue Vokabel' : 'Neue Grammatik', icon: 'plus', onClick: () => App.newLinked(type, defaultsFor(type)) })),
+      // onClick(text): markierter Text aus der getippten Antwort füllt das Formular vor
+      extraTools: [['vocab', 'Neue Vokabel'], ['grammar', 'Neue Grammatik'], ['phrase', 'Neuer Ausdruck']].map(([type, label]) => ({ id: type, label, icon: 'plus',
+        onClick: (t) => App.newLinked(type, App.selDefaults(type, defaultsFor(type), t)) })),
       onLinkWord: App.wordLinker(defaultsFor),
       onClose: () => { ctrl.destroy(); root.remove(); App.render(true); } });
     if (!ctrl) root.remove();
