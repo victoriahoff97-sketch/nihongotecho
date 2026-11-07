@@ -1966,7 +1966,7 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .forum-img-prev .icon-btn { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: var(--card); }
 .forum-thumb { display: block; max-width: 200px; max-height: 140px; border-radius: 10px; border: 1px solid var(--line); }
 .forum-compose.imgs-full .forum-pick { opacity: .5; }
-.forum-err { color: var(--shu); font-size: 14px; font-weight: 700; }
+.forum-err { color: var(--shu); font-size: 14px; font-weight: 700; white-space: pre-line; }
 .forum-err[hidden] { display: none; }
 .forum-note { padding: 14px 16px; border-radius: 12px; background: var(--paper-2); color: var(--ink-2); font-size: 15px; }
 .forum-empty { padding: 18px 4px; }

@@ -23,13 +23,17 @@
   D.load = () => {
     if (!ready) {
       ready = (async () => {
+        // D.step: woran es gerade hängt – die Fehlermeldung beim Beitreten zeigt es mit an (Fehlersuche auf fremden Geräten)
+        D.step = 'Programmteil laden';
         if (!window.firebase) for (const src of SDK) await loadScript(src);
         const fb = window.firebase;
         if (!fb.apps.length) fb.initializeApp(App.FIREBASE_CONFIG);
         auth = fb.auth();
         db = fb.firestore();
         // gespeicherte anonyme Anmeldung abwarten, sonst neu anmelden
+        D.step = 'Anmeldung prüfen';
         const user = await new Promise((res) => { const off = auth.onAuthStateChanged((u) => { off(); res(u); }); });
+        D.step = 'Anmelden';
         if (!user) await auth.signInAnonymously();
         return auth.currentUser.uid;
       })();
@@ -63,6 +67,7 @@
 
   // ---------- Gruppe ----------
   D.createGroup = async (code, name) => {
+    D.step = 'Gruppe anlegen';
     const b = db.batch();
     b.set(group(code), { createdAt: now(), createdBy: D.uid() });
     b.set(group(code).collection('members').doc(D.uid()), { name, joinedAt: now() });
@@ -70,6 +75,7 @@
   };
   // Die Regeln lassen den Mitglied-Eintrag nur zu, wenn es die Gruppe gibt: „verweigert“ heißt also „falscher Code“
   D.joinGroup = async (code, name, avatar) => {
+    D.step = 'Gruppe beitreten';
     try {
       await group(code).collection('members').doc(D.uid()).set(Object.assign({ name, joinedAt: now() }, avatar ? { avatar } : {}));
     } catch (e) {

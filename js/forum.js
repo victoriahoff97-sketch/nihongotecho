@@ -721,7 +721,7 @@
       const nameMsg = F.checkName(name);
       if (codeIn && !F.isCode(code)) return setErr(NO_GROUP);
       if (nameMsg) return setErr(nameMsg);
-      if (navigator.onLine === false) return setErr(NO_NET);
+      if (navigator.onLine === false) return setErr(NO_NET + '\n\nTechnisch: Gerät meldet offline');
       setErr('');
       busy = true;
       const btn = r.querySelector('[data-go]');
@@ -739,7 +739,9 @@
         start();
         if (codeIn) showList(); else showCreated(code);
       } catch (e) {
-        setErr(e && e.code === 'no-group' ? NO_GROUP : NO_NET);
+        // Schritt + Fehlercode mit anzeigen: so kann man auf fremden Geräten per Foto sehen, was wirklich klemmt
+        const why = e && e.code === 'timeout' ? 'keine Antwort nach ' + NET_WAIT / 1000 + ' s' : String((e && (e.code || e.message)) || e);
+        setErr(e && e.code === 'no-group' ? NO_GROUP : NO_NET + '\n\nTechnisch: ' + (D.step || '?') + ' – ' + why);
       } finally { busy = false; btn.disabled = false; btn.textContent = label; }
     };
     r.querySelector('[data-go]').onclick = go;
