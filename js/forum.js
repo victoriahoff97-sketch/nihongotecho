@@ -10,6 +10,11 @@
   const KIND = { rede: '💬 Redebedarf', zeigen: '💡 Zum Zeigen' };
   const OFFLINE = 'Gerade offline – Beiträge kommen, sobald du wieder Internet hast.';
   const NO_GROUP = 'Diesen Gruppencode gibt es nicht. Prüf die Schreibweise.';
+  // Beitreten braucht eine echte Antwort vom Server. Ohne Internet wartet Firebase sonst endlos (WLAN ohne Internet
+  // meldet navigator.onLine trotzdem „online“) – darum nach ein paar Sekunden aufgeben und das klar sagen.
+  const NO_NET = 'Keine Verbindung zum Internet. Prüf das WLAN (oder die mobilen Daten) und tipp dann noch einmal auf den Knopf.';
+  const NET_WAIT = 15000;
+  const inTime = (p) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timeout'), { code: 'timeout' })), NET_WAIT))]);
   const JPEG = 'data:image/jpeg;base64,';
 
   // ---------- Gerätezustand ----------
@@ -716,20 +721,26 @@
       const nameMsg = F.checkName(name);
       if (codeIn && !F.isCode(code)) return setErr(NO_GROUP);
       if (nameMsg) return setErr(nameMsg);
-      if (navigator.onLine === false) return setErr(OFFLINE);
+      if (navigator.onLine === false) return setErr(NO_NET);
       setErr('');
       busy = true;
+      const btn = r.querySelector('[data-go]');
+      const label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Verbinde …';
       try {
-        await D.load();
-        if (codeIn) await D.joinGroup(code, name); else await D.createGroup(code, name);
+        await inTime((async () => {
+          await D.load();
+          if (codeIn) await D.joinGroup(code, name); else await D.createGroup(code, name);
+        })());
         st = Object.assign(blank(), { code, name, fresh: true });
         save();
         stop();
         start();
         if (codeIn) showList(); else showCreated(code);
       } catch (e) {
-        setErr(e && e.code === 'no-group' ? NO_GROUP : OFFLINE);
-      } finally { busy = false; }
+        setErr(e && e.code === 'no-group' ? NO_GROUP : NO_NET);
+      } finally { busy = false; btn.disabled = false; btn.textContent = label; }
     };
     r.querySelector('[data-go]').onclick = go;
     $$('input', r).forEach((x) => x.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); }));

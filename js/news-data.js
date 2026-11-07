@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-forum-offline', date: '7. November',
+      items: [
+        { t: 'Forum: Hinweis ohne Internet', d: 'Wer der Gruppe in der Gedankenwolke beitreten will und kein Internet hat, sieht jetzt „Verbinde …“ und nach ein paar Sekunden einen klaren Hinweis, statt dass einfach nichts passiert.' },
+      ],
+    },
+    {
       id: '2026-11-07-forum-bilder', date: '7. November',
       items: [
         { t: 'Forum: bis zu 4 Bilder', d: 'An einen Beitrag oder eine Antwort in der Gedankenwolke passen jetzt bis zu 4 Bilder – über „Bild“ (auch mehrere auf einmal) oder „Einfügen“.' },
