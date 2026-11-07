@@ -161,6 +161,20 @@
   // Teilen-Menü: ?titel=&text=&url= (Web Share Target) vor dem ersten Zeichnen in die Eingangs-Adresse umsetzen.
   // Synchron, wirft nie; andere Suchparameter (z. B. ?sw=1) bleiben unberührt, wenn nichts geteilt wurde.
   App.inbox = {
+    // Markieren in der App (js/selcard.js): Vokabel-Formular auf der aktuellen Seite öffnen, der Satz wird Beispielsatz.
+    // Schon vorhanden → Hinweis mit „Öffnen“ statt eines zweiten Eintrags.
+    async vocabHere({ text, satz }) {
+      try {
+        const word = JP.plain(text).replace(/\s+/g, '');
+        const items = [...App.store.items.values()];
+        const own = baseForms(word).map((f) => L.findExisting(items, f)).find(Boolean);
+        if (own) return App.toast(`„${App.itemPlain(own)}“ ist schon in deinen Vokabeln`, { label: 'Öffnen', fn: () => App.go(App.link(own)) });
+        const d = L.vocabDefaults({ text: text.replace(/\s+/g, ''), satz: satz && JP.plain(satz) !== word ? satz : '', quelle: '', ref: '' });
+        const hit = await dictHit(word).catch(() => null);
+        if (hit) App.adoptDictEntry({ entry: hit.entry, surface: hit.base, base: hit.base === word ? d.kana : '' }, { extra: { examples: d.examples } });
+        else App.editItem({ type: 'vocab', defaults: d, single: true });
+      } catch (e) { console.error(e); App.toast('Vokabel-Formular ließ sich nicht öffnen'); }
+    },
     bootShare() {
       try {
         const s = L.fromShare(location.search);

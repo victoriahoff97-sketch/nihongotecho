@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-markieren', date: '7. November',
+      items: [
+        { t: 'Wort markieren, direkt speichern', d: 'Markier japanischen Text irgendwo in der App, z. B. ein Wort in einem Beispielsatz – darunter erscheinen „Vokabel speichern“ und „Sätze erkennen“.' },
+        { t: 'Ganz ohne Browser-Erweiterung', d: 'Bei „Vokabel speichern“ ist der Satz schon als Beispiel drin. Kennst du das Wort schon, bringt dich „Öffnen“ zu deinem Eintrag.' },
+      ],
+    },
+    {
       id: '2026-11-07-konjugieren-zahl', date: '7. November',
       items: [
         { t: 'Konjugieren: kleine Runden', d: 'Der Knopf „Runde starten“ unter Üben › Konjugieren zeigt jetzt nur, wie viele Wörter in dieser Runde drankommen (z. B. 20), statt alle deine Verben und Adjektive.' },

@@ -2182,3 +2182,11 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 /* Karten mit Muster (js/pattern-card-logic.js): Platzhalter-Zeile auf der deutschen Seite */
 .slot-line { margin-top: 6px; font-size: 1.05rem; color: var(--matcha); font-weight: 700; }
 .ph-fill .ex-note { margin-top: -6px; }
+
+/* Markieren in der App (js/selcard.js): Kärtchen an der Markierung, wie das der Browser-Erweiterung */
+.sel-card { position: fixed; z-index: 70; display: flex; gap: 6px; padding: 6px; background: var(--card, #fffdf9); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-lg); }
+.sel-card[hidden] { display: none; }
+.sel-card button { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--sec-soft); color: var(--sec); font: inherit; font-weight: 700; white-space: nowrap; cursor: pointer; touch-action: manipulation; }
+.sel-card button[hidden] { display: none; }
+.sel-card button:hover, .sel-card button:focus-visible { background: var(--sec); color: #fff; }
+.sel-card .k { font-family: var(--font-kanji); font-size: 17px; }
