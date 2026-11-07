@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-einstufen-beide', date: '7. November',
+      items: [
+        { t: 'Einstufen „Beide“ korrigiert', d: 'Bei „Beide“ stand „Alles eingestuft“, obwohl Deutsch → Japanisch noch offen war. Jetzt kommt die Meldung erst, wenn wirklich beide Richtungen fertig sind.' },
+      ],
+    },
+    {
       id: '2026-11-07-zum-artikel', date: '7. November',
       items: [
         { t: 'Zurück zum Artikel', d: 'Text bei NHK Easy markiert und übernommen? Oben erscheint „↩ Zurück zu NHK Easy“ und bringt dich an dieselbe Stelle im Artikel – am PC und auf dem Tablet.' },
