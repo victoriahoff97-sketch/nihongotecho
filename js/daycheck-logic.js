@@ -20,10 +20,12 @@
   };
 
   // ---------- Eigene Ziele (settings.dayGoals) ----------
-  // { level: { <key>: 'goal' | 'opt' | 'off' }, reviews, listenMin, own: [{ id, title }] } – null = alles wie am Anfang.
-  // goal = zählt fürs Feuerwerk, opt = „Wenn du magst“, off = wird nicht gezeigt. Gilt auf allen Geräten (steckt im Backup).
-  D.LEVELS = ['goal', 'opt', 'off'];
-  D.DEFAULT_LEVEL = { review: 'goal', apply: 'goal', listen: 'goal', new: 'opt', kanji: 'opt', conj: 'opt', nhk: 'opt' };
+  // { level: { <key>: 'goal' | 'off' }, reviews, listenMin, own: [{ id, title }] } – null = alles wie am Anfang.
+  // goal = feste To-do, zählt fürs Feuerwerk; off = wird nicht gezeigt. Gilt auf allen Geräten (steckt im Backup).
+  // Früher gab es noch 'opt' („Wenn du magst“) – wirkte irritierend, ist seit 2026-11-07 raus. Gespeichertes 'opt' gilt
+  // wie nicht gesetzt: eingebaute Punkte sind dann aus, eigene To-dos an.
+  D.LEVELS = ['goal', 'off'];
+  D.DEFAULT_LEVEL = { review: 'goal', apply: 'goal', listen: 'goal', new: 'off', kanji: 'off', conj: 'off', nhk: 'off' };
   D.REVIEWS = 25;
   D.LISTEN_MIN = 1;
   D.NUM = { reviews: { min: 5, max: 200, by: 5, def: D.REVIEWS }, listenMin: { min: 1, max: 60, by: 1, def: D.LISTEN_MIN } };
@@ -61,6 +63,11 @@
     if (!t || !id) return g;
     g.own.push({ id, title: t });
     g.level[id] = 'goal';
+    return g;
+  };
+  D.renameOwn = (cfg, id, title) => {
+    const g = D.goals(cfg), t = String(title || '').trim().slice(0, 60), o = g.own.find((x) => x.id === id);
+    if (o && t) o.title = t;
     return g;
   };
   D.removeOwn = (cfg, id) => {

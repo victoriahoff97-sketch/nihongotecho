@@ -1,4 +1,4 @@
-/* Nihongo Techō – Tagesliste „今日“ unten auf der Startseite: eigene Ziele, die sich (meist) selbst abhaken, und freiwillige */
+/* Nihongo Techō – Tagesliste „今日“ unten auf der Startseite: feste To-dos, die sich (meist) selbst abhaken, plus eigene */
 'use strict';
 (function (App) {
   const { esc, icon } = App;
@@ -93,40 +93,37 @@
 
   const row = (x, on, g) => `<div class="day-row ${on ? 'on' : ''}">${box(x, on)}
     <span class="grow"><b>${title(x)}</b><small>${sub(x.key, g)}</small></span>${on ? '' : ACTION[x.key] || ''}</div>`;
-  const opt = (x, on) => `<div class="day-row day-opt ${on ? 'on' : ''}">${box(x, on)}<span class="grow">${title(x)}</span>${x.key === 'nhk'
-    ? `<a class="small" href="${NHK_URL}" target="_blank" rel="noopener">${esc('Öffnen →')}</a>` : ''}</div>`;
   const editBtn = (label) => `<button type="button" class="icon-btn sm day-edit-btn" data-day-edit title="${label}" aria-label="${label}">${icon('edit')}</button>`;
 
   const view = () => {
     const g = goals(), st = state(), list = L.list(cfg());
-    const main = list.filter((x) => x.level === 'goal'), more = list.filter((x) => x.level === 'opt');
+    const main = list.filter((x) => x.level === 'goal');
     const all = L.allMain(st, cfg());
-    const status = all ? 'お疲れ様 · alles geschafft' : main.length ? 'prüft sich von selbst' : 'noch kein Ziel';
+    const status = all ? 'お疲れ様 · alles geschafft' : main.length ? 'prüft sich von selbst' : 'noch keine To-dos';
     return `<div class="card day-check" data-day-check>
-      <div class="row between"><h3 lang="ja">今日 <span>· Heute</span></h3><span class="row day-head"><span class="small ${all ? 'day-all' : 'muted'}">${status}</span>${editBtn('Ziele anpassen')}</span></div>
+      <div class="row between"><h3 lang="ja">今日 <span>· Heute</span></h3><span class="row day-head"><span class="small ${all ? 'day-all' : 'muted'}">${status}</span>${editBtn('To-dos bearbeiten')}</span></div>
       ${main.map((x) => row(x, st[x.key], g)).join('')}
-      ${main.length ? '' : '<p class="small muted day-empty">Tippe auf den Stift und stell dir eigene Ziele zusammen.</p>'}
-      ${more.length ? `<div class="day-more">Wenn du magst</div>${more.map((x) => opt(x, st[x.key])).join('')}` : ''}
+      ${main.length ? '' : '<p class="small muted day-empty">Tippe auf den Stift und stell dir deine To-dos zusammen.</p>'}
     </div>`;
   };
 
-  // Bearbeiten direkt in der Karte: pro Punkt Ziel / Mag / Aus, Zahlen mit − und +, eigene Ziele dazu oder weg
-  const LEVEL_LABEL = { goal: 'Ziel', opt: 'Mag', off: 'Aus' };
-  const LEVEL_TIP = { goal: 'Zählt fürs Feuerwerk', opt: 'Steht unter „Wenn du magst“', off: 'Wird nicht gezeigt' };
+  // Bearbeiten direkt in der Karte: pro Punkt An / Aus, Zahlen mit − und +, eigene To-dos dazu, umbenennen oder weg
+  const LEVEL_LABEL = { goal: 'An', off: 'Aus' };
+  const LEVEL_TIP = { goal: 'Steht in der Liste und zählt fürs Feuerwerk', off: 'Wird nicht gezeigt' };
   const stepper = (k, text) => `<span class="day-num"><button type="button" class="icon-btn sm" data-day-bump="${k}:-1" aria-label="Weniger">−</button><b>${text}</b><button type="button" class="icon-btn sm" data-day-bump="${k}:1" aria-label="Mehr">+</button></span>`;
   const editSub = (x, g) => (x.key === 'review' ? stepper('reviews', `${g.reviews} Karten`)
     : x.key === 'listen' ? stepper('listenMin', mins(g.listenMin))
       : `<small>${sub(x.key, g)}</small>`);
   const editRow = (x, g) => `<div class="day-row day-set ${x.level === 'off' ? 'off' : ''}">
-    <span class="grow"><b>${title(x)}${x.own ? ` <button type="button" class="day-del" data-day-del="${esc(x.key)}" title="Ziel löschen" aria-label="Ziel löschen">${icon('close')}</button>` : ''}</b>${editSub(x, g)}</span>
+    <span class="grow"><b>${x.own ? `<button type="button" class="day-rename" data-day-rename="${esc(x.key)}" title="Umbenennen">${title(x)}</button> <button type="button" class="day-del" data-day-del="${esc(x.key)}" title="To-do löschen" aria-label="To-do löschen">${icon('close')}</button>` : title(x)}</b>${editSub(x, g)}</span>
     <span class="seg">${L.LEVELS.map((l) => `<button type="button" class="${x.level === l ? 'on' : ''}" data-day-level="${esc(x.key)}:${l}" aria-pressed="${x.level === l}" title="${LEVEL_TIP[l]}">${LEVEL_LABEL[l]}</button>`).join('')}</span></div>`;
   const editView = () => {
     const g = goals();
     return `<div class="card day-check day-editing" data-day-check>
-      <div class="row between"><h3>Meine Ziele</h3><button type="button" class="btn btn-sm btn-primary" data-day-edit>Fertig</button></div>
+      <div class="row between"><h3>Meine To-dos</h3><button type="button" class="btn btn-sm btn-primary" data-day-edit>Fertig</button></div>
       ${L.list(cfg()).map((x) => editRow(x, g)).join('')}
-      <div class="day-row"><button type="button" class="btn btn-sm btn-ghost" data-day-add>${icon('plus')} Eigenes Ziel</button></div>
-      <p class="small muted day-note">Feuerwerk, sobald alle „Ziel“-Punkte geschafft sind.</p>
+      <div class="day-row"><button type="button" class="btn btn-sm btn-ghost" data-day-add>${icon('plus')} Eigenes To-do</button></div>
+      <p class="small muted day-note">Feuerwerk, sobald alle To-dos auf „An“ geschafft sind. Eigene antippen zum Umbenennen.</p>
     </div>`;
   };
 
@@ -135,8 +132,13 @@
   const saveGoals = (g) => App.saveSettings({ dayGoals: g }); // die Startseite zeichnet sich danach selbst neu (js/main.js)
 
   const addOwn = async () => {
-    const r = await App.ask('Eigenes Ziel', [{ label: 'Was willst du dir vornehmen?', placeholder: 'z. B. Anki gemacht' }]);
+    const r = await App.ask('Eigenes To-do', [{ label: 'Was willst du dir jeden Tag vornehmen?', placeholder: 'z. B. Anki gemacht' }]);
     if (r && r[0]) saveGoals(L.addOwn(cfg(), r[0], App.uid('c')));
+  };
+  const renameOwn = async (id) => {
+    const t = (goals().own.find((o) => o.id === id) || {}).title || '';
+    const r = await App.ask('To-do umbenennen', [{ label: 'Neuer Name', value: t }]);
+    if (r && r[0] && r[0] !== t) saveGoals(L.renameOwn(cfg(), id, r[0]));
   };
   const delOwn = async (id) => {
     const before = cfg();
@@ -150,6 +152,8 @@
     if (e.target.closest('[data-day-journal]')) { openJournal(); return; }
     if (e.target.closest('[data-day-edit]')) { editing = !editing; redraw(); if (!editing) check(); return; }
     if (e.target.closest('[data-day-add]')) { addOwn(); return; }
+    const rn = e.target.closest('[data-day-rename]');
+    if (rn) { renameOwn(rn.dataset.dayRename); return; }
     const del = e.target.closest('[data-day-del]');
     if (del) { delOwn(del.dataset.dayDel); return; }
     const lv = e.target.closest('[data-day-level]');

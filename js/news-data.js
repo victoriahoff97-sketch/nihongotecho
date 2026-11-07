@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-todos', date: '7. November',
+      items: [
+        { t: 'Heute-Liste nur noch mit festen To-dos', d: 'Startseite › 今日: „Wenn du magst“ ist weg. Über den Stift schaltest du Punkte an oder aus, legst beliebig viele eigene To-dos an und benennst sie um.' },
+        { t: 'Lernstand-Karten umsortieren', d: 'Startseite: Mit ↑ und ↓ rechts neben Vokabel-, JLPT-, Genki- und Kanji-Lernstand schiebst du eine Karte nach oben oder unten – z. B. was du schon kannst nach unten.' },
+      ],
+    },
+    {
       id: '2026-11-07-markieren', date: '7. November',
       items: [
         { t: 'Wort markieren, direkt speichern', d: 'Markier japanischen Text irgendwo in der App, z. B. ein Wort in einem Beispielsatz – darunter erscheinen „Vokabel speichern“ und „Sätze erkennen“.' },

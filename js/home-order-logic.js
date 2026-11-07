@@ -32,4 +32,17 @@
     out.splice(i, 1); out.splice(j, 0, key);
     return out;
   };
+
+  // Pfeile ↑/↓ an den Lernstand-Karten: tauscht mit der nächsten Karte aus derselben Gruppe (sichtbare Lernstand-Karten),
+  // alles andere dazwischen bleibt, wo es ist
+  H.swapIn = (list, key, dir, group) => {
+    const i = list.indexOf(key);
+    if (i < 0) return list.slice();
+    let j = i + dir;
+    while (j >= 0 && j < list.length && !group.includes(list[j])) j += dir;
+    if (j < 0 || j >= list.length) return list.slice();
+    const out = list.slice();
+    out[i] = list[j]; out[j] = key;
+    return out;
+  };
 })(window.App = window.App || {});

@@ -229,6 +229,11 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 .fold-btn .chev { width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin: 0 3px 3px 2px; transition: transform .15s; }
 .fold-btn[aria-expanded="false"] .chev { transform: rotate(-45deg); margin-bottom: 0; }
 .fold-btn .fold-sum { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.home-move { order: 1; display: inline-flex; gap: 2px; }
+.home-move .icon-btn.sm { width: 28px; height: 28px; font-size: 15px; color: var(--muted); }
+.home-move .icon-btn.sm:hover:not(:disabled) { color: var(--ink); }
+.home-move .icon-btn:disabled { opacity: .25; cursor: default; }
+@media (pointer: coarse) { .home-move .icon-btn.sm { width: 40px; height: 40px; } }
 .fold-btn[aria-expanded="true"] .fold-sum { display: none; }
 .card.is-folded, .timeline.is-folded { display: none; }
 @media (pointer: coarse) { .fold-btn { min-height: 42px; } }
@@ -1725,13 +1730,6 @@ a.r:hover { border-color: var(--sec); color: var(--sec); }
 .day-box .ico { width: 15px; height: 15px; }
 .day-row.on .day-box { background: var(--matcha); border-color: var(--matcha); color: #fff; }
 .day-row.on b { color: var(--muted); }
-.day-more { font-size: 12.5px; color: var(--muted); margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
-.day-more + .day-row { border-top: 0; }
-.day-opt { padding: 7px 0; font-size: 14.5px; }
-.day-opt .day-box { width: 19px; height: 19px; border-radius: 50%; border-style: dashed; }
-.day-opt .day-box .ico { width: 12px; height: 12px; }
-.day-opt.on .day-box { border-style: solid; }
-.day-opt.on .grow { color: var(--muted); }
 button.day-box { cursor: pointer; }
 button.day-box:hover { border-color: var(--matcha); }
 /* Eigene Ziele: Stift oben rechts, Bearbeiten direkt in der Karte */
@@ -1752,6 +1750,9 @@ button.day-box:hover { border-color: var(--matcha); }
 .day-del { border: 0; background: none; padding: 2px; color: var(--muted); cursor: pointer; display: inline-grid; border-radius: 6px; }
 .day-del:hover { color: var(--shu); background: var(--shu-soft); }
 .day-del .ico { width: 14px; height: 14px; }
+.day-rename { all: unset; cursor: pointer; border-bottom: 1px dashed var(--muted); }
+.day-rename:hover { color: var(--shu); }
+.day-rename:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
 .day-note { margin: 4px 0 0; }
 
 /* Matsuri-Feuerwerk (js/matsuri.js) */
@@ -1801,8 +1802,8 @@ button.day-box:hover { border-color: var(--matcha); }
 /* Tagesliste 今日: Knopf bzw. Ziel/Mag/Aus rutschen unter den Text statt ihn zu überdecken */
 @container (max-width: 270px) {
   .day-row { flex-wrap: wrap; row-gap: 6px; }
-  .day-row:not(.day-opt) > .grow { flex: 1 1 calc(100% - 36px); }
-  .day-row:not(.day-opt):not(.day-set) > .grow ~ * { margin-left: 36px; }
+  .day-row > .grow { flex: 1 1 calc(100% - 36px); }
+  .day-row:not(.day-set) > .grow ~ * { margin-left: 36px; }
   .day-set > .grow { flex-basis: 100%; }
 }
 /* Schnellaktionen */

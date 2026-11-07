@@ -113,7 +113,9 @@
   // Ein Klick auf die Überschrift klappt die Karte darunter ein; eingeklappt steht die Kurzfassung neben dem Titel.
   // Gemerkt in den Einstellungen (homeFolded: Liste der eingeklappten Karten).
   const isFolded = (key) => (S.settings.homeFolded || []).includes(key);
-  const foldHead = (key, title, sum) => `<div class="section-title"><button type="button" class="fold-btn" data-fold="${key}" aria-expanded="${!isFolded(key)}" title="Ein- oder ausklappen"><span class="chev"></span>${title}<span class="fold-sum">· ${sum}</span></button></div>`;
+  // ↑/↓ rechts in der Überschrift: Lernstand-Karten untereinander tauschen (pro Gerät, wie „Startseite anpassen“)
+  const moveBtns = (key) => (homeEdit ? '' : `<span class="home-move"><button type="button" class="icon-btn sm" data-home-move="${key}:-1" title="Nach oben" aria-label="Nach oben">↑</button><button type="button" class="icon-btn sm" data-home-move="${key}:1" title="Nach unten" aria-label="Nach unten">↓</button></span>`);
+  const foldHead = (key, title, sum) => `<div class="section-title"><button type="button" class="fold-btn" data-fold="${key}" aria-expanded="${!isFolded(key)}" title="Ein- oder ausklappen"><span class="chev"></span>${title}<span class="fold-sum">· ${sum}</span></button>${moveBtns(key)}</div>`;
   const foldCls = (key) => (isFolded(key) ? ' is-folded' : '');
   document.addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('[data-fold]');
@@ -344,6 +346,25 @@
     saveList(list);
   });
   document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-forecast]')) App.forecastModal(); });
+  // Lernstand-Karten mit ↑/↓ tauschen: nur mit der nächsten sichtbaren Lernstand-Karte, der Rest der Startseite bleibt stehen
+  const PROG_BLOCKS = ['vocab', 'jlpt', 'genki', 'kanji'];
+  const shownProg = () => Array.from(document.querySelectorAll('[data-home-blocks] > [data-block]')).map((s) => s.dataset.block).filter((k) => PROG_BLOCKS.includes(k));
+  const markMoveEnds = () => {
+    const shown = shownProg();
+    document.querySelectorAll('[data-home-move]').forEach((b) => {
+      const [k, d] = b.dataset.homeMove.split(':');
+      b.disabled = shown.indexOf(k) === (+d < 0 ? 0 : shown.length - 1);
+    });
+  };
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-home-move]');
+    if (!b) return;
+    const [k, d] = b.dataset.homeMove.split(':');
+    const full = HO.order(Object.keys(BLOCK_LABEL), HO.parse(App.lsGet('homeOrder')));
+    App.lsSet('homeOrder', JSON.stringify(HO.swapIn(full, k, +d, shownProg())));
+    App.render(true);
+    requestAnimationFrame(() => { const nb = document.querySelector(`[data-home-move="${k}:${d}"]`); if (nb && !nb.disabled) nb.focus(); });
+  });
   document.addEventListener('click', (e) => {
     const t = e.target.closest && e.target.closest('[data-home-edit], [data-home-done], [data-home-reset], [data-quick-on], [data-quick-off], [data-read-on], [data-read-off]');
     if (!t) return;
@@ -447,6 +468,7 @@
       </div>`;
     const nv = view.querySelector('[data-new-vocab]');
     if (nv) nv.onclick = () => App.editItem({ type: 'vocab' });
+    markMoveEnds();
   });
 
   // =========================================================
