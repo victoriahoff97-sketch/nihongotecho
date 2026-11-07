@@ -48,15 +48,15 @@
       return;
     }
     const tasks = G.sheet(all, N, App.shuffle);
-    const chips = G.bank(tasks, App.shuffle);
+    const chips = G.bank();
     let gi = 0;
     let ri = 0;
     const rowOf = [];
     const segHtml = (x) => (x.g ? (rowOf.push(ri), '') + `<span class="gap-slot" data-gap="${gi++}" role="button" tabindex="0" aria-label="Lücke"></span>` : JP.ruby(x.t.replace(/\|/g, '')));
     stage.innerHTML = `<div class="card gap-sheet">
       <div class="gap-top"><div class="gap-bank" data-bank>${chips.map((c, i) => `<button class="gap-chip" data-chip="${i}" lang="ja">${esc(c)}</button>`).join('')}</div>
-      <div class="small muted gap-how">Partikel antippen, dann Lücke antippen – oder hinziehen. Lücke antippen leert sie wieder.</div></div>
-      ${tasks.map((t) => `<div class="gap-row"><div class="gap-jp" lang="ja">${t.segs.map(segHtml).join('')} ${App.speakBtn(sayOf(t))}</div>
+      <div class="small muted gap-how">Partikel antippen – sie kommt in die markierte Lücke, dann geht es von oben nach unten weiter. Oder hinziehen. Gefüllte Lücke antippen leert sie wieder.</div></div>
+      ${tasks.map((t) => `<div class="gap-row"><div class="gap-jp" lang="ja">${t.segs.map(segHtml).join('')} <span data-say>${App.speakBtn(sayOf(t))}</span></div>
         <div class="small muted">${esc(t.de)}${t.kind === 'muster' ? ' · <span class="gap-kind">Muster</span>' : ''} · <a href="${App.link(App.item(t.id))}">${esc((App.item(t.id) || {}).kanji || (App.item(t.id) || {}).kana || '')}</a></div><div class="gap-note small" data-note="${ri++}" hidden></div></div>`).join('')}
       <div class="row gap-foot"><button class="btn btn-primary" data-check>${icon('check')} Prüfen</button><button class="btn btn-ghost" data-show>Lösung zeigen</button><button class="btn" data-new>Neue Sätze</button><span class="small" data-msg></span></div>
     </div>`;
@@ -64,12 +64,25 @@
     const slots = [...stage.querySelectorAll('[data-gap]')];
     const chipEls = [...stage.querySelectorAll('[data-chip]')];
     const msg = stage.querySelector('[data-msg]');
-    const fill = new Array(gaps.length).fill(null); // Lücke → Index des Chips
-    let sel = null, shown = false;
+    const fill = new Array(gaps.length).fill(null); // Lücke → Index des Chips (Chips sind beliebig oft nutzbar)
+    let cur = 0, shown = false; // cur = Lücke, in die die nächste angetippte Partikel kommt
 
+    // Vorlesen verrät die Lösung – erst nach dem Prüfen (Satz vollständig gefüllt) oder „Lösung zeigen“
+    const sayBtns = [...stage.querySelectorAll('[data-say] button')];
+    const lockSay = (b) => { b.disabled = true; b.title = 'Vorlesen geht nach dem Prüfen'; };
+    const freeSay = (r) => { const b = sayBtns[r]; if (b) { b.disabled = false; b.title = 'Vorlesen'; } };
+    sayBtns.forEach(lockSay);
+
+    const nextEmpty = (from) => {
+      for (let k = 0; k < fill.length; k++) { const j = (from + k) % fill.length; if (fill[j] == null) return j; }
+      return -1;
+    };
     const draw = () => {
-      slots.forEach((s, i) => { s.textContent = fill[i] == null ? '' : chips[fill[i]]; s.classList.toggle('f', fill[i] != null); });
-      chipEls.forEach((c, i) => { c.classList.toggle('used', fill.includes(i)); c.classList.toggle('sel', sel === i); });
+      slots.forEach((s, i) => {
+        s.textContent = fill[i] == null ? '' : chips[fill[i]];
+        s.classList.toggle('f', fill[i] != null);
+        s.classList.toggle('next', !shown && i === cur);
+      });
     };
     const notes = [...stage.querySelectorAll('[data-note]')];
     const clearMarks = () => { slots.forEach((s) => s.classList.remove('ok', 'bad', 'soft')); notes.forEach((n) => { n.hidden = true; n.innerHTML = ''; }); msg.textContent = ''; };
@@ -77,11 +90,12 @@
     const NUANCE = '<b>は</b>: „was … angeht“ – Thema, oft im Kontrast zu anderem. <b>が</b>: hebt hervor, <i>wer</i> oder <i>was</i> – oft neue Information.';
     const softNote = (i, mine) => { const n = notes[rowOf[i]]; n.hidden = false; n.innerHTML = `<span lang="ja">${esc(mine)}</span> geht hier auch – im Satz stand <span lang="ja">${esc(gaps[i].g)}</span>. ${NUANCE}`; };
     const put = (gapIdx, chipIdx) => {
-      if (shown || chipIdx == null || fill.includes(chipIdx)) return;
-      fill[gapIdx] = chipIdx; sel = null; clearMarks(); draw();
+      if (shown || chipIdx == null || gapIdx < 0) return;
+      fill[gapIdx] = chipIdx; cur = nextEmpty(gapIdx + 1); clearMarks(); draw();
     };
-    const pickChip = (i) => { if (shown || fill.includes(i)) return; sel = sel === i ? null : i; draw(); };
-    const tapGap = (i) => { if (shown) return; if (sel != null) put(i, sel); else { fill[i] = null; clearMarks(); draw(); } };
+    const pickChip = (i) => { if (shown) return; if (cur < 0 || fill[cur] != null) cur = nextEmpty(0); put(cur, i); };
+    // Gefüllte Lücke antippen = leeren; leere Lücke antippen = sie wird als nächste gefüllt
+    const tapGap = (i) => { if (shown) return; if (fill[i] != null) { fill[i] = null; clearMarks(); } cur = i; draw(); };
 
     slots.forEach((s, i) => {
       s.onclick = () => tapGap(i);
@@ -91,7 +105,7 @@
     // Ziehen mit Maus, Finger oder Stift; kurzes Antippen ohne Bewegung = auswählen
     chipEls.forEach((c, i) => {
       c.onpointerdown = (e) => {
-        if (shown || fill.includes(i)) return;
+        if (shown) return;
         e.preventDefault();
         const x0 = e.clientX, y0 = e.clientY;
         let ghost = null;
@@ -134,12 +148,14 @@
         if (r === 'ok') ok++; else if (r === 'bad') bad++; else if (r === 'soft') { soft++; softNote(i, mine); }
         s.classList.toggle('ok', r === 'ok'); s.classList.toggle('bad', r === 'bad'); s.classList.toggle('soft', r === 'soft');
       });
+      sayBtns.forEach((b, r) => { if (fill.every((x, i) => rowOf[i] !== r || x != null)) freeSay(r); });
       const open = gaps.length - ok - bad - soft;
       msg.textContent = ok === gaps.length ? `完璧！ Alle ${ok} richtig.`
         : `${ok} richtig${soft ? `, ${soft} geht auch (gelb)` : ''}${bad ? `, ${bad} falsch – rote Lücke antippen und neu füllen` : ''}${open ? ` · ${open} noch leer` : ''}.`;
     };
     stage.querySelector('[data-show]').onclick = () => {
-      shown = true; sel = null;
+      shown = true; cur = -1;
+      sayBtns.forEach((b, r) => freeSay(r));
       slots.forEach((s, i) => {
         const mine = fill[i] == null ? '' : chips[fill[i]];
         const g = G.grade(gaps[i], mine);

@@ -129,12 +129,9 @@
     return shuffle(s.slice(0, n - nm).concat(m.slice(0, nm)));
   };
 
-  // Wortbank: je Lücke ihre Partikel + zwei, die nicht vorkommen – sortiert, damit Gleiches nebeneinander liegt
-  const bank = (tasks, shuffle) => {
-    const need = tasks.flatMap((t) => t.segs.filter((x) => x.g).map((x) => x.g));
-    const extra = shuffle(PRT.slice(0, 7).filter((p) => !need.includes(p))).slice(0, 2);
-    return need.concat(extra).sort((a, b) => PRT.indexOf(a) - PRT.indexOf(b));
-  };
+  // Wortbank: immer alle Partikeln je einmal, feste Reihenfolge – verrät nicht, welche und wie oft sie gebraucht werden
+  const BANK = ['は', 'が', 'を', 'に', 'で', 'へ', 'と', 'も', 'から', 'まで'];
+  const bank = () => BANK.slice();
 
   const right = (gap, val) => !!val && gap.ok.includes(val);
   // 'ok' richtig · 'soft' geht auch (は ⇔ が, andere Nuance) · 'bad' falsch · '' leer
@@ -146,7 +143,7 @@
     return [...n.entries()].filter(([, c]) => c >= 3).map(([l]) => l).sort((a, b) => a - b);
   };
 
-  const api = { PRT, LONG, plain, fromSentence, fromPattern, pick, pool, sheet, bank, right, grade, lessons };
+  const api = { PRT, BANK, LONG, plain, fromSentence, fromPattern, pick, pool, sheet, bank, right, grade, lessons };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.App.gapLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

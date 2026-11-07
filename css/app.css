@@ -2164,6 +2164,9 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .gap-slot { display: inline-block; vertical-align: middle; min-width: 2.2em; height: 1.6em; line-height: 1.45em; margin: 0 3px; text-align: center; border: 2px dashed var(--sec); border-radius: 9px; color: var(--ink); cursor: pointer; }
 .gap-slot.f { border-style: solid; background: var(--sec-soft); }
 .gap-slot.hover { outline: 3px solid var(--sec); }
+.gap-slot.next { border-width: 2.5px; box-shadow: 0 0 0 3px var(--sec-soft); animation: gap-blink 1.4s ease-in-out infinite; }
+@keyframes gap-blink { 50% { box-shadow: 0 0 0 5px var(--sec-soft); } }
+.gap-jp [data-say] button:disabled { opacity: .3; cursor: not-allowed; }
 .gap-slot.ok { border-color: var(--matcha); background: var(--matcha-soft); }
 .gap-slot.bad { border-color: var(--shu); background: var(--shu-soft); }
 .gap-slot.sol { border-style: dashed; background: var(--card); color: var(--sec); }

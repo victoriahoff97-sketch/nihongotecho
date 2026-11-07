@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-luecken', date: '7. November',
+      items: [
+        { t: 'Lückensätze schneller ausfüllen', d: 'Üben › Lückensätze: Partikel antippen reicht – sie kommt in die markierte Lücke, dann geht es von oben nach unten weiter.' },
+        { t: 'Keine versteckten Hinweise mehr', d: 'Oben stehen jetzt immer alle Partikeln je einmal, egal wie oft eine gebraucht wird. Vorlesen geht erst, wenn der Satz geprüft ist.' },
+      ],
+    },
+    {
       id: '2026-11-07-blaettern', date: '7. November',
       items: [
         { t: 'Durch Einträge blättern', d: 'Auf jeder Vokabel-, Kanji-, Grammatik- und Ausdruck-Seite führen oben rechts Pfeile zum vorherigen und nächsten Eintrag; „4 / 52“ zeigt, wo du in der Lektion bist.' },
