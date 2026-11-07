@@ -797,6 +797,14 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .imp-group.known[open] > summary { margin-bottom: 6px; }
 .imp-mrow { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(150px, 1.3fr) minmax(150px, 1.4fr); gap: 12px; align-items: center; padding: 6px 0; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
 .imp-mrow select { height: auto; min-height: 36px; font-size: 13px; white-space: normal; }
+/* Ausdrücke aus der Liste (Sätze außerhalb der Tabelle) – eigene Farbe der Ausdrücke */
+.imp-group.ph { border-color: color-mix(in srgb, var(--sec) 35%, var(--line)); }
+.imp-group.ph .imp-gtitle .ico svg { color: var(--sec); }
+.imp-prow { display: grid; grid-template-columns: 28px minmax(170px, 1.3fr) minmax(170px, 1fr) 36px; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.imp-prow.off > :not(.imp-on) { opacity: .4; }
+.imp-prow.known { grid-template-columns: 28px 1fr auto; }
+.imp-pjp { font-family: var(--font-jp); font-size: 17px; line-height: 2; display: flex; flex-direction: column; }
+.imp-prow .icon-btn { width: 34px; height: 34px; }
 .imp-where { background: var(--card-2); border-radius: 14px; padding: 12px 14px; display: grid; gap: 10px; }
 .imp-where .field { margin: 0; }
 .imp-raw > summary { cursor: pointer; margin-bottom: 8px; }
@@ -807,6 +815,9 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
   .imp-row .icon-btn { grid-row: 1; grid-column: 3; }
   .imp-hd { display: none; }
   .imp-mrow { grid-template-columns: 1fr; gap: 4px; }
+  .imp-prow { grid-template-columns: 28px 1fr 36px; }
+  .imp-prow .imp-de { grid-column: 2 / 4; }
+  .imp-prow .icon-btn { grid-row: 1; grid-column: 3; }
   .imp-where .seg { flex-wrap: wrap; }
 }
 .map-table .jp { color: var(--ai); }

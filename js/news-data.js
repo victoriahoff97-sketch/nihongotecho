@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-import-ausdruecke', date: '7. November',
+      items: [
+        { t: 'Wortliste: Sätze werden Ausdrücke', d: 'Sätze über der Tabelle einer Unterrichts-PDF (z. B. mit ☞ davor) schlägt „Vokabeln importieren“ jetzt als Ausdrücke vor – übersetzt und abgefragt wie Vokabeln.' },
+        { t: 'Muster mit Lücken', d: 'Freie Stellen zum Einsetzen werden zu 〇〇, z. B. „〇〇で〇〇がいちばん …です。“ Mit dem Stift daneben kannst du den Satz vor dem Übernehmen ändern.' },
+      ],
+    },
+    {
       id: '2026-11-07-einstufen-beide', date: '7. November',
       items: [
         { t: 'Einstufen „Beide“ korrigiert', d: 'Bei „Beide“ stand „Alles eingestuft“, obwohl Deutsch → Japanisch noch offen war. Jetzt kommt die Meldung erst, wenn wirklich beide Richtungen fertig sind.' },

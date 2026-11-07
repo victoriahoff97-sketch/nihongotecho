@@ -25,6 +25,27 @@
   const headField = (cell) => { const t = plain(cell).replace(/\s/g, ''); const h = HEADS.find(([re]) => re.test(t)); return h ? h[1] : null; };
   const isHeadRow = (cells) => cells.length >= 2 && cells.every((c) => headField(c));
 
+  // ---------- Sätze außerhalb der Tabelle → Ausdrücke ----------
+  // Lehrerinnen-Listen haben über der Tabelle oft Beispielsätze (mit ☞ davor – das Symbol ist eine Zeichnung, kein Text).
+  // Solche Zeilen sind keine Überschrift, sondern Sätze: japanisch, mit 。！？ am Ende. Mehrere Sätze in einer Zeile → einzeln.
+  // Große Lücken (Platz zum Einsetzen, auch vorn am Zeilenanfang) werden 〇〇: „〇〇で〇〇がいちばん adj.です。“
+  const SENT = /[。！？!?]/;
+  const sentences = (s) => (String(s).match(/[^。！？!?]+[。！？!?」』）)]*/g) || []).map((x) => x.trim()).filter(Boolean);
+  const isSentence = (s) => { const p = plain(s).replace(/\s/g, ''); return /[぀-ゟ]/.test(p) && SENT.test(p.slice(-2)) && Array.from(p).length >= 4; };
+  const phraseRow = (r, x0, join) => {
+    const cells = r.cells.filter((c) => c.text);
+    if (!cells.length || isHeadRow(cells.map((c) => c.plain))) return [];
+    const h = Math.max(...r.chars.map((ch) => ch.h));
+    let s = cells[0].x - x0 > h * 2.5 ? '〇〇' : '';
+    cells.forEach((c, i) => {
+      const gap = i ? c.x - cells[i - 1].end : 0;
+      s = i && gap > h * 2.5 ? s + '〇〇' + c.text : join(s, c.text);
+    });
+    s = s.replace(/\s+/g, ' ').trim();
+    if (!isSentence(s)) return [];
+    return sentences(s).filter(isSentence);
+  };
+
   // ---------- eine PDF-Seite → Zeilen ----------
   // items: Textstücke { s, x, y, w, h } (PDF-Koordinaten: y wächst nach oben).
   // Ergebnis: { lines, split } – lines sind Tab-getrennte Zellen; Überschriften und Spaltenköpfe als „# …“ (der Import überspringt sie).
@@ -95,6 +116,7 @@
         if (g) g.brace = cell.text.endsWith('{');
         cell.text += ch.c;
         cell.plain += ch.c;
+        cell.end = ch.x + ch.w;
         const e = end.get(i);
         if (e) cell.text += (e.brace ? '}' : '') + '[' + e.parts.sort((p, q) => p.x - q.x).map((p) => p.text).join('') + ']';
         prev = ch;
@@ -116,9 +138,16 @@
     const join = (a, b) => (!a ? b : isCjk(a.replace(/\}?\[[^\]]*\]$/, '').slice(-1)) && isCjk(b.replace(/^\{/, '')[0]) ? a + b : a + ' ' + b);
     const out = [];
     let prevData = null;
+    const x0 = Math.min(...rows.filter((r) => r.chars.length).map((r) => r.chars[0].x));
     rows.forEach((r) => {
       if (!r.cells.length) return;
-      if (r.head) { out.push({ head: r.cells.map((c) => c.plain).join('  ') }); prevData = null; return; }
+      if (r.head) {
+        const ph = phraseRow(r, x0, join);
+        if (ph.length) ph.forEach((s) => out.push({ phrase: s }));
+        else out.push({ head: r.cells.map((c) => c.plain).join('  ') });
+        prevData = null;
+        return;
+      }
       const cells = Array(Math.max(1, cols.length)).fill('');
       r.cells.forEach((c) => { const j = colOf(c.x); cells[j] = join(cells[j], c.text); });
       // umbrochene Zelle: Folgezeile ohne erste Spalte dicht darunter → an die Zeile davor hängen
@@ -142,11 +171,11 @@
     const rowsOut = out.filter((o) => o.cells);
     const multi = rowsOut.filter((o) => o.cells.filter(Boolean).length >= 4);
     const split = twoCols === true || (twoCols === 'auto' && multi.length >= 2 && multi.filter((o) => isDouble(o.cells)).length >= multi.length * 0.6);
-    const line = (o) => (o.head ? '# ' + o.head : o.cells.join('\t').replace(/\t+$/, ''));
+    const line = (o) => (o.phrase ? '> ' + o.phrase : o.head ? '# ' + o.head : o.cells.join('\t').replace(/\t+$/, ''));
     if (!split) return { lines: out.map(line).filter((l) => l.trim()), split: false };
     const L = [], R = [];
     out.forEach((o) => {
-      if (o.head) { L.push(line(o)); return; }
+      if (!o.cells) { L.push(line(o)); return; }
       const n = o.cells.length;
       if (n >= 4 && n % 2 === 0) { L.push(o.cells.slice(0, n / 2).join('\t')); R.push(o.cells.slice(n / 2).join('\t')); } else L.push(line(o));
     });

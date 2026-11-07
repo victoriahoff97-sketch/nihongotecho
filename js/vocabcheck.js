@@ -418,7 +418,7 @@
     return out;
   };
   const detect = (text) => {
-    const lines = text.split(/\r?\n/).filter((l) => l.trim() && !l.startsWith('#'));
+    const lines = text.split(/\r?\n/).filter((l) => l.trim() && !/^[#>]/.test(l));
     const sample = lines.slice(0, 40);
     let delim = '\t';
     for (const d of ['\t', ';', '|', ' = ', '=', ' - ', ' – ', ',']) { if (sample.filter((l) => l.includes(d)).length >= sample.length * 0.7) { delim = d; break; } }
@@ -469,6 +469,9 @@
     const exjp = get('exjp');
     return { eid: 'e' + (from + i), kanji: kanji || '', kana: kana || '', na: !!na, de: get('de'), exjp: /\[/.test(exjp) ? ankiFuri(exjp) : exjp, exde: get('exde'), lesson: get('lesson'), tags: get('tags') };
   });
+  // Zeilen mit „> “ = Ausdruck (aus der PDF: Sätze außerhalb der Tabelle, importlist-logic.js; beim Einfügen auch von Hand)
+  const toPhrases = (text, from) => text.split(/\r?\n/).filter((l) => /^>\s*\S/.test(l)).map((l, i) => ({ pid: 'p' + (from + i), jp: clean(l.replace(/^>\s*/, '')), de: '' }));
+  const phKey = (jp) => JP.plain(jp).replace(/[\s。．.！？!?、，,]/g, '');
   // Ohne Deutsch (Spalte leer, z. B. eine Liste aus dem Unterricht) zählt die Zeile trotzdem: enrich() ergänzt die Bedeutung.
   // Gibt es das Wort schon, kommt sein Beispielsatz zum vorhandenen Eintrag (addEx), wenn er dort noch fehlt.
   // „Vielleicht schon vorhanden“ (maybe): wie die Warnung im Vokabel-Formular (autofillLogic.dupes) – in der Liste nur Kana
@@ -513,6 +516,18 @@
       }
       out.items.push(it);
     }
+    // Ausdrücke: gibt es denselben Satz schon als Ausdruck, wird er übersprungen (phKnown)
+    const have = new Map(App.itemsOf('phrase').map((p) => [phKey(p.jp), p]));
+    const seenP = new Set();
+    out.ph = []; out.phKnown = [];
+    (opts.phrases || []).forEach((p) => {
+      const k = phKey(p.jp);
+      if (p.off || !k) return;
+      if (have.has(k)) { out.phKnown.push({ pid: p.pid, old: have.get(k) }); return; }
+      if (seenP.has(k)) return;
+      seenP.add(k);
+      out.ph.push(Object.assign({ pid: p.pid, jp: p.jp, de: p.deOwn ? p.de : '' }, p.deOwn ? { _own: 1 } : null));
+    });
     return out;
   };
 
@@ -521,7 +536,7 @@
   // Ergebnisse bleiben im cache (je Import-Fenster), damit Vorschau und Import nicht doppelt nachschlagen.
   const newCache = () => ({ word: new Map(), sent: new Map() });
   const wordKey = (it) => App.vocabKey(it);
-  const sentences = (r) => r.items.flatMap((it) => it.examples).concat(r.addEx.map((a) => a.ex)).filter((e) => !e._own && !String(e.de || '').trim());
+  const sentences = (r) => r.items.flatMap((it) => it.examples).concat(r.addEx.map((a) => a.ex), r.ph || []).filter((e) => !e._own && !String(e.de || '').trim());
   // trägt ein, was der cache schon weiß (r ist frisch aus buildItems); _fill/_mt markieren Ergänztes für die Vorschau
   const applyCache = (r, cache) => {
     r.items.forEach((it) => {
@@ -538,6 +553,7 @@
   const unmark = (r) => {
     r.items.forEach((it) => { delete it._fill; delete it._maybe; delete it._deOwn; delete it._eid; it.examples.forEach((e) => { delete e._mt; delete e._own; }); });
     r.addEx.forEach((a) => { delete a.ex._mt; delete a.ex._own; });
+    (r.ph || []).forEach((p) => { delete p._mt; delete p._own; });
   };
   const translateMany = async (texts, out) => {
     const T = App.exfillLogic;
@@ -649,9 +665,11 @@
     const cache = newCache();
     const choice = new Map(); // „vielleicht schon vorhanden“: Schlüssel des Listenworts → Id des vorhandenen Worts oder 'new'
     let raw = '', st = null, map = [], entries = [], nextEid = 0, editing = null, step = 1, run = 0, last = null, busy = false;
+    let phrases = [], nextPid = 0; // Ausdrücke aus der Liste (Zeilen mit „> “)
     let pdfBlob = null, pdfPages = '', pdfTwo = 'auto', pdfInfo = '', fname = '', meta = {};
-    const form = { status: 'learn' }; // Lernstand neuer Wörter: standardmäßig gleich in die Lernschlange
+    const form = { status: 'learn', group: App.lsGet('importPhraseGroup') || 'Aus dem Unterricht' }; // Lernstand neuer Wörter: standardmäßig gleich in die Lernschlange
     const entryOf = (eid) => entries.find((e) => e.eid === eid);
+    const phraseOf = (pid) => phrases.find((p) => p.pid === pid);
 
     // ---------- Schritt 1: Liste wählen ----------
     const readPdf = async () => {
@@ -671,7 +689,9 @@
     // Text → Zeilen → Einträge; selbst hinzugefügte Wörter bleiben beim Neu-Einlesen erhalten
     const parse = () => {
       const s = detect(raw);
-      if (!s.rows.length) { App.toast('In dieser Liste wurden keine Wörter gefunden'); return false; }
+      const ph = toPhrases(raw, nextPid);
+      if (!s.rows.length && !ph.length) { App.toast('In dieser Liste wurden keine Wörter gefunden'); return false; }
+      phrases = ph; nextPid += ph.length;
       st = s; map = s.map.slice();
       entries = toEntries(st, map, nextEid).concat(entries.filter((e) => e.manual));
       nextEid += st.rows.length;
@@ -701,7 +721,7 @@
     };
     ta.addEventListener('input', () => { nextB.disabled = !ta.value.trim(); });
     backB.onclick = () => {
-      step = 1; ++run; editing = null; entries = [];
+      step = 1; ++run; editing = null; entries = []; phrases = [];
       s2.hidden = true; step1.hidden = false; backB.hidden = true;
       nextB.hidden = body.querySelector('[data-pastebox]').hidden; nextB.innerHTML = 'Weiter'; nextB.disabled = !ta.value.trim();
     };
@@ -718,6 +738,7 @@
         form.lesson = String(meta.lesson ?? ''); form.tags = '';
       }
       s2.innerHTML = `<div class="imp-head"><span class="imp-file">${icon(pdfBlob ? 'file' : 'list')}<b>${esc(fname || 'Eingefügter Text')}</b></span>${pdfInfo ? `<span class="small muted">${pdfInfo}</span>` : ''}<span class="grow"></span><span class="row small" data-badges></span></div>
+        <div class="sec-phrase" data-ph></div>
         <div data-maybe></div>
         <div class="imp-list" data-list></div>
         <div class="row small muted" style="gap:10px"><button class="btn btn-sm" data-add>${icon('plus')} Wort hinzufügen</button><span>Alle Felder kannst du direkt ändern · ${icon('edit')} ändert auch den Beispielsatz · Haken weg = nicht übernehmen</span></div>
@@ -726,7 +747,8 @@
           <div class="three"><div class="field"><label>Quelle</label><select class="input" data-w="source">${App.sourceOptions(form.source, false)}</select></div>
             <div class="field"><label>Lektion</label><input class="input" data-w="lesson" value="${esc(form.lesson)}" placeholder="z. B. 4"></div>
             <div class="field"><label>Schlagwörter</label><input class="input" data-w="tags" value="${esc(form.tags)}" placeholder="z. B. unterricht"></div></div>
-          <div class="field"><label>Neue Wörter kommen …</label><div class="seg" data-st>${[['learn', 'in die Lernschlange'], ['unchecked', 'erst zum Einstufen'], ['known', 'zu „kann ich schon“']].map(([v, l]) => `<button type="button" data-v="${v}" class="${form.status === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+          ${phrases.length ? `<div class="field"><label>Gruppe für die Ausdrücke</label><select class="input" data-w="group">${[...new Set([form.group].concat(App.phraseGroups()))].map((g) => `<option ${g === form.group ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select></div>` : ''}
+          <div class="field"><label>Neue ${phrases.length ? 'Wörter und Ausdrücke' : 'Wörter'} kommen …</label><div class="seg" data-st>${[['learn', 'in die Lernschlange'], ['unchecked', 'erst zum Einstufen'], ['known', 'zu „kann ich schon“']].map(([v, l]) => `<button type="button" data-v="${v}" class="${form.status === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
         </div>
         <details class="adv" data-adv><summary>Wörter falsch erkannt? Spalten und Seiten anpassen</summary><div class="stack" data-advbody></div></details>`;
       App.hydrateIcons(s2);
@@ -743,13 +765,13 @@
           <tbody>${st.rows.slice(0, 3).map((r) => `<tr>${Array.from({ length: st.ncol }, (_, c) => `<td lang="ja" class="small">${esc(clean(r[c] || '').slice(0, 60))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
         <details class="imp-raw"><summary class="small">Ausgelesenen Text ansehen und bearbeiten</summary>
           <textarea class="input jp-in" rows="8" data-raw>${esc(raw)}</textarea>
-          <div class="row"><span class="small muted grow">Eine Zeile pro Wort, Spalten mit Tab getrennt. Zeilen mit # werden übersprungen.</span><button class="btn btn-sm" data-reparse>${icon('replay')} Text neu einlesen</button></div></details>
+          <div class="row"><span class="small muted grow">Eine Zeile pro Wort, Spalten mit Tab getrennt. Zeilen mit # werden übersprungen, Zeilen mit &gt; werden Ausdrücke.</span><button class="btn btn-sm" data-reparse>${icon('replay')} Text neu einlesen</button></div></details>
         <div class="small muted">Beim Neu-Einlesen gehen Änderungen in der Liste verloren – selbst hinzugefügte Wörter bleiben.</div>`;
       App.hydrateIcons(s2);
     };
 
     // Vorschau: Einträge → Wörter; fehlendes Deutsch wird nachgeschlagen (Wörterbuch, sonst Übersetzer) – Ergänztes ist markiert
-    const opts0 = () => ({ source: '', lesson: '', tags: [], choice });
+    const opts0 = () => ({ source: '', lesson: '', tags: [], choice, phrases });
     const prev = async () => {
       const my = ++run;
       const r = buildItems(entries, opts0());
@@ -843,12 +865,44 @@
       s2.querySelector('[data-known]').innerHTML = r.known.length ? `<details class="imp-group known"><summary><b>${r.known.length === 1 ? '1 Wort hast' : r.known.length + ' Wörter hast'} du schon</b> – ${r.known.length === 1 ? 'wird' : 'werden'} übersprungen${exN ? `, ${exN === 1 ? 'eins bekommt' : exN + ' bekommen'} den Beispielsatz aus der Liste` : ''}</summary>
         ${r.known.map((k) => { const old = S.items.get(k.id); const gets = r.addEx.some((x) => x.id === k.id && !x.maybe);
           return `<div class="imp-mrow"><span class="imp-w" lang="ja">${JP.wordRuby(old)}</span><span class="small">${old.de || old.en ? App.meaningHtml(old) : ''}</span><span class="small">${gets ? `<span class="muted">bekommt diesen Satz:</span> ${exRuby(k.ex)}` : `<span class="muted">${k.ex ? 'Satz ist schon da' : 'nichts zu ergänzen'}</span>`}</span></div>`; }).join('')}</details>` : '';
+      drawPhrases(r);
       App.hydrateIcons(s2);
-      const n = r.items.length;
+      const n = r.items.length, np = r.ph.length;
       const noDe = r.items.filter((v) => !v.de && !v.en).length;
-      s2.querySelector('[data-badges]').innerHTML = (n ? badge(`${n} neu`) : '') + (busy ? badge('Deutsch wird ergänzt …') : noDe ? badge(`${noDe} noch ohne Deutsch`, 1) : '') + (r.bad ? badge(`${r.bad} ${r.bad === 1 ? 'Zeile' : 'Zeilen'} ohne Japanisch übersprungen`) : '');
-      nextB.disabled = busy || !!editing || !(n || r.addEx.length);
-      nextB.innerHTML = busy ? 'Deutsch wird ergänzt …' : `${icon('download')} ${n ? `${n === 1 ? '1 Wort' : n + ' Wörter'} übernehmen` : r.addEx.length ? 'Beispielsätze ergänzen' : 'Nichts zu übernehmen'}`;
+      s2.querySelector('[data-badges]').innerHTML = (np ? badge(`${np} ${np === 1 ? 'Ausdruck' : 'Ausdrücke'}`) : '') + (n ? badge(`${n} neu`) : '') + (busy ? badge('Deutsch wird ergänzt …') : noDe ? badge(`${noDe} noch ohne Deutsch`, 1) : '') + (r.bad ? badge(`${r.bad} ${r.bad === 1 ? 'Zeile' : 'Zeilen'} ohne Japanisch übersprungen`) : '');
+      nextB.disabled = busy || !!editing || !(n || np || r.addEx.length);
+      const what = [np ? (np === 1 ? '1 Ausdruck' : np + ' Ausdrücke') : '', n ? (n === 1 ? '1 Wort' : n + ' Wörter') : ''].filter(Boolean).join(' + ');
+      nextB.innerHTML = busy ? 'Deutsch wird ergänzt …' : `${icon('download')} ${what ? `${what} übernehmen` : r.addEx.length ? 'Beispielsätze ergänzen' : 'Nichts zu übernehmen'}`;
+    };
+    // Ausdrücke aus der Liste: Haken, Satz mit Furigana (✎ ändert ihn), Deutsch direkt eintippen; schon vorhandene nur als Hinweis
+    const drawPhrases = (r) => {
+      const el = s2.querySelector('[data-ph]');
+      if (!phrases.length) { el.innerHTML = ''; return; }
+      const a = document.activeElement;
+      const keep = a && el.contains(a) && a.dataset.pf ? { pid: a.closest('[data-pid]').dataset.pid, s: a.selectionStart } : null;
+      const byPid = new Map(r.ph.map((p) => [p.pid, p]));
+      const known = new Map(r.phKnown.map((k) => [k.pid, k.old]));
+      el.innerHTML = `<div class="imp-group ph"><div class="imp-gtitle">${icon('phrase')} Ausdrücke <span class="small muted" style="font-weight:400">– Sätze außerhalb der Tabelle, werden wie Vokabeln abgefragt</span></div>
+        ${phrases.map((p) => {
+          if (known.has(p.pid)) return `<div class="imp-prow known"><span></span><span class="imp-pjp" lang="ja"><span>${JP.ruby(p.jp)}</span></span><span class="small muted">hast du schon als Ausdruck</span></div>`;
+          const v = byPid.get(p.pid);
+          const de = p.deOwn ? p.de : v ? v.de || '' : cache.sent.get(JP.plain(p.jp)) || '';
+          return `<div class="imp-prow${p.off ? ' off' : ''}" data-pid="${p.pid}">
+            <label class="imp-on" title="übernehmen"><input type="checkbox" data-pon ${p.off ? '' : 'checked'}></label>
+            <span class="imp-pjp" lang="ja"><span>${JP.ruby(p.jp)}</span>${/〇〇/.test(p.jp) ? '<span class="imp-hint">Muster mit Lücken – 〇〇 = hier etwas einsetzen</span>' : ''}</span>
+            <span class="imp-de"><input class="imp-in" data-pf="de" value="${esc(de)}" placeholder="${!de && busy ? 'wird übersetzt …' : 'Deutsch eintragen'}" ${p.off ? 'disabled' : ''}>${v && v._mt && !p.deOwn ? '<span class="imp-hint mt">übersetzt – bitte prüfen</span>' : ''}</span>
+            <button type="button" class="icon-btn" data-pedit title="Ausdruck ändern" ${p.off ? 'disabled' : ''}>${icon('edit')}</button></div>`;
+        }).join('')}</div>`;
+      if (keep) { const x = el.querySelector(`[data-pid="${keep.pid}"] [data-pf]`); if (x) { x.focus(); try { x.setSelectionRange(keep.s, keep.s); } catch (er) { /* kein Textfeld */ } } }
+    };
+    const editPhrase = async (p) => {
+      const res = await App.ask('Ausdruck ändern', [{ label: 'Japanisch', value: JP.plain(p.jp), jp: true }]);
+      const s = res && res[0];
+      if (!s || s === JP.plain(p.jp)) return;
+      p.jp = s;
+      if (JP.hasKanji(s)) { try { const r = await App.sentenceReading(s); if (r.furi) p.jp = r.furi; } catch (er) { console.error(er); } }
+      if (!p.deOwn) p.de = '';
+      prev();
     };
 
     s2.addEventListener('input', (ev) => {
@@ -857,11 +911,13 @@
         const e = entryOf(row.dataset.eid), v = t.value.trim();
         if (t.dataset.f === 'de') { e.de = v; e.deOwn = 1; } else if (t.dataset.f === 'exde') { e.exde = v; e.exdeOwn = 1; } else e[t.dataset.f] = v; // Kanji/Lesung: neu prüfen erst beim Verlassen (change)
       }
+      if (t.dataset.pf) { const p = phraseOf(t.closest('[data-pid]').dataset.pid); p.de = t.value.trim(); p.deOwn = 1; }
       if (t.dataset.w) form[t.dataset.w] = t.value;
     });
     s2.addEventListener('change', (ev) => {
       const t = ev.target, row = t.closest('[data-eid]');
       if (t.matches('[data-on]')) { entryOf(row.dataset.eid).off = !t.checked; prev(); }
+      else if (t.matches('[data-pon]')) { phraseOf(t.closest('[data-pid]').dataset.pid).off = !t.checked; prev(); }
       else if (t.matches('[data-maybe]')) { choice.set(t.dataset.maybe, t.value); prev(); }
       else if (t.matches('[data-f="kanji"], [data-f="kana"]')) wordChanged(entryOf(row.dataset.eid));
       else if (t.matches('[data-col]')) {
@@ -880,7 +936,8 @@
     s2.addEventListener('click', (ev) => {
       const b = ev.target.closest('button'); if (!b) return;
       const row = b.closest('[data-eid]');
-      if (b.matches('[data-edit]')) { editing = row.dataset.eid; draw(last); const f = s2.querySelector('.editing [data-e="de"]'); if (f) f.focus(); }
+      if (b.matches('[data-pedit]')) editPhrase(phraseOf(b.closest('[data-pid]').dataset.pid));
+      else if (b.matches('[data-edit]')) { editing = row.dataset.eid; draw(last); const f = s2.querySelector('.editing [data-e="de"]'); if (f) f.focus(); }
       else if (b.matches('[data-done]')) finishEdit(row);
       else if (b.matches('[data-cancel]')) { const e = entryOf(row.dataset.eid); editing = null; if (e.manual && !e.kanji && !e.kana) entries.splice(entries.indexOf(e), 1); draw(last); }
       else if (b.matches('[data-add]')) {
@@ -898,7 +955,8 @@
       App.lsSet('importSource', source);
       if (S.settings.importSource !== source) await App.saveSettings({ importSource: source }, { silent: true });
       const tags = s2.querySelector('[data-w="tags"]').value.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
-      const r = applyCache(buildItems(entries, { source, lesson: s2.querySelector('[data-w="lesson"]').value.trim(), tags, choice }), cache);
+      const lesson = s2.querySelector('[data-w="lesson"]').value.trim();
+      const r = applyCache(buildItems(entries, { source, lesson, tags, choice, phrases }), cache);
       unmark(r);
       const status = form.status;
       nextB.disabled = true; nextB.textContent = 'Wird übernommen …';
@@ -909,11 +967,22 @@
       const changed = r.addEx.map((a) => { const it = S.items.get(a.id); it.examples = [a.ex].concat(it.examples || []); it.updated = now; return it; });
       if (changed.length) await App.db.putMany('items', changed);
       if (status !== 'unchecked') for (const it of r.items) await App.setCheck(it.id, status);
+      // Ausdrücke: wie selbst angelegte (App.saveItem → Lernschlange in beide Richtungen); „kann ich schon“ gilt für beide Richtungen.
+      // Einstufen gibt es für eigene Ausdrücke nicht – bei „erst zum Einstufen“ kommen sie ebenfalls in die Lernschlange.
+      const group = form.group || 'Aus dem Unterricht';
+      if (r.ph.length) App.lsSet('importPhraseGroup', group);
+      const order0 = App.itemsOf('phrase').filter((p) => p.group === group).length;
+      for (const [i, p] of r.ph.entries()) {
+        const it = { type: 'phrase', group, jp: p.jp, de: p.de || '', note: '', source, lesson: lesson !== '' && !isNaN(+lesson) ? +lesson : lesson, tags: tags.slice(), order: order0 + i + 1 };
+        await App.saveItem(it, { silent: true });
+        if (status === 'known') { await App.setCheck(it.id, 'known'); await App.setCheck(W.id(it.id), 'known'); }
+      }
       md.close();
       App.emit('items');
       const exMsg = changed.length ? `${changed.length} ${changed.length === 1 ? 'Beispielsatz' : 'Beispielsätze'} bei vorhandenen Wörtern ergänzt` : '';
+      const phMsg = r.ph.length ? `${r.ph.length} ${r.ph.length === 1 ? 'Ausdruck' : 'Ausdrücke'} in „${group}“` : '';
       const where = { learn: ' – sie sind jetzt in der Lernschlange', known: ' als „kann ich“' }[status] || '';
-      App.toast(r.items.length ? `${r.items.length} Vokabeln importiert${where}${exMsg ? ' · ' + exMsg : ''}` : exMsg, status === 'unchecked' && r.items.length ? { label: 'Jetzt einstufen', fn: () => App.go('#/ueben/einstufen?src=' + encodeURIComponent(source)) } : null);
+      App.toast([r.items.length ? `${r.items.length} Vokabeln importiert${where}` : '', phMsg, exMsg].filter(Boolean).join(' · '), status === 'unchecked' && r.items.length ? { label: 'Jetzt einstufen', fn: () => App.go('#/ueben/einstufen?src=' + encodeURIComponent(source)) } : null);
     };
     nextB.onclick = () => {
       if (step === 2) return doImport();
