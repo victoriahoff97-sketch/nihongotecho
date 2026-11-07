@@ -83,7 +83,7 @@
     new: '<a class="btn btn-sm" href="#/ueben/einstufen">Einstufen</a>',
     kanji: '<a class="btn btn-sm" href="#/ueben/kanji">Schreiben</a>',
     conj: '<a class="btn btn-sm" href="#/ueben/konjugieren">Üben</a>',
-    nhk: `<a class="btn btn-sm" href="${NHK_URL}" target="_blank" rel="noopener">Öffnen</a>`,
+    nhk: `<a class="btn btn-sm" href="${NHK_URL}" target="_blank" rel="noopener" data-read-out>Öffnen</a>`,
   };
   // NHK und eigene Ziele hakt man selbst ab; alles andere prüft die App
   const manual = (x) => x.own || x.key === 'nhk';

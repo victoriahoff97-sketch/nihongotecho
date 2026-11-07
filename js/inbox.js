@@ -114,7 +114,7 @@
   const choose = (view, query) => {
     const p = L.parseOpen(query);
     const given = !!(String(query.text || '').trim() || String(query.ref || '').trim());
-    const open = (ziel) => App.go('#/eingang?' + new URLSearchParams({ ziel, text: p.text, ref: p.ref, quelle: p.quelle }));
+    const open = (ziel) => App.go('#/eingang?' + new URLSearchParams({ ziel, text: p.text, ref: p.ref, quelle: p.quelle, zurueck: String(query.zurueck || '') }));
     const shown = p.text.length > 300 ? p.text.slice(0, 300) + '…' : p.text;
     const sec = App.SECTIONS.vocab;
     const take = p.ok ? `<div class="card"><h3>Text übernehmen</h3>
@@ -179,7 +179,7 @@
       try {
         const s = L.fromShare(location.search);
         if (!s) return;
-        const hash = s.text || s.ref ? '#/eingang?' + new URLSearchParams({ text: s.text, ref: s.ref }) : '#/';
+        const hash = s.text || s.ref ? '#/eingang?' + new URLSearchParams(Object.assign({ text: s.text, ref: s.ref }, s.zurueck ? { zurueck: s.zurueck } : {})) : '#/';
         history.replaceState(history.state, '', location.pathname + hash);
       } catch (e) { console.error('Teilen: Übernahme fehlgeschlagen', e); }
     },
@@ -192,6 +192,8 @@
       history.back();
       return;
     }
+    // Woher kam der Text? Für die Leiste „↩ Zum Artikel“ (js/article-back.js) merken, bevor die Adresse ersetzt wird
+    App.articleBack.take(query);
     // ohne Ziel (Teilen-Menü, Zwischenablage): erst fragen, was mit dem Text geschehen soll
     if (!query.ziel) return choose(view, query);
     const p = L.parse(query);

@@ -7,9 +7,16 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-zum-artikel', date: '7. November',
+      items: [
+        { t: 'Zurück zum Artikel', d: 'Text bei NHK Easy markiert und übernommen? Oben erscheint „↩ Zurück zu NHK Easy“ und bringt dich an dieselbe Stelle im Artikel – am PC und auf dem Tablet.' },
+        { t: 'Neue Erweiterung und Tablet-App', d: 'Dafür einmal neu holen: Einstellungen › „Aus dem Browser direkt in die App“ – Erweiterung neu entpacken bzw. die Android-App neu installieren.' },
+      ],
+    },
+    {
       id: '2026-11-07-forum-offline', date: '7. November',
       items: [
-        { t: 'Forum: Hinweis ohne Internet', d: 'Wer der Gruppe in der Gedankenwolke beitreten will und kein Internet hat, sieht jetzt „Verbinde …“ und nach ein paar Sekunden einen klaren Hinweis, statt dass einfach nichts passiert.' },
+        { t: 'Forum: Hinweis ohne Internet', d: 'Wer ohne Internet der Gruppe in der Gedankenwolke beitreten will, sieht jetzt „Verbinde …“ und kurz danach einen klaren Hinweis, statt dass nichts passiert.' },
       ],
     },
     {

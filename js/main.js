@@ -39,7 +39,7 @@
     bar.hidden = !show;
     bar.innerHTML = show ? `<a class="btn btn-sm btn-primary" href="${esc(p.hash)}">${icon('back')} Weiter wiederholen · ${App.parkLogic.label(p)}</a><button class="icon-btn" data-park-drop title="Runde nicht fortsetzen" aria-label="Runde nicht fortsetzen">×</button>` : '';
   };
-  App.afterRender = () => { renderNav(); renderPark(); document.body.classList.remove('sidebar-open'); App.emit('route'); };
+  App.afterRender = () => { renderNav(); renderPark(); App.articleBack.render(); document.body.classList.remove('sidebar-open'); App.emit('route'); };
 
   App.applyTheme = () => {
     const t = App.store.settings.theme;

@@ -102,7 +102,9 @@
       }
     }
     if (!text) text = str(q.titel).trim();
-    return { text, ref };
+    // Markieren-App (Android) sagt, aus welcher App der Text kam → Rückweg (js/article-back-logic.js)
+    const zurueck = str(q.zurueck).trim();
+    return zurueck ? { text, ref, zurueck } : { text, ref };
   };
 
   // Wie parse, aber ohne Ziel: Auswahlseite „Text übernehmen“
