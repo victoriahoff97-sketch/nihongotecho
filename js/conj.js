@@ -87,10 +87,11 @@
         head.indeterminate = on > 0 && on < boxes.length;
         el.querySelector('[data-count]').textContent = boxes.length > 1 ? `${on} von ${boxes.length}` : '';
       });
-      const pl = pool(), n = pl.words.length;
+      // Der Knopf nennt nur, was jetzt drankommt (ein Häppchen „pro Runde“), nicht den ganzen Vorrat – 300 auf einmal schreckt ab
+      const pl = pool(), n = pl.words.length, chunk = App.cards.chunkSize(), k = chunk ? Math.min(chunk, n) : n;
       const go = setup.querySelector('[data-go]');
       go.disabled = !n;
-      go.innerHTML = `${icon('play')} Runde starten (${n} ${n === 1 ? 'Wort' : 'Wörter'})`;
+      go.innerHTML = `${icon('play')} Runde starten (${k} ${k === 1 ? 'Wort' : 'Wörter'})`;
       // Die Wortarten ergeben sich aus den Formen – ohne Form gibt es auch keine Wortart
       const hints = [{
         pos: 'Kreuz mindestens eine Form an.',
@@ -112,6 +113,7 @@
     const setList = (list, id, on) => { const i = list.indexOf(id); if (on && i < 0) list.push(id); if (!on && i >= 0) list.splice(i, 1); };
     setup.addEventListener('change', (e) => {
       const t = e.target;
+      if (t.matches('[data-chunk]')) return refresh();
       if (t.matches('[data-form]')) setList(custom.forms, t.value, t.checked);
       else if (t.matches('[data-line-check]')) t.closest('.conj-group').querySelectorAll('[data-form]').forEach((c) => { c.checked = t.checked; setList(custom.forms, c.value, c.checked); });
       else return;

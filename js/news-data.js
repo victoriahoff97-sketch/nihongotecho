@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-konjugieren-zahl', date: '7. November',
+      items: [
+        { t: 'Konjugieren: kleine Runden', d: 'Der Knopf „Runde starten“ unter Üben › Konjugieren zeigt jetzt nur, wie viele Wörter in dieser Runde drankommen (z. B. 20), statt alle deine Verben und Adjektive.' },
+      ],
+    },
+    {
       id: '2026-11-07-ausdruck-markieren', date: '7. November',
       items: [
         { t: 'Ausdruck aus der Handschrift', d: 'Auf dem Schreibblatt einen Satzteil mit „Erkennen“ einkreisen und im Fenster „als neuer Ausdruck“ wählen: Er wird angelegt und auf dem Blatt verknüpft.' },
