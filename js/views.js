@@ -34,6 +34,20 @@
     if (q.f) { const ids = new Set(App.search(q.f, { types: [out[0] ? out[0].type : 'vocab'], limit: 5000 }).map((x) => x.id)); out = out.filter((i) => ids.has(i.id)); }
     return out;
   };
+  // Sortierung der Listen (js/sort-logic.js): aus der Adresse (?sort=) oder zuletzt gewählt auf diesem Gerät
+  App.listSortOf = (type, q) => {
+    let k = q.sort;
+    if (k) App.lsSet('listSort-' + type, k); else k = App.lsGet('listSort-' + type);
+    return App.listSort.sortKey(k);
+  };
+  // Nur ein Pfeil-Knopf wie der Stern (ein Auswahlfeld mit Text passte bei den Vokabeln nicht mehr in eine Zeile);
+  // darüber liegt unsichtbar das echte <select>, damit Antippen die normale Auswahl öffnet. Hervorgehoben, sobald nicht nach Lektion.
+  App.sortSelect = (active) => {
+    const label = (k) => (k === 'lesson' ? 'Nach Lektion' : 'Niveau ' + App.listSort.KEYS[k]);
+    return `<label class="chip chip-icon sort-pick ${active !== 'lesson' ? 'on' : ''}" title="Sortieren: ${esc(label(active))}">${icon('sort')}<select data-q-select="sort" aria-label="Sortieren">${Object.keys(App.listSort.KEYS).map((k) => `<option value="${k}" ${active === k ? 'selected' : ''}>${esc(label(k))}</option>`).join('')}</select></label>`;
+  };
+  // Gruppen-Überschriften nach Niveau: „JLPT N5“ … „Ohne Niveau“
+  App.levelGroups = (items) => { const m = new Map(); App.listSort.groupByLevel(items).forEach((list, g) => m.set(g === App.listSort.NONE ? g : 'JLPT ' + g, list)); return m; };
   const filterInput = (q, ph) => `<div class="search-wrap" style="max-width:340px">${icon('search')}<input class="input" style="padding-left:44px;width:100%" data-filter placeholder="${esc(ph)}" value="${esc(q.f || '')}"></div>`;
   // „Gemerkt“-Filter als Stern ohne Text: spart Platz, damit Suche und Filter in eine Zeile passen
   const starChip = (q) => `<button class="chip chip-icon ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}" title="${q.star ? 'Wieder alle zeigen' : 'Nur gemerkte zeigen'}" aria-label="Nur gemerkte" aria-pressed="${q.star ? 'true' : 'false'}">${icon(q.star ? 'starFill' : 'star')}</button>`;
@@ -481,7 +495,8 @@
     if (q.pos) items = items.filter((i) => i.pos === q.pos);
     // Lernstand wie auf der Startseite (beide Richtungen); alte Links mit dem Lese-Stand (unchecked/learn) gehen weiter
     if (q.st) items = items.filter((i) => (App.WORD_STATE[q.st] ? App.wordState(i) : App.vocabStatus(i.id)) === q.st);
-    items.sort(byLesson);
+    const sortK = App.listSortOf('vocab', q);
+    items = App.listSort.sort(items, sortK, byLesson);
     const mode = q.view || (App.lsGet('vocabView') || 'cards');
     const files = App.filesFor({ section: 'vocab', source: q.src || undefined, lesson: q.l || undefined });
     const cardsQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'vocab', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v))).toString();
@@ -494,13 +509,13 @@
         <select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
         ${App.levelSelect(q.lvl)}
         <select class="input" data-q-select="st"><option value="">Lernstand</option>${Object.entries(App.WORD_STATE).map(([k, x]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${x.dot} ${x.label}</option>`).join('')}</select>
-        ${starChip(q)}<div class="seg"><button class="${mode === 'cards' ? 'on' : ''}" data-mode="cards" title="Als Karten">${icon('cards')}</button><button class="${mode === 'list' ? 'on' : ''}" data-mode="list" title="Als Liste">${icon('list')}</button></div></div></div>
+        ${starChip(q)}${App.sortSelect(sortK)}<div class="seg"><button class="${mode === 'cards' ? 'on' : ''}" data-mode="cards" title="Als Karten">${icon('cards')}</button><button class="${mode === 'list' ? 'on' : ''}" data-mode="list" title="Als Liste">${icon('list')}</button></div></div></div>
       <div data-body style="margin-top:14px"></div></div>`;
     const body = view.querySelector('[data-body]');
     if (q.tab === 'files') body.innerHTML = filesTab('vocab', q);
     else if (!items.length) body.innerHTML = `<div class="empty-state"><div class="big">単</div><h3>Keine Vokabeln gefunden</h3><p>Passe die Filter an oder lege ein neues Wort an.</p></div>`;
     else {
-      const groups = groupBySource(items, q.src);
+      const groups = App.listSort.isLevel(sortK) ? App.levelGroups(items) : groupBySource(items, q.src);
       let html = '';
       groups.forEach((list, key) => {
         html += `<div class="group-head"><h2>${esc(key)}</h2><span class="badge">${list.length}</span><span class="line"></span></div>`;
@@ -606,7 +621,8 @@
     const all = App.itemsOf('grammar');
     let items = filterItems(all, q);
     if (q.st) items = items.filter((i) => App.vocabStatus(i.id) === q.st);
-    items.sort(byLesson);
+    const sortK = App.listSortOf('grammar', q);
+    items = App.listSort.sort(items, sortK, byLesson);
     const files = App.filesFor({ section: 'grammar', source: q.src || undefined, lesson: q.l || undefined });
     const cardQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'grammar', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v)));
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Jeder Grammatikpunkt mit Aufbau, Erklärung, Beispielen – und wo du ihn gelernt hast.',
@@ -614,14 +630,14 @@
       ${tabsHtml(q, items.length, files.length)}
       <div class="toolbar">${filterInput(q, 'Grammatik suchen, z. B. て-Form, Vergleich …')}<div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
       ${App.levelSelect(q.lvl)}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusChoices({ type: 'grammar' }).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>
-      ${starChip(q)}</div></div>
+      ${starChip(q)}${App.sortSelect(sortK)}</div></div>
       <div data-body style="margin-top:14px"></div></div>`;
     const body = view.querySelector('[data-body]');
     if (q.tab === 'files') body.innerHTML = filesTab('grammar', q);
     else if (!items.length) body.innerHTML = '<div class="empty-state"><div class="big">文</div><h3>Keine Grammatik gefunden</h3></div>';
     else {
       let html = '';
-      groupBySource(items, q.src).forEach((list, key) => {
+      (App.listSort.isLevel(sortK) ? App.levelGroups(items) : groupBySource(items, q.src)).forEach((list, key) => {
         // Genki-Lektion: passende Folgen von Japanese with Shun (js/shun.js) unter der Überschrift
         const shun = App.shunUi && key === lessonKey(list[0]) ? App.shunUi.lessonBox(list[0].source, +list[0].lesson) : '';
         html += `<div class="group-head"><h2>${esc(key)}</h2><span class="badge">${list.length}</span><span class="line"></span></div>${shun}<div class="grid cols-3">${list.map(App.grammarCard).join('')}</div>`;

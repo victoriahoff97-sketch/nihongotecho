@@ -46,7 +46,8 @@
     if (q.st) items = items.filter((i) => App.vocabStatus(i.id) === q.st);
     if (q.mark) items = items.filter((i) => App.hasMark(i, q.mark));
     if (q.lvl) items = items.filter((i) => App.levelMatch(i, q.lvl));
-    items.sort((a, b) => (+a.lesson || 99) - (+b.lesson || 99) || App.ord(a) - App.ord(b));
+    const sortK = App.listSortOf('kanji', q);
+    items = App.listSort.sort(items, sortK, (a, b) => (+a.lesson || 99) - (+b.lesson || 99) || App.ord(a) - App.ord(b));
     const tab = q.tab || 'kanji';
     const files = App.filesFor({ section: 'kanji', source: q.src || undefined });
     const kc = App.vocabCounts(all.filter((k) => k.char !== '々'));
@@ -69,7 +70,7 @@
       const markRow = q.mark || marks.some(([, n]) => n) ? marks.map(([m, n]) => `<button class="chip ${q.mark === m ? 'on' : ''}" data-q-mark="${esc(m)}">${esc(m)} <span class="small" style="opacity:.7">${n}</span></button>`).join('') : '';
       body.innerHTML = `<div class="toolbar"><div class="search-wrap" style="max-width:340px">${icon('search')}<input class="input" style="padding-left:44px;width:100%" data-kf placeholder="Kanji, Bedeutung oder Lesung …" value="${esc(q.f || '')}"></div>
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all, q.l)}${App.levelSelect(q.lvl)}
-        <select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st, 'kanji')}</select></div></div>
+        <select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st, 'kanji')}</select>${App.sortSelect(sortK)}</div></div>
         <div class="kanji-marks"><div class="chips scroll">${markRow ? `<button class="chip ${!q.mark ? 'on' : ''}" data-q-mark="">Alle Markierungen</button>${markRow}` : ''}<button class="chip" data-new-mark>${icon('plus')} Markierung</button></div><button class="btn btn-sm btn-sec" data-kvg-all hidden></button></div>
         <div data-grid style="margin-top:14px"></div>`;
       body.querySelector('[data-new-mark]').onclick = async () => { const m = await App.addKanjiMark(); if (m) App.setQuery({ mark: m }); };
@@ -95,8 +96,8 @@
           App.render(true);
         };
       })();
-      const byL = new Map();
-      items.forEach((it) => { const k = (it.source || 'Eigene') + (it.lesson !== '' && it.lesson != null ? ' · Lektion ' + it.lesson : ''); if (!byL.has(k)) byL.set(k, []); byL.get(k).push(it); });
+      const byL = App.listSort.isLevel(sortK) ? App.levelGroups(items) : new Map();
+      if (!App.listSort.isLevel(sortK)) items.forEach((it) => { const k = (it.source || 'Eigene') + (it.lesson !== '' && it.lesson != null ? ' · Lektion ' + it.lesson : ''); if (!byL.has(k)) byL.set(k, []); byL.get(k).push(it); });
       // Legende rechts in der ersten Lektions-Überschrift – so nimmt sie den Markierungen keinen Platz weg
       const legend = `<span class="small muted kanji-legend">${App.checkOn() ? '○ ungeprüft · ' : ''}<span style="color:var(--ai)">●</span> Lernschlange · <span style="color:var(--matcha)">●</span> kann ich · <span style="color:var(--shu)">授</span> im Unterricht</span>`;
       let html = '';
