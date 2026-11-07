@@ -545,7 +545,8 @@
     if (!it) { view.innerHTML = '<div class="empty-state"><h3>Nicht gefunden</h3></div>'; return; }
     const sec = App.SECTIONS.vocab;
     const srs = App.srsOf(it.id);
-    view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${crumbs(sec, it)}
+    const hopNav = App.detailHop(it, App.itemsOf('vocab').slice().sort(byLesson), lessonKey, (x) => `<span lang="ja">${esc(x.kanji || x.kana)}</span>`, 'Wort');
+    view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="row between detail-nav">${crumbs(sec, it)}${hopNav}</div>
       <div class="split"><div>
         <div class="card pad-lg"><div class="row between" style="align-items:flex-start">
           <div class="detail-hero"><div class="big" lang="ja">${JP.wordRuby(it)}</div>${App.speakBtn(it.kana || it.kanji, '')}</div>
@@ -621,11 +622,8 @@
     const sec = App.SECTIONS.grammar;
     const srs = App.srsOf(it.id);
     // vor/zurück in der Reihenfolge der Grammatikliste (Quelle, Lektion, Buchreihenfolge)
-    const order = App.itemsOf('grammar').slice().sort(byLesson);
-    const at = order.findIndex((g) => g.id === it.id);
-    const prev = order[at - 1], next = order[at + 1];
-    const hop = (g, fwd) => `<a class="btn btn-sm" href="${App.link(g)}" title="${fwd ? 'Nächster' : 'Vorheriger'} Grammatikpunkt: ${esc(g.title)}">${fwd ? '' : icon('back')}<span style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</span>${fwd ? icon('next') : ''}</a>`;
-    view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="row between detail-nav">${crumbs(sec, it)}<div class="row">${prev ? hop(prev) : ''}${next ? hop(next, true) : ''}</div></div>
+    const hopNav = App.detailHop(it, App.itemsOf('grammar').slice().sort(byLesson), lessonKey, (x) => esc(x.title), 'Grammatikpunkt');
+    view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}"><div class="row between detail-nav">${crumbs(sec, it)}${hopNav}</div>
       <div class="split"><div>
         <div class="card pad-lg"><div class="row between" style="align-items:flex-start"><div>
           <div lang="ja" style="font-size:30px;color:var(--sec);line-height:1.6">${JP.ruby(it.jp || '')}</div>
@@ -751,7 +749,9 @@
     if (!it) { view.innerHTML = '<div class="empty-state"><h3>Nicht gefunden</h3></div>'; return; }
     const sec = App.SECTIONS.phrase;
     const srs = S.srs.get(it.id);
-    view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/ausdruecke">Ausdrücke</a> › <a href="#/ausdruecke?g=${encodeURIComponent(it.group)}">${esc(it.group)}</a></div>
+    const gOrd = App.phraseGroups(), gIdx = (x) => { const i = gOrd.indexOf(x.group); return i < 0 ? 999 : i; };
+    const hopNav = App.detailHop(it, App.itemsOf('phrase').slice().sort((a, b) => gIdx(a) - gIdx(b) || App.ord(a) - App.ord(b)), (x) => x.group || '', (x) => `<span lang="ja">${esc(JP.plain(x.jp || ''))}</span>`, 'Ausdruck');
+    view.innerHTML = `<div class="${sec.cls}"><div class="row between detail-nav"><div class="crumbs"><a href="#/ausdruecke">Ausdrücke</a> › <a href="#/ausdruecke?g=${encodeURIComponent(it.group)}">${esc(it.group)}</a></div>${hopNav}</div>
       <div class="split"><div><div class="card pad-lg"><div class="row between" style="align-items:flex-start">
         <div class="detail-hero"><div class="big" lang="ja">${JP.ruby(it.jp)}</div>${App.speakBtn(it.jp, '')}</div><div class="row">${detailActions(it)}</div></div>
         <div class="de-big" style="margin:4px 0 12px">${esc(it.de)}</div>

@@ -211,6 +211,13 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 /* Brotkrumen + Vor/Zurück über einer Detailseite: etwas Luft zum Inhalt darunter */
 .detail-nav { margin-bottom: 16px; }
 .detail-nav .crumbs { margin-bottom: 0; }
+.detail-nav { flex-wrap: wrap; row-gap: 8px; }
+.detail-hop { display: flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
+.hop-btn { min-width: 0; }
+.hop-lbl { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hop-lbl [lang="ja"] { font-family: var(--font-jp); font-size: 16px; }
+.hop-pos { font-size: 13px; font-weight: 700; color: var(--muted); padding: 0 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) { .hop-lbl { max-width: 96px; } }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .grow { flex: 1; }
 .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 800; margin: 26px 0 10px; display: flex; align-items: center; gap: 10px; }

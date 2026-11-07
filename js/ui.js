@@ -446,6 +446,19 @@
     try { localStorage.setItem('nt-sideClosed', on ? '1' : '0'); } catch (err) { /* egal */ }
   });
 
+  // Blättern auf Detailseiten (Vokabeln, Kanji, Grammatik, Ausdrücke) – überall gleich:
+  // ‹ vorheriger Eintrag · Position in der Lektion/Gruppe · nächster Eintrag ›
+  // list: alle Einträge in Listenreihenfolge · groupOf(it): Lektion bzw. Gruppe · label(it): kurzer Name als HTML
+  App.detailHop = (it, list, groupOf, label, noun = 'Eintrag') => {
+    const at = list.findIndex((x) => x.id === it.id);
+    if (at < 0) return '';
+    const prev = list[at - 1], next = list[at + 1];
+    const g = groupOf(it), same = list.filter((x) => groupOf(x) === g), pos = same.findIndex((x) => x.id === it.id);
+    const hop = (x, fwd) => `<a class="btn btn-sm hop-btn" href="${App.link(x)}" title="${fwd ? 'Nächster' : 'Vorheriger'} ${noun}">${fwd ? '' : icon('back')}<span class="hop-lbl">${label(x)}</span>${fwd ? icon('next') : ''}</a>`;
+    if (!prev && !next) return '';
+    return `<div class="detail-hop">${prev ? hop(prev, false) : ''}${same.length > 1 ? `<span class="hop-pos" title="Position in ${esc(g)}">${pos + 1} / ${same.length}</span>` : ''}${next ? hop(next, true) : ''}</div>`;
+  };
+
   // ---------- Filter-Leiste (Quelle / Lektion) ----------
   // Auswahlfeld mit Häkchen (Mehrfachauswahl). Ohne Häkchen = kein Filter; die Auswahl steht mit | getrennt im Query-Parameter.
   // opts: [{ value, html, short }] – html ist die Zeile in der Liste, short der Text im zugeklappten Feld.

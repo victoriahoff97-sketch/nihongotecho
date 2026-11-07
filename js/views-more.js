@@ -121,11 +121,10 @@
       return;
     }
     const list = App.itemsOf('kanji').sort((a, b) => (+a.lesson || 99) - (+b.lesson || 99) || App.ord(a) - App.ord(b));
-    const idx = list.indexOf(it);
-    const prev = list[idx - 1], next = list[idx + 1];
+    const kDe = (x) => esc(String(x.de || '').split(/[,;]/)[0].trim());
+    const hopNav = App.detailHop(it, list, (x) => (x.lesson ?? '') === '' ? 'ohne Lektion' : 'Lektion ' + x.lesson, (x) => `<span lang="ja">${esc(x.char)}</span>${x.de ? ' ' + kDe(x) : ''}`, 'Kanji');
     const media = App.filesFor({ itemId: it.id }).filter((f) => ['image', 'video'].includes(App.fileKind(f)));
-    view.innerHTML = `<div class="${sec.cls}"><div class="row between">${App.crumbs(sec, it)}<div class="row">
-        ${prev ? `<a class="btn btn-sm" href="${App.link(prev)}">${icon('back')} ${esc(prev.char)}</a>` : ''}${next ? `<a class="btn btn-sm" href="${App.link(next)}">${esc(next.char)} ${icon('next')}</a>` : ''}</div></div>
+    view.innerHTML = `<div class="${sec.cls}"><div class="row between detail-nav">${App.crumbs(sec, it)}${hopNav}</div>
       <div class="split"><div>
         <div class="card pad-lg"><div class="kanji-stage"><div data-anim></div>
           <div class="stack"><div class="row between" style="align-items:flex-start"><div><div class="de-big" style="font-size:26px">${App.meaningHtml(it)}</div>
@@ -147,7 +146,7 @@
         <div class="row" style="margin-bottom:10px"><button class="btn btn-sm" data-add-media>${icon('upload')} GIF / Video hinzufügen</button><span class="small muted">z. B. aus WaniKani, Jisho oder selbst aufgenommen</span></div>
         <div class="grid cols-3" data-media></div>
         ${it.notes ? `<div class="section-title">Notizen</div><div class="card prose">${JP.md(it.notes)}</div>` : ''}
-      </div><aside>${App.relatedHtml(it)}</aside></div></div>`;
+      </div>${App.sideAside(App.relatedHtml(it))}</div></div>`;
     App.stroke.animator(view.querySelector('[data-anim]'), it.char);
     App.stroke.pad(view.querySelector('[data-pad]'), it.char);
     // Schreib-Stand: eigener Lernstand, entsteht beim Schreiben im Kanji-Quiz
