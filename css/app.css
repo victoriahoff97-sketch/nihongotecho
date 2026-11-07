@@ -561,6 +561,9 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 /* Prognose: kleines Diagramm-Icon im Hero, Popup mit Balken je Tag */
 .fc-btn { display: inline-flex; vertical-align: middle; margin-left: 8px; padding: 3px; border: 0; border-radius: 8px; background: none; color: inherit; opacity: .7; cursor: pointer; }
 .fc-btn:hover { opacity: 1; background: rgba(255,255,255,.15); }
+.skip-btn { position: relative; opacity: 1; background: rgba(255,255,255,.15); }
+.skip-btn .skip-dot { position: absolute; top: 0; right: 0; width: 7px; height: 7px; border-radius: 50%; background: #f3b562; }
+.vac-field .ico { vertical-align: -3px; }
 .fc-btn .ico svg { width: 16px; height: 16px; }
 .modal.forecast { max-width: 460px; }
 .fc-row { display: grid; grid-template-columns: 58px 1fr 52px 52px; align-items: center; gap: 10px; padding: 5px 0; }

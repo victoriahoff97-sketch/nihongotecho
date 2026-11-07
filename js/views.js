@@ -433,6 +433,7 @@
     if (focus !== 'read') queues.splice(focus === 'write' ? 0 : 3, 0, { label: 'Kanji schreiben', due: wq.due.length, fresh: wq.fresh.length, href: '#/ueben/kanji?auto=1' });
     // Fälliges läuft über einen Knopf: eine gemischte Runde quer durch alles (auch Kanji schreiben). Fällig gilt für den ganzen Tag.
     const dueQ = App.todayParts(), due = dueQ.reduce((n, x) => n + x.n, 0), tomorrow = App.dueTomorrow();
+    const vacation = App.pause.vacation(); // Urlaubsmodus: Startkasten zeigt nur einen Hinweis (js/pause.js)
     const next = queues.find((x) => x.fresh);
     // „Wiederholen“ startet nur Fälliges – ohne Fälliges ist der Knopf aus, Neues kommt nie von selbst dazu
     const repeatBtn = (ico, n, href) => (n ? `<a class="btn btn-sec" href="${href}">${icon(ico)} Wiederholen <span class="badge">${n}</span></a>` : `<button class="btn" disabled title="Gerade ist nichts fällig">${icon(ico)} Wiederholen</button>`);
@@ -445,9 +446,10 @@
     const blocks = {
       hero: `<div class="hero"><div class="big-jp">日本語</div>
         <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
-        <p>${due ? `Heute: <b>${due} ${due === 1 ? 'Karte' : 'Karten'}</b> – ${dueQ.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : `Für heute ist alles wiederholt${next ? ' – wenn du magst, ist Zeit für neue Karten.' : '.'}`}</p>
+        ${vacation ? `<p>${App.pause.heroText()}</p>
+        <div class="row">${App.pause.heroButton()}<a class="btn" href="#/ueben/karten">${icon('practice')} Karteikarten</a></div></div>` : `<p>${due ? `Heute: <b>${due} ${due === 1 ? 'Karte' : 'Karten'}</b> – ${dueQ.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : `Für heute ist alles wiederholt${next ? ' – wenn du magst, ist Zeit für neue Karten.' : '.'}`}</p>
         <div class="row">${due ? `<a class="btn solid" href="#/ueben/heute?auto=1">${icon('shuffle')} Jetzt wiederholen <span class="badge">${due}</span></a>` : `<a class="btn solid" href="${next ? next.href : '#/ueben/karten'}">${icon(next ? 'play' : 'practice')} ${next ? 'Neue Karten lernen' : 'Karteikarten'}</a>`}${App.refresh.button()}${App.grammarRefresh.button()}</div>
-        <p class="small" style="margin-top:10px">${due ? 'Alles gemischt in einer Runde' : ''}${due && tomorrow ? ' · ' : ''}${tomorrow ? `morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu` : ''}<button class="fc-btn" data-forecast title="Prognose: die nächsten 7 Tage" aria-label="Prognose für die nächsten 7 Tage">${icon('chart')}</button></p></div>`,
+        <p class="small" style="margin-top:10px">${due ? 'Alles gemischt in einer Runde' : ''}${due && tomorrow ? ' · ' : ''}${tomorrow ? `morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu` : ''}<button class="fc-btn" data-forecast title="Prognose: die nächsten 7 Tage" aria-label="Prognose für die nächsten 7 Tage">${icon('chart')}</button>${App.pause.button()}</p></div>`}`,
       actions: quickHtml(),
       read: readStrip(),
       sammlung: `<div class="section-title">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>

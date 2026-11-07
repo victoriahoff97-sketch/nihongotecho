@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-pausieren', date: '7. November',
+      items: [
+        { t: 'Verpasste Tage überspringen', d: 'Einen Tag nicht geschafft? Im blauen Kasten der Startseite erscheint ein Rückspul-Symbol: ein Klick, und es geht weiter, als hättest du nichts verpasst.' },
+        { t: 'Urlaubsmodus', d: 'Länger weg? Unter Einstellungen › Lernen den Urlaubsmodus starten – solange wird nichts neu fällig, und danach geht es genau da weiter, wo du aufgehört hast.' },
+      ],
+    },
+    {
       id: '2026-11-07-startseite-bereiche', date: '7. November',
       items: [
         { t: 'Startseite: Bereiche verschieben', d: 'Unten auf der Startseite „Startseite anpassen“: Jeder Bereich hat oben ↑/↓ zum Verschieben und ✕ zum Ausblenden. „Zurücksetzen“ holt alles zurück.' },

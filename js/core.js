@@ -95,6 +95,8 @@ window.App = window.App || {};
     eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
     eyeOff: '<path d="M17.9 17.9A10 10 0 0112 20c-7 0-11-8-11-8a18 18 0 015.1-5.9M9.9 4.2A9 9 0 0112 4c7 0 11 8 11 8a18 18 0 01-2.2 3.2"/><path d="M1 1l22 22"/>',
     chart: '<path d="M4 20h16"/><path d="M7 16v-4M12 16V6M17 16v-7"/>',
+    rewind: '<path d="M11 18l-7-6 7-6v12z"/><path d="M20 18l-7-6 7-6v12z"/>',
+    vacation: '<path d="M12 11v10"/><path d="M3.5 11a8.5 8 0 0117 0z"/><path d="M7 21h10"/>',
     calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
     bold: '<path d="M6 4h8a4 4 0 010 8H6zM6 12h9a4 4 0 010 8H6z"/>',
     italic: '<path d="M19 4h-9M14 20H5M15 4L9 20"/>',
@@ -275,6 +277,8 @@ window.App = window.App || {};
     name: '', theme: 'auto', furigana: 'on', course: 'VHS Japanisch A1', level: 12,
     sources: App.DEFAULT_SOURCES, penOnly: true, ttsRate: 0.9, newPerDay: 15, checkBatch: 15, sidebarCollapsed: false,
     tourAsked: false,   // Frage „Rundgang?“ beim ersten Start schon gestellt
+    vacation: null, // Urlaubsmodus { since, until, upTo } (js/pause-logic.js)
+    srsAnchor: 0, // bis zu diesem Tag sind verpasste Tage schon übersprungen (Rückspul-Symbol, Urlaub)
     kanjiFocus: 'both', // Kanji-Schwerpunkt: both | read | write
     writeSource: 'all', // woher neue Schreib-Kanji kommen: all | genki | n5 | wk
     wkLevels: [],       // freigeschaltete WaniKani-Level
