@@ -127,9 +127,7 @@
   // Ein Klick auf die Überschrift klappt die Karte darunter ein; eingeklappt steht die Kurzfassung neben dem Titel.
   // Gemerkt in den Einstellungen (homeFolded: Liste der eingeklappten Karten).
   const isFolded = (key) => (S.settings.homeFolded || []).includes(key);
-  // ↑/↓ rechts in der Überschrift: Lernstand-Karten untereinander tauschen (pro Gerät, wie „Startseite anpassen“)
-  const moveBtns = (key) => (homeEdit ? '' : `<span class="home-move"><button type="button" class="icon-btn sm" data-home-move="${key}:-1" title="Nach oben" aria-label="Nach oben">↑</button><button type="button" class="icon-btn sm" data-home-move="${key}:1" title="Nach unten" aria-label="Nach unten">↓</button></span>`);
-  const foldHead = (key, title, sum) => `<div class="section-title"><button type="button" class="fold-btn" data-fold="${key}" aria-expanded="${!isFolded(key)}" title="Ein- oder ausklappen"><span class="chev"></span>${title}<span class="fold-sum">· ${sum}</span></button>${moveBtns(key)}</div>`;
+  const foldHead = (key, title, sum) => `<div class="section-title"><button type="button" class="fold-btn" data-fold="${key}" aria-expanded="${!isFolded(key)}" title="Ein- oder ausklappen"><span class="chev"></span>${title}<span class="fold-sum">· ${sum}</span></button></div>`;
   const foldCls = (key) => (isFolded(key) ? ' is-folded' : '');
   document.addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('[data-fold]');
@@ -280,9 +278,16 @@
     return `<div class="home-live"><div class="home-actions" data-quick-list>${list.map((k) => { const [cls, , ico, title, sub] = QUICK[k]; return `<div class="home-act ${cls}" data-quick="${k}">${grip(title)}<span class="i">${icon(ico)}</span><span class="grow"><b>${title}</b><small>${sub}</small></span><button type="button" class="icon-btn" data-quick-off="${k}" title="Von der Startseite nehmen" aria-label="${title} entfernen">${icon('close')}</button></div>`; }).join('') || '<p class="small muted">Keine Schnellaktion gewählt – such dir unten welche aus.</p>'}</div>
       ${rest.length ? `<div class="quick-more"><span class="small muted">Weitere Schnellaktionen:</span>${rest.map((k) => `<button type="button" class="chip" data-quick-on="${k}">${icon('plus')} ${QUICK[k][3]}</button>`).join('')}</div>` : ''}</div>`;
   };
+  // Ausgeblendete Bereiche (✕ beim Anpassen) – pro Gerät, „Zurücksetzen“ holt alle zurück
+  const hiddenList = () => (HO.parse(App.lsGet('homeHidden')) || []).filter((k) => BLOCK_LABEL[k]);
+  // Beim Anpassen trägt jeder Bereich oben eine Leiste: Griff, Name, ↑/↓ und ✕ zum Ausblenden
+  const blockTools = (k) => `<div class="home-tools">${grip(BLOCK_LABEL[k])}<b class="home-tools-name">${BLOCK_LABEL[k]}</b>
+    <span class="home-move"><button type="button" class="icon-btn sm" data-home-move="${k}:-1" title="Nach oben" aria-label="${esc(BLOCK_LABEL[k])} nach oben">↑</button><button type="button" class="icon-btn sm" data-home-move="${k}:1" title="Nach unten" aria-label="${esc(BLOCK_LABEL[k])} nach unten">↓</button></span>
+    <button type="button" class="icon-btn sm" data-block-off="${k}" title="Bereich von der Startseite nehmen" aria-label="${esc(BLOCK_LABEL[k])} ausblenden">${icon('close')}</button></div>`;
   // Leisten in gemerkter Reihenfolge; im Bearbeiten-Modus auch leere (z. B. JLPT ohne Paket), damit sie sich platzieren lassen
-  const homeBlocks = (blocks) => HO.order(Object.keys(blocks), HO.parse(App.lsGet('homeOrder'))).map((k) => (blocks[k] || homeEdit
-    ? `<section class="home-block" data-block="${k}">${homeEdit ? grip(BLOCK_LABEL[k]) : ''}${blocks[k] || `<div class="home-empty small muted">${BLOCK_LABEL[k]} – zurzeit nichts zu zeigen</div>`}</section>` : '')).join('');
+  const homeBlocks = (blocks) => HO.shown(HO.order(Object.keys(blocks), HO.parse(App.lsGet('homeOrder'))), hiddenList()).map((k) => (blocks[k] || homeEdit
+    ? `<section class="home-block" data-block="${k}">${homeEdit ? blockTools(k) : ''}${blocks[k] || `<div class="home-empty small muted">${BLOCK_LABEL[k]} – zurzeit nichts zu zeigen</div>`}</section>` : '')).join('');
+  const hiddenBar = () => { const h = hiddenList(); return h.length ? `<div class="quick-more home-hidden"><span class="small muted">Ausgeblendet:</span>${h.map((k) => `<button type="button" class="chip" data-block-on="${k}">${icon('plus')} ${BLOCK_LABEL[k]}</button>`).join('')}</div>` : ''; };
   const saveList = (list) => {
     if (list.matches('[data-home-blocks]')) App.lsSet('homeOrder', JSON.stringify(Array.from(list.children).map((c) => c.dataset.block).filter(Boolean)));
     else if (list.matches('[data-quick-list]')) App.lsSet('homeActions', JSON.stringify(Array.from(list.children).map((c) => c.dataset.quick).filter(Boolean)));
@@ -292,7 +297,7 @@
   document.addEventListener('pointerdown', (e) => {
     const g = e.target.closest && e.target.closest('[data-grip]');
     if (!g || e.button > 0) return;
-    const item = g.parentElement, list = item.parentElement;
+    const item = g.closest('[data-block], [data-quick]'), list = item.parentElement;
     const attr = item.hasAttribute('data-block') ? 'data-block' : 'data-quick';
     e.preventDefault();
     const r = item.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
@@ -352,17 +357,16 @@
     const dir = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }[e.key];
     if (!g || !dir) return;
     e.preventDefault();
-    const item = g.parentElement, list = item.parentElement;
+    const item = g.closest('[data-block], [data-quick]'), list = item.parentElement;
     const sib = dir < 0 ? item.previousElementSibling : item.nextElementSibling;
-    if (!sib || !sib.querySelector(':scope > [data-grip]')) return;
+    if (!sib || !sib.querySelector('[data-grip]')) return;
     list.insertBefore(item, dir < 0 ? sib : sib.nextSibling);
     g.focus();
     saveList(list);
   });
   document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-forecast]')) App.forecastModal(); });
-  // Lernstand-Karten mit ↑/↓ tauschen: nur mit der nächsten sichtbaren Lernstand-Karte, der Rest der Startseite bleibt stehen
-  const PROG_BLOCKS = ['vocab', 'jlpt', 'genki', 'kanji'];
-  const shownProg = () => Array.from(document.querySelectorAll('[data-home-blocks] > [data-block]')).map((s) => s.dataset.block).filter((k) => PROG_BLOCKS.includes(k));
+  // ↑/↓ beim Anpassen: tauscht mit dem nächsten sichtbaren Bereich (ausgeblendete werden übersprungen)
+  const shownProg = () => Array.from(document.querySelectorAll('[data-home-blocks] > [data-block]')).map((s) => s.dataset.block);
   const markMoveEnds = () => {
     const shown = shownProg();
     document.querySelectorAll('[data-home-move]').forEach((b) => {
@@ -380,11 +384,18 @@
     requestAnimationFrame(() => { const nb = document.querySelector(`[data-home-move="${k}:${d}"]`); if (nb && !nb.disabled) nb.focus(); });
   });
   document.addEventListener('click', (e) => {
-    const t = e.target.closest && e.target.closest('[data-home-edit], [data-home-done], [data-home-reset], [data-quick-on], [data-quick-off], [data-read-on], [data-read-off]');
+    const t = e.target.closest && e.target.closest('[data-home-edit], [data-home-done], [data-home-reset], [data-quick-on], [data-quick-off], [data-read-on], [data-read-off], [data-block-on], [data-block-off]');
     if (!t) return;
     if (t.matches('[data-home-edit]')) { homeEdit = true; App.render(); return; }
     if (t.matches('[data-home-done]')) { homeEdit = false; App.render(); return; }
-    if (t.matches('[data-home-reset]')) { App.lsSet('homeOrder', ''); App.lsSet('homeActions', ''); App.lsSet('homeRead', ''); App.render(true); App.toast && App.toast('Startseite wie am Anfang'); return; }
+    if (t.matches('[data-home-reset]')) { App.lsSet('homeOrder', ''); App.lsSet('homeActions', ''); App.lsSet('homeRead', ''); App.lsSet('homeHidden', ''); App.render(true); App.toast && App.toast('Startseite wie am Anfang'); return; }
+    if (t.dataset.blockOn || t.dataset.blockOff) {
+      const hl = hiddenList();
+      App.lsSet('homeHidden', JSON.stringify(t.dataset.blockOff ? hl.concat(t.dataset.blockOff) : hl.filter((k) => k !== t.dataset.blockOn)));
+      App.render(true);
+      if (t.dataset.blockOff && App.toast) App.toast(`${BLOCK_LABEL[t.dataset.blockOff]} ausgeblendet – oben unter „Ausgeblendet“ zurückholen`);
+      return;
+    }
     if (t.dataset.readOn || t.dataset.readOff) {
       const rl = readList();
       App.lsSet('homeRead', JSON.stringify(t.dataset.readOn ? rl.concat(t.dataset.readOn) : rl.filter((k) => k !== t.dataset.readOff)));
@@ -476,7 +487,7 @@
       ${App.welcome.card()}
       <div data-backup-home>${App.backup.homeCard({ noRestoreHint: !!App.welcome.card() })}</div>
       ${genkiCard}
-      ${homeEdit ? `<div class="home-editbar"><span><b>Startseite anpassen</b><span class="hint"> · Leisten und Schnellaktionen am Griff ziehen. Gilt nur für dieses Gerät.</span></span><span class="row"><button class="btn btn-sm" data-home-reset>Zurücksetzen</button><button class="btn btn-sm btn-primary" data-home-done>${icon('check')} Fertig</button></span></div>` : ''}
+      ${homeEdit ? `<div class="home-editbar"><span><b>Startseite anpassen</b><span class="hint"> · Bereiche mit ↑/↓ oder am Griff verschieben, mit ✕ ausblenden. Gilt nur für dieses Gerät.</span></span><span class="row"><button class="btn btn-sm" data-home-reset>Zurücksetzen</button><button class="btn btn-sm btn-primary" data-home-done>${icon('check')} Fertig</button></span>${hiddenBar()}</div>` : ''}
       <div data-home-blocks>${homeBlocks(blocks)}</div>
       ${homeEdit ? '' : `<div class="home-edit-foot"><button class="btn btn-sm" data-home-edit>${icon('edit')} Startseite anpassen</button></div>`}
       </div>`;

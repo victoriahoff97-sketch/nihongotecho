@@ -229,7 +229,7 @@ h1, h2, h3, h4 { margin: 0; line-height: 1.25; }
 .fold-btn .chev { width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin: 0 3px 3px 2px; transition: transform .15s; }
 .fold-btn[aria-expanded="false"] .chev { transform: rotate(-45deg); margin-bottom: 0; }
 .fold-btn .fold-sum { text-transform: none; letter-spacing: 0; font-weight: 600; }
-.home-move { order: 1; display: inline-flex; gap: 2px; }
+.home-move { display: inline-flex; gap: 2px; }
 .home-move .icon-btn.sm { width: 28px; height: 28px; font-size: 15px; color: var(--muted); }
 .home-move .icon-btn.sm:hover:not(:disabled) { color: var(--ink); }
 .home-move .icon-btn:disabled { opacity: .25; cursor: default; }
@@ -1851,21 +1851,28 @@ button.day-box:hover { border-color: var(--matcha); }
 
 /* Startseite anpassen: Leisten und Schnellaktionen am Griff ziehen (pro Gerät gemerkt) */
 .home-block + .home-block { margin-top: 18px; }
-.home-block > :first-child, .home-block > .home-grip + * { margin-top: 0; }
+.home-block > :first-child, .home-block > .home-tools + * { margin-top: 0; }
 .home-block > :last-child { margin-bottom: 0; }
 .home-block .home-actions { margin-bottom: 0; }
 .home-block .read-strip { margin-top: 0; }
 .home-block .stat-grid { margin: 0; }
 .home-edit-foot { display: flex; justify-content: center; margin-top: 26px; }
 .home-editbar { position: sticky; top: calc(var(--topbar-h, 56px) + 8px); z-index: 40; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; margin-bottom: 16px; border-radius: 14px; background: var(--card); border: 2px solid var(--shu); box-shadow: var(--shadow-lg); }
-.home-editing .home-block { position: relative; padding: 12px 12px 12px 54px; border: 2px dashed var(--line); border-radius: 18px; background: var(--paper-2); }
-.home-editing .home-block > :not(.home-grip):not(.home-live) { pointer-events: none; }
+.home-editing .home-block { position: relative; padding: 10px 12px 12px; border: 2px dashed var(--line); border-radius: 18px; background: var(--paper-2); }
+.home-editing .home-block > :not(.home-tools):not(.home-live) { pointer-events: none; }
+/* Leiste oben in jedem Bereich beim Anpassen: Griff, Name, ↑/↓, ✕ */
+.home-tools { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.home-tools-name { flex: 1; min-width: 0; font-size: 14px; }
+.home-tools > .icon-btn.sm { width: 32px; height: 32px; color: var(--muted); }
+.home-tools > .icon-btn.sm:hover { color: var(--shu); }
+.home-tools .home-move .icon-btn.sm { width: 32px; height: 32px; }
+.home-editbar .home-hidden { flex-basis: 100%; margin-top: 0; }
+@media (pointer: coarse) { .home-tools > .icon-btn.sm, .home-tools .home-move .icon-btn.sm { width: 40px; height: 40px; } }
 .home-editing .home-block > .home-live > * { pointer-events: auto; }
 .home-grip { all: unset; box-sizing: border-box; display: grid; place-items: center; width: 40px; height: 44px; border-radius: 10px; color: var(--muted); background: var(--card); border: 1px solid var(--line); cursor: grab; touch-action: none; flex: none; }
 .home-grip svg { width: 12px; height: 18px; }
 .home-grip:hover { color: var(--ink); border-color: var(--shu); }
 .home-grip:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
-.home-block > .home-grip { position: absolute; left: 7px; top: 10px; }
 .home-act[data-quick] { cursor: default; gap: 10px; padding-left: 8px; }
 .home-act[data-quick] .grow { flex: 1; min-width: 0; }
 .quick-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
@@ -1882,8 +1889,7 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 @media (max-width: 700px) {
   .home-editbar { padding: 8px 10px; }
   .home-editbar .hint { display: none; }
-  .home-editing .home-block { padding: 56px 8px 8px; }
-  .home-block > .home-grip { left: 8px; top: 6px; }
+  .home-editing .home-block { padding: 8px; }
 }
 
 /* Eigene Notizbücher (heft.js) */

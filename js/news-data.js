@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-07-startseite-bereiche', date: '7. November',
+      items: [
+        { t: 'Startseite: Bereiche verschieben', d: 'Unten auf der Startseite „Startseite anpassen“: Jeder Bereich hat oben ↑/↓ zum Verschieben und ✕ zum Ausblenden. „Zurücksetzen“ holt alles zurück.' },
+      ],
+    },
+    {
       id: '2026-11-07-konjugieren-auswahl', date: '7. November',
       items: [
         { t: 'Konjugieren mit Auswahl', d: 'Unter Üben › Konjugieren kannst du jetzt aus vier Antworten wählen. Die falschen sind typische Fehler wie 飲みて oder 高いでした, du musst also wirklich die Regel kennen.' },

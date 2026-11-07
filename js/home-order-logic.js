@@ -33,7 +33,10 @@
     return out;
   };
 
-  // Pfeile ↑/↓ an den Lernstand-Karten: tauscht mit der nächsten Karte aus derselben Gruppe (sichtbare Lernstand-Karten),
+  // Ohne ausgeblendete Bereiche (✕ beim Anpassen)
+  H.shown = (list, hidden) => list.filter((k) => !(hidden || []).includes(k));
+
+  // Pfeile ↑/↓ beim Anpassen: tauscht mit dem nächsten Eintrag aus derselben Gruppe (sichtbare Bereiche),
   // alles andere dazwischen bleibt, wo es ist
   H.swapIn = (list, key, dir, group) => {
     const i = list.indexOf(key);
