@@ -7,10 +7,11 @@
 (function (App) {
   App.NEWS = [
     {
-      id: '2026-11-09-forum-kaestchen', date: '9. November',
+      id: '2026-11-09-forum-kaestchen-2', date: '9. November',
       items: [
         { t: 'Themen wieder als Kästchen', d: 'Die Forum-Themen sehen wieder aus wie vorher: mit Datum, bis zu drei Zeilen Text und den Verknüpfungen.' },
-        { t: 'Challenge als schmale Zeile', d: 'Die Tägliche Gruppen-Challenge ist oben nur noch eine Zeile mit dem Anstoß, wie viele schon dabei sind, und deiner 🔥. Antippen klappt sie auf.' },
+        { t: 'Challenge als schmale Zeile', d: 'Die Tägliche Gruppen-Challenge ist oben nur noch eine Zeile mit dem Anstoß und deiner 🔥. Antippen klappt sie auf.' },
+        { t: 'Erst schreiben, dann lesen', d: 'Die Sätze der anderen sind verwischt, bis du deinen eigenen geschrieben hast. Die Geschichte am Wochenende siehst du immer ganz.' },
       ],
     },
     {

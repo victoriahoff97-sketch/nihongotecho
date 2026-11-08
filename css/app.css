@@ -2338,7 +2338,6 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 .fd-band > .ico { width: 18px; height: 18px; color: var(--shu); flex: none; }
 .fd-band b { font-size: 14px; white-space: nowrap; flex: none; }
 .fd-band-kind { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
-.fd-tally { flex: none; font-size: 13px; color: var(--muted); white-space: nowrap; }
 .fd-bandflame { flex: none; font-weight: 700; color: var(--shu); white-space: nowrap; }
 .fd-bandflame:empty { display: none; }
 .fd-chev { flex: none; display: inline-flex; color: var(--muted); }
@@ -2361,6 +2360,7 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 @media (prefers-reduced-motion: reduce) { .fd-myflame.is-lit { animation: none; } }
 .fd-line.is-own { background: color-mix(in srgb, var(--shu) 8%, var(--card)); }
 .fd-line .forum-flame { color: var(--shu); }
+.fd-line.is-veiled .fd-text { filter: blur(6px); user-select: none; pointer-events: none; }
 .fd-cheer { margin: 2px 0 0; font-size: 15px; font-weight: 700; color: var(--shu); }
 .fd-cheer .muted { font-weight: 400; font-size: 14px; }
 @media (max-width: 480px) { .fd-band { padding: 9px 12px; gap: 8px; } .fd-band b { flex: 1; overflow: hidden; text-overflow: ellipsis; } .fd-band-kind { display: none; } .fd-body { padding: 4px 14px 14px; } .fd-main .fd-jp { font-size: 24px; } .fd-myflame { min-width: 72px; padding: 6px 10px; } }

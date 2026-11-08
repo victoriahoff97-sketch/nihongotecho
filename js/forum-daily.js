@@ -87,6 +87,8 @@
         ${canEdit ? `<button type="button" class="btn btn-sm" data-dchange title="Bearbeiten" aria-label="Bearbeiten">${icon('edit')}<span class="fd-lbl"> Bearbeiten</span></button>` : ''}</div>
       <div class="fd-text forum-text" lang="ja">${textHtml(x.text)}</div></div>`;
   };
+  const veiledHtml = (x) => `<div class="fd-line is-veiled" title="Erst deinen Satz schreiben"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}</div>
+      <div class="fd-text" lang="ja" aria-hidden="true">${esc(x.text)}</div></div>`;
   const all = (dates) => dates.flatMap((d) => (m.lists[d] || []).map((x) => Object.assign({ date: d }, x)));
   const sorted = (list) => Y.chainContext(list.map((x) => Object.assign({}, x, { createdAt: at(x) })));
   const ownToday = () => (m.lists[m.ctx.today] || []).find((x) => x.uid === me()) || null;
@@ -95,20 +97,9 @@
       ${start ? `<div class="fd-start"><span lang="ja" class="fd-jp">${App.jp.ruby(start.jp)}</span>${start.de ? `<span class="muted small">${esc(start.de)}</span>` : ''}</div>` : ''}
       ${list.map(lineHtml).join('')}</div>`;
 
-  // Banner: „3 von 4 heute“, eigene Flamme groß, darunter wer noch nicht dabei ist – nur freundlich, nie als Mahnung
-  const todayUids = () => new Set((m.lists[m.ctx.today] || []).map((x) => x.uid));
+  // eigene Flamme groß und in der Zeile; keine Zahlen, wer schon dabei ist – nur die Sätze selbst
   const drawCheer = (mine) => {
     const ms = m.ctx.members;
-    // pro Person zählen, nicht pro Mitglied-Eintrag: PC + Tablet oder stilles Wiederbeitreten geben mehrere Einträge mit demselben Namen
-    const key = (u) => ((ms[u] && ms[u].name) || '').trim().toLowerCase() || u;
-    const people = {};
-    Object.keys(ms).forEach((u) => { (people[key(u)] = people[key(u)] || []).push(u); });
-    const uids = Object.keys(people);
-    const doneUids = todayUids();
-    const done = new Set(uids.filter((p) => people[p].some((u) => doneUids.has(u))));
-    const n = done.size;
-    const tally = m.el.querySelector('[data-dtally]');
-    if (tally) tally.textContent = !uids.length ? '' : n && n === uids.length ? `${n} von ${n} · alle dabei 🎉` : `${n} von ${uids.length} heute`;
     const fl = m.el.querySelector('[data-dmyflame]');
     const st = ms[me()] && ms[me()].streak;
     const nn = F.flameOf(st, m.ctx.today);
@@ -122,11 +113,7 @@
     const bf = m.el.querySelector('[data-dbandflame]');
     if (bf) { bf.textContent = nn ? `${K.MARK} ${nn}` : mine ? K.MARK : ''; bf.classList.toggle('is-lit', !!mine); }
     const box = m.el.querySelector('[data-dlist]');
-    const missing = m.prompt.kind === 'chain' ? [] : uids.filter((p) => !done.has(p) && p !== key(me())).map((p) => ms[people[p][0]].name).filter(Boolean);
-    let foot = '';
-    if (mine && n === uids.length && uids.length > 1) foot = '<p class="fd-cheer">全員！ Heute haben alle geschrieben – お疲れ様 🌸</p>';
-    else if (mine) foot = `<p class="fd-cheer">Geschafft für heute ✓${missing.length ? ` <span class="muted">· noch nicht dabei: ${esc(missing.join(', '))}</span>` : ''}</p>`;
-    else if (missing.length && done.size) foot = `<p class="muted small fd-count">Noch nicht dabei: ${esc(missing.join(', '))}</p>`;
+    const foot = mine && m.prompt.kind !== 'chain' ? '<p class="fd-cheer">Geschafft für heute ✓</p>' : '';
     if (foot && box) box.insertAdjacentHTML('beforeend', foot);
   };
 
@@ -142,10 +129,12 @@
       box.innerHTML = storyHtml(p.chainStart, list)
         + (list.length ? '' : '<p class="muted small">Noch hat niemand weitergeschrieben – du schließt an den Anfangssatz an.</p>');
     } else {
-      // alle Sätze von heute gleich sichtbar – der eigene oben, dann die anderen in Reihenfolge
+      // der eigene Satz oben; die der anderen bleiben verwischt, bis du selbst geschrieben hast
       const list = sorted(all([m.ctx.today]));
       const lines = (mine ? list.filter((x) => x.uid === me()) : []).concat(list.filter((x) => x.uid !== me()));
-      box.innerHTML = lines.length ? `<div class="fd-lines">${lines.map(lineHtml).join('')}</div>`
+      const others = list.filter((x) => x.uid !== me()).length;
+      box.innerHTML = lines.length ? `<div class="fd-lines">${lines.map((x) => (mine ? lineHtml(x) : veiledHtml(x))).join('')}</div>`
+          + (!mine && others ? '<p class="muted small fd-count">Schreib deinen Satz – dann siehst du die der anderen.</p>' : '')
         : '<p class="muted small fd-count">Noch hat heute niemand geschrieben – du kannst den Anfang machen ✨</p>';
     }
     drawCheer(mine);
@@ -304,10 +293,10 @@
     const wd = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(today + 'T12:00').getDay()];
     if (drafts[today]) open = true;
     el.className = 'fd-card' + (open ? ' is-open' : '');
-    // Kopf als schmale Zeile: Name, Anstoß kurz, wie viele heute dabei sind, eigene Flamme – Antippen klappt den Rest auf
+    // Kopf als schmale Zeile: Name, Anstoß kurz, eigene Flamme – Antippen klappt den Rest auf
     el.innerHTML = `<button type="button" class="fd-band" data-dtoggle aria-expanded="${open}">${icon('users')}<b>Tägliche Gruppen-Challenge</b>
         <span class="fd-band-kind">${bandPrompt(prompt)}</span>
-        <span class="fd-tally" data-dtally></span><span class="fd-bandflame" data-dbandflame></span><span class="fd-chev" data-dchev>${icon(open ? 'chevD' : 'chevR')}</span></button>
+        <span class="fd-bandflame" data-dbandflame></span><span class="fd-chev" data-dchev>${icon(open ? 'chevD' : 'chevR')}</span></button>
       <div class="fd-body" data-dbody${open ? '' : ' hidden'}>
       <p class="muted small fd-day">${esc(KIND[prompt.kind])} · ${wd} ${Number(today.slice(8))}.${Number(today.slice(5, 7))}.</p>
       <div class="fd-top"><div class="fd-main">${promptHtml(prompt)}
