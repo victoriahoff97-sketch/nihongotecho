@@ -86,10 +86,10 @@
   D.leaveGroup = (code) => group(code).collection('members').doc(D.uid()).delete();
   D.rename = (code, name) => group(code).collection('members').doc(D.uid()).update({ name });
   D.setAvatar = (code, avatar) => group(code).collection('members').doc(D.uid()).update({ avatar });
-  // Mitglieder → { uid: { name, avatar } } – für die Avatare neben den Namen (gelten auch für alte Beiträge)
+  // Mitglieder → { uid: { name, avatar, streak } } – für die Avatare neben den Namen (gelten auch für alte Beiträge)
   D.watchMembers = (code, onMembers) => group(code).collection('members').onSnapshot((snap) => {
     const out = {};
-    snap.docs.forEach((d) => { const x = d.data(); out[d.id] = { name: typeof x.name === 'string' ? x.name : '', avatar: typeof x.avatar === 'string' ? x.avatar : '' }; });
+    snap.docs.forEach((d) => { const x = d.data(); out[d.id] = { name: typeof x.name === 'string' ? x.name : '', avatar: typeof x.avatar === 'string' ? x.avatar : '', streak: F().cleanStreak(x.streak) }; });
     onMembers(out);
   }, () => {});
 
@@ -153,6 +153,23 @@
   D.setDone = (code, id, done, name) => posts(code).doc(id).update(done
     ? { done: true, doneBy: name, doneAt: now() }
     : { done: false, doneBy: null, doneAt: null });
+
+  // ---------- Satz des Tages ----------
+  // groups/{code}/daily/{Datum}/s/{uid}: ein Satz pro Mitglied und Tag
+  const dailyCol = (code, date) => group(code).collection('daily').doc(date).collection('s');
+  D.watchDaily = (code, date, onList, onError) => dailyCol(code, date)
+    .onSnapshot((snap) => onList(snap.docs.map((d) => {
+      const x = raw(d);
+      return { id: d.id, uid: x.uid, name: x.name, text: x.text, usedPrompt: !!x.usedPrompt, createdAt: x.createdAt, editedAt: x.editedAt || null,
+        likes: Array.isArray(x.likes) ? x.likes.filter((u) => typeof u === 'string') : [] };
+    })), onError);
+  D.sendDaily = (code, date, { name, text, usedPrompt }) => dailyCol(code, date).doc(D.uid())
+    .set({ uid: D.uid(), name, text, usedPrompt: !!usedPrompt, createdAt: now(), editedAt: null, likes: [] });
+  D.editDaily = (code, date, { text, usedPrompt }) => dailyCol(code, date).doc(D.uid())
+    .update({ text, usedPrompt: !!usedPrompt, editedAt: now() });
+  D.likeDaily = (code, date, uid, on) => dailyCol(code, date).doc(uid).update({ likes: likeOp(on) });
+  // Serie { n, hold, days } am eigenen Mitglied-Eintrag
+  D.setStreak = (code, streak) => group(code).collection('members').doc(D.uid()).update({ streak });
 
   // ---------- Antworten ----------
   // Antwort und Zähler/„letzte Aktivität“ am Beitrag in einem Schritt

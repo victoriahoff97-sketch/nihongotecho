@@ -79,4 +79,11 @@
     const target = Math.max(P.addDays(P.dayStart(now), -1), vac.since);
     return { n: P.days(vac.upTo, target), anchor: target };
   };
+
+  // Abgeschlossener Urlaub als Zeitraum (inklusive, lokale Tage) für den Verlauf der Flammen.
+  // lastDay = letzter Urlaubstag; null, wenn der Urlaub keinen ganzen Tag gedauert hat.
+  const iso = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  P.closedRange = (vac, lastDay) => (P.dayStart(lastDay) < P.dayStart(vac.since) ? null : { from: iso(vac.since), to: iso(lastDay) });
+  // Verlauf fortschreiben: höchstens 50 Einträge, die ältesten fallen weg; null wird übersprungen
+  P.appendLog = (log, range) => (range ? (log || []).concat([range]).slice(-50) : (log || []));
 })(window.App = window.App || {});

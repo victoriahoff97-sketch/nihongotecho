@@ -594,26 +594,36 @@
   };
   const atNames = () => Object.values(members).map((m) => m.name);
   const textHtml = (text) => F.linkify(text, atNames());
-  const avatarOf = (x) => avatarHtml(F.parseAvatar(members[x.uid] && members[x.uid].avatar), x.name);
-  const meta = (p) => `${avatarOf(p)}<b>${esc(p.name)}</b> ·${p.createdAt ? esc(F.relTime(p.createdAt, Date.now())) : 'gerade eben'}${p.editedAt ? ' (bearbeitet)' : ''}`;
+  const avatarOf = (x, ms = members) => avatarHtml(F.parseAvatar(ms[x.uid] && ms[x.uid].avatar), x.name);
+  // Forum-Flamme (Satz des Tages) ab 2 Tagen in Folge – leise, ohne Meldung, wenn sie ausgeht
+  const flameOf = (uid, ms = members) => {
+    const n = F.flameOf(ms[uid] && ms[uid].streak, App.today());
+    return n ? `<span class="forum-flame" title="${n} Tage in Folge einen Satz des Tages">${App.streakLogic.MARK}${n}</span>` : '';
+  };
+  const meta = (p) => `${avatarOf(p)}<b>${esc(p.name)}</b>${flameOf(p.uid)} ·${p.createdAt ? esc(F.relTime(p.createdAt, Date.now())) : 'gerade eben'}${p.editedAt ? ' (bearbeitet)' : ''}`;
   const dayMonth = (ms) => { const d = new Date(ms); return `${d.getDate()}.${d.getMonth() + 1}.`; };
   const offlineNote = () => `<div class="forum-note">${esc(OFFLINE)}</div>`;
 
-  const open = () => {
-    if (ui) return;
+  // daily: aus der 今日-Karte – gleich zur Karte „Satz des Tages“
+  const open = ({ daily = false } = {}) => {
+    if (ui) {
+      // schon offen: in einem Beitrag (oder beim Beitreten) erst zurück zur Liste, dort hängt die Karte
+      if (daily && st.code && ui.view !== 'list') { ui.wantDaily = true; showList(); } else if (daily) App.forumDaily.focus();
+      return;
+    }
     if (!D.configured()) {
       App.modal({ title: 'Gruppe', body: '<p>Die Gruppe ist auf diesem Gerät noch nicht eingerichtet. Sobald das Update mit eurer Gruppe da ist, geht es hier los.</p>', foot: false, cls: 'forum-modal' });
       return;
     }
     const md = App.modal({
       title: `${icon('thought')} Gruppe`, body: '<div class="forum"></div>', foot: false, cls: 'forum-modal',
-      onClose: () => { $$('textarea', md.el).forEach((t) => App.dictate.stopFor(t, { now: true })); if (ui && ui.cleanup) ui.cleanup(); ui = null; },
+      onClose: () => { $$('textarea', md.el).forEach((t) => App.dictate.stopFor(t, { now: true })); if (ui && ui.cleanup) ui.cleanup(); ui = null; App.forumDaily.flush(); },
     });
     const more = document.createElement('div');
     more.className = 'forum-more';
     more.innerHTML = `<button class="icon-btn" data-more title="Mehr" aria-label="Mehr">${icon('more')}</button>`;
     md.el.querySelector('.modal-head [data-x]').before(more);
-    ui = { md, root: md.body.querySelector('.forum') };
+    ui = { md, root: md.body.querySelector('.forum'), wantDaily: daily };
     more.querySelector('[data-more]').onclick = (e) => { e.stopPropagation(); toggleMenu(more); };
     if (!st.code) showJoin();
     else { if (status !== 'live' && !rejoining) { stop(); start(); } showList(); }
@@ -708,6 +718,8 @@
     if (!(await App.confirm('Dieses Gerät verlässt die Gruppe. Mit dem Code kannst du jederzeit wieder beitreten.', { ok: 'Verlassen' }))) return;
     const code = st.code;
     stop();
+    // Karte „Satz des Tages“ sofort aushängen (Listener der alten Gruppe weg) – offline kehrt leaveGroup evtl. nie zurück
+    if (ui && ui.cleanup) { ui.cleanup(); ui.cleanup = null; }
     st = Object.assign(blank(), { name: st.name });
     save();
     refreshDot();
@@ -818,7 +830,7 @@
     ui.tab = ui.tab || 'offen';
     const r = ui.root;
     ui.q = ui.q || '';
-    r.innerHTML = `<div data-newpost></div><div class="forum-bar" data-tabs><b>Eure Themen</b>
+    r.innerHTML = `<div data-daily></div><div data-newpost></div><div class="forum-bar" data-tabs><b>Eure Themen</b>
       <input class="input forum-search" type="search" placeholder="Suchen …" aria-label="Im Forum suchen" value="${esc(ui.q)}"><select class="input" aria-label="Welche Themen"></select></div><div data-list class="forum-list"></div>`;
     r.querySelector('[data-newpost]').appendChild(composer({
       // von einem Eintrag oder aus „Sätze zuordnen“ geöffnet: gleich aufgeklappt, damit der Vorschlag zu sehen ist
@@ -826,6 +838,11 @@
       onSubmit: (v) => D.addPost(st.code, Object.assign({ name: st.name }, v)),
     }));
     App.hydrateIcons(r);
+    // Satz des Tages über allem (js/forum-daily.js); Datumswechsel prüft die Karte beim Neuzeichnen und alle 60 s selbst
+    const FD = App.forumDaily;
+    FD.mount(r.querySelector('[data-daily]'), { code: st.code, uid: D.uid(), name: st.name, members, today: App.today() });
+    ui.cleanup = () => FD.unmount();
+    if (ui.wantDaily) { ui.wantDaily = false; FD.focus(); }
     const tabs = r.querySelector('[data-tabs]');
     const pick = tabs.querySelector('select');
     const list = r.querySelector('[data-list]');
@@ -845,8 +862,9 @@
       list.innerHTML = shown.length ? shown.map(row).join('')
         : `<p class="muted forum-empty">${q ? `Nichts gefunden zu „${esc(q)}“.` : EMPTY[ui.tab]}</p>`;
       App.hydrateIcons(list);
+      FD.check();
     };
-    ui.onMembers = ui.onPosts;
+    ui.onMembers = () => { FD.members(members); ui.onPosts(); };
     pick.onchange = () => { ui.tab = pick.value; ui.onPosts(); };
     const search = tabs.querySelector('.forum-search');
     search.oninput = App.debounce(() => { ui.q = search.value; ui.onPosts(); }, 150);
@@ -1021,7 +1039,7 @@
     markSeen(id);
   };
 
-  App.forum = { open, state: () => st, refreshDot }; // refreshDot: auch das „neu“ auf der Handy-Startseite
+  App.forum = { open, close: () => { if (ui) ui.md.close(); }, state: () => st, inGroup: () => !!st.code, avatar: avatarOf, flame: flameOf, refreshDot }; // refreshDot: auch das „neu“ auf der Handy-Startseite
 
   // Im Hintergrund verbinden, damit der rote Punkt auch ohne Öffnen erscheint – nie, wenn das Gerät in keiner Gruppe ist
   if (typeof document !== 'undefined') window.addEventListener('load', () => { if (st.code && D.configured()) setTimeout(start, 3000); });

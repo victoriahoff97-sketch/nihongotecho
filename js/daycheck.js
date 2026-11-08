@@ -11,16 +11,50 @@
   const goals = () => L.goals(cfg());
 
   // Japanisch angewendet: ein Tagebucheintrag oder eine Smalltalk-Antwort von heute, in der etwas steht
-  const appliedToday = () => App.itemsOf('journal').concat(App.itemsOf('answer')).some((it) => it.date === App.today() && App.applyHasContent(it));
+  const appliedOn = (date) => App.itemsOf('journal').concat(App.itemsOf('answer')).some((it) => it.date === date && App.applyHasContent(it));
+  const appliedToday = () => appliedOn(App.today()) || L.isDone(log(), App.today(), 'forum'); // oder der Forum-Satz des Tages (js/forum.js)
+  // Tagesabschluss: steht im dayLog noch ein vergangener Tag, dessen Ziele in dayHistory übernehmen (vereinigt), bevor
+  // irgendetwas das Log für heute neu anlegt. Läuft beim Start (js/main.js), vor jedem Schreiben ins dayLog und in state()
+  let closed = '';
+  const closeDay = async () => {
+    const lg = S.settings && log();
+    if (!lg || !lg.date || closed === lg.date || !(lg.date < App.today())) return;
+    closed = lg.date;
+    const next = L.closeHistory(S.settings.dayHistory, lg, cfg(), appliedOn(lg.date), App.today());
+    if (next) await App.saveSettings({ dayHistory: next }, { silent: true });
+  };
   // Was heute erledigt ist – für jeden Punkt (eingebaut und eigene)
+  // Achtung: state() schreibt nebenbei den Tagesstand in settings.dayHistory (snapshot), auch wenn check() es aufruft
   const state = () => {
+    closeDay();
     const g = goals(), t = App.today(), st = {};
     L.list(cfg()).forEach(({ key }) => { st[key] = L.isDone(log(), t, key); });
     st.review = L.reviewDone(log(), t, App.todayParts().length, g.reviews); // gewählte Karten oder alles, was heute fällig war
     st.apply = appliedToday();
     st.listen = L.listenDone(log(), t, g.listenMin * 60);
+    snapshot(st);
     return st;
   };
+  // Für die Flammen: den berechneten Stand von heute festhalten (Wiederholen, Anwenden, Listening stehen nicht im dayLog).
+  // Gespeichert wird nur bei Änderung; das Speichern löst keine Neuberechnung aus, die wieder speichert.
+  const snapshot = (st) => {
+    if (!S.settings) return;
+    const keys = L.goalKeys(cfg()).filter((k) => st[k]);
+    const next = L.recordDay(S.settings.dayHistory, App.today(), keys);
+    if (next) App.saveSettings({ dayHistory: next });
+  };
+  const flameInfo = () => {
+    const keys = L.goalKeys(cfg()), t = App.today();
+    const off = App.streakLogic.offDays(S.settings.vacationLog, App.pause && App.pause.vacation ? App.pause.vacation() : S.settings.vacation, t);
+    return L.flameInfo(S.settings.dayHistory, keys, off, t);
+  };
+  const ddmm = (d) => d.slice(8) + '.' + d.slice(5, 7) + '.';
+  const flame = (info) => {
+    if (!info || info.n < 2) return '';
+    const tip = [info.n + ' Tage in Folge'].concat(info.jokers.map((d) => '❄️ Joker am ' + ddmm(d))).join(String.fromCharCode(10));
+    return ` <span class="day-flame" title="${esc(tip)}">${App.streakLogic.MARK}${info.n}</span>`;
+  };
+  const forumHintShown = () => L.forumHint(cfg()) && !!(App.forum && App.forum.inGroup && App.forum.inGroup()) && !L.isDone(log(), App.today(), 'forum');
 
   const openJournal = () => {
     const j = App.itemsOf('journal').filter((x) => x.date === App.today()).sort((a, b) => (b.created || 0) - (a.created || 0))[0];
@@ -28,22 +62,30 @@
   };
 
   // Haken setzen (on = false: wieder entfernen) – gespeichert wird nur, wenn sich etwas ändert
+  // Nach jedem Schreiben ins dayLog den Tagesstand festhalten – auch dort, wo check() nichts tut (Anwenden, Listening-
+  // Fenster offen, Bearbeiten-Modus) und in Lernrunden, die die Startseite nicht neu zeichnen
+  const remember = () => { if (S.settings) state(); };
   const mark = async (key, on = true) => {
+    await closeDay();
     const next = L.mark(log(), App.today(), key, on);
     if (next) await App.saveSettings({ dayLog: next });
+    remember();
     check();
   };
   // Listening: abgespielte Sekunden dazuzählen (js/listening.js meldet sie beim Erreichen der Minuten und beim Schließen)
   const listened = async (sec) => {
+    await closeDay();
     await App.saveSettings({ dayLog: L.addListen(log(), App.today(), sec) });
+    remember();
     check();
   };
   const listenNeed = () => L.listenNeed(log(), App.today(), goals().listenMin * 60);
   // Neue Vokabel gelernt: die Karte wurde vorher noch nie bewertet (Lesen oder Deutsch → Japanisch)
   const graded = async (id, wasNew) => {
     if (!wasNew) { // Wiederholung: mitzählen bis zum Ziel
+      await closeDay();
       const next = L.addReview(log(), App.today(), goals().reviews);
-      if (next) await App.saveSettings({ dayLog: next });
+      if (next) { await App.saveSettings({ dayLog: next }); remember(); }
       return;
     }
     const it = S.items.get(App.writeLogic.isId(id) ? App.writeLogic.itemId(id) : id);
@@ -91,19 +133,20 @@
     ? `<button type="button" class="day-box" data-day-toggle="${esc(x.key)}" aria-pressed="${on}" title="${on ? 'Haken entfernen' : 'Abhaken'}">${icon('check')}</button>`
     : `<span class="day-box">${icon('check')}</span>`);
 
-  const row = (x, on, g) => `<div class="day-row ${on ? 'on' : ''}">${box(x, on)}
-    <span class="grow"><b>${title(x)}</b><small>${sub(x.key, g)}</small></span>${on ? '' : ACTION[x.key] || ''}</div>`;
+  const row = (x, on, g, fl) => `<div class="day-row ${on ? 'on' : ''}">${box(x, on)}
+    <span class="grow"><b>${title(x)}${flame(fl[x.key])}</b><small>${sub(x.key, g)}</small></span>${on ? '' : ACTION[x.key] || ''}</div>`;
   const editBtn = (label) => `<button type="button" class="icon-btn sm day-edit-btn" data-day-edit title="${label}" aria-label="${label}">${icon('edit')}</button>`;
 
   const view = () => {
-    const g = goals(), st = state(), list = L.list(cfg());
+    const g = goals(), st = state(), list = L.list(cfg()), fl = flameInfo();
     const main = list.filter((x) => x.level === 'goal');
     const all = L.allMain(st, cfg());
     const status = all ? 'お疲れ様 · alles geschafft' : main.length ? 'prüft sich von selbst' : 'noch keine To-dos';
     return `<div class="card day-check" data-day-check>
       <div class="row between"><h3 lang="ja">今日 <span>· Heute</span></h3><span class="row day-head"><span class="small ${all ? 'day-all' : 'muted'}">${status}</span>${editBtn('To-dos bearbeiten')}</span></div>
-      ${main.map((x) => row(x, st[x.key], g)).join('')}
+      ${main.map((x) => row(x, st[x.key], g, fl)).join('')}
       ${main.length ? '' : '<p class="small muted day-empty">Tippe auf den Stift und stell dir deine To-dos zusammen.</p>'}
+      ${forumHintShown() ? '<div class="day-hint"><button type="button" class="day-hint-btn" data-day-forum>✎ Satz des Tages im Forum noch offen</button></div>' : ''}
     </div>`;
   };
 
@@ -123,6 +166,8 @@
       <div class="row between"><h3>Meine To-dos</h3><button type="button" class="btn btn-sm btn-primary" data-day-edit>Fertig</button></div>
       ${L.list(cfg()).map((x) => editRow(x, g)).join('')}
       <div class="day-row"><button type="button" class="btn btn-sm btn-ghost" data-day-add>${icon('plus')} Eigenes To-do</button></div>
+      <div class="day-row day-set"><span class="grow"><b>Hinweis auf den Forum-Satz</b><small>Zeigt sich nur, wenn du in einer Gruppe bist</small></span>
+        <span class="seg">${[true, false].map((v) => `<button type="button" class="${g.forumHint === v ? 'on' : ''}" data-day-forumhint="${v}" aria-pressed="${g.forumHint === v}">${v ? 'An' : 'Aus'}</button>`).join('')}</span></div>
       <p class="small muted day-note">Feuerwerk, sobald alle To-dos auf „An“ geschafft sind. Eigene antippen zum Umbenennen.</p>
     </div>`;
   };
@@ -151,6 +196,9 @@
     if (!e.target.closest) return;
     if (e.target.closest('[data-day-journal]')) { openJournal(); return; }
     if (e.target.closest('[data-day-edit]')) { editing = !editing; redraw(); if (!editing) check(); return; }
+    if (e.target.closest('[data-day-forum]')) { App.forum.open({ daily: true }); return; }
+    const fh = e.target.closest('[data-day-forumhint]');
+    if (fh) { saveGoals(Object.assign(goals(), { forumHint: fh.dataset.dayForumhint === 'true' })); return; }
     if (e.target.closest('[data-day-add]')) { addOwn(); return; }
     const rn = e.target.closest('[data-day-rename]');
     if (rn) { renameOwn(rn.dataset.dayRename); return; }
@@ -164,5 +212,5 @@
     if (t) mark(t.dataset.dayToggle, t.getAttribute('aria-pressed') !== 'true');
   });
 
-  App.dayCheck = { card, mark, graded, listened, listenNeed, check };
+  App.dayCheck = { card, mark, graded, listened, listenNeed, check, closeDay };
 })(window.App);

@@ -2166,6 +2166,35 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .forum-av-modal .modal-body { display: flex; flex-direction: column; gap: 10px; }
 @media (max-width: 480px) { .forum-av-grid { grid-template-columns: repeat(4, 44px); } }
 
+/* Forum: Satz des Tages (js/forum-daily.js) und Forum-Flamme neben den Avataren */
+.forum-flame { font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap; cursor: help; }
+.fd-card { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card-2); box-shadow: var(--shadow); min-width: 0; }
+.fd-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.fd-head .grow, .fd-under .grow, .fd-who .grow { flex: 1; }
+.fd-kind { font-weight: 800; color: var(--shu); white-space: nowrap; }
+.fd-prompt { display: flex; flex-direction: column; gap: 2px; margin: 0; font-size: 16px; line-height: 1.55; min-width: 0; overflow-wrap: anywhere; }
+.fd-jp { font-size: 20px; font-family: var(--font-kanji); color: var(--sec, var(--ink)); }
+.fd-ex { font-size: 15px; }
+.fd-link { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; }
+.fd-count { margin: 0; }
+.fd-note { white-space: pre-line; }
+.fd-lines, .fd-story { display: flex; flex-direction: column; gap: 8px; }
+.fd-start { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; background: var(--paper-2); }
+.fd-line { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); min-width: 0; }
+.fd-line.is-own { border-color: color-mix(in srgb, var(--shu) 35%, var(--line)); }
+.fd-who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+.fd-who b { color: var(--ink); }
+.fd-text { font-size: 17px; }
+.fd-used { font-size: 13px; font-weight: 700; color: var(--matcha, var(--ink-2)); }
+.fd-weekend { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.fd-field { display: flex; flex-direction: column; gap: 6px; }
+.fd-field[hidden], [data-dfield][hidden] { display: none; }
+.fd-input-row { display: flex; gap: 8px; align-items: flex-start; }
+textarea.input.fd-ta { flex: 1; min-width: 0; min-height: 0; resize: none; overflow: hidden; font-size: 17px; line-height: 1.5; }
+.fd-under { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fd-n.is-over { font-weight: 700; color: var(--ink-2); }
+@media (max-width: 480px) { .fd-card { padding: 14px; } .fd-line { padding: 10px 12px; } .fd-head .fd-sub, .fd-lbl { display: none; } }
+
 /* Bibliothek: Ordner und Sortieren (js/views-more.js, js/library-logic.js) */
 .filter-row > .lib-sort { margin-left: auto; }
 .folder-card.drop-over, .folder-crumb .drop-over { background: var(--budo-soft); outline: 2px dashed var(--budo); outline-offset: 2px; transform: scale(1.03); }
@@ -2287,3 +2316,8 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 .hh-sc b { color: var(--ink); font-size: 16px; margin-top: 4px; }
 .hh-sc > span:last-child { color: var(--muted); font-size: 12px; }
 .hh-sc .hh-bg { position: absolute; right: -4px; bottom: -16px; font-family: var(--font-kanji); font-size: 66px; line-height: 1; opacity: .14; pointer-events: none; }
+/* Flammen (Tage in Folge) und Forum-Hinweis in der 今日-Karte */
+.day-flame { font-size: 13px; font-weight: 700; color: var(--muted); margin-left: 6px; white-space: nowrap; cursor: help; }
+.day-hint { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.day-hint-btn { background: none; border: 0; padding: 4px 0; font: inherit; font-size: 13px; color: var(--muted); cursor: pointer; text-align: left; }
+.day-hint-btn:hover { text-decoration: underline; }

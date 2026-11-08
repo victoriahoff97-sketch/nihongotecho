@@ -7,6 +7,16 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-satz-des-tages', date: '9. November',
+      items: [
+        { t: 'Satz des Tages im Forum', d: 'Ganz oben im Forum steht jetzt eine Karte: Jeden Tag schreibst du einen japanischen Satz, höchstens 40 Zeichen, zu einem Anstoß für alle.' },
+        { t: 'Jeder Tag anders', d: 'Mo und Do ein Wort, Di eine Frage, Mi ein Grammatikmuster, Fr ein Satz über deinen Tag.' },
+        { t: 'Am Wochenende eine Geschichte', d: 'Samstag und Sonntag schreibt ihr zusammen eine Geschichte: Jede macht mit einem Satz am neuesten Satz weiter.' },
+        { t: '🔥 in der 今日-Karte', d: 'Ab dem zweiten Tag in Folge steht 🔥 mit der Zahl der Tage neben dem To-do. Ein grauer Hinweis erinnert an den offenen Satz des Tages.' },
+        { t: 'Joker und Urlaubsmodus', d: 'Einen Tag verpasst? Pro Woche hält ein Joker deine Serie. Im Urlaubsmodus bleibt sie ebenfalls erhalten.' },
+      ],
+    },
+    {
       id: '2026-11-08-handy-ansicht-3', date: '8. November',
       items: [
         { t: 'Üben und Anwenden am Handy', d: 'Auf der Handy-Startseite führen zwei große Felder direkt zu allen Übungen und zu Tagebuch und Smalltalk.' },

@@ -188,6 +188,7 @@
     ],
     // Gruppenfenster hinter der Gedankenwolke: „⋯ › Hilfe“
     gruppe: [
+      { target: '.forum-modal .fd-card', title: 'Satz des Tages', text: 'Jeden Tag ein Satz auf Japanisch, höchstens 40 Zeichen, zu einem Anstoß, den alle gleich bekommen. Am Wochenende schreibt ihr zusammen eine Geschichte. Mit Serie 🔥 und einem Joker pro Woche.' },
       { target: '.forum-modal [data-newpost] textarea', title: 'Gedanken festhalten', text: 'Hier hältst du fest, was du besprechen oder zeigen willst. Wähl 💬 (darüber reden) oder 💡 (nur zeigen). Markierten Text kannst du farbig hinterlegen und mit „Partikel“ o. Ä. beschriften.' },
       { target: '.forum-modal [data-tabs]', title: 'Welche Themen?', text: 'Hier wählst du: alle offenen Themen, nur Redebedarf, nur Gezeigtes oder das, was ihr schon besprochen habt.' },
       { target: '.forum-modal [data-list]', title: 'Eure Themen', text: 'Jeder Beitrag ist ein Kästchen, links steht der Tag. Neues von den anderen hat einen roten Rand. Tipp ein Kästchen an, um zu antworten.' },

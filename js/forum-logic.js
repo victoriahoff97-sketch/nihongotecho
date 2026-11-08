@@ -200,6 +200,27 @@
   F.mentionsMe = (post, seen, myUid) => !!myUid && (post.mentions.includes(myUid)
     || (post.lastMentions.includes(myUid) && F.isNew(post, seen, myUid)));
 
+  // ---------- Flamme pro Mitglied ----------
+  // Im Member-Dokument: { n, hold, days } – n Tage in Folge, hold = letzter Tag, an dem die Flamme ohne Eintrag noch lebt
+  F.MAX_STREAK_DAYS = 60;
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  F.makeStreak = (days, off, today, futureOff) => {
+    const K = App.streakLogic;
+    const list = [...new Set(days)].sort();
+    const set = new Set(list);
+    const { n } = K.streak(set, off, today);
+    return { n, hold: K.holdUntil(set, off, today, futureOff), days: list.slice(-F.MAX_STREAK_DAYS) };
+  };
+  F.cleanStreak = (v) => {
+    if (!v || typeof v !== 'object') return null;
+    if (!Number.isInteger(v.n) || v.n < 0 || v.n > 10000) return null;
+    if (v.hold !== null && !(typeof v.hold === 'string' && DATE_RE.test(v.hold))) return null;
+    if (!Array.isArray(v.days) || v.days.length > F.MAX_STREAK_DAYS
+      || !v.days.every((d) => typeof d === 'string' && DATE_RE.test(d))) return null;
+    return { n: v.n, hold: v.hold, days: v.days.slice() };
+  };
+  F.flameOf = (streak, today) => (streak && streak.n >= 2 && streak.hold && today <= streak.hold ? streak.n : 0);
+
   // ---------- Liste ----------
   // Offene 💬 zuerst, dann alle 💡, besprochene 💬 getrennt – jeweils neueste Aktivität zuerst.
   // Ein gerade abgeschickter Beitrag hat evtl. noch keinen Server-Zeitstempel: zählt als „jetzt“.

@@ -121,6 +121,8 @@
       $('#view').innerHTML = `<div class="card"><h3>Speicher nicht verfügbar</h3><p>Dein Browser erlaubt keinen lokalen Speicher (IndexedDB). Bitte öffne die App in Microsoft Edge oder Chrome und nicht im privaten Modus.</p><pre class="small">${esc(e.message || e)}</pre></div>`;
       return;
     }
+    // 今日-Flammen: den letzten Tag aus dem alten dayLog in dayHistory übernehmen, bevor etwas das Log für heute neu anlegt
+    try { if (App.dayCheck) await App.dayCheck.closeDay(); } catch (e) { console.error(e); }
     try { await App.lernwegMigrate(); } catch (e) { console.error(e); } // einmaliger Umzug auf den gemeinsamen Lernweg (js/vocabcheck.js)
     try { await App.wkKanjiMigrate(); } catch (e) { console.error(e); } // einmalig: WaniKani-Kanji nicht mehr zum Lesen (js/vocabcheck.js)
     try { await App.knownIvlMigrate(); } catch (e) { console.error(e); } // einmalig: schon gelernte Karten bleiben „Kann ich“, als die Grenze auf 2 Monate stieg (js/vocabcheck.js)

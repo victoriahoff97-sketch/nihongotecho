@@ -37,13 +37,15 @@
     const level = {};
     D.KEYS.forEach((k) => { level[k] = D.LEVELS.includes(lv[k]) ? lv[k] : D.DEFAULT_LEVEL[k]; });
     own.forEach((o) => { level[o.id] = D.LEVELS.includes(lv[o.id]) ? lv[o.id] : 'goal'; });
-    return { level, reviews: clampNum('reviews', c.reviews), listenMin: clampNum('listenMin', c.listenMin), own: own.map((o) => ({ id: o.id, title: o.title })) };
+    return { level, reviews: clampNum('reviews', c.reviews), listenMin: clampNum('listenMin', c.listenMin), forumHint: c.forumHint !== false, own: own.map((o) => ({ id: o.id, title: o.title })) };
   };
   // Alle Punkte in Anzeige-Reihenfolge: erst die eingebauten, dann die eigenen
   D.list = (cfg) => {
     const g = D.goals(cfg);
     return D.KEYS.map((key) => ({ key, level: g.level[key] })).concat(g.own.map((o) => ({ key: o.id, level: g.level[o.id], title: o.title, own: true })));
   };
+  // Hinweis auf den Forum-Satz des Tages (Standard an; Schalter im Bearbeiten-Modus)
+  D.forumHint = (cfg) => !cfg || cfg.forumHint !== false;
   D.goalKeys = (cfg) => D.list(cfg).filter((x) => x.level === 'goal').map((x) => x.key);
 
   D.setLevel = (cfg, key, lvl) => {
@@ -106,6 +108,56 @@
   // … aber nicht mitten im Schreiben: in Anwenden (Tagebuch, Smalltalk) und während einer Übergabe aus dem Browser wartet es,
   // bis man den Bereich verlässt
   D.quiet = (path) => /^\/anwenden(\/|$)/.test(path || '') || path === '/eingang';
+
+  // ---------- Flammen ----------
+  // settings.dayHistory = { 'JJJJ-MM-TT': [erledigte Schlüssel] } – Momentaufnahme des berechneten Standes, höchstens 400 Tage.
+  // Neues Objekt oder null, wenn sich für diesen Tag nichts ändert
+  D.HISTORY_DAYS = 400;
+  D.recordDay = (history, date, keys) => {
+    const list = Array.from(new Set(keys)).sort(), h = history || {};
+    const old = h[date];
+    if (old && old.length === list.length && old.every((k, i) => k === list[i])) return null;
+    const next = Object.assign({}, h, { [date]: list });
+    const dates = Object.keys(next).sort();
+    dates.slice(0, Math.max(0, dates.length - D.HISTORY_DAYS)).forEach((d) => { delete next[d]; });
+    return next;
+  };
+  // Tagesabschluss: welche Ziele stehen im alten dayLog eines vergangenen Tages? (beim ersten Öffnen am nächsten Tag,
+  // falls snapshot den Tag nicht mehr gesehen hat – z. B. Runde fertig und App zu, oder Tagebuch in Anwenden geschrieben).
+  // Wiederholen zählt nur mit gespeicherten Karten ≥ Ziel: ob „nichts mehr fällig“ war, weiß man im Nachhinein nicht mehr
+  // (das hat snapshot live festgehalten, und closeHistory behält es). applied = an dem Tag Tagebuch/Smalltalk mit Inhalt.
+  D.closeDay = (log, cfg, applied) => {
+    if (!log || !log.date) return [];
+    const g = D.goals(cfg), done = log.done || {};
+    const ok = (k) => (k === 'review' ? (log.reviews || 0) >= g.reviews
+      : k === 'apply' ? !!applied || !!done.forum
+        : k === 'listen' ? D.listenDone(log, log.date, g.listenMin * 60)
+          : !!done[k]);
+    return D.goalKeys(cfg).filter(ok).sort();
+  };
+  // Neue dayHistory mit dem abgeschlossenen Tag (vereinigt mit dem schon Festgehaltenen) – oder null, wenn das Log von
+  // heute ist, fehlt oder nichts Neues bringt
+  D.closeHistory = (history, log, cfg, applied, today) => {
+    if (!log || !log.date || !(log.date < today)) return null;
+    const keys = D.closeDay(log, cfg, applied), old = (history || {})[log.date] || [];
+    if (!keys.length || keys.every((k) => old.includes(k))) return null;
+    return D.recordDay(history, log.date, old.concat(keys));
+  };
+  // Tage in Folge je To-do mit Jokern ({ key: { n, jokers } }); off = Urlaubstage (Set), Rechnung in App.streakLogic
+  D.flameInfo = (history, keys, off, today) => {
+    const h = history || {}, out = {};
+    keys.forEach((k) => {
+      const done = new Set(Object.keys(h).filter((d) => (h[d] || []).includes(k)));
+      out[k] = App.streakLogic.streak(done, off || new Set(), today);
+    });
+    return out;
+  };
+  // Nur die Zahlen ({ key: n })
+  D.flames = (history, keys, off, today) => {
+    const info = D.flameInfo(history, keys, off, today), out = {};
+    keys.forEach((k) => { out[k] = info[k].n; });
+    return out;
+  };
 
   // Eine Karte ist neu, wenn sie noch nie bewertet wurde (zurückgefallene Karten haben Fehlversuche und zählen als Wiederholung)
   D.isNewCard = (s) => !s || (!s.reps && !s.lapses);

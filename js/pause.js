@@ -81,7 +81,9 @@
     busy = true;
     try {
       if (r.n) await shift(r.n, now);
-      await App.saveSettings(r.vac ? { vacation: r.vac } : { vacation: null, srsAnchor: r.anchor }, { silent: true });
+      // Ist der Urlaub vorbei, den Zeitraum für die Flammen merken (letzter Urlaubstag = Tag vor der Rückkehr)
+      const patch = r.vac ? { vacation: r.vac } : { vacation: null, srsAnchor: r.anchor, vacationLog: P.appendLog(S.settings.vacationLog, P.closedRange(v, P.addDays(v.until, -1))) };
+      await App.saveSettings(patch, { silent: true });
       if (!r.vac) App.toast('Willkommen zurück! Der Urlaubsmodus ist vorbei – die Lernschlange macht da weiter, wo du aufgehört hast.', { ms: 7000 });
       if (!quiet) App.render(true);
     } finally { busy = false; }
@@ -98,7 +100,8 @@
     if (!v) return;
     const now = Date.now(), r = P.finish(v, now);
     if (r.n) await shift(r.n, now);
-    await App.saveSettings({ vacation: null, srsAnchor: r.anchor });
+    // Zeitraum für die Flammen merken (letzter Urlaubstag = r.anchor)
+    await App.saveSettings({ vacation: null, srsAnchor: r.anchor, vacationLog: P.appendLog(S.settings.vacationLog, P.closedRange(v, r.anchor)) });
     App.render(true);
     App.toast('Urlaubsmodus aus – die Lernschlange macht da weiter, wo du aufgehört hast.');
   };
