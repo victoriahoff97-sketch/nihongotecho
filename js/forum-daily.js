@@ -100,9 +100,10 @@
     if (m.editing && canEdit) return `<div class="fd-line is-own" data-dline="${esc(x.id)}"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}</div><div data-deditslot></div></div>`;
     // Kopf: Avatar, Name, Tage in Folge – rechts Herz und Bearbeiten; darunter der Satz
     return `<div class="fd-line ${own ? 'is-own' : ''}"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}${x.editedAt ? '<span class="muted small">(bearbeitet)</span>' : ''}
-        ${own && x.usedPrompt ? '<span class="fd-used">✓ Wort benutzt</span>' : ''}<span class="grow"></span>${App.jp.hasKanji(x.text) ? `<button type="button" class="btn btn-sm fd-furibtn" data-dfuri="${esc(x.date)}|${esc(x.id)}" title="Lesung (Furigana) korrigieren" aria-label="Lesung korrigieren" lang="ja">あ</button>` : ''}${likeBtn(x)}
+        ${own && x.usedPrompt ? '<span class="fd-used">✓ Wort benutzt</span>' : ''}<span class="grow"></span>${likeBtn(x)}
         ${canEdit ? `<button type="button" class="btn btn-sm" data-dchange title="Bearbeiten" aria-label="Bearbeiten">${icon('edit')}<span class="fd-lbl"> Bearbeiten</span></button>` : ''}</div>
-      ${m.furiEdit === x.date + '|' + x.id ? furiEditorHtml(x) : `<div class="fd-text forum-text" lang="ja">${furiHtml(x.text, x.furi)}</div>`}</div>`;
+      ${m.furiEdit === x.date + '|' + x.id ? furiEditorHtml(x) : `<div class="fd-text forum-text" lang="ja">${furiHtml(x.text, x.furi)}</div>`
+        + (!canEdit && App.jp.hasKanji(x.text) ? `<button type="button" class="fd-furilink is-quiet" data-dfuri="${esc(x.date)}|${esc(x.id)}">Furigana korrigieren</button>` : '')}</div>`;
   };
   // Korrektur: über jedem Kanji-Stück ein kleines Feld mit der Lesung (vorbelegt mit der jetzigen), leer = ohne Furigana
   const furiEditorHtml = (x) => {
@@ -197,6 +198,7 @@
       ? `<button type="button" class="btn btn-sm mic" data-dmic title="Auf Japanisch sprechen – der Text erscheint im Feld. Bleibt an, bis du auf „Fertig“ tippst.">${icon('mic')}<span class="mic-label" lang="ja">日本語</span></button>` : '';
     el.innerHTML = `<div class="fd-input-row"><textarea class="input fd-ta" rows="1" lang="ja" placeholder="${edit ? '' : 'Dein Satz …'}" aria-label="Dein Satz des Tages"></textarea>${mic}</div>
       <div class="fd-under"><span class="fd-why muted small"></span><span class="grow"></span><span class="fd-n muted small"></span>
+        ${edit && App.jp.hasKanji(init) && ownToday() ? `<button type="button" class="fd-furilink" data-dfuri="${esc(m.ctx.today)}|${esc(ownToday().id)}">Furigana bearbeiten</button>` : ''}
         ${edit ? '<button type="button" class="btn btn-sm" data-dcancel>Abbrechen</button>' : ''}<button type="button" class="btn btn-sm btn-primary" data-dsend>${edit ? 'Speichern' : 'Senden'}</button></div>
       <div class="forum-err" hidden></div>`;
     const ta = el.querySelector('textarea');
@@ -360,7 +362,10 @@
     if (!m) return;
     if (e.target.closest('[data-dtoggle]')) { setOpen(!open); return; }
     const fb = e.target.closest('[data-dfuri]');
-    if (fb) { m.furiEdit = m.furiEdit === fb.dataset.dfuri ? null : fb.dataset.dfuri; drawList(); const inp = m.el.querySelector('[data-dfuried] input'); if (inp) inp.focus(); return; }
+    if (fb) {
+      // aus „Bearbeiten“ heraus: Textfeld zu, Furigana-Feld auf
+      if (m.editing) { m.el.querySelectorAll('[data-deditslot] textarea').forEach((t) => App.dictate.stopFor(t, { now: true })); m.editing = false; m.editEl = null; }
+      m.furiEdit = m.furiEdit === fb.dataset.dfuri ? null : fb.dataset.dfuri; drawList(); const inp = m.el.querySelector('[data-dfuried] input'); if (inp) inp.focus(); return; }
     if (e.target.closest('[data-dfuricancel]')) { m.furiEdit = null; drawList(); return; }
     const fsave = e.target.closest('[data-dfurisave], [data-dfuriauto]');
     if (fsave) {

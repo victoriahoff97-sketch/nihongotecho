@@ -236,7 +236,7 @@
     }
     return ukIds.has(String(id));
   };
-  const AF_MAX = 8, AF_DICT = 'dict-common';
+  const AF_MAX = 8, AF_DICT = 'dict-common', AF_FULL = 'dict-full';
   const bindAutofill = (root) => {
     const box = root.querySelector('[data-af]');
     const AL = App.autofillLogic;
@@ -298,6 +298,11 @@
       } catch (e) { console.error(e); if (my === run) show(`<span class="small muted">Das Wörterbuch konnte nicht gelesen werden: ${esc(e.message || e)}</span>`); return; }
       if (my !== run || !root.isConnected) return;
       hits = AL.rank(direct.length ? direct : infl, typed, bonus).slice(0, AF_MAX);
+      // nur das kleine Wörterbuch da: das große (alle JMdict-Wörter) gleich hier anbieten, danach weiter ausfüllen
+      const full = App.packById(AF_FULL), fullMeta = App.packMeta.cached()[AF_FULL];
+      const offerFull = !hits.length && full && full.available && !(fullMeta && fullMeta.complete);
+      if (offerFull) return show(`<span class="small">Im kleinen Wörterbuch (häufige Wörter) steht das nicht. Das große Wörterbuch kennt ${Math.round(full.entries / 1000)}.000 Wörter – einmal laden, etwa ${Math.round(full.sizeKB / 1024)} MB, dann füllt die App aus.</span>
+        <div class="row"><button type="button" class="btn btn-sm btn-sec" data-af-install="${AF_FULL}">${icon('download')} Großes Wörterbuch laden</button><a class="btn btn-sm btn-ghost" href="${esc(App.jishoUrl(forms[0]))}" target="_blank" rel="noopener">Auf Jisho suchen ↗</a></div>`);
       if (!hits.length) return show(`<span class="small muted">Nichts im Wörterbuch gefunden – Schreibweise prüfen oder von Hand ausfüllen.</span>
         <div class="row"><a class="btn btn-sm btn-ghost" href="${esc(App.jishoUrl(forms[0]))}" target="_blank" rel="noopener">Auf Jisho suchen ↗</a></div>`);
       const one = AL.sure(hits, typed);
@@ -315,7 +320,7 @@
       if (inst) {
         inst.disabled = true;
         try {
-          await App.dict.install(AF_DICT, (frac, text) => { if (inst.isConnected) inst.textContent = `${Math.round(frac * 100)} % – ${text}`; });
+          await App.dict.install(inst.dataset.afInstall || AF_DICT, (frac, text) => { if (inst.isConnected) inst.textContent = `${Math.round(frac * 100)} % – ${text}`; });
           if (root.isConnected) start();
         } catch (er) {
           console.error(er);

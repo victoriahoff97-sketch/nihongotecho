@@ -2371,7 +2371,9 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 @media (prefers-reduced-motion: reduce) { .fd-myflame.is-lit { animation: none; } }
 .fd-line.is-own { background: color-mix(in srgb, var(--shu) 8%, var(--card)); }
 .fd-line .forum-flame { color: var(--shu); }
-.fd-furibtn { min-width: 32px; padding: 2px 8px; font-size: 15px; }
+.fd-furilink { align-self: flex-start; padding: 0; border: 0; background: none; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; }
+.fd-furilink:hover, .fd-furilink:focus-visible { color: var(--shu); text-decoration: underline; }
+@media (hover: hover) { .fd-furilink.is-quiet { opacity: 0; transition: opacity .15s; } .fd-line:hover .fd-furilink.is-quiet, .fd-furilink.is-quiet:focus-visible { opacity: 1; } }
 .fd-furied { display: flex; flex-direction: column; gap: 6px; }
 .fd-furied-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px; font-size: 19px; }
 .fd-furied-seg { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }

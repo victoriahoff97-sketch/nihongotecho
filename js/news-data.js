@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-grosses-woerterbuch', date: '9. November',
+      items: [
+        { t: 'Seltenere Wörter ausfüllen', d: 'Findet „Automatisch ausfüllen“ ein Wort nicht (z. B. キャンプ場), kannst du dort gleich das große Wörterbuch laden – danach füllt die App aus.' },
+      ],
+    },
+    {
       id: '2026-11-09-forum-markieren', date: '9. November',
       items: [
         { t: 'Markieren im Forum', d: 'Auch in der Gruppe und in der Täglichen Gruppen-Challenge: Japanisches Wort markieren → „Vokabel speichern“ oder „Sätze erkennen“.' },
@@ -15,7 +21,7 @@
     {
       id: '2026-11-09-furigana-korrigieren', date: '9. November',
       items: [
-        { t: 'Furigana korrigieren', d: 'Falsche Lesung in der Challenge? Tipp beim Satz auf „あ“ und schreib die richtige Lesung über das Kanji. Alle sehen dann deine Korrektur.' },
+        { t: 'Furigana korrigieren', d: 'Falsche Lesung in der Challenge? Bei deinem Satz über „Bearbeiten“, bei anderen über den kleinen Link darunter. Alle sehen deine Korrektur.' },
       ],
     },
     {

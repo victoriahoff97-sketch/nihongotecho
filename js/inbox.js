@@ -172,7 +172,12 @@
         const d = L.vocabDefaults({ text: text.replace(/\s+/g, ''), satz: satz && JP.plain(satz) !== word ? satz : '', quelle: '', ref: '' });
         const hit = await dictHit(word).catch(() => null);
         if (hit) App.adoptDictEntry({ entry: hit.entry, surface: hit.base, base: hit.base === word ? d.kana : '' }, { extra: { examples: d.examples } });
-        else App.editItem({ type: 'vocab', defaults: d, single: true });
+        else {
+          // nicht gefunden: gleich „Automatisch ausfüllen“ anstoßen – zeigt, warum, und bietet das große Wörterbuch an
+          const md = App.editItem({ type: 'vocab', defaults: d, single: true });
+          const af = md && md.el && md.el.querySelector('[data-autofill]');
+          if (af && App.dict.installed()) af.click();
+        }
       } catch (e) { console.error(e); App.toast('Vokabel-Formular ließ sich nicht öffnen'); }
     },
     bootShare() {
