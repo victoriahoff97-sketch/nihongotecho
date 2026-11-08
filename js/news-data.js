@@ -9,7 +9,7 @@
     {
       id: '2026-11-09-furigana-korrigieren', date: '9. November',
       items: [
-        { t: 'Furigana korrigieren', d: 'Stimmt eine Lesung in der Täglichen Gruppen-Challenge nicht? Tipp beim Satz auf „あ“, schreib die richtige Lesung über das Kanji und speichere. Alle sehen dann deine Korrektur.' },
+        { t: 'Furigana korrigieren', d: 'Falsche Lesung in der Challenge? Tipp beim Satz auf „あ“ und schreib die richtige Lesung über das Kanji. Alle sehen dann deine Korrektur.' },
       ],
     },
     {
