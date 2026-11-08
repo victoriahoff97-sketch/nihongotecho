@@ -188,7 +188,7 @@
     ],
     // Gruppenfenster hinter der Gedankenwolke: „⋯ › Hilfe“
     gruppe: [
-      { target: '.forum-modal .fd-card', title: 'Gruppen-Challenge', text: 'Jeden Tag ein kurzer Satz auf Japanisch zu einem Anstoß für alle. Darunter stehen gleich die Sätze der anderen, rechts deine Flamme 🔥. Am Wochenende schreibt ihr zusammen eine Geschichte.' },
+      { target: '.forum-modal .fd-card', title: 'Tägliche Gruppen-Challenge', text: 'Jeden Tag ein kurzer Satz auf Japanisch für alle. Tipp die Zeile an: dann siehst du die Sätze der anderen und schreibst deinen eigenen.' },
       { target: '.forum-modal [data-newtopic]', title: 'Neues Thema', text: 'Hier hältst du fest, was du besprechen oder zeigen willst. Wähl 💬 (darüber reden) oder 💡 (nur zeigen). Markierten Text kannst du farbig hinterlegen und mit „Partikel“ o. Ä. beschriften.' },
       { target: '.forum-modal [data-list]', title: 'Eure Themen', text: 'Oben der offene Redebedarf, darunter alles zum Zeigen, ganz unten das Besprochene zum Aufklappen. Neues von den anderen hat einen roten Rand. Tipp ein Thema an, um zu antworten.' },
       { target: '.forum-modal .forum-more', title: 'Mehr', text: 'Hier findest du den Gruppencode für neue Mitglieder und kannst deinen Namen ändern.' },

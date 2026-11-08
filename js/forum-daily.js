@@ -18,6 +18,7 @@
   let m = null;   // gemountete Karte: { el, ctx, lists: { Datum: [...] }, unsubs, ... }
   let timer = 0;  // Datumsprüfung alle 60 s
   const drafts = {}; // angefangener Satz je Datum (nur bis zum Neuladen)
+  let open = false;  // Challenge aufgeklappt? Zu Beginn nur eine schmale Zeile, damit die Themen Platz haben (bleibt bis zum Neuladen)
   // 今日 abgehakt, während das Forum offen war: die Startseite zeichnet sich bei offenem Fenster nicht neu (js/main.js) –
   // darum nach dem Schließen einmal anstoßen, damit Haken und Hinweis-Zeile stimmen
   let dayDirty = false;
@@ -43,6 +44,27 @@
         ${ex ? `<span class="fd-ex"><span lang="ja">${App.jp.ruby(ex.jp)}</span>${ex.de ? ` <span class="muted">${esc(ex.de)}</span>` : ''}</span>` : ''}</div>`;
     }
     return ''; // Kette: der Anfangssatz steht oben in der Geschichte
+  };
+
+  // Kurzer Anstoß für die zugeklappte Zeile: nur Text, ohne Furigana und Übersetzung
+  const bandPrompt = (p) => {
+    if (p.locked) return '';
+    if (p.kind === 'today') return 'Ein Satz über deinen Tag';
+    if (p.kind === 'chain') return 'Mini-Kette – schreibt gemeinsam weiter';
+    const it = p.item || {};
+    const jp = p.kind === 'word' ? (it.kanji || it.kana) : it.jp;
+    return jp ? `<span lang="ja">${esc(App.jp.plain(jp))}</span>` : '';
+  };
+  const setOpen = (on) => {
+    open = !!on;
+    if (!m) return;
+    const body = m.el.querySelector('[data-dbody]');
+    const t = m.el.querySelector('[data-dtoggle]');
+    if (body) body.hidden = !open;
+    // zugeklappt konnte das Feld seine Höhe nicht messen: beim Aufklappen einmal nachmessen
+    if (open && body) body.querySelectorAll('textarea').forEach((ta) => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; });
+    m.el.classList.toggle('is-open', open);
+    if (t) { t.setAttribute('aria-expanded', String(open)); const c = t.querySelector('[data-dchev]'); if (c) { c.innerHTML = icon(open ? 'chevD' : 'chevR'); App.hydrateIcons(c); } }
   };
 
   // ---------- Sätze ----------
@@ -77,9 +99,14 @@
   const todayUids = () => new Set((m.lists[m.ctx.today] || []).map((x) => x.uid));
   const drawCheer = (mine) => {
     const ms = m.ctx.members;
-    const uids = Object.keys(ms);
-    const done = todayUids();
-    const n = uids.filter((u) => done.has(u)).length;
+    // pro Person zählen, nicht pro Mitglied-Eintrag: PC + Tablet oder stilles Wiederbeitreten geben mehrere Einträge mit demselben Namen
+    const key = (u) => ((ms[u] && ms[u].name) || '').trim().toLowerCase() || u;
+    const people = {};
+    Object.keys(ms).forEach((u) => { (people[key(u)] = people[key(u)] || []).push(u); });
+    const uids = Object.keys(people);
+    const doneUids = todayUids();
+    const done = new Set(uids.filter((p) => people[p].some((u) => doneUids.has(u))));
+    const n = done.size;
     const tally = m.el.querySelector('[data-dtally]');
     if (tally) tally.textContent = !uids.length ? '' : n && n === uids.length ? `${n} von ${n} · alle dabei 🎉` : `${n} von ${uids.length} heute`;
     const fl = m.el.querySelector('[data-dmyflame]');
@@ -92,8 +119,10 @@
       fl.innerHTML = nn ? `<span class="fd-myflame-n">${K.MARK} ${nn}</span><span class="fd-myflame-l">Tage in Folge</span>`
         : `<span class="fd-myflame-n">${K.MARK}</span><span class="fd-myflame-l">heute geschafft</span>`;
     }
+    const bf = m.el.querySelector('[data-dbandflame]');
+    if (bf) { bf.textContent = nn ? `${K.MARK} ${nn}` : mine ? K.MARK : ''; bf.classList.toggle('is-lit', !!mine); }
     const box = m.el.querySelector('[data-dlist]');
-    const missing = m.prompt.kind === 'chain' ? [] : uids.filter((u) => !done.has(u) && u !== me()).map((u) => ms[u].name).filter(Boolean);
+    const missing = m.prompt.kind === 'chain' ? [] : uids.filter((p) => !done.has(p) && p !== key(me())).map((p) => ms[people[p][0]].name).filter(Boolean);
     let foot = '';
     if (mine && n === uids.length && uids.length > 1) foot = '<p class="fd-cheer">全員！ Heute haben alle geschrieben – お疲れ様 🌸</p>';
     else if (mine) foot = `<p class="fd-cheer">Geschafft für heute ✓${missing.length ? ` <span class="muted">· noch nicht dabei: ${esc(missing.join(', '))}</span>` : ''}</p>`;
@@ -273,15 +302,19 @@
     const monday = Y.mondayChain(today);
     if (monday.length) m.weekend = { days: monday, open: false, loaded: false, start: Y.prompt(monday[0], ctx.code, window.SEED, App.DAILY_PROMPTS).chainStart };
     const wd = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(today + 'T12:00').getDay()];
-    el.className = 'fd-card';
-    // Kopf als Banner: deutlich „Gruppen-Challenge“, die Art des Tages und wie viele heute schon dabei sind
-    el.innerHTML = `<div class="fd-band">${icon('users')}<b>Gruppen-Challenge</b><span class="fd-band-kind">· ${esc(KIND[prompt.kind])} · ${wd} ${Number(today.slice(8))}.${Number(today.slice(5, 7))}.</span>
-        <span class="grow"></span><span class="fd-tally" data-dtally></span></div>
+    if (drafts[today]) open = true;
+    el.className = 'fd-card' + (open ? ' is-open' : '');
+    // Kopf als schmale Zeile: Name, Anstoß kurz, wie viele heute dabei sind, eigene Flamme – Antippen klappt den Rest auf
+    el.innerHTML = `<button type="button" class="fd-band" data-dtoggle aria-expanded="${open}">${icon('users')}<b>Tägliche Gruppen-Challenge</b>
+        <span class="fd-band-kind">${bandPrompt(prompt)}</span>
+        <span class="fd-tally" data-dtally></span><span class="fd-bandflame" data-dbandflame></span><span class="fd-chev" data-dchev>${icon(open ? 'chevD' : 'chevR')}</span></button>
+      <div class="fd-body" data-dbody${open ? '' : ' hidden'}>
+      <p class="muted small fd-day">${esc(KIND[prompt.kind])} · ${wd} ${Number(today.slice(8))}.${Number(today.slice(5, 7))}.</p>
       <div class="fd-top"><div class="fd-main">${promptHtml(prompt)}
         <p class="muted small fd-sub">${prompt.kind === 'chain' ? 'Schreibt gemeinsam weiter – ein Satz pro Tag' : `Ein Satz, höchstens ${Y.MAX} Zeichen`}</p></div>
         <div class="fd-myflame" data-dmyflame hidden></div></div>
       ${m.weekend ? '<button type="button" class="fd-link" data-dweekend>Geschichte vom Wochenende lesen</button>' : ''}
-      <div data-dlist></div><div data-dfield></div>`;
+      <div data-dlist></div><div data-dfield></div></div>`;
     el.querySelector('[data-dfield]').appendChild(fieldEl(drafts[today] || '', false));
     App.hydrateIcons(el);
     el.onclick = onClick;
@@ -298,6 +331,7 @@
 
   const onClick = async (e) => {
     if (!m) return;
+    if (e.target.closest('[data-dtoggle]')) { setOpen(!open); return; }
     if (e.target.closest('[data-dgenki]')) { e.preventDefault(); if (App.forum && App.forum.close) App.forum.close(); App.go('#/pakete'); return; }
     if (e.target.closest('[data-dweekend]')) {
       const wk = m.weekend;
@@ -343,6 +377,7 @@
     // aus der 今日-Karte: zur Karte scrollen und ins Feld
     focus: () => {
       if (!m) return;
+      setOpen(true);
       m.el.scrollIntoView({ block: 'start', behavior: 'smooth' });
       const ta = m.el.querySelector('[data-dfield]:not([hidden]) textarea');
       if (ta) setTimeout(() => ta.focus({ preventScroll: true }), 50);

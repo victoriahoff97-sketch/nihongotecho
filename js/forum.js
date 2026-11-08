@@ -805,19 +805,20 @@
   // Kästchen wie im Tagebuch: links groß der Tag, rechts Kopf, bis zu drei Zeilen Text, unten Verknüpfungen und Antworten
   const WEEKDAY = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
   const dateCol = (ms) => { const d = new Date(ms || Date.now()); return `<span class="forum-date"><span class="forum-day">${d.getDate()}</span><span class="forum-wd">${WEEKDAY[d.getDay()]}</span></span>`; };
-  // Eine Zeile pro Thema: Avatar, erste Textzeile, rechts Hinweise, Antworten und wann; farbige Kante je Art
+  const refChips = (refs) => F.cleanRefs(refs).map((r) => `<span class="badge sec ${App.SECTIONS[r.type === 'satz' ? 'vocab' : r.type].cls}" lang="ja">${r.type === 'satz' ? '例文 ' : ''}${esc(r.label)}</span>`).join('');
   const row = (p) => {
     const fresh = F.isNew(p, st.seen, D.uid());
+    const replies = p.replyCount ? `<span class="badge">${icon('chat')} ${p.replyCount} ${p.replyCount === 1 ? 'Antwort' : 'Antworten'}</span>` : '';
+    const likes = p.likes.length ? `<span class="badge forum-likes" title="${esc(F.likeNames(p.likes, members).join(', '))}">♥ ${p.likes.length}</span>` : '';
+    const foot = refChips(p.refs) + replies + likes;
     const atMe = F.mentionsMe(p, st.seen, D.uid());
-    const first = F.plainText(p.text).split('\n').find((l) => l.trim()) || '(Bild)';
-    const n = p.replyCount || 0;
-    const when = p.lastActivityAt || p.createdAt;
-    const meta = [n ? `${n} ${n === 1 ? 'Antwort' : 'Antworten'}` : '', p.likes.length ? `♥ ${p.likes.length}` : '', when ? esc(F.relTime(when, Date.now())) : 'gerade eben'].filter(Boolean).join(' · ');
-    return `<button class="forum-item forum-line k-${esc(p.kind)} ${fresh ? 'is-new' : ''}" data-open="${esc(p.id)}" title="${esc(p.name)}">${avatarOf(p)}
-      <span class="forum-line-text">${esc(first)}</span>
-      ${p.hasImage ? icon('image') : ''}${F.cleanRefs(p.refs).length ? icon('link') : ''}
-      ${atMe ? '<span class="badge forum-atme">@ dich</span>' : ''}${fresh ? '<span class="badge forum-new">neu</span>' : ''}
-      <span class="forum-line-meta">${meta}</span></button>`;
+    return `<button class="forum-item ${fresh ? 'is-new' : ''}" data-open="${esc(p.id)}">${dateCol(p.createdAt)}
+      <span class="forum-item-body">
+        <span class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}${p.hasImage ? ` ${icon('image')}` : ''}
+          <span class="grow"></span>${atMe ? '<span class="badge forum-atme">@ dich</span>' : ''}${fresh ? '<span class="badge forum-new">neu</span>' : ''}${p.done ? '<span class="badge">besprochen</span>' : ''}</span>
+        <span class="forum-item-text">${esc(F.plainText(p.text))}</span>
+        ${foot ? `<span class="forum-item-foot">${foot}</span>` : ''}
+      </span></button>`;
   };
   // Abschnitte statt Auswahl: offener Redebedarf, Zum Zeigen, Besprochen (zugeklappt, solange das Fenster offen ist)
   const SECTION = [['open', 'chat', 'Redebedarf', 'offen', 'k-rede'], ['show', 'bulb', 'Zum Zeigen', '', 'k-zeigen']];
