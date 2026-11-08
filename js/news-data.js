@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-tour-kurz', date: '9. November',
+      items: [
+        { t: 'Kürzere Hilfe', d: 'Das „?“ oben erklärt jede Seite jetzt nur noch mit den wichtigsten zwei, drei Schritten.' },
+      ],
+    },
+    {
       id: '2026-11-09-forum-kaestchen-2', date: '9. November',
       items: [
         { t: 'Themen wieder als Kästchen', d: 'Die Forum-Themen sehen wieder aus wie vorher: mit Datum, bis zu drei Zeilen Text und den Verknüpfungen.' },

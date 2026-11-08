@@ -1,7 +1,9 @@
 /* Nihongo Techō – Tutorial: Texte und Ziele aller Touren (nur Daten). Browser: App.TOURS, Node: module.exports
    Je Schritt: target (CSS-Selektor, fehlt = Blase mittig), until (Rahmen reicht bis zu diesem Element), title, text, place ('right' für Ziele in der Seitenleiste),
    link { label, tour } (im letzten Schritt statt „Ganzen Rundgang zeigen“),
-   unless (Schritt fällt weg, wenn dieses Element da ist), heart (als Herzstück hervorgehoben). Höchstens fünf Schritte je Tour. */
+   unless (Schritt fällt weg, wenn dieses Element da ist), heart (als Herzstück hervorgehoben). Höchstens fünf Schritte je Tour.
+   Grundsatz (Entscheidung 2026-11-08): weniger ist mehr – nur die Basics, was man ohne Erklärung nicht findet. Selbsterklärendes
+   (Suche, Filter, Sortieren, Ansicht umschalten, Vorlesen …) bekommt keinen Schritt. */
 'use strict';
 (function (root) {
   const EXT = '[data-ext-card]';
@@ -18,19 +20,16 @@
     ],
     // Angebot beim ersten Start
     rundgang: [
-      { target: '#nav .sec-grammar', until: '#nav .sec-phrase', place: 'right', title: 'Deine Sammlungen', text: 'Hier liegt alles, was du lernst, nach Art sortiert: Grammatik, Vokabeln, Kanji und Ausdrücke. Genki I ist schon drin.' },
-      { target: '[data-action="quick-add"]', title: 'Schnell etwas festhalten', text: 'Ein neues Wort, ein Kanji oder eine Regel legst du von jeder Seite aus hier an.' },
-      { target: '#nav .sec-session', place: 'right', title: 'Mitschreiben', text: 'Für jede Stunde gibt es ein Blatt, auf dem du mit Stift oder Tastatur schreibst.' },
-      { target: '#nav .sec-practice', place: 'right', title: 'Wiederholen', text: 'Karteikarten, Kanji-Quiz und Übersetzungen aus dem, was du gesammelt hast.' },
-      { target: '.foot-btn[href="#/pakete"]', place: 'right', title: 'Mehr Inhalte', text: 'Wörterbuch, JLPT-Wortlisten und WaniKani holst du hier dazu. Das „?“ oben erklärt dir jede Seite einzeln.' },
+      { target: '#nav .sec-grammar', until: '#nav .sec-phrase', place: 'right', title: 'Deine Sammlungen', text: 'Grammatik, Vokabeln, Kanji und Ausdrücke – alles, was du lernst.' },
+      { target: '[data-action="quick-add"]', title: 'Neu anlegen', text: 'Ein Wort, Kanji oder eine Regel legst du von jeder Seite aus hier an.' },
+      { target: '#nav .sec-session', place: 'right', title: 'Mitschreiben', text: 'Pro Unterrichtsstunde ein Blatt zum Schreiben mit dem Stift.' },
+      { target: '#nav .sec-practice', place: 'right', title: 'Wiederholen', text: 'Hier übst du, was du gesammelt hast.' },
+      { target: '[data-action="help"]', title: 'Hilfe', text: 'Das „?“ erklärt dir jede Seite kurz.' },
     ],
     // „?“ auf der Startseite in der Handy-Ansicht (js/view-mode.js, homeHandy in js/views.js)
     startHandy: [
-      { target: '[data-hh-hero]', title: 'Heute wiederholen', heart: true, text: 'Der Ring zeigt, wie viel von heute schon geschafft ist. „Jetzt wiederholen“ startet alles Fällige in einer Runde.' },
-      { target: '[data-hh-list]', title: 'Schnell üben', text: 'Ins Forum schauen, Verben konjugieren oder Partikeln in Lückensätze tippen – alles mit einem Tipp.' },
-      { target: '[data-hh-tiles]', title: 'Lesen und hören', text: 'Die Nachricht von NHK Easy, deine WaniKani-Reviews und das nächste Listening-Stück.' },
+      { target: '[data-hh-hero]', title: 'Heute wiederholen', heart: true, text: '„Jetzt wiederholen“ startet alles, was heute fällig ist. Der Ring zeigt, wie viel schon geschafft ist.' },
       { target: '#handy-bar', title: 'Deine Sammlungen', text: 'Unten kommst du zu Grammatik, Vokabeln, Kanji und Ausdrücken. Alles andere steht im Menü ☰.' },
-      { target: '[data-view-switch]', place: 'right', title: 'Lieber wie am Tablet?', text: 'Unten im Menü stellst du die Ansicht auf „Standard“ um. Das gilt nur für dieses Gerät.' },
     ],
     // nach „Jetzt nicht“
     hinweis: [
@@ -38,126 +37,86 @@
     ],
 
     '/': [
-      { target: '[data-welcome]', text: 'Hier richtest du die App auf diesem Gerät ein. Die Karte verschwindet, wenn alles erledigt ist.' },
-      { target: '#view .home-actions', text: 'Deine Schnellaktionen, z. B. ein Wort speichern oder eine Mitschrift beginnen. Welche hier stehen und wie die Startseite aufgebaut ist, legst du unten mit „Startseite anpassen“ fest.' },
-      { target: '#view .fold-btn[data-fold]', text: 'Hier siehst du, wie viel du schon kannst. Ein Tipp auf die Zeile klappt die Einzelheiten auf.' },
-      { target: '#view a.btn[href*="einstufen"]', text: 'Beim Einstufen sagst du Wort für Wort, ob du es schon kennst. Was du noch lernen musst, kommt gleich in die Lernschlange.' },
-      { target: '[data-genki-card]', title: 'Genki I freischalten', text: 'Trage hier den Code ein, den du bekommen hast. Danach stehen Vokabeln, Kanji und Grammatik aus dem Buch bereit.' },
+      { target: '#view .home-actions', text: 'Deine Schnellaktionen, z. B. ein Wort speichern oder eine Mitschrift beginnen.' },
+      { target: '#view a.btn[href*="einstufen"]', text: 'Beim Einstufen sagst du Wort für Wort, ob du es schon kennst. Der Rest kommt in die Lernschlange.' },
+      { target: '[data-genki-card]', title: 'Genki I freischalten', text: 'Trage hier den Code ein, den du bekommen hast. Danach ist alles aus dem Buch da.' },
     ],
     '/grammatik': [
-      { target: '#view .toolbar', text: 'Suche nach einer Form oder grenze nach Quelle, Lektion und Lernstand ein.' },
-      { target: '#view h2', text: 'Die Einträge sind nach Lektion geordnet. Ein Tipp auf einen Eintrag öffnet Erklärung und Beispiele.' },
+      { target: '#view h2', text: 'Nach Lektion geordnet. Ein Tipp öffnet Erklärung und Beispiele.' },
       { target: '#view [data-new="grammar"]', text: 'Eigene Regeln aus dem Unterricht legst du hier an.' },
     ],
     '/vokabeln': [
-      { target: '#view .toolbar', text: 'Suche ein Wort oder grenze nach Lektion, Wortart und Lernstand ein.' },
-      { target: '#view [data-mode="list"]', text: 'Wechsle zwischen Karten und einer kompakten Liste.' },
       { target: '#view .page-head a[href*="einstufen"]', text: 'Geh neue Wörter einmal durch und sag, welche du schon kennst.' },
       { target: '#view .page-head a[href*="ueben/karten"]', text: 'Hier wiederholst du die Wörter aus deiner Lernschlange.' },
-      { target: '#view [data-new="vocab"]', text: 'Eigene Wörter legst du hier an. „Automatisch ausfüllen“ ergänzt dabei Lesung und Bedeutung.' },
+      { target: '#view [data-new="vocab"]', text: 'Eigene Wörter legst du hier an.' },
     ],
     '/kanji': [
-      { target: '#view .tabs', text: 'Neben den Kanji findest du hier die Hiragana- und Katakana-Tafeln. Unter „Gleiche Lesung“ stehen Kanji, die gleich gelesen werden.' },
-      { target: '#view .toolbar', text: 'Suche nach Zeichen, Bedeutung oder Lesung, oder grenze nach Lektion ein.' },
-      { target: '#view .chips', text: 'Mit Markierungen sortierst du Kanji selbst, etwa „Im Unterricht gelernt“ oder „Schwierig“.' },
-      { target: '#view .page-head a[href="#/ueben/kanji"]', text: 'Im Quiz schreibst du Kanji mit dem Stift oder erkennst Lesungen.' },
+      { target: '#view .tabs', text: 'Hier findest du auch die Hiragana- und Katakana-Tafeln.' },
+      { target: '#view .page-head a[href="#/ueben/kanji"]', text: 'Im Quiz schreibst du Kanji mit dem Stift.' },
     ],
     '/ausdruecke': [
-      { target: '#view .chips', text: 'Feste Wendungen in Gruppen: Begrüßung, Zahlen, Uhrzeit, Wochentage und mehr.' },
-      { target: '#view [data-speak]', text: 'Ein Tipp auf den Lautsprecher liest den Ausdruck vor.' },
-      { target: '#view .card a.btn-sm[href*="ueben/karten"]', text: 'Jede Gruppe lässt sich einzeln als Karteikarten lernen.' },
-      { target: '#view [data-new="phrase"]', text: 'Eigene Ausdrücke und eigene Gruppen legst du hier an.' },
+      { target: '#view .card a.btn-sm[href*="ueben/karten"]', text: 'Jede Gruppe lernst du einzeln als Karteikarten.' },
+      { target: '#view [data-new="phrase"]', text: 'Eigene Ausdrücke legst du hier an.' },
     ],
     '/gleichklang': [
-      { text: 'Hier sammeln sich Wörter, die gleich klingen, aber anders geschrieben werden, zum Beispiel はし (Brücke, Essstäbchen).' },
-      { text: 'Die Seite füllt sich von selbst, sobald du gleich klingende Wörter lernst. Du musst nichts anlegen.' },
+      { text: 'Wörter, die gleich klingen, aber anders geschrieben werden. Die Seite füllt sich von selbst.' },
     ],
     '/bedeutung': [
-      { text: 'Hier stehen Wörter, die auf Deutsch dasselbe heißen, zum Beispiel 着る und はく für „anziehen“. Die Klammern in der Bedeutung zeigen den Unterschied.' },
-      { text: 'Die Seite füllt sich von selbst, sobald du eines der Wörter lernst. Du musst nichts anlegen.' },
+      { text: 'Wörter, die auf Deutsch dasselbe heißen. Die Seite füllt sich von selbst.' },
     ],
     '/ueben': [
-      { target: '#view a.mode-card[href^="#/ueben/heute"]', text: 'Der Kern: Karten kommen wieder, kurz bevor du sie vergessen würdest – hier alles Fällige gemischt. Daneben „Karteikarten“: einzeln nach Art oder Lektion üben und Neues lernen.' },
-      { target: '#view a.mode-card[href="#/ueben/einstufen"]', text: 'Neues erst einstufen, damit du nichts wiederholst, was du schon kannst.' },
-      { target: '#view a.mode-card[href="#/ueben/kanji"]', text: 'Kanji mit dem Stift schreiben oder Lesungen erkennen.' },
-      { target: '#view a.mode-card[href="#/ueben/saetze"]', text: 'Ganze Sätze, gebaut nur aus Wörtern und Grammatik, die du schon hast. Daneben „Lückensätze“: Partikeln wie を, に, で in die Lücken ziehen.' },
-      { target: '#view a.mode-card[href="#/ueben/konjugieren"]', text: 'Formen bilden: Du wählst eine Mischung, zum Beispiel nur die て-Form, bildest die Formen im Kopf, schreibst sie oder wählst aus vier Antworten. Starten kannst du auch bei einer zufälligen Form.' },
+      { target: '#view a.mode-card[href^="#/ueben/heute"]', text: 'Das Wichtigste: alles, was heute fällig ist, in einer Runde.' },
+      { target: '#view a.mode-card[href="#/ueben/einstufen"]', text: 'Neues erst einstufen, damit du nichts übst, was du schon kannst.' },
     ],
     // Karteikarten und „Jetzt wiederholen“ (Auswahl oder laufende Runde). heart: als Herzstück hervorgehoben.
     // Das Schreibfeld steht je nach Lage an drei Stellen – gezeigt wird immer nur einer der drei ersten Schritte.
     karten: [
-      { target: '#view .ans-mode', heart: true, title: 'Antwort selbst schreiben', text: 'Nicht nur umdrehen und „ungefähr gewusst“: Tippe den Stift an und schreib das Wort selbst. Die App prüft, ob jedes Zeichen stimmt – Kanji, Kana und Mischungen wie 勉きょう.' },
-      { target: DIRSEG, heart: true, title: 'Antwort selbst schreiben', text: 'Wähle „DE → JP“ (Deutsch → Japanisch). Dann steht unter jeder Karte ein Stift-Knopf: Damit schreibst du das Wort selbst, und die App prüft, ob jedes Zeichen stimmt.' },
-      { unless: '#view .ans-mode, ' + DIRSEG, heart: true, title: 'Antwort selbst schreiben', text: 'Bei Karten Deutsch → Japanisch steht unter der Karte ein Stift-Knopf: Damit schreibst du das Wort selbst, und die App prüft, ob jedes Zeichen stimmt.' },
-      { target: '#view .flash', text: 'Tippen oder Leertaste dreht die Karte um. Mit Schreibfeld drückst du „Prüfen“: Die Karte deckt sich auf und zeigt, was nicht stimmt.' },
-      { title: 'Bewerten', text: 'Danach sagst du, wie gut du es wusstest – nach dem Prüfen ist die passende Bewertung schon vorgewählt. Beim Wiederholen kommt die Karte wieder, kurz bevor du sie vergessen würdest.' },
+      { target: '#view .ans-mode', heart: true, title: 'Antwort selbst schreiben', text: 'Tippe den Stift an und schreib das Wort selbst. Die App prüft jedes Zeichen.' },
+      { target: DIRSEG, heart: true, title: 'Antwort selbst schreiben', text: 'Wähle „DE → JP“. Dann schreibst du unter jeder Karte das Wort selbst, und die App prüft jedes Zeichen.' },
+      { unless: '#view .ans-mode, ' + DIRSEG, heart: true, title: 'Antwort selbst schreiben', text: 'Bei Karten Deutsch → Japanisch schreibst du das Wort selbst, und die App prüft jedes Zeichen.' },
+      { target: '#view .flash', text: 'Tippen dreht die Karte um. Danach sagst du, wie gut du es wusstest.' },
     ],
     '/anwenden': [
-      { target: '#view .tabs', text: 'Zwei Wege, Japanisch selbst zu benutzen: ein Tagebuch und Fragen zum Beantworten.' },
-      { target: '#view .cal-sheet', text: 'Tipp auf einen Tag, um dazu einen Eintrag zu schreiben oder zu lesen.' },
-      { target: '#view [data-cal-today]', text: 'Ein paar Sätze reichen. Schreiben kannst du mit Stift oder Tastatur.' },
+      { target: '#view .tabs', text: 'Japanisch selbst benutzen: Tagebuch und Fragen zum Beantworten.' },
+      { target: '#view .cal-sheet', text: 'Tipp auf einen Tag, um dazu ein paar Sätze zu schreiben.' },
     ],
     '/hoeren': [
-      { target: '#view .hr-half-chain', text: 'Deine Hör-Kette: Ringe für das schon Gehörte, dein Stück für heute (wie auf der Startseite) und die Etappen. „Gehört“ führt die Kette weiter, eine Etappe klappt sie unten auf.' },
-      { target: '#view .hr-half-shun', text: 'Shuns Podcast: die nächste Folge und ein Kästchen je Genki-Lektion – voll heißt alles gehört, hell angefangen. Ein Tipp klappt die Lektion auf.' },
-      { target: '#view .hr-tabs', text: 'Hier wechselst du zwischen der ganzen Liste der Hör-Kette und allen Folgen von Shun.' },
-      { target: '#view .hr-block[open]', text: 'Die ganze Reihenfolge der Kette. ▶ spielt ein Stück zum Reinhören, „Ab hier“ setzt die Kette auf dieses Stück.' },
+      { target: '#view .hr-half-chain', text: 'Dein Stück für heute. „Gehört“ führt die Kette weiter.' },
+      { target: '#view .hr-half-shun', text: 'Shuns Podcast, sortiert nach Genki-Lektion.' },
     ],
     '/unterricht': [
       { target: '#view [data-action="new-session"]', text: 'Lege für jede Unterrichtsstunde eine Mitschrift an.' },
-      { target: '#view .fold-btn[data-fold-course]', text: 'Die Stunden sind nach Kurs geordnet. Ein Tipp auf eine Stunde öffnet ihr Blatt.' },
-      { target: '#view .kb-open', text: 'Das Notizbuch zeigt alle Mitschriften eines Kurses als Buch zum Blättern, mit Inhaltsverzeichnis für Stunden und Grammatik.' },
+      { target: '#view .kb-open', text: 'Das Notizbuch zeigt alle Mitschriften eines Kurses als Buch zum Blättern.' },
     ],
     // Unterrichtsstunde: „?“ auf der Stunde – Blätter-Übersicht (geschrieben wird im Vollbild)
     stunde: [
-      { target: '#view .tabs', text: 'Zu jeder Stunde: Handschrift, getippte Notizen, Material, Hausaufgaben und was du gelernt hast.' },
-      { target: '#view .sheet-thumb', title: 'Deine Blätter', text: 'Jedes Blatt mit deiner Schrift auf Seite 1. Tipp darauf: Es geht groß auf, dort schreibst du mit dem Stift.' },
-      { target: '#view [data-orient-of]', title: 'Hochkant oder quer', text: 'Für jedes Blatt einzeln. Das Format gilt für alle Seiten dieses Blatts.' },
-      { target: '#view [data-nb-new]', text: 'Noch ein Blatt für dieselbe Stunde, z. B. für ein anderes Papier oder Querformat.' },
-      { target: '#view .sheet-thumb', text: 'Stifte, Erkennen und Papier erklärt „⋯ › Hilfe“ im geöffneten Blatt.' },
+      { target: '#view .sheet-thumb', title: 'Dein Blatt', text: 'Tipp darauf: Es geht groß auf, dort schreibst du mit dem Stift. Dort erklärt „⋯ › Hilfe“ Stifte und Erkennen.' },
     ],
-    // Schreibblatt: „⋯ > Hilfe“ in jedem Blatt
+    // Schreibblatt: „⋯ > Hilfe“ in jedem Blatt. Diese fünf Themen sind Pflicht (Entscheidung 2026-10-11).
     blatt: [
-      { target: '.viewer-bar [data-pens]', title: 'Meine Stifte', text: 'Tippe einen Stift an, um zu schreiben. Nochmal antippen: Stiftart, Dicke, Deckkraft und Farbe einstellen oder ihn zum Standard machen. „Neu“ legt einen weiteren Stift an.' },
-      { target: '.viewer-bar [data-tool="lasso"]', title: 'Erkennen', text: 'Kreise ein handgeschriebenes Wort ein. Die App schlägt vor, was dort steht – tippe den passenden Vorschlag an.' },
-      { target: '.viewer-bar [data-tool="lasso"]', title: 'Verknüpfen', text: 'Im Nachschlagen-Fenster tippst du „Mit dem Wort verknüpfen“. Gibt es die Vokabel, Grammatik oder das Kanji noch nicht, legst du es dort gleich an.' },
-      { target: '.viewer-bar [data-tool="lasso"]', title: 'Wiederfinden', text: 'Verknüpfte Stellen sind farbig markiert: Vokabeln lila, Grammatik orange, Kanji pink. Ein Tipp darauf zeigt den Eintrag.' },
-      { target: '.viewer-bar [data-v="paper"]', title: 'Papier', text: 'Liniert, kariert, Kanji-Raster, Punkte oder blanko, für jede Seite einzeln. Hochkant oder quer stellst du hier fürs ganze Blatt ein.', link: { label: 'Sticker, Buch und Aufgaben zeigen', tour: 'blattMehr' } },
-    ],
-    // zweiter Teil, erreichbar über den letzten Schritt von „blatt“; „Buch“ gibt es nur im Notizblatt, „Nebeneinander“ nur bei Buchaufgaben
-    blattMehr: [
-      { target: '.viewer-bar [data-v="sticker"]', title: 'Sticker', text: 'Zettel, Banner und Kanji-Feld oder Sticker (Süß = bunt, Normal = in Stiftfarbe): wählen, dann auf die Stelle im Blatt tippen. Mit „Auswahl“ verschieben, drehen, skalieren.' },
-      { target: '.viewer-bar [data-v="book"]', text: 'Zeigt zwei Seiten nebeneinander wie in einem aufgeschlagenen Heft.' },
-      { target: '.viewer-bar [data-v="split"]', title: 'Genki-Aufgaben', text: 'Aufgabe und Schreibblatt stehen nebeneinander statt untereinander. Geht im Querformat.' },
-      { target: '.viewer-bar [data-v="more"]', text: 'Zoom, Drucken, „Nur Stift schreibt“ und „Blatt löschen“ liegen hier. Bei Genki-Aufgaben auch „Seiten tauschen“ und „Mit der Tastatur antworten“: ein Feld zum Tippen statt des Schreibblatts.' },
-      { target: '.viewer-bar [data-tool="eraser"]', until: '.viewer-bar [data-tool="cut"]', text: 'Zwei Radierer: Der eine löscht ganze Striche, der andere nur genau unter der Spitze. Mit „⋯“ › „Radierer: nur Markierungen“ lösen sie nur Verknüpfungen und Textmarker, die Schrift bleibt.' },
+      { target: '.viewer-bar [data-pens]', title: 'Stifte', text: 'Tippe einen Stift an, um zu schreiben. Nochmal antippen: Dicke und Farbe einstellen.' },
+      { target: '.viewer-bar [data-tool="lasso"]', title: 'Erkennen', text: 'Kreise ein geschriebenes Wort ein und tippe den passenden Vorschlag an.' },
+      { target: '.viewer-bar [data-tool="lasso"]', title: 'Verknüpfen', text: 'Dann „Mit dem Wort verknüpfen“. Gibt es den Eintrag noch nicht, legst du ihn dort gleich an.' },
+      { target: '.viewer-bar [data-tool="lasso"]', title: 'Wiederfinden', text: 'Verknüpfte Stellen sind farbig markiert. Ein Tipp darauf zeigt den Eintrag.' },
+      { target: '.viewer-bar [data-v="paper"]', title: 'Papier', text: 'Liniert, kariert, Kanji-Raster oder blanko – für jede Seite einzeln.' },
     ],
     // Kurs-Notizbuch (#/unterricht/buch)
     notizbuch: [
-      { target: '#view [data-kb-book]', text: 'Alle Mitschriften des Kurses als ein Buch. Hier wird nur gelesen, nicht geschrieben.' },
-      { target: '#view [data-kb-toc]', title: 'Inhaltsverzeichnis', text: 'Die erste Doppelseite: links die Stunden, rechts die Grammatik des Kurses. Ein Tipp auf eine Zeile blättert dorthin – verknüpfte Grammatik genau zur Stelle.' },
-      { title: 'Weiterschreiben', text: 'Zum Schreiben öffnest du die Stunde über den Reiter oben an ihrer Seite („öffnen“).' },
-      { target: '#view .kb-zoom', text: 'Blättern mit den Pfeilen oder Wischen. Vergrößern mit +, zwei Fingern oder Doppeltipp.' },
-      { target: '#view [data-kb-colors-on]', title: 'Farben', text: 'Wähle die Farbe des Buchs – die Reiter passen sich an. Lieber normale Seiten untereinander? „Buch | Seiten“ links oben schaltet um.' },
+      { target: '#view [data-kb-book]', text: 'Alle Mitschriften des Kurses als Buch. Blättern mit den Pfeilen oder Wischen.' },
+      { target: '#view [data-kb-toc]', title: 'Inhaltsverzeichnis', text: 'Ein Tipp auf eine Zeile blättert dorthin.' },
+      { title: 'Weiterschreiben', text: 'Zum Schreiben öffnest du die Stunde über den Reiter an ihrer Seite.' },
     ],
     '/bibliothek': [
-      { target: '#view [data-upload="library"]', text: 'Lege Arbeitsblätter, PDFs und Bilder aus dem Kurs hier ab. Daneben beginnst du ein leeres Notizblatt zum Schreiben.' },
-      { target: '#view [data-heft-new]', text: 'Für dein eigenes Lernen: Lege ein Notizbuch mit Kapiteln an – mit Inhaltsverzeichnis wie im Kurs.' },
-      { target: '#view .toolbar', text: 'Später findest du Dateien über Bereich und Dateityp wieder. Ganz rechts sortierst du sie – nach Datum, Quelle, Lektion oder Name.' },
-      { target: '#view [data-folder-new]', title: 'Ordner', text: 'Lege eigene Ordner an und zieh Dateien darauf. Dateien im Ordner stehen nicht mehr in der Liste – beim Filtern findest du sie aber trotzdem.' },
-      { target: '#view [data-pick-on]', text: 'Zum Aufräumen: Markiere eine oder mehrere Dateien und lege sie zusammen in einen Ordner oder lösche sie.' },
+      { target: '#view [data-upload="library"]', text: 'Arbeitsblätter, PDFs und Bilder aus dem Kurs legst du hier ab.' },
+      { target: '#view [data-heft-new]', text: 'Ein eigenes Notizbuch mit Kapiteln für dein Lernen.' },
     ],
     '/pakete': [
-      { target: '#view [data-pack-upload] h3', title: 'Paket hochladen', text: 'Hast du ein Paket als Datei bekommen – etwa die Unterrichtsfolien oder ein Paket von Freunden –, öffnest du es hier.' },
-      { target: '#view .pack-card:has([data-id="dict-common"])', text: 'Mit dem Wörterbuch kann die App Wörter nachschlagen und beim Anlegen vorausfüllen.' },
-      { target: '#view .pack-card:has([data-id="n5"])', text: 'Die JLPT-Pakete ergänzen Wörter, Kanji und Grammatik der jeweiligen Stufe. Du schaltest sie selbst frei, wenn du sie möchtest.' },
-      { target: '#view [data-act="unlock"][data-id="n5"]', title: 'So schaltest du frei', text: 'Ein Tipp zeigt dir zuerst, wie viele Einträge dazukommen. Geladen wird erst, wenn du das bestätigst.' },
-      { target: '#view [data-wk-card] h3', title: 'WaniKani verknüpfen', text: 'Schlüssel bei WaniKani unter Settings → API Tokens erstellen (Lesezugriff genügt) und hier eintragen. Danach wählst du die Level für Kanji zum Schreiben und für Vokabeln.' },
+      { target: '#view [data-pack-upload] h3', title: 'Paket hochladen', text: 'Hast du ein Paket als Datei bekommen, öffnest du es hier.' },
+      { target: '#view .pack-card:has([data-id="n5"])', text: 'JLPT-Pakete bringen Wörter, Kanji und Grammatik einer Stufe. Du schaltest sie selbst frei.' },
+      { target: '#view [data-wk-card] h3', title: 'WaniKani verknüpfen', text: 'Schlüssel bei WaniKani unter Settings → API Tokens erstellen (Lesezugriff genügt) und hier eintragen.' },
     ],
     '/einstellungen': [
-      { target: '#view .card:has([data-s="name"]) h3', text: 'Name, Aussehen, Furigana und die Stimme, die vorliest.' },
-      { target: '#view .card:has([data-s="newPerDay"]) h3', text: 'Wie du lernst: neue Karten pro Sitzung, Einstufen, Kanji-Schwerpunkt und woher die Kanji zum Schreiben kommen.' },
-      { target: '#view .card:has([data-bk]) h3', text: 'Deine Daten liegen nur auf diesem Gerät. Hier sicherst du sie. Das „?“ daneben zeigt dir, wie das auf deinem Gerät geht.' },
+      { target: '#view .card:has([data-bk]) h3', text: 'Deine Daten liegen nur auf diesem Gerät. Hier sicherst du sie – das „?“ daneben zeigt, wie.' },
       { target: EXT + ' h3', title: 'Text aus dem Browser', text: 'Mit der Erweiterung holst du japanischen Text von jeder Webseite in die App.', link: { label: 'Schritt für Schritt zeigen', tour: 'erweiterung' } },
     ],
     // Sicherungs-Hilfe („?“ an der Karte Sicherung) – je Gerät eine, gewählt in tour-logic.js (backupTourKey).
@@ -165,41 +124,35 @@
     sicherungOrdner: [
       { target: BK + ' [data-backup-auto]', title: '1. Automatisch', text: 'Tippe „Ordner wählen“ und nimm einen Ordner in Google Drive. Ab dann sichert die App von selbst.' },
       { target: BK + ' [data-backup-auto]', title: 'Nach einem Neustart', text: 'Fragt der Browser nach dem Ordner, tippe „Erlauben“. Das ist alles.' },
-      { target: BK + ' [data-exp]', until: BK + ' [data-exp-light]', title: '2. Von Hand', text: 'Lädt eine Backup-Datei herunter. Brauchst du nur ohne Ordner.' },
       { target: BK + ' label:has([data-imp])', title: 'Zurückholen', text: 'Hier spielst du eine Backup-Datei wieder ein.' },
     ],
     sicherungIpad: [
-      { target: BK + ' [data-backup-auto]', title: '1. Automatisch', text: 'Geht auf dem iPad leider nicht. Darum sicherst du von Hand – mit einem Tipp.' },
-      { target: '#backup-top', title: '2. Von Hand', text: 'Tippe oben auf dieses Symbol. Ein Punkt daran heißt: noch nicht gesichert.' },
+      { target: '#backup-top', title: 'Sichern', text: 'Auf dem iPad sicherst du von Hand: Tippe oben auf dieses Symbol. Ein Punkt daran heißt: noch nicht gesichert.' },
       { title: 'In Dateien sichern', text: 'Im Fenster, das aufgeht, wähle „In Dateien sichern“ und einen Ordner, z. B. iCloud Drive. Fertig.' },
       { target: BK + ' label:has([data-imp])', title: 'Zurückholen', text: 'Hier spielst du die Datei wieder ein.' },
     ],
     sicherungAndroid: [
-      { target: BK + ' [data-backup-auto]', title: '1. Automatisch', text: 'Geht auf Android leider nicht. Darum sicherst du von Hand – mit einem Tipp.' },
-      { target: '#backup-top', title: '2. Von Hand', text: 'Tippe oben auf dieses Symbol. Ein Punkt daran heißt: noch nicht gesichert.' },
-      { title: 'In Google Drive', text: 'Im Fenster, das aufgeht, wähle „Drive“ und tippe „Speichern“. Kommt kein Fenster: Die Datei liegt in „Downloads“. Öffne die Drive-App, tippe „+“ → „Hochladen“ und wähle sie aus.' },
+      { target: '#backup-top', title: 'Sichern', text: 'Auf Android sicherst du von Hand: Tippe oben auf dieses Symbol. Ein Punkt daran heißt: noch nicht gesichert.' },
+      { title: 'In Google Drive', text: 'Im Fenster, das aufgeht, wähle „Drive“ und tippe „Speichern“. Kommt kein Fenster: Die Datei liegt in „Downloads“ – lade sie in der Drive-App hoch.' },
       { target: BK + ' label:has([data-imp])', title: 'Zurückholen', text: 'Hier spielst du die Datei wieder ein – auch direkt aus Google Drive.' },
     ],
     sicherungHand: [
-      { target: BK + ' [data-backup-auto]', title: '1. Automatisch', text: 'Geht nur mit Chrome oder Edge am PC. In diesem Browser sicherst du von Hand.' },
-      { target: '#backup-top', title: '2. Von Hand', text: 'Klicke oben auf dieses Symbol. Ein Punkt daran heißt: noch nicht gesichert.' },
+      { target: '#backup-top', title: 'Sichern', text: 'In diesem Browser sicherst du von Hand: Klicke oben auf dieses Symbol. Ein Punkt daran heißt: noch nicht gesichert.' },
       { title: 'Ablegen', text: 'Die Datei landet in „Downloads“. Schieb sie z. B. in Google Drive.' },
       { target: BK + ' label:has([data-imp])', title: 'Zurückholen', text: 'Hier spielst du die Datei wieder ein.' },
     ],
     // Gruppenfenster hinter der Gedankenwolke: „⋯ › Hilfe“
     gruppe: [
       { target: '.forum-modal .fd-card', title: 'Tägliche Gruppen-Challenge', text: 'Jeden Tag ein kurzer Satz auf Japanisch für alle. Tipp die Zeile an: dann siehst du die Sätze der anderen und schreibst deinen eigenen.' },
-      { target: '.forum-modal [data-newtopic]', title: 'Neues Thema', text: 'Hier hältst du fest, was du besprechen oder zeigen willst. Wähl 💬 (darüber reden) oder 💡 (nur zeigen). Markierten Text kannst du farbig hinterlegen und mit „Partikel“ o. Ä. beschriften.' },
-      { target: '.forum-modal [data-list]', title: 'Eure Themen', text: 'Oben der offene Redebedarf, darunter alles zum Zeigen, ganz unten das Besprochene zum Aufklappen. Neues von den anderen hat einen roten Rand. Tipp ein Thema an, um zu antworten.' },
-      { target: '.forum-modal .forum-more', title: 'Mehr', text: 'Hier findest du den Gruppencode für neue Mitglieder und kannst deinen Namen ändern.' },
+      { target: '.forum-modal [data-newtopic]', title: 'Neues Thema', text: 'Hier hältst du fest, was du besprechen oder zeigen willst.' },
+      { target: '.forum-modal [data-list]', title: 'Eure Themen', text: 'Tipp ein Thema an, um zu antworten. Neues von den anderen hat einen roten Rand.' },
     ],
     // Browser-Erweiterung: läuft immer auf der Karte in den Einstellungen
     erweiterung: [
-      { target: EXT + ' h3', title: 'Wozu?', text: 'Du liest etwas auf Japanisch im Netz, etwa bei NHK Easy, markierst ein Wort oder einen Satz und hast es mit einem Klick in der App. Geht nur mit Chrome oder Edge am PC, nicht auf Handy oder Tablet.' },
+      { target: EXT + ' h3', title: 'Wozu?', text: 'Japanischen Text auf einer Webseite markieren und mit einem Klick in die App holen. Nur mit Chrome oder Edge am PC.' },
       { target: EXT + ' .row', title: 'Holen', text: 'Lade die Erweiterung herunter und entpacke sie an einen Ort, an dem der Ordner bleiben kann, zum Beispiel Dokumente.' },
       { target: EXT + ' ol', title: 'Einmal einrichten', text: 'Öffne im Browser chrome://extensions, schalte den Entwicklermodus ein und wähle über „Entpackte Erweiterung laden“ den Ordner aus.' },
-      { target: EXT + ' ol', title: 'Markieren', text: 'Lass die App geöffnet, lade die Webseite neu und markiere japanischen Text. An der Markierung erscheinen zwei Knöpfe.' },
-      { title: 'Übernehmen', text: 'Der eine Knopf öffnet das Vokabel-Formular, schon mit Lesung, Beispielsatz und Fundstelle. Der andere schickt ganze Sätze zu „Sätze zuordnen“.' },
+      { target: EXT + ' ol', title: 'Benutzen', text: 'Lass die App geöffnet, lade die Webseite neu und markiere japanischen Text. An der Markierung erscheinen zwei Knöpfe.' },
     ],
   };
 
