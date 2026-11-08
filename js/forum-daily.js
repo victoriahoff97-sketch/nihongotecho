@@ -73,6 +73,34 @@
       ${start ? `<div class="fd-start"><span lang="ja" class="fd-jp">${App.jp.ruby(start.jp)}</span>${start.de ? `<span class="muted small">${esc(start.de)}</span>` : ''}</div>` : ''}
       ${list.map(lineHtml).join('')}</div>`;
 
+  // Banner: „3 von 4 heute“, eigene Flamme groß, darunter wer noch nicht dabei ist – nur freundlich, nie als Mahnung
+  const todayUids = () => new Set((m.lists[m.ctx.today] || []).map((x) => x.uid));
+  const drawCheer = (mine) => {
+    const ms = m.ctx.members;
+    const uids = Object.keys(ms);
+    const done = todayUids();
+    const n = uids.filter((u) => done.has(u)).length;
+    const tally = m.el.querySelector('[data-dtally]');
+    if (tally) tally.textContent = !uids.length ? '' : n && n === uids.length ? `${n} von ${n} · alle dabei 🎉` : `${n} von ${uids.length} heute`;
+    const fl = m.el.querySelector('[data-dmyflame]');
+    const st = ms[me()] && ms[me()].streak;
+    const nn = F.flameOf(st, m.ctx.today);
+    if (fl) {
+      fl.hidden = !nn && !mine;
+      fl.classList.toggle('is-lit', !!mine);
+      // n kommt aus dem Member-Dokument; direkt nach dem Senden steht dort evtl. noch der alte Stand
+      fl.innerHTML = nn ? `<span class="fd-myflame-n">${K.MARK} ${nn}</span><span class="fd-myflame-l">Tage in Folge</span>`
+        : `<span class="fd-myflame-n">${K.MARK}</span><span class="fd-myflame-l">heute geschafft</span>`;
+    }
+    const box = m.el.querySelector('[data-dlist]');
+    const missing = m.prompt.kind === 'chain' ? [] : uids.filter((u) => !done.has(u) && u !== me()).map((u) => ms[u].name).filter(Boolean);
+    let foot = '';
+    if (mine && n === uids.length && uids.length > 1) foot = '<p class="fd-cheer">全員！ Heute haben alle geschrieben – お疲れ様 🌸</p>';
+    else if (mine) foot = `<p class="fd-cheer">Geschafft für heute ✓${missing.length ? ` <span class="muted">· noch nicht dabei: ${esc(missing.join(', '))}</span>` : ''}</p>`;
+    else if (missing.length && done.size) foot = `<p class="muted small fd-count">Noch nicht dabei: ${esc(missing.join(', '))}</p>`;
+    if (foot && box) box.insertAdjacentHTML('beforeend', foot);
+  };
+
   const drawList = () => {
     if (!m) return;
     const box = m.el.querySelector('[data-dlist]');
@@ -84,12 +112,14 @@
       const list = sorted(all(m.chainDays));
       box.innerHTML = storyHtml(p.chainStart, list)
         + (list.length ? '' : '<p class="muted small">Noch hat niemand weitergeschrieben – du schließt an den Anfangssatz an.</p>');
-    } else if (!mine) {
-      const n = (m.lists[m.ctx.today] || []).length;
-      box.innerHTML = `<p class="muted small fd-count">${n ? `${n} ${n === 1 ? 'hat' : 'haben'} schon geschrieben – du siehst die Sätze nach deinem.` : 'Noch hat heute niemand geschrieben.'}</p>`;
     } else {
-      box.innerHTML = `<div class="fd-lines">${sorted(all([m.ctx.today])).map(lineHtml).join('')}</div>`;
+      // alle Sätze von heute gleich sichtbar – der eigene oben, dann die anderen in Reihenfolge
+      const list = sorted(all([m.ctx.today]));
+      const lines = (mine ? list.filter((x) => x.uid === me()) : []).concat(list.filter((x) => x.uid !== me()));
+      box.innerHTML = lines.length ? `<div class="fd-lines">${lines.map(lineHtml).join('')}</div>`
+        : '<p class="muted small fd-count">Noch hat heute niemand geschrieben – du kannst den Anfang machen ✨</p>';
     }
+    drawCheer(mine);
     // Wochenende vom Montag aus: auf Klick nachgeladen
     if (m.weekend && m.weekend.open) {
       const wk = m.weekend;
@@ -244,9 +274,12 @@
     if (monday.length) m.weekend = { days: monday, open: false, loaded: false, start: Y.prompt(monday[0], ctx.code, window.SEED, App.DAILY_PROMPTS).chainStart };
     const wd = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(today + 'T12:00').getDay()];
     el.className = 'fd-card';
-    el.innerHTML = `<div class="fd-head"><span class="fd-kind">${esc(KIND[prompt.kind])}</span><span class="muted small">${wd}, ${Number(today.slice(8))}.${Number(today.slice(5, 7))}.</span>
-        <span class="grow"></span><span class="muted small fd-sub">${prompt.kind === 'chain' ? 'Schreibt gemeinsam weiter – ein Satz pro Tag' : `Ein Satz, höchstens ${Y.MAX} Zeichen`}</span></div>
-      ${promptHtml(prompt)}
+    // Kopf als Banner: deutlich „Gruppen-Challenge“, die Art des Tages und wie viele heute schon dabei sind
+    el.innerHTML = `<div class="fd-band">${icon('users')}<b>Gruppen-Challenge</b><span class="fd-band-kind">· ${esc(KIND[prompt.kind])} · ${wd} ${Number(today.slice(8))}.${Number(today.slice(5, 7))}.</span>
+        <span class="grow"></span><span class="fd-tally" data-dtally></span></div>
+      <div class="fd-top"><div class="fd-main">${promptHtml(prompt)}
+        <p class="muted small fd-sub">${prompt.kind === 'chain' ? 'Schreibt gemeinsam weiter – ein Satz pro Tag' : `Ein Satz, höchstens ${Y.MAX} Zeichen`}</p></div>
+        <div class="fd-myflame" data-dmyflame hidden></div></div>
       ${m.weekend ? '<button type="button" class="fd-link" data-dweekend>Geschichte vom Wochenende lesen</button>' : ''}
       <div data-dlist></div><div data-dfield></div>`;
     el.querySelector('[data-dfield]').appendChild(fieldEl(drafts[today] || '', false));

@@ -140,8 +140,32 @@
   D.closeHistory = (history, log, cfg, applied, today) => {
     if (!log || !log.date || !(log.date < today)) return null;
     const keys = D.closeDay(log, cfg, applied), old = (history || {})[log.date] || [];
-    if (!keys.length || keys.every((k) => old.includes(k))) return null;
-    return D.recordDay(history, log.date, old.concat(keys));
+    const all = D.withAll(old.concat(keys), cfg);
+    if (!keys.length || all.every((k) => old.includes(k))) return null;
+    return D.recordDay(history, log.date, all);
+  };
+  // Gesamt-Flamme: „*“ in der Tagesliste heißt „an dem Tag alle To-dos auf An geschafft“ (so bleibt der Tag geschafft,
+  // auch wenn man später To-dos dazunimmt oder abschaltet)
+  D.ALL = '*';
+  D.withAll = (keys, cfg) => {
+    const ks = keys.filter((k) => k !== D.ALL), goal = D.goalKeys(cfg);
+    return goal.length && goal.every((k) => ks.includes(k)) ? ks.concat(D.ALL) : ks;
+  };
+  // Wochenzeile Mo–So der laufenden Woche: done (alle geschafft), joker (❄️ hat die Reihe gerettet), off (Urlaub),
+  // open (heute, noch nicht geschafft), future, missed
+  D.WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  D.week = (history, off, today) => {
+    const K = App.streakLogic, h = history || {}, o = off || new Set();
+    const done = new Set(Object.keys(h).filter((d) => (h[d] || []).includes(D.ALL)));
+    const info = K.streak(done, o, today), mon = K.weekKey(today);
+    const jokers = info.n ? info.jokers : []; // ist die Reihe aus, rettet auch kein Joker etwas
+    const days = D.WEEKDAYS.map((label, i) => {
+      const date = K.addDays(mon, i);
+      const state = done.has(date) ? 'done' : jokers.includes(date) ? 'joker' : o.has(date) ? 'off'
+        : date === today ? 'open' : date > today ? 'future' : 'missed';
+      return { date, label, state, today: date === today };
+    });
+    return { n: info.n, jokers, days };
   };
   // Tage in Folge je To-do mit Jokern ({ key: { n, jokers } }); off = Urlaubstage (Set), Rechnung in App.streakLogic
   D.flameInfo = (history, keys, off, today) => {

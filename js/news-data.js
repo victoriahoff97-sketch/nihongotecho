@@ -7,6 +7,21 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-gesamt-flamme', date: '9. November',
+      items: [
+        { t: 'Große 🔥 in der 今日-Karte', d: 'Neben „今日 · Heute“ zählt eine Flamme, wie viele Tage in Folge du alle To-dos geschafft hast.' },
+        { t: 'Deine Woche auf einen Blick', d: 'Darunter steht Mo bis So: 🔥 für jeden geschafften Tag, ❄️ wenn Joker oder Urlaub deine Serie gehalten haben.' },
+      ],
+    },
+    {
+      id: '2026-11-09-gruppen-challenge', date: '9. November',
+      items: [
+        { t: 'Gruppen-Challenge', d: 'Der Satz des Tages steht jetzt als farbiges Banner oben im Forum – mit deiner Flamme groß daneben und wie viele heute schon dabei sind.' },
+        { t: 'Alle Sätze auf einen Blick', d: 'Die Sätze der anderen siehst du sofort, nicht erst nach deinem eigenen. Dein Satz steht oben.' },
+        { t: 'Themen übersichtlicher', d: 'Die Themen sind nach Redebedarf und Zum Zeigen sortiert, eine Zeile pro Thema. Besprochenes klappt man bei Bedarf auf, neue Themen startest du über „＋ Neues Thema“.' },
+      ],
+    },
+    {
       id: '2026-11-09-satz-des-tages', date: '9. November',
       items: [
         { t: 'Satz des Tages im Forum', d: 'Ganz oben im Forum steht jetzt eine Karte: Jeden Tag schreibst du einen japanischen Satz, höchstens 40 Zeichen, zu einem Anstoß für alle.' },

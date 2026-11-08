@@ -39,7 +39,7 @@
   // Gespeichert wird nur bei Änderung; das Speichern löst keine Neuberechnung aus, die wieder speichert.
   const snapshot = (st) => {
     if (!S.settings) return;
-    const keys = L.goalKeys(cfg()).filter((k) => st[k]);
+    const keys = L.withAll(L.goalKeys(cfg()).filter((k) => st[k]), cfg()); // „*“ = alle geschafft (Gesamt-Flamme)
     const next = L.recordDay(S.settings.dayHistory, App.today(), keys);
     if (next) App.saveSettings({ dayHistory: next });
   };
@@ -54,7 +54,13 @@
     const tip = [info.n + ' Tage in Folge'].concat(info.jokers.map((d) => '❄️ Joker am ' + ddmm(d))).join(String.fromCharCode(10));
     return ` <span class="day-flame" title="${esc(tip)}">${App.streakLogic.MARK}${info.n}</span>`;
   };
-  const forumHintShown = () => L.forumHint(cfg()) && !!(App.forum && App.forum.inGroup && App.forum.inGroup()) && !L.isDone(log(), App.today(), 'forum');
+  // Gesamt-Flamme (Tage in Folge mit allen To-dos) und Wochenzeile Mo–So darunter
+  const offDays = () => App.streakLogic.offDays(S.settings.vacationLog, App.pause && App.pause.vacation ? App.pause.vacation() : S.settings.vacation, App.today());
+  const DAY_ICON = { done: App.streakLogic.MARK, joker: '❄️', off: '❄️' };
+  const DAY_TIP = { done: 'alles geschafft', joker: 'Joker – die Reihe bleibt', off: 'Urlaub – die Reihe bleibt', open: 'heute noch offen', future: '', missed: '' };
+  const totalFlame = (wk) => (wk.n ? ` <span class="day-total" title="${wk.n} ${wk.n === 1 ? 'Tag' : 'Tage'} in Folge alle To-dos geschafft">${App.streakLogic.MARK}${wk.n}</span>` : '');
+  const weekRow = (wk) => `<div class="day-week" aria-label="Diese Woche">${wk.days.map((d) => `<span class="day-wd is-${d.state}${d.today ? ' is-today' : ''}" title="${esc(ddmm(d.date) + (DAY_TIP[d.state] ? ' · ' + DAY_TIP[d.state] : ''))}"><small>${d.label}</small><i>${DAY_ICON[d.state] || ''}</i></span>`).join('')}</div>`;
+  const forumHintShown =() => L.forumHint(cfg()) && !!(App.forum && App.forum.inGroup && App.forum.inGroup()) && !L.isDone(log(), App.today(), 'forum');
 
   const openJournal = () => {
     const j = App.itemsOf('journal').filter((x) => x.date === App.today()).sort((a, b) => (b.created || 0) - (a.created || 0))[0];
@@ -142,8 +148,10 @@
     const main = list.filter((x) => x.level === 'goal');
     const all = L.allMain(st, cfg());
     const status = all ? 'お疲れ様 · alles geschafft' : main.length ? 'prüft sich von selbst' : 'noch keine To-dos';
+    const wk = main.length ? L.week(S.settings.dayHistory, offDays(), App.today()) : null;
     return `<div class="card day-check" data-day-check>
-      <div class="row between"><h3 lang="ja">今日 <span>· Heute</span></h3><span class="row day-head"><span class="small ${all ? 'day-all' : 'muted'}">${status}</span>${editBtn('To-dos bearbeiten')}</span></div>
+      <div class="row between"><h3 lang="ja">今日 <span>· Heute</span>${wk ? totalFlame(wk) : ''}</h3><span class="row day-head"><span class="small ${all ? 'day-all' : 'muted'}">${status}</span>${editBtn('To-dos bearbeiten')}</span></div>
+      ${wk ? weekRow(wk) : ''}
       ${main.map((x) => row(x, st[x.key], g, fl)).join('')}
       ${main.length ? '' : '<p class="small muted day-empty">Tippe auf den Stift und stell dir deine To-dos zusammen.</p>'}
       ${forumHintShown() ? '<div class="day-hint"><button type="button" class="day-hint-btn" data-day-forum>✎ Satz des Tages im Forum noch offen</button></div>' : ''}
