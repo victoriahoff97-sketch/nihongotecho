@@ -117,14 +117,45 @@
   };
 
   const ERR = { gone: 'Der Sicherungsordner wurde nicht gefunden.', full: 'Der Datenträger ist voll.' };
+  const SYNC_WAIT = 15000, SYNC_TRIES = 8;
+  let syncTries = 0;
+  // Neueren Stand eines anderen Geräts still übernehmen (hier war nichts ungesichert) → true: lädt neu | 'later': Ordner gleicht noch ab | false: doch fragen
+  const autoTake = async (stand) => {
+    restoring = true;
+    try {
+      await L().restore(dir, sink, state, { now: Date.now(), local: await localDaten() });
+      await saveState();
+      try { sessionStorage.setItem('nt-backup-took', (stand.device && stand.device.name) || 'einem anderen Gerät'); } catch (e) { /* egal */ }
+      location.reload(); // restoring bleibt gesetzt: bis zum Neuladen wird nichts mehr geschrieben
+      return true;
+    } catch (e) {
+      restoring = false;
+      // halb angekommene daten.json ist erst unlesbar, dann passt sie nicht zur stand.json – beides: abwarten
+      if (e && (e.code === 'BACKUP_SYNCING' || e.code === 'BACKUP_CORRUPT')) return 'later';
+      console.error('Stand des anderen Geräts nicht übernommen', e);
+      return false;
+    }
+  };
   const pass = async (o) => {
     stopTimer();
     if ((await permission()) !== 'granted') { phase = 'paused'; ask = 'permission'; emit(); return; }
     try {
-      const r = await L().run(dir, mkSrc(), state, {
+      // check: nur nachsehen, ob ein anderes Gerät inzwischen geschrieben hat (beim Zurückkommen, hier unverändert)
+      const r = o.check && !L().isDirty(state) ? await L().peek(dir, state, device.id) : await L().run(dir, mkSrc(), state, {
         device, now: Date.now(), full: !!o.full, force: !!o.force,
         onProgress: (done, total) => { progress = total > 1 ? [done, total] : null; if (progress) emit(); },
       });
+      if (r.status === 'foreign' && L().autoTake(r.stand, state)) {
+        const took = await autoTake(r.stand);
+        if (took === true) return;
+        if (took === 'later' && syncTries < SYNC_TRIES) {
+          // Google Drive o. Ä. hat erst einen Teil geliefert: gleich noch einmal nachsehen statt zu fragen
+          syncTries++; phase = 'ok'; ask = null; askStand = null;
+          schedule(SYNC_WAIT, { check: true });
+          return;
+        }
+      }
+      syncTries = 0;
       if (r.status === 'foreign' || r.status === 'corrupt') { phase = 'paused'; ask = r.status; askStand = r.stand || null; }
       else if (r.failed) {
         phase = 'error'; ask = null; askStand = null;
@@ -189,6 +220,7 @@
   const restoreError = (e) => {
     if (e && e.code === 'BACKUP_CORRUPT') App.toast('Die Sicherung im Ordner ist beschädigt – es wurde nichts geändert.');
     else if (e && e.code === 'BACKUP_NONE') App.toast('In diesem Ordner liegt keine Sicherung.');
+    else if (e && e.code === 'BACKUP_SYNCING') App.toast('Der Ordner wird gerade noch abgeglichen (z. B. von Google Drive) – bitte gleich noch einmal versuchen.');
     else { console.error('Wiederherstellen fehlgeschlagen', e); App.toast('Wiederherstellen fehlgeschlagen: ' + ((e && e.message) || e)); }
   };
   // Ganzen Stand aus dem Ordner holen und neu laden → true bei Erfolg
@@ -531,12 +563,16 @@
     try {
       const n = +sessionStorage.getItem('nt-backup-missing');
       if (n) { sessionStorage.removeItem('nt-backup-missing'); App.toast(n === 1 ? '1 Datei fehlt im Ordner.' : `${n} Dateien fehlen im Ordner.`); }
+      const took = sessionStorage.getItem('nt-backup-took');
+      if (took) { sessionStorage.removeItem('nt-backup-took'); App.toast(`Neuester Stand von ${took} übernommen`); }
     } catch (e) { /* egal */ }
     startDirty = !!(R() && App.lsGet && R().read(App.lsGet).dirty);
     document.addEventListener('visibilitychange', () => {
       if (!dir || restoring) return;
       // Verbergen/Schließen: sofort sichern. Zurückkommen: Liegengebliebenes nachholen (auch Stand eines anderen Geräts prüfen).
-      if (L().isDirty(state) && phase !== 'paused') K.flush();
+      if (phase === 'paused') return;
+      if (L().isDirty(state)) K.flush();
+      else if (visible() && phase === 'ok') K.flush({ check: true }); // hat ein anderes Gerät inzwischen etwas Neueres abgelegt?
     });
     dir = (await metaGet('backupDir')) || null;
     device = (await metaGet('backupDevice')) || null;

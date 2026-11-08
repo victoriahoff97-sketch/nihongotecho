@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-08-auto-abgleich', date: '8. November',
+      items: [
+        { t: 'Geräte gleichen sich selbst ab', d: 'Das andere Gerät holt sich deinen neuen Stand jetzt von selbst. Gefragt wird nur noch, wenn du auf beiden etwas geändert hast.' },
+      ],
+    },
+    {
       id: '2026-11-08-handy-ansicht-2', date: '8. November',
       items: [
         { t: 'Prognose auch am Handy', d: 'Im blauen Kasten der Handy-Startseite zeigt das kleine Balken-Symbol oben rechts, wie viele Karten in den nächsten 7 Tagen fällig werden.' },

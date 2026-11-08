@@ -50,6 +50,17 @@
   const cleanDirty = () => ({ daten: false, ink: [], blobs: [], full: false });
   B.newState = () => ({ rev: 0, saved: 0, seen: null, dirty: Object.assign(cleanDirty(), { full: true }) });
   B.isDirty = (state) => { const d = state.dirty; return !!(d.daten || d.full || d.ink.length || d.blobs.length); };
+  // Wurde auf diesem Gerät seit dem letzten Schreiben/Übernehmen wirklich etwas geändert? („full“ heißt nur „alles neu schreiben“)
+  B.localChanges = (state) => { const d = state.dirty; return !!(d.daten || d.ink.length || d.blobs.length); };
+  // Fremden Stand ohne Rückfrage übernehmen? Nur wenn er auf dem aufbaut, was dieses Gerät kennt (höhere rev),
+  // und hier nichts Ungesichertes verloren ginge. Gleiche oder kleinere rev = gleichzeitig entstanden oder veraltet → fragen.
+  B.autoTake = (stand, state) => !!stand && typeof stand.rev === 'number' && stand.rev > (state.rev || 0) && !B.localChanges(state);
+  // Kurze Prüfsumme (FNV-1a) über den Text von daten.json – zeigt, ob daten.json schon zur stand.json passt
+  B.hash = (text) => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return text.length + '-' + (h >>> 0).toString(16);
+  };
   // Schreibzugriff auf die Datenbank eintragen; true nur, wenn sich die Merkliste dadurch geändert hat
   B.touch = (state, store, keys) => {
     const d = state.dirty;
@@ -199,8 +210,9 @@
       }
       for (const n of B.prune(await list(dVer))) await remove(dVer, n);
 
-      await writeFile(dir, 'daten.json', JSON.stringify(B.buildDaten(snap)));
-      const stand = { app: B.APP, format: B.FORMAT, rev: Math.max(state.rev || 0, (old && old.rev) || 0) + 1, saved: opts.now, device: { id: opts.device.id, name: opts.device.name } };
+      const text = JSON.stringify(B.buildDaten(snap));
+      await writeFile(dir, 'daten.json', text);
+      const stand = { app: B.APP, format: B.FORMAT, rev: Math.max(state.rev || 0, (old && old.rev) || 0) + 1, saved: opts.now, device: { id: opts.device.id, name: opts.device.name }, hash: B.hash(text) };
       await writeFile(dir, 'stand.json', JSON.stringify(stand));
       state.rev = stand.rev; state.saved = stand.saved; state.seen = { device: stand.device.id, rev: stand.rev };
       mergeDirty(state.dirty, { daten: false, full: false, ink: failed.ink, blobs: failed.blobs });
@@ -224,13 +236,22 @@
   const subDirIf = async (dir, name) => { try { return await dir.getDirectoryHandle(name); } catch (e) { if (missing(e)) return null; throw e; } };
 
   // Sicherung lesen und prüfen: BACKUP_NONE ohne daten.json, BACKUP_CORRUPT bei unlesbarem Inhalt; fehlende stand.json ist kein Fehler
+  // BACKUP_SYNCING: stand.json ist schon neu, daten.json aber noch die alte (Google Drive o. Ä. gleicht noch ab)
   B.readBackup = async (dir) => {
     const t = await readText(dir, 'daten.json');
     if (t === null) throw fail('BACKUP_NONE', 'In diesem Ordner liegt keine Sicherung');
-    const daten = parseDaten(t);
     let stand = null;
     try { stand = await B.readStand(dir); } catch (e) { if (e.code !== 'BACKUP_CORRUPT') throw e; }
+    const daten = parseDaten(t);
+    if (stand && stand.hash && B.hash(t) !== stand.hash) throw fail('BACKUP_SYNCING', 'Der Ordner wird noch abgeglichen');
     return { stand, daten };
+  };
+
+  // Nur nachsehen, ob im Ordner ein fremder Stand liegt (ohne zu schreiben) → { status: 'clean' } | { status: 'foreign', stand }
+  B.peek = async (dir, state, deviceId) => {
+    let stand = null;
+    try { stand = await B.readStand(dir); } catch (e) { if (e.code !== 'BACKUP_CORRUPT') throw e; return { status: 'clean' }; }
+    return B.foreign(stand, state, deviceId) ? { status: 'foreign', stand } : { status: 'clean' };
   };
 
   // Ganzen Stand aus dem Ordner holen. Die Senke wird erst berührt, wenn alles gelesen und geprüft ist.
