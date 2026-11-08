@@ -154,9 +154,9 @@
   // Wochenzeile Mo–So der laufenden Woche: done (alle geschafft), joker (❄️ hat die Reihe gerettet), off (Urlaub),
   // open (heute, noch nicht geschafft), future, missed
   D.WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  D.week = (history, off, today) => {
+  D.week = (history, off, today, key = D.ALL) => { // key: welche Reihe (Standard: alle To-dos)
     const K = App.streakLogic, h = history || {}, o = off || new Set();
-    const done = new Set(Object.keys(h).filter((d) => (h[d] || []).includes(D.ALL)));
+    const done = new Set(Object.keys(h).filter((d) => (h[d] || []).includes(key)));
     const info = K.streak(done, o, today), mon = K.weekKey(today);
     const jokers = info.n ? info.jokers : []; // ist die Reihe aus, rettet auch kein Joker etwas
     const days = D.WEEKDAYS.map((label, i) => {

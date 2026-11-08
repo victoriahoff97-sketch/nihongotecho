@@ -2377,3 +2377,9 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 .forum-line > .ico { width: 16px; height: 16px; color: var(--muted); flex: none; }
 .forum-line-meta { flex: none; font-size: 13px; color: var(--muted); white-space: nowrap; }
 @media (max-width: 480px) { .forum-line-meta { display: none; } .forum-bar .forum-search { max-width: none; flex: 1; } }
+
+/* Handy-Startseite: Wochenleiste (Wiederholen in Folge) unter dem Kasten */
+.hh-week { margin: 10px 0 0; padding: 8px 12px 6px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.hh-week .day-week { margin: 0; }
+.day-week-n { margin: 2px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
+.day-week-n b { color: var(--ink); }

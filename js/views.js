@@ -434,6 +434,7 @@
       <div data-backup-home>${App.backup.homeCard({ noRestoreHint: !!App.welcome.card() })}</div>
       ${genkiCard}
       <section class="hh-hero" data-hh-hero><span class="hh-wm" lang="ja">今</span>${ringSvg(r)}<div class="hh-side">${side}</div><button type="button" class="fc-btn hh-fc" data-forecast title="Prognose: die nächsten 7 Tage" aria-label="Prognose für die nächsten 7 Tage">${icon('chart')}</button></section>
+      <section class="hh-week" data-hh-week>${App.dayCheck && App.dayCheck.reviewWeek ? App.dayCheck.reviewWeek() : ''}</section>
       <nav class="hh-list" data-hh-list aria-label="Schnell üben">
         ${row(`<span class="hh-ic">${icon('thought')}</span>`, 'Forum', '<span class="forum-dot hh-new" hidden>neu</span>', { extra: 'data-action="forum"' })}
         ${row('<span class="hh-k" lang="ja">活</span>', 'Konjugieren', '<span class="hh-hint" lang="ja">飲む → 飲んで ›</span>', { href: '#/ueben/konjugieren' })}

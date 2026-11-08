@@ -59,7 +59,7 @@
   const DAY_ICON = { done: App.streakLogic.MARK, joker: '❄️', off: '❄️' };
   const DAY_TIP = { done: 'alles geschafft', joker: 'Joker – die Reihe bleibt', off: 'Urlaub – die Reihe bleibt', open: 'heute noch offen', future: '', missed: '' };
   const totalFlame = (wk) => (wk.n ? ` <span class="day-total" title="${wk.n} ${wk.n === 1 ? 'Tag' : 'Tage'} in Folge alle To-dos geschafft">${App.streakLogic.MARK}${wk.n}</span>` : '');
-  const weekRow = (wk) => `<div class="day-week" aria-label="Diese Woche">${wk.days.map((d) => `<span class="day-wd is-${d.state}${d.today ? ' is-today' : ''}" title="${esc(ddmm(d.date) + (DAY_TIP[d.state] ? ' · ' + DAY_TIP[d.state] : ''))}"><small>${d.label}</small><i>${DAY_ICON[d.state] || ''}</i></span>`).join('')}</div>`;
+  const weekRow = (wk, doneTip = 'alles geschafft') => `<div class="day-week" aria-label="Diese Woche">${wk.days.map((d) => `<span class="day-wd is-${d.state}${d.today ? ' is-today' : ''}" title="${esc(ddmm(d.date) + (d.state === 'done' ? ' · ' + doneTip : DAY_TIP[d.state] ? ' · ' + DAY_TIP[d.state] : ''))}"><small>${d.label}</small><i>${DAY_ICON[d.state] || ''}</i></span>`).join('')}</div>`;
   const forumHintShown =() => L.forumHint(cfg()) && !!(App.forum && App.forum.inGroup && App.forum.inGroup()) && !L.isDone(log(), App.today(), 'forum');
 
   const openJournal = () => {
@@ -220,5 +220,7 @@
     if (t) mark(t.dataset.dayToggle, t.getAttribute('aria-pressed') !== 'true');
   });
 
-  App.dayCheck = { card, mark, graded, listened, listenNeed, check, closeDay };
+  // Wochenleiste der Handy-Startseite (js/views.js): Wiederholen-Reihe Mo–So
+  const reviewWeek = () => { if (!S.settings) return ''; const wk = L.week(S.settings.dayHistory, offDays(), App.today(), 'review'); return weekRow(wk, 'wiederholt') + `<p class="day-week-n">${wk.n ? `${App.streakLogic.MARK} <b>${wk.n}</b> ${wk.n === 1 ? 'Tag' : 'Tage'} wiederholt in Folge` : 'Heute wiederholen – deine Reihe startet'}</p>`; };
+  App.dayCheck = { card, mark, graded, listened, listenNeed, check, closeDay, reviewWeek };
 })(window.App);

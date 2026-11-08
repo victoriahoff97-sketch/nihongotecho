@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-handy-woche', date: '9. November',
+      items: [
+        { t: 'Deine Woche auch am Handy', d: 'Auf der Handy-Startseite steht unter „Jetzt wiederholen“ die Woche Mo bis So mit 🔥 für jeden Tag mit Wiederholen und ❄️ für Joker oder Urlaub.' },
+      ],
+    },
+    {
       id: '2026-11-09-gesamt-flamme', date: '9. November',
       items: [
         { t: 'Große 🔥 in der 今日-Karte', d: 'Neben „今日 · Heute“ zählt eine Flamme, wie viele Tage in Folge du alle To-dos geschafft hast.' },
