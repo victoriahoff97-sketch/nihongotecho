@@ -24,6 +24,14 @@
       { target: '#nav .sec-practice', place: 'right', title: 'Wiederholen', text: 'Karteikarten, Kanji-Quiz und Übersetzungen aus dem, was du gesammelt hast.' },
       { target: '.foot-btn[href="#/pakete"]', place: 'right', title: 'Mehr Inhalte', text: 'Wörterbuch, JLPT-Wortlisten und WaniKani holst du hier dazu. Das „?“ oben erklärt dir jede Seite einzeln.' },
     ],
+    // „?“ auf der Startseite in der Handy-Ansicht (js/view-mode.js, homeHandy in js/views.js)
+    startHandy: [
+      { target: '[data-hh-hero]', title: 'Heute wiederholen', heart: true, text: 'Der Ring zeigt, wie viel von heute schon geschafft ist. „Jetzt wiederholen“ startet alles Fällige in einer Runde.' },
+      { target: '[data-hh-list]', title: 'Schnell üben', text: 'Ins Forum schauen, Verben konjugieren oder Partikeln in Lückensätze tippen – alles mit einem Tipp.' },
+      { target: '[data-hh-tiles]', title: 'Lesen und hören', text: 'Die Nachricht von NHK Easy, deine WaniKani-Reviews und das nächste Listening-Stück.' },
+      { target: '#handy-bar', title: 'Deine Sammlungen', text: 'Unten kommst du zu Grammatik, Vokabeln, Kanji und Ausdrücken. Alles andere steht im Menü ☰.' },
+      { target: '[data-view-switch]', place: 'right', title: 'Lieber wie am Tablet?', text: 'Unten im Menü stellst du die Ansicht auf „Standard“ um. Das gilt nur für dieses Gerät.' },
+    ],
     // nach „Jetzt nicht“
     hinweis: [
       { target: '[data-action="help"]', text: 'Hier findest du die Hilfe jederzeit wieder.' },

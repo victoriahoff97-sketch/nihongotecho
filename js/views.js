@@ -411,6 +411,44 @@
   // =========================================================
   // Start
   // =========================================================
+  // ---------- Startseite in der Handy-Ansicht (js/view-mode.js) ----------
+  // Schmaler Kasten mit Ring, ruhige Liste (Forum, Konjugieren, Lückensätze), drei Kacheln. Keine Sammlung, keine Lernstände.
+  const ringSvg = (r) => {
+    const C = 2 * Math.PI * 50, arc = Math.round(C * r.frac * 10) / 10;
+    return `<svg class="hh-ring" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" class="hh-track"/>
+      ${arc ? `<circle cx="60" cy="60" r="50" class="hh-arc" stroke-dasharray="${arc} ${C}" transform="rotate(-90 60 60)"/>` : ''}
+      <text x="60" y="${r.due ? 73 : 76}" text-anchor="middle" class="hh-num">${r.due || '✓'}</text></svg>`;
+  };
+  const homeHandy = ({ due, next, vacation, genkiCard }) => {
+    const done = App.viewModeLogic.doneToday(S.srs.values(), new Date().setHours(0, 0, 0, 0));
+    const r = App.viewModeLogic.ring(done, due);
+    const side = vacation
+      ? `<span class="hh-sub">${App.pause.heroText()}</span><span class="hh-go">${App.pause.heroButton()}</span>`
+      : due
+        ? `<span class="hh-sub">${r.due} fällig · ${r.done} geschafft</span><a class="hh-btn" href="#/ueben/heute?auto=1">Jetzt wiederholen</a>`
+        : `<span class="hh-sub">Alles geschafft${r.done ? ` · ${r.done} wiederholt` : ''}</span><a class="hh-btn" href="${next ? next.href : '#/ueben/karten'}">${next ? 'Neue Karten lernen' : 'Karteikarten'}</a>`;
+    const row = (ic, label, hint, attrs) => `<${attrs.href ? 'a' : 'button type="button"'} class="hh-row" ${attrs.href ? `href="${attrs.href}"` : attrs.extra}>${ic}<span class="hh-lbl">${label}</span>${hint}</${attrs.href ? 'a' : 'button'}>`;
+    const tile = (cls, art, word, attrs) => `<${attrs.href ? 'a' : 'button type="button"'} class="read-tile hh-tile ${cls}" ${attrs.href ? `href="${attrs.href}" target="_blank" rel="noopener"` : attrs.extra}><span class="art">${art}</span><span lang="ja">${word}</span></${attrs.href ? 'a' : 'button'}>`;
+    return `<div class="sec-home hh-home">
+      ${App.welcome.card()}
+      <div data-backup-home>${App.backup.homeCard({ noRestoreHint: !!App.welcome.card() })}</div>
+      ${genkiCard}
+      <section class="hh-hero" data-hh-hero><span class="hh-wm" lang="ja">今</span>${ringSvg(r)}<div class="hh-side">${side}</div></section>
+      <nav class="hh-list" data-hh-list aria-label="Schnell üben">
+        ${row(`<span class="hh-ic">${icon('thought')}</span>`, 'Forum', '<span class="forum-dot hh-new" hidden>neu</span>', { extra: 'data-action="forum"' })}
+        ${row('<span class="hh-k" lang="ja">活</span>', 'Konjugieren', '<span class="hh-hint" lang="ja">飲む → 飲んで ›</span>', { href: '#/ueben/konjugieren' })}
+        ${row('<span class="hh-k" lang="ja">助</span>', 'Lückensätze', '<span class="hh-hint" lang="ja">は・が・を ›</span>', { href: '#/ueben/luecken' })}
+      </nav>
+      <p class="hh-head">Heute lesen und hören</p>
+      <div class="hh-tiles" data-hh-tiles>
+        ${tile('news', NEWS_SVG, 'ニュース', { href: 'https://news.web.nhk/news/easy/' })}
+        ${tile('wani', KANJI_SVG, '漢字', { href: 'https://www.wanikani.com/' })}
+        ${tile('listen', App.listening.ART || '', 'リスニング', { extra: 'data-hh-listen' })}
+      </div>
+    </div>`;
+  };
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-hh-listen]')) App.listening.open(); });
+
   App.route('/', (view) => {
     const name = S.settings.name;
     const h = new Date().getHours();
@@ -443,6 +481,7 @@
     const stat = (t, n, sub) => { const s = App.SECTIONS[t]; return `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; };
     // Genki-Freischaltung: auf der Startseite nur, solange sie noch aussteht (nicht bei none/open)
     const genkiCard = App.genki && ['locked', 'stale'].includes(App.genki.state()) ? `<div style="margin-bottom:18px">${App.genki.card()}</div>` : '';
+    if (document.body.classList.contains('view-handy')) { view.innerHTML = homeHandy({ due, next, vacation, genkiCard }); App.forum && App.forum.refreshDot && App.forum.refreshDot(); return; }
     const blocks = {
       hero: `<div class="hero"><div class="big-jp">日本語</div>
         <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>

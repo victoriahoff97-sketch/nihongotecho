@@ -18,6 +18,7 @@
     ['session', 'Unterricht', '#/unterricht', 'sec-session', '授業'],
     ['library', 'Bibliothek', '#/bibliothek', 'sec-library', '資料'],
   ];
+  App.NAV = NAV; // auch für die Leiste unten in der Handy-Ansicht (js/view-mode.js)
   // Pakete und Einstellungen stehen als Symbole in der Fußzeile
   const renderNav = () => {
     const path = App.parseHash().path;

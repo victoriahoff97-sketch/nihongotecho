@@ -2237,3 +2237,46 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .sel-card button:hover, .sel-card button:focus-visible { background: var(--sec); color: #fff; }
 .sel-card .k { font-family: var(--font-kanji); font-size: 17px; }
 #park-bar:not([hidden]) + #article-bar { top: calc(var(--topbar-h) + 53px); }
+
+/* ---------- Handy-Ansicht (js/view-mode.js) – alles hier gilt nur schmal bzw. mit body.view-handy ---------- */
+.view-switch { display: none; }
+body.view-narrow .view-switch { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px 8px; }
+body.view-narrow .view-switch .seg { flex: 1; max-width: 190px; flex-wrap: nowrap; }
+body.view-narrow .view-switch .seg button { flex: 1; justify-content: center; min-height: 34px; }
+#handy-bar { display: none; }
+body.view-handy #handy-bar:not([hidden]) { --hb-h: 58px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; justify-content: space-around; align-items: stretch; gap: 2px; padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -4px 14px rgba(0,0,0,.05); }
+body.view-handy .hb-item { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-decoration: none; color: var(--sec); font-size: 11px; font-weight: 700; min-height: 50px; border-radius: 12px; }
+body.view-handy .hb-dot { width: 40px; height: 28px; border-radius: 10px; display: grid; place-items: center; }
+body.view-handy .hb-item.on .hb-dot { background: var(--sec-soft); }
+body.view-handy .hb-item .hb-lbl { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.view-handy .hb-item:not(.on) .hb-lbl { color: var(--muted); }
+/* Platz unten, damit die Leiste nichts verdeckt; Hinweise und die Rundgang-Leiste rutschen darüber */
+body.has-handy-bar #view { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
+body.has-handy-bar #toasts { bottom: calc(76px + env(safe-area-inset-bottom)); }
+body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom)); }
+/* Handy-Startseite (homeHandy in js/views.js) */
+.hh-home { display: flex; flex-direction: column; }
+.hh-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 18px; color: #fff; background: linear-gradient(120deg, #2b3a63 0%, #3c3163 55%, #8a3a4a 100%); box-shadow: var(--shadow); }
+.hh-wm { position: absolute; right: -6px; top: -22px; font-family: var(--font-kanji); font-size: 110px; line-height: 1; opacity: .12; pointer-events: none; }
+.hh-ring { width: 76px; height: 76px; flex: none; }
+.hh-ring .hh-track, .hh-ring .hh-arc { fill: none; stroke-width: 11; }
+.hh-ring .hh-track { stroke: rgba(255,255,255,.2); }
+.hh-ring .hh-arc { stroke: #fff; stroke-linecap: round; }
+.hh-ring .hh-num { fill: #fff; font-size: 38px; font-weight: 800; }
+.hh-side { position: relative; display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1; }
+.hh-sub { font-size: 13px; opacity: .88; }
+.hh-btn { align-self: flex-start; background: #fff; color: #2b3a63; border-radius: 999px; padding: 9px 18px; font-weight: 800; font-size: 15px; text-decoration: none; }
+.hh-go .btn { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.25); color: #fff; }
+.hh-list { display: flex; flex-direction: column; margin: 10px 6px 0; }
+.hh-row { display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; font-size: 16px; color: var(--ink); text-decoration: none; text-align: left; cursor: pointer; width: 100%; }
+.hh-row:last-child { border-bottom: 0; }
+.hh-lbl { flex: 1; font-weight: 700; }
+.hh-ic { color: var(--shu); display: grid; place-items: center; width: 24px; }
+.hh-k { width: 24px; text-align: center; font-family: var(--font-kanji); font-size: 22px; line-height: 1; color: var(--daidai); }
+.hh-hint { color: var(--muted); font-size: 13px; }
+.hh-new { position: static; background: var(--shu); color: #fff; border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 800; width: auto; height: auto; }
+.hh-head { margin: 14px 8px 6px; font-size: 12px; font-weight: 800; letter-spacing: .04em; color: var(--muted); }
+.hh-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.read-tile.hh-tile { flex-direction: column; justify-content: center; gap: 2px; padding: 8px 4px 10px; border-radius: 16px; font: inherit; cursor: pointer; }
+.read-tile.hh-tile .art { width: 66px; height: 60px; }
+.read-tile.hh-tile > span[lang] { color: var(--c); font-weight: 800; font-size: 14px; }

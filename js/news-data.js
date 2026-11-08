@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-08-handy-ansicht', date: '8. November',
+      items: [
+        { t: 'Eigene Ansicht fürs Handy', d: 'Am Handy zeigt die Startseite jetzt nur das Wichtigste: einen Ring mit deinen fälligen Karten, Forum, Konjugieren, Lückensätze und Lesen/Hören.' },
+        { t: 'Leiste unten', d: 'Unten tippst du direkt zu Grammatik, Vokabeln, Kanji und Ausdrücken. Alles andere findest du wie gewohnt im Menü ☰.' },
+        { t: 'Lieber wie am Tablet?', d: 'Ganz unten im Menü ☰ stellst du die Ansicht auf „Standard“. Das gilt nur für dieses Handy, das Tablet bleibt, wie es ist.' },
+      ],
+    },
+    {
       id: '2026-11-08-handy-menu', date: '8. November',
       items: [
         { t: 'Menü am Handy geht wieder', d: 'Am Handy war das Menü (☰ oben links) grau und ließ sich nicht antippen. Jetzt kannst du darüber wieder jede Seite öffnen.' },

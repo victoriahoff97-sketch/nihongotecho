@@ -96,8 +96,9 @@
   };
 
   const refreshDot = () => {
-    const dot = $('.forum-dot');
-    if (dot) dot.hidden = !(status === 'live' && F.hasNew(posts, st.seen, D.uid()));
+    // Punkt oben in der Kopfzeile und „neu“ auf der Handy-Startseite
+    const on = status === 'live' && F.hasNew(posts, st.seen, D.uid());
+    $$('.forum-dot').forEach((dot) => { dot.hidden = !on; });
   };
   const markSeen = (id) => { st.seen = F.markSeen(st.seen, id, F.seenAt(posts.find((p) => p.id === id), Date.now())); save(); refreshDot(); };
 
@@ -1020,7 +1021,7 @@
     markSeen(id);
   };
 
-  App.forum = { open, state: () => st };
+  App.forum = { open, state: () => st, refreshDot }; // refreshDot: auch das „neu“ auf der Handy-Startseite
 
   // Im Hintergrund verbinden, damit der rote Punkt auch ohne Öffnen erscheint – nie, wenn das Gerät in keiner Gruppe ist
   if (typeof document !== 'undefined') window.addEventListener('load', () => { if (st.code && D.configured()) setTimeout(start, 3000); });

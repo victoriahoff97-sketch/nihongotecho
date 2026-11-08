@@ -144,6 +144,7 @@
     App.toast('Ab hier geht es weiter', { label: 'Rückgängig', fn: () => App.saveSettings({ listenPos: old, listenAt: oldAt }) });
   };
   L.open = open;
+  L.ART = ART; // Kopfhörer-Bild auch für die Kachel der Handy-Startseite (js/views.js)
   L.jump = jump;
 
   document.addEventListener('click', (e) => {

@@ -251,6 +251,9 @@
   App.tour = {
     start, stop, askOnce, askSoon, firstRun,
     active: () => !!cur,
-    startForPage: () => start(L.tourKeyFor(App.parseHash().path)),
+    startForPage: () => {
+      const path = App.parseHash().path;
+      start(path === '/' && document.body.classList.contains('view-handy') ? 'startHandy' : L.tourKeyFor(path));
+    },
   };
 })(window.App);

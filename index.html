@@ -24,6 +24,7 @@
     <nav id="nav"></nav>
     <div class="sidebar-foot">
       <button class="nav-link backup-status" id="backup-status" hidden></button>
+      <div class="view-switch" data-view-switch><span class="small muted">Ansicht</span><div class="seg" role="group" aria-label="Ansicht"><button type="button" data-view="handy">Handy</button><button type="button" data-view="standard">Standard</button></div></div>
       <div class="foot-row">
         <button class="foot-btn" data-action="toggle-sidebar" data-tip="Einklappen" aria-label="Seitenleiste ein-/ausklappen"><span class="ico" data-ico="sidebar"></span></button>
         <span class="grow"></span>
@@ -54,6 +55,7 @@
     <main id="view" tabindex="-1"></main>
   </div>
 </div>
+<nav id="handy-bar" aria-label="Bereiche" hidden></nav>
 <div id="overlay-root"></div>
 <div id="toasts"></div>
 
@@ -141,6 +143,7 @@
 <script src="js/exercises.js"></script>
 <script src="js/home-order-logic.js"></script>
 <script src="js/sort-logic.js"></script>
+<script src="js/view-mode-logic.js"></script>
 <script src="js/views.js"></script>
 <script src="js/library-logic.js"></script>
 <script src="js/views-more.js"></script>
@@ -192,6 +195,7 @@
 <script src="js/news-data.js"></script>
 <script src="js/news-logic.js"></script>
 <script src="js/news.js"></script>
+<script src="js/view-mode.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
