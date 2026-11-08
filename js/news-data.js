@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-08-handy-ansicht-2', date: '8. November',
+      items: [
+        { t: 'Prognose auch am Handy', d: 'Im blauen Kasten der Handy-Startseite zeigt das kleine Balken-Symbol oben rechts, wie viele Karten in den nächsten 7 Tagen fällig werden.' },
+      ],
+    },
+    {
       id: '2026-11-08-handy-ansicht', date: '8. November',
       items: [
         { t: 'Eigene Ansicht fürs Handy', d: 'Am Handy zeigt die Startseite jetzt nur das Wichtigste: einen Ring mit deinen fälligen Karten, Forum, Konjugieren, Lückensätze und Lesen/Hören.' },
