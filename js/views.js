@@ -439,6 +439,10 @@
         ${row('<span class="hh-k" lang="ja">活</span>', 'Konjugieren', '<span class="hh-hint" lang="ja">飲む → 飲んで ›</span>', { href: '#/ueben/konjugieren' })}
         ${row('<span class="hh-k" lang="ja">助</span>', 'Lückensätze', '<span class="hh-hint" lang="ja">は・が・を ›</span>', { href: '#/ueben/luecken' })}
       </nav>
+      <div class="hh-short" data-hh-short>
+        <a class="hh-sc sec-practice" href="#/ueben"><span class="hh-bg" lang="ja">練</span>${icon('practice')}<b>Üben</b><span>Karten, Kanji, Übersetzen</span></a>
+        <a class="hh-sc sec-apply" href="#/anwenden"><span class="hh-bg" lang="ja">使</span>${icon('edit')}<b>Anwenden</b><span>Tagebuch, Smalltalk</span></a>
+      </div>
       <p class="hh-head">Heute lesen und hören</p>
       <div class="hh-tiles" data-hh-tiles>
         ${tile('news', NEWS_SVG, 'ニュース', { href: 'https://news.web.nhk/news/easy/' })}

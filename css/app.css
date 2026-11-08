@@ -2282,3 +2282,8 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 .read-tile.hh-tile { flex-direction: column; justify-content: center; gap: 2px; padding: 8px 4px 10px; border-radius: 16px; font: inherit; cursor: pointer; }
 .read-tile.hh-tile .art { width: 66px; height: 60px; }
 .read-tile.hh-tile > span[lang] { color: var(--c); font-weight: 800; font-size: 14px; }
+.hh-short { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.hh-sc { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 16px; background: var(--sec-soft); color: var(--sec); text-decoration: none; }
+.hh-sc b { color: var(--ink); font-size: 16px; margin-top: 4px; }
+.hh-sc > span:last-child { color: var(--muted); font-size: 12px; }
+.hh-sc .hh-bg { position: absolute; right: -4px; bottom: -16px; font-family: var(--font-kanji); font-size: 66px; line-height: 1; opacity: .14; pointer-events: none; }

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-08-handy-ansicht-3', date: '8. November',
+      items: [
+        { t: 'Üben und Anwenden am Handy', d: 'Auf der Handy-Startseite führen zwei große Felder direkt zu allen Übungen und zu Tagebuch und Smalltalk.' },
+      ],
+    },
+    {
       id: '2026-11-08-auto-abgleich', date: '8. November',
       items: [
         { t: 'Geräte gleichen sich selbst ab', d: 'Das andere Gerät holt sich deinen neuen Stand jetzt von selbst. Gefragt wird nur noch, wenn du auf beiden etwas geändert hast.' },
