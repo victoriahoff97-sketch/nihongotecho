@@ -129,6 +129,10 @@
 
   const AFFIX = new Set(['suf', 'n-suf', 'pref', 'n-pref', 'ctr']);
   const affixOnly = (p) => Array.isArray(p) && p.length > 0 && p.every((t) => AFFIX.has(t));
+  // Direkt nach einem Katakana-Wort ist ein einzelnes Kanji fast immer eine Endung: ドイツ人 → じん, コーヒー店 → てん.
+  // Endungen, die im Wörterbuch fehlen, stehen hier von Hand (キャンプ場, スキー場 → じょう, nicht ば).
+  const reKata = /[ァ-ヺー]/;
+  const KATA_SUF = { 場: 'じょう' };
 
   // Lesung des Satzes. opts: lookup(forms) → Map Form → Einträge { id, k, r, p, c, own }, deinflect, posMatches,
   // notate (JP.notate), bonus(entry, Grundform, Lesung) (0–9, z. B. JLPT-Niveau: 前 → まえ vor ぜん).
@@ -141,7 +145,7 @@
     const push = (t, r) => parts.push({ t, r });
 
     // Längstes Wort ab Stelle i, das ein Kanji enthält: { len, r, own }
-    const wordAt = async (i, kanaStart) => {
+    const wordAt = async (i, kanaStart, afterKata) => {
       let maxLen = 0;
       while (maxLen < MAX_LEN && i + maxLen < s.length && reJp.test(s[i + maxLen])) maxLen++;
       const byLen = [], forms = new Set();
@@ -167,7 +171,7 @@
           if (!r) continue;
           // eigene Vokabel · häufig · kein bloßes Suffix/Zählwort · Hauptschreibung des Eintrags (本 → ほん, nicht もと) · 行って → 行く
           const score = (e.own ? 1000 : 0) + (e.c ? 100 : 0) + (affixOnly(e.p) ? 0 : 50) + (e.k[0] === cand.base ? 20 : 0)
-            + ((cand.rules || []).some((n) => n.startsWith('iku')) ? 30 : 0) - (cand.stem ? 60 : 0) + bonus(e, cand.base, br) + (cand.base === surface ? 1 : 0);
+            + ((cand.rules || []).some((n) => n.startsWith('iku')) ? 30 : 0) - (cand.stem ? 60 : 0) + bonus(e, cand.base, br) + (cand.base === surface ? 1 : 0) + (afterKata && len === 1 && affixOnly(e.p) ? 2000 : 0);
           if (!best || score > best.score) best = { len, r, own: !!e.own, score };
         }
         if (best) return best;
@@ -186,7 +190,9 @@
         if (w) { push(s.slice(i, i + w.len), w.r); i += w.len; prevCtr = ''; } else { push(ch, null); i++; }
         continue;
       }
-      const w = reKanji.test(ch) ? await wordAt(i, false) : null;
+      const afterKata = i > 0 && reKata.test(s[i - 1]);
+      let w = reKanji.test(ch) ? await wordAt(i, false, afterKata) : null;
+      if (afterKata && KATA_SUF[ch] && (!w || w.len === 1) && !reKanji.test(s[i + 1] || '')) w = { len: 1, r: KATA_SUF[ch], own: false };
       const numEnd = num ? num.end : i + 1;
       const ctr = counterAt(s, numEnd);
       const span = numEnd + ctr.length - i;

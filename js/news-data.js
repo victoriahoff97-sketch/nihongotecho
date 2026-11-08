@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-furigana-endung', date: '9. November',
+      items: [
+        { t: 'Richtigere Furigana', d: 'Nach Wörtern in Katakana stimmt die Lesung jetzt öfter: キャンプ場 (じょう), ドイツ人 (じん), コーヒー店 (てん).' },
+      ],
+    },
+    {
       id: '2026-11-09-challenge-glitzer', date: '9. November',
       items: [
         { t: 'Furigana in der Challenge', d: 'Über den Sätzen in der Täglichen Gruppen-Challenge stehen jetzt Furigana – auch über deinem eigenen.' },
