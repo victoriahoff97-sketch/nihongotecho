@@ -2371,6 +2371,13 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 @media (prefers-reduced-motion: reduce) { .fd-myflame.is-lit { animation: none; } }
 .fd-line.is-own { background: color-mix(in srgb, var(--shu) 8%, var(--card)); }
 .fd-line .forum-flame { color: var(--shu); }
+.fd-furibtn { min-width: 32px; padding: 2px 8px; font-size: 15px; }
+.fd-furied { display: flex; flex-direction: column; gap: 6px; }
+.fd-furied-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px; font-size: 19px; }
+.fd-furied-seg { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.fd-furied-seg input { width: auto; min-width: 2.6em; height: 28px; padding: 2px 4px; font-size: 13px; text-align: center; }
+.fd-furied-seg span { padding: 0 2px; border-bottom: 2px solid color-mix(in srgb, var(--shu) 45%, transparent); }
+.fd-furied .forum-err:not([hidden]) { display: inline; }
 .fd-line.is-veiled .fd-text { filter: blur(6px); user-select: none; pointer-events: none; }
 .fd-cheer { margin: 2px 0 0; font-size: 15px; font-weight: 700; color: var(--shu); }
 .fd-cheer .muted { font-weight: 400; font-size: 14px; }

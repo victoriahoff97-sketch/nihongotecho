@@ -161,12 +161,14 @@
     .onSnapshot((snap) => onList(snap.docs.map((d) => {
       const x = raw(d);
       return { id: d.id, uid: x.uid, name: x.name, text: x.text, usedPrompt: !!x.usedPrompt, createdAt: x.createdAt, editedAt: x.editedAt || null,
-        likes: Array.isArray(x.likes) ? x.likes.filter((u) => typeof u === 'string') : [] };
+        likes: Array.isArray(x.likes) ? x.likes.filter((u) => typeof u === 'string') : [], furi: typeof x.furi === 'string' ? x.furi : null };
     })), onError);
   D.sendDaily = (code, date, { name, text, usedPrompt }) => dailyCol(code, date).doc(D.uid())
     .set({ uid: D.uid(), name, text, usedPrompt: !!usedPrompt, createdAt: now(), editedAt: null, likes: [] });
   D.editDaily = (code, date, { text, usedPrompt }) => dailyCol(code, date).doc(D.uid())
     .update({ text, usedPrompt: !!usedPrompt, editedAt: now() });
+  // Lesung von Hand korrigiert (jedes Mitglied, für alle sichtbar); null = wieder automatisch
+  D.setDailyFuri = (code, date, uid, furi) => dailyCol(code, date).doc(uid).update({ furi: furi || null });
   D.likeDaily = (code, date, uid, on) => dailyCol(code, date).doc(uid).update({ likes: likeOp(on) });
   // Serie { n, hold, days } am eigenen Mitglied-Eintrag
   D.setStreak = (code, streak) => group(code).collection('members').doc(D.uid()).update({ streak });

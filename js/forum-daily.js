@@ -73,14 +73,16 @@
   // Furigana über den Sätzen: Lesung aus eigenen Vokabeln + Offline-Wörterbuch (App.sentenceReading), auf jedem Gerät
   // selbst berechnet und gemerkt; bis sie da ist, steht der Satz ohne. Wörter ohne bekannte Lesung bleiben ohne Furigana.
   const furi = {}; // Satz → Notation 食[た]べる ('' = keine Kanji / nichts gefunden, null = wird berechnet)
-  const furiHtml = (t) => {
+  const furiHtml = (t, fixed) => {
     const jp = String(t || '');
+    // von Hand korrigiert und noch passend zum Satz: diese Lesung für alle
+    if (Y.furiFits(fixed, jp)) return App.jp.ruby(fixed);
     if (!App.jp.hasKanji(jp) || !App.sentenceReading) return textHtml(jp);
     if (!(jp in furi)) {
       furi[jp] = null;
       Promise.resolve().then(() => App.sentenceReading(jp)).then((r) => {
         furi[jp] = r && r.furi && r.furi !== jp ? r.furi : '';
-        if (furi[jp] && m && !m.editing) drawList();
+        if (furi[jp] && m && !m.editing && !m.furiEdit) drawList();
       }, (e) => { console.error(e); furi[jp] = ''; });
     }
     return furi[jp] ? App.jp.ruby(furi[jp]) : textHtml(jp);
@@ -98,9 +100,19 @@
     if (m.editing && canEdit) return `<div class="fd-line is-own" data-dline="${esc(x.id)}"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}</div><div data-deditslot></div></div>`;
     // Kopf: Avatar, Name, Tage in Folge – rechts Herz und Bearbeiten; darunter der Satz
     return `<div class="fd-line ${own ? 'is-own' : ''}"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}${x.editedAt ? '<span class="muted small">(bearbeitet)</span>' : ''}
-        ${own && x.usedPrompt ? '<span class="fd-used">✓ Wort benutzt</span>' : ''}<span class="grow"></span>${likeBtn(x)}
+        ${own && x.usedPrompt ? '<span class="fd-used">✓ Wort benutzt</span>' : ''}<span class="grow"></span>${App.jp.hasKanji(x.text) ? `<button type="button" class="btn btn-sm fd-furibtn" data-dfuri="${esc(x.date)}|${esc(x.id)}" title="Lesung (Furigana) korrigieren" aria-label="Lesung korrigieren" lang="ja">あ</button>` : ''}${likeBtn(x)}
         ${canEdit ? `<button type="button" class="btn btn-sm" data-dchange title="Bearbeiten" aria-label="Bearbeiten">${icon('edit')}<span class="fd-lbl"> Bearbeiten</span></button>` : ''}</div>
-      <div class="fd-text forum-text" lang="ja">${furiHtml(x.text)}</div></div>`;
+      ${m.furiEdit === x.date + '|' + x.id ? furiEditorHtml(x) : `<div class="fd-text forum-text" lang="ja">${furiHtml(x.text, x.furi)}</div>`}</div>`;
+  };
+  // Korrektur: über jedem Kanji-Stück ein kleines Feld mit der Lesung (vorbelegt mit der jetzigen), leer = ohne Furigana
+  const furiEditorHtml = (x) => {
+    const note = Y.furiFits(x.furi, x.text) ? x.furi : (furi[x.text] || x.text);
+    const segs = Y.furiSegments(note);
+    return `<div class="fd-furied" data-dfuried="${esc(x.date)}|${esc(x.id)}"><div class="fd-furied-row" lang="ja">${segs.map((s, i) => (s.edit
+      ? `<label class="fd-furied-seg"><input class="input" data-dseg="${i}" value="${esc(s.r)}" size="${Math.max(2, s.r.length + 1)}" lang="ja" autocomplete="off" aria-label="Lesung von ${esc(s.t)}"><span>${esc(s.t)}</span></label>`
+      : `<span class="fd-furied-txt">${esc(s.t)}</span>`)).join('')}</div>
+      <p class="muted small">Lesung in Hiragana über das Kanji schreiben. Leer lassen = keine Furigana. Alle in der Gruppe sehen deine Korrektur.</p>
+      <div class="fd-under"><span class="forum-err" hidden></span><span class="grow"></span>${Y.furiFits(x.furi, x.text) ? '<button type="button" class="btn btn-sm btn-ghost" data-dfuriauto>Wieder automatisch</button>' : ''}<button type="button" class="btn btn-sm" data-dfuricancel>Abbrechen</button><button type="button" class="btn btn-sm btn-primary" data-dfurisave>Speichern</button></div></div>`;
   };
   const veiledHtml = (x) => `<div class="fd-line is-veiled" title="Erst deinen Satz schreiben"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}</div>
       <div class="fd-text" lang="ja" aria-hidden="true">${esc(x.text)}</div></div>`;
@@ -347,6 +359,32 @@
   const onClick = async (e) => {
     if (!m) return;
     if (e.target.closest('[data-dtoggle]')) { setOpen(!open); return; }
+    const fb = e.target.closest('[data-dfuri]');
+    if (fb) { m.furiEdit = m.furiEdit === fb.dataset.dfuri ? null : fb.dataset.dfuri; drawList(); const inp = m.el.querySelector('[data-dfuried] input'); if (inp) inp.focus(); return; }
+    if (e.target.closest('[data-dfuricancel]')) { m.furiEdit = null; drawList(); return; }
+    const fsave = e.target.closest('[data-dfurisave], [data-dfuriauto]');
+    if (fsave) {
+      const box = fsave.closest('[data-dfuried]');
+      const [date, id] = box.dataset.dfuried.split('|');
+      const x = (m.lists[date] || []).find((y) => y.id === id);
+      if (!x) return;
+      let note = null;
+      if (fsave.matches('[data-dfurisave]')) {
+        const segs = Y.furiSegments(Y.furiFits(x.furi, x.text) ? x.furi : (furi[x.text] || x.text));
+        box.querySelectorAll('[data-dseg]').forEach((inp) => { segs[Number(inp.dataset.dseg)].r = App.jp.toHira(inp.value.trim()); });
+        note = Y.furiBuild(segs);
+        if (!Y.furiFits(note, x.text)) return;
+      }
+      fsave.disabled = true;
+      try { await D.setDailyFuri(m.ctx.code, date, x.uid, note); m.furiEdit = null; drawList(); App.toast(note ? 'Lesung gespeichert – alle sehen sie jetzt so.' : 'Lesung wieder automatisch.'); }
+      catch (y) {
+        fsave.disabled = false;
+        const err = box.querySelector('.forum-err');
+        err.hidden = false;
+        err.textContent = y && y.code === 'permission-denied' ? 'Das Korrigieren geht erst, wenn die Forum-Regeln aktualisiert sind.' : OFFLINE;
+      }
+      return;
+    }
     if (e.target.closest('[data-dgenki]')) { e.preventDefault(); if (App.forum && App.forum.close) App.forum.close(); App.go('#/pakete'); return; }
     if (e.target.closest('[data-dweekend]')) {
       const wk = m.weekend;

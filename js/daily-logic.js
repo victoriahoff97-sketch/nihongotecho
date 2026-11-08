@@ -146,4 +146,35 @@
     if (p.type === 'grammar') return usesGrammar(t, p);
     return usesWord(t, p);
   };
+
+  // ---------- Furigana von Hand korrigieren ----------
+  // Notation 食[た]べる / {キャンプ場}[キャンプじょう] ↔ Stücke [{ t, r, edit }]: edit = Kanji darin (bekommt ein Lesungsfeld)
+  const KJ = '\\u3400-\\u9fff\\uf900-\\ufaff々〆ヵヶ';
+  const reNote = new RegExp('\\{([^}]+)\\}\\[([^\\]]*)\\]|([' + KJ + ']+)\\[([^\\]]*)\\]', 'g');
+  const reRun = new RegExp('([' + KJ + ']+)', 'g');
+  const reK = new RegExp('[' + KJ + ']');
+  const reAllK = new RegExp('^[' + KJ + ']+$');
+  const plainParts = (txt, out) => txt.split(reRun).forEach((p, i) => { if (p) out.push({ t: p, r: '', edit: i % 2 === 1 }); });
+  Y.furiSegments = (note) => {
+    const s = String(note || ''), out = [];
+    let last = 0, mm;
+    reNote.lastIndex = 0;
+    while ((mm = reNote.exec(s))) {
+      plainParts(s.slice(last, mm.index), out);
+      const t = mm[1] || mm[3];
+      out.push({ t, r: mm[2] != null ? mm[2] : mm[4], edit: reK.test(t) });
+      last = mm.index + mm[0].length;
+    }
+    plainParts(s.slice(last), out);
+    return out;
+  };
+  // Stücke → Notation; leere Lesung = ohne Furigana
+  Y.furiBuild = (segs) => (segs || []).map((x) => {
+    const r = String(x.r || '').trim();
+    if (!x.edit || !r || r === x.t) return x.t;
+    return reAllK.test(x.t) ? `${x.t}[${r}]` : `{${x.t}}[${r}]`;
+  }).join('');
+  // Gilt die gespeicherte Notation noch für diesen Satz? (nach dem Bearbeiten nicht mehr)
+  Y.furiFits = (note, text) => typeof note === 'string' && !!note && note.length <= 400
+    && Y.furiSegments(note).map((x) => x.t).join('') === String(text || '');
 })(window.App = window.App || {});
