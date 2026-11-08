@@ -1094,7 +1094,8 @@ body.ink-fit #view { padding-bottom: 16px; }
 @media (max-width: 860px) {
   #sidebar { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow-lg); }
   body.sidebar-open #sidebar { transform: none; }
-  body.sidebar-open::after { content: ''; position: fixed; inset: 0; z-index: 29; background: rgba(0,0,0,.32); }
+  /* Abdunkeln IN #app (eigene Ebene, z-index 1) – sonst liegt der Schatten über dem Menü und schluckt jeden Tipp */
+  body.sidebar-open #app::after { content: ''; position: fixed; inset: 0; z-index: 29; background: rgba(0,0,0,.32); }
   body.sidebar-collapsed #sidebar { width: var(--sidebar-w); }
   body.sidebar-collapsed .brand-text, body.sidebar-collapsed .nav-link .lbl { display: flex; }
   body.sidebar-collapsed .foot-row { flex-direction: row; gap: 6px; }

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-08-handy-menu', date: '8. November',
+      items: [
+        { t: 'Menü am Handy geht wieder', d: 'Am Handy war das Menü (☰ oben links) grau und ließ sich nicht antippen. Jetzt kannst du darüber wieder jede Seite öffnen.' },
+      ],
+    },
+    {
       id: '2026-11-07-pausieren', date: '7. November',
       items: [
         { t: 'Verpasste Tage überspringen', d: 'Einen Tag nicht geschafft? Im blauen Kasten der Startseite erscheint ein Rückspul-Symbol: ein Klick, und es geht weiter, als hättest du nichts verpasst.' },
