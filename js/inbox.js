@@ -163,12 +163,12 @@
   App.inbox = {
     // Markieren in der App (js/selcard.js): Vokabel-Formular auf der aktuellen Seite öffnen, der Satz wird Beispielsatz.
     // Schon vorhanden → Hinweis mit „Öffnen“ statt eines zweiten Eintrags.
-    async vocabHere({ text, satz }) {
+    async vocabHere({ text, satz, leave }) {
       try {
         const word = JP.plain(text).replace(/\s+/g, '');
         const items = [...App.store.items.values()];
         const own = baseForms(word).map((f) => L.findExisting(items, f)).find(Boolean);
-        if (own) return App.toast(`„${App.itemPlain(own)}“ ist schon in deinen Vokabeln`, { label: 'Öffnen', fn: () => App.go(App.link(own)) });
+        if (own) return App.toast(`„${App.itemPlain(own)}“ ist schon in deinen Vokabeln`, { label: 'Öffnen', fn: () => { if (leave) leave(); App.go(App.link(own)); } });
         const d = L.vocabDefaults({ text: text.replace(/\s+/g, ''), satz: satz && JP.plain(satz) !== word ? satz : '', quelle: '', ref: '' });
         const hit = await dictHit(word).catch(() => null);
         if (hit) App.adoptDictEntry({ entry: hit.entry, surface: hit.base, base: hit.base === word ? d.kana : '' }, { extra: { examples: d.examples } });

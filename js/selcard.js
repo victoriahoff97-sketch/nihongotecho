@@ -8,6 +8,14 @@
   // Hier kein Kärtchen: Eingabefelder und Editoren (eigene Leisten), offene Fenster (die Übergabe wartet, bis sie zu sind),
   // Kartenrunden (ein Seitenwechsel würde die Runde beenden), Nachschlagen-Fenster, Tour
   const NO_CARD = 'input, textarea, select, [contenteditable], .modal-back, .viewer, .flash-stage, .lookup-pop, .sel-card, .tour-bubble, .tour-block';
+  // Ausnahme Gruppen-Forum (ein Fenster): dort darf markiert werden, solange kein anderes Fenster darüber liegt
+  const NO_CARD_FORUM = NO_CARD.replace('.modal-back, ', '');
+  const forumOf = (el) => {
+    const back = el.closest('.modal-back');
+    if (!back || !back.querySelector('.forum-modal') || el.closest(NO_CARD_FORUM)) return null;
+    const all = document.querySelectorAll('.modal-back, .viewer');
+    return all[all.length - 1] === back ? back : null;
+  };
 
   const textOf = (el, tag) => [...el.querySelectorAll(tag)].map((x) => x.textContent).join('');
   const rubyBase = (el) => { const c = el.cloneNode(true); c.querySelectorAll('rt, rp').forEach((x) => x.remove()); return c.textContent; };
@@ -71,12 +79,14 @@
     if (!sel || sel.isCollapsed || !sel.rangeCount) return null;
     const range = sel.getRangeAt(0);
     const a = elOf(range.startContainer), b = elOf(range.endContainer);
-    if (!a || !b || !document.getElementById('view').contains(a) || a.closest(NO_CARD) || b.closest(NO_CARD)) return null;
+    if (!a || !b) return null;
+    const forum = forumOf(a);
+    if (forum ? forumOf(b) !== forum : !document.getElementById('view').contains(a) || a.closest(NO_CARD) || b.closest(NO_CARD)) return null;
     const text = S.toNotation(tokens(rangeRoot(range), range));
     if (!text || !S.isJp(text)) return null;
     const block = blockOf(range.commonAncestorContainer);
     const para = block && block.textContent.length <= 3000 ? S.toNotation(tokens(block, null)) : '';
-    return { text, satz: S.sentenceContaining(para, text), range };
+    return { text, satz: S.sentenceContaining(para, text), range, forum };
   };
 
   const card = document.createElement('div');
@@ -126,8 +136,10 @@
     if (!g) return hide();
     hide();
     getSelection().removeAllRanges();
-    if (b.dataset.sc === 'vokabel') App.inbox.vocabHere({ text: g.text, satz: g.satz });
+    // aus dem Forum: das Formular kommt über das Forum; wer eine Seite öffnet, schließt das Forum (wie die Verweise dort)
+    const leave = () => { const x = g.forum && g.forum.querySelector('.modal-head [data-x]'); if (x && x.isConnected) x.click(); };
+    if (b.dataset.sc === 'vokabel') App.inbox.vocabHere({ text: g.text, satz: g.satz, leave });
     // Sätze: über den Eingang, neuer Verlaufseintrag – „Zurück“ führt auf die Seite mit dem Satz
-    else App.go('#/eingang?' + new URLSearchParams({ ziel: 'saetze', text: g.text }));
+    else { leave(); App.go('#/eingang?' + new URLSearchParams({ ziel: 'saetze', text: g.text })); }
   });
 })(window.App);
