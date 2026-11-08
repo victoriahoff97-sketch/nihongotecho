@@ -70,6 +70,21 @@
   // ---------- Sätze ----------
   const at = (x) => x.createdAt || Date.now(); // noch ohne Server-Zeit = gerade eben
   const textHtml = (t) => F.linkify(t, Object.values(m.ctx.members).map((x) => x.name));
+  // Furigana über den Sätzen: Lesung aus eigenen Vokabeln + Offline-Wörterbuch (App.sentenceReading), auf jedem Gerät
+  // selbst berechnet und gemerkt; bis sie da ist, steht der Satz ohne. Wörter ohne bekannte Lesung bleiben ohne Furigana.
+  const furi = {}; // Satz → Notation 食[た]べる ('' = keine Kanji / nichts gefunden, null = wird berechnet)
+  const furiHtml = (t) => {
+    const jp = String(t || '');
+    if (!App.jp.hasKanji(jp) || !App.sentenceReading) return textHtml(jp);
+    if (!(jp in furi)) {
+      furi[jp] = null;
+      Promise.resolve().then(() => App.sentenceReading(jp)).then((r) => {
+        furi[jp] = r && r.furi && r.furi !== jp ? r.furi : '';
+        if (furi[jp] && m && !m.editing) drawList();
+      }, (e) => { console.error(e); furi[jp] = ''; });
+    }
+    return furi[jp] ? App.jp.ruby(furi[jp]) : textHtml(jp);
+  };
   const flame = (uid) => (App.forum && App.forum.flame ? App.forum.flame(uid, m.ctx.members) : '');
   const avatar = (x) => (App.forum && App.forum.avatar ? App.forum.avatar(x, m.ctx.members) : '');
   const likeBtn = (x) => {
@@ -85,7 +100,7 @@
     return `<div class="fd-line ${own ? 'is-own' : ''}"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}${x.editedAt ? '<span class="muted small">(bearbeitet)</span>' : ''}
         ${own && x.usedPrompt ? '<span class="fd-used">✓ Wort benutzt</span>' : ''}<span class="grow"></span>${likeBtn(x)}
         ${canEdit ? `<button type="button" class="btn btn-sm" data-dchange title="Bearbeiten" aria-label="Bearbeiten">${icon('edit')}<span class="fd-lbl"> Bearbeiten</span></button>` : ''}</div>
-      <div class="fd-text forum-text" lang="ja">${textHtml(x.text)}</div></div>`;
+      <div class="fd-text forum-text" lang="ja">${furiHtml(x.text)}</div></div>`;
   };
   const veiledHtml = (x) => `<div class="fd-line is-veiled" title="Erst deinen Satz schreiben"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}</div>
       <div class="fd-text" lang="ja" aria-hidden="true">${esc(x.text)}</div></div>`;
@@ -111,7 +126,18 @@
         : `<span class="fd-myflame-n">${K.MARK}</span><span class="fd-myflame-l">heute geschafft</span>`;
     }
     const bf = m.el.querySelector('[data-dbandflame]');
-    if (bf) { bf.textContent = nn ? `${K.MARK} ${nn}` : mine ? K.MARK : ''; bf.classList.toggle('is-lit', !!mine); }
+    // eigene Flamme in der Zeile nur, solange du heute noch nicht dran warst – danach steht dein Avatar bei den anderen
+    if (bf) bf.textContent = !mine && nn ? `${K.MARK} ${nn}` : '';
+    // wer heute schon geschrieben hat: Avatar mit kleiner Flamme darunter (ab Tag 1; eine Person mit zwei Geräten nur einmal)
+    const dn = m.el.querySelector('[data-ddone]');
+    if (dn) {
+      const seen = new Set();
+      const done = sorted(all([m.ctx.today])).filter((x) => { const k = String(x.name || x.uid).trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+      dn.innerHTML = done.map((x) => {
+        const n = Math.max(1, F.flameOf(ms[x.uid] && ms[x.uid].streak, m.ctx.today));
+        return `<span class="fd-done-av" title="${esc(x.name)} · ${n} ${n === 1 ? 'Tag' : 'Tage'} in Folge">${avatar(x)}<small>${K.MARK}${n}</small></span>`;
+      }).join('');
+    }
     const box = m.el.querySelector('[data-dlist]');
     const foot = mine && m.prompt.kind !== 'chain' ? '<p class="fd-cheer">Geschafft für heute ✓</p>' : '';
     if (foot && box) box.insertAdjacentHTML('beforeend', foot);
@@ -294,9 +320,9 @@
     if (drafts[today]) open = true;
     el.className = 'fd-card' + (open ? ' is-open' : '');
     // Kopf als schmale Zeile: Name, Anstoß kurz, eigene Flamme – Antippen klappt den Rest auf
-    el.innerHTML = `<button type="button" class="fd-band" data-dtoggle aria-expanded="${open}">${icon('users')}<b>Tägliche Gruppen-Challenge</b>
+    el.innerHTML = `<button type="button" class="fd-band" data-dtoggle aria-expanded="${open}"><span class="fd-spark s1" aria-hidden="true">✦</span><span class="fd-spark s2" aria-hidden="true">✦</span><span class="fd-spark s3" aria-hidden="true">✧</span>${icon('users')}<b>Tägliche Gruppen-Challenge</b>
         <span class="fd-band-kind">${bandPrompt(prompt)}</span>
-        <span class="fd-bandflame" data-dbandflame></span><span class="fd-chev" data-dchev>${icon(open ? 'chevD' : 'chevR')}</span></button>
+        <span class="fd-done" data-ddone></span><span class="fd-bandflame" data-dbandflame></span><span class="fd-chev" data-dchev>${icon(open ? 'chevD' : 'chevR')}</span></button>
       <div class="fd-body" data-dbody${open ? '' : ' hidden'}>
       <p class="muted small fd-day">${esc(KIND[prompt.kind])} · ${wd} ${Number(today.slice(8))}.${Number(today.slice(5, 7))}.</p>
       <div class="fd-top"><div class="fd-main">${promptHtml(prompt)}

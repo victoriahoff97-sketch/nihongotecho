@@ -219,7 +219,7 @@
       || !v.days.every((d) => typeof d === 'string' && DATE_RE.test(d))) return null;
     return { n: v.n, hold: v.hold, days: v.days.slice() };
   };
-  F.flameOf = (streak, today) => (streak && streak.n >= 2 && streak.hold && today <= streak.hold ? streak.n : 0);
+  F.flameOf = (streak, today) => (streak && streak.n >= 1 && streak.hold && today <= streak.hold ? streak.n : 0);
 
   // ---------- Liste ----------
   // Offene 💬 zuerst, dann alle 💡, besprochene 💬 getrennt – jeweils neueste Aktivität zuerst.

@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-challenge-glitzer', date: '9. November',
+      items: [
+        { t: 'Furigana in der Challenge', d: 'Über den Sätzen in der Täglichen Gruppen-Challenge stehen jetzt Furigana – auch über deinem eigenen.' },
+        { t: 'Wer heute schon dabei war', d: 'In der Challenge-Zeile erscheinen die Avatare aller, die heute geschrieben haben, mit ihrer 🔥 darunter – schon ab dem ersten Tag.' },
+        { t: 'Mehr Glanz', d: 'Die Challenge-Zeile ist größer und glitzert ein bisschen, damit du sie nicht übersiehst.' },
+      ],
+    },
+    {
       id: '2026-11-09-tour-kurz', date: '9. November',
       items: [
         { t: 'Kürzere Hilfe', d: 'Das „?“ oben erklärt jede Seite jetzt nur noch mit den wichtigsten zwei, drei Schritten.' },

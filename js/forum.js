@@ -595,7 +595,7 @@
   const atNames = () => Object.values(members).map((m) => m.name);
   const textHtml = (text) => F.linkify(text, atNames());
   const avatarOf = (x, ms = members) => avatarHtml(F.parseAvatar(ms[x.uid] && ms[x.uid].avatar), x.name);
-  // Forum-Flamme (Satz des Tages) ab 2 Tagen in Folge – leise, ohne Meldung, wenn sie ausgeht
+  // Forum-Flamme (Satz des Tages) ab dem ersten Tag – leise, ohne Meldung, wenn sie ausgeht
   const flameOf = (uid, ms = members) => {
     const n = F.flameOf(ms[uid] && ms[uid].streak, App.today());
     return n ? `<span class="forum-flame" title="${n} Tage in Folge einen Satz des Tages">${App.streakLogic.MARK}${n}</span>` : '';
