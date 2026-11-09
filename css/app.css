@@ -1197,6 +1197,13 @@ body.ink-fit #view { padding-bottom: 16px; }
 .stk-pop .stk:hover { background: var(--sec-soft, var(--shu-soft)); }
 .stk-pop .stk svg, .stk-pop .stk img { width: 44px; height: 44px; object-fit: contain; }
 .stk-pop .stk-tabs { grid-column: 1 / -1; display: flex; gap: 6px; }
+/* Farbpunkte für Zettel: im Sticker-Menü und unter einem ausgewählten Zettel */
+.stk-cols { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.stk-pop .stk-cols { grid-column: 1 / -1; padding: 6px 2px 2px; }
+.stk-col { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid #7A5548; cursor: pointer; flex: none; }
+.stk-col.on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--sec, var(--shu)); }
+.vpage .ink-sel .ink-sel-col { position: absolute; left: 50%; top: calc(100% + 12px); transform: translateX(-50%); padding: 6px 8px; border-radius: 14px; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .18); pointer-events: auto; touch-action: none; }
+.vpage .ink-sel .ink-sel-col .stk-cols { flex-wrap: nowrap; }
 .stk-pop .stk-head { grid-column: 1 / -1; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .stk-pop .stk span { font-size: 11px; line-height: 1.2; font-weight: 600; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

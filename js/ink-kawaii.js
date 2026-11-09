@@ -241,7 +241,7 @@
   const wortKanji = (bg, cell, line, guide) => (W, H) => {
     const { s, n, T } = wkFit(W, H), x0 = n1((W - T) / 2);
     const q = (d, fill, w) => `<path d="${d}" fill="${fill}" stroke="${line}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
-    const lab = (x, y, t) => `<text x="${n1(x)}" y="${n1(y)}" font-size="10" fill="${guide}" font-family="sans-serif">${t}</text>`;
+    const lab = (x, y, t) => `<text x="${n1(x)}" y="${n1(y)}" font-size="10" fill="${line}" fill-opacity=".55" font-family="sans-serif">${t}</text>`;
     const y0 = WK.pad, y1 = y0 + s + WK.gap, ys = y1 + WK.one + WK.sep, y2 = ys + WK.sep, y3 = y2 + WK.row + WK.gap;
     let out = q(rr(2, 2, W - 4, H - 4, 10), bg, 2.5);
     for (let i = 0; i < n; i++) {
@@ -257,24 +257,39 @@
   const wk = (n) => +((n * 90 + (n - 1) * WK.gap + 2 * WK.pad) / 1000).toFixed(3);
 
   const MIN = { w: 0.06, h: 0.04 };
-  const NOTES = [
-    { id: 'kanji', label: 'Kanji-Feld', draw: kanji('#FFD9E6', CREAM, O, '#FF9DB8'), kj: true, w: 0.112, h: 0.174, min: { w: 0.06, h: 0.118 } },
-    { id: 'kanji3', as: 'kanji', label: 'Kanji-Reihe', w: 0.312, h: 0.174 },
-    // ruhigere Kanji-Felder ohne Rosa
-    { id: 'kanji-papier', label: 'Kanji-Feld Papier', draw: kanji('#EFE6D6', CREAM, O, '#C4AE92'), kj: true, w: 0.112, h: 0.174, min: { w: 0.06, h: 0.118 } },
-    { id: 'kanji3-papier', as: 'kanji-papier', label: 'Kanji-Reihe Papier', w: 0.312, h: 0.174 },
-    { id: 'kanji-tinte', label: 'Kanji-Feld Tinte', draw: kanji('#DCE4EE', '#fff', '#4A5870', '#9DB0C6'), kj: true, w: 0.112, h: 0.174, min: { w: 0.06, h: 0.118 } },
-    { id: 'kanji3-tinte', as: 'kanji-tinte', label: 'Kanji-Reihe Tinte', w: 0.312, h: 0.174 },
+  // Farben für Zettel: jede Art steht einmal im Reiter, die Farbe wählt man darüber (und am aufgeklebten Zettel)
+  const COLORS = [['rosa', 'Rosa', '#FFD9E6'], ['papier', 'Papier', '#EFE6D6'], ['tinte', 'Tinte', '#DCE4EE'], ['gelb', 'Gelb', '#FFF1A8'], ['mint', 'Mint', '#DFF7EC'], ['lila', 'Lila', '#ECE6FF'], ['blau', 'Blau', '#DFF1FF']];
+  const COL0 = 'rosa';
+  // Kanji-Feld und Wort-Kanji: Grund, Kästchen, Rand, Hilfslinien
+  const KJC = { rosa: ['#FFD9E6', CREAM, O, '#FF9DB8'], papier: ['#EFE6D6', CREAM, O, '#C4AE92'], tinte: ['#DCE4EE', '#fff', '#4A5870', '#9DB0C6'],
+    gelb: ['#FFF1A8', CREAM, O, '#E5C657'], mint: ['#DFF7EC', CREAM, O, '#7FD6B4'], lila: ['#ECE6FF', CREAM, O, '#A49FE6'], blau: ['#DFF1FF', CREAM, O, '#8CC4EE'] };
+  // Klebezettel: Papier, Knick, Klebestreifen
+  const NOTEC = { rosa: ['#FFD9E6', '#FFB3C7', MINT], papier: ['#EFE6D6', '#D9C7A8', MINT], tinte: ['#DCE4EE', '#9DB0C6', ROSE],
+    gelb: ['#FFF1A8', '#F5D76E', '#FF9DB8'], mint: ['#DFF7EC', MINT, LILA], lila: ['#ECE6FF', LILA, YEL], blau: ['#DFF1FF', SKY, ROSE] };
+  // Banner: Band, Enden, Funkeln
+  const BANC = { rosa: ['#FFC2D9', ROSE, YEL], papier: ['#E6D8BF', '#C4AE92', ROSE], tinte: ['#C9D5E3', '#8FA3BC', YEL],
+    gelb: ['#FFE9A0', '#F5D76E', ROSE], mint: [MINT, '#7FD6B4', '#FFD166'], lila: ['#DCD8FA', LILA, MINT], blau: ['#CFE8FF', '#8CC4EE', YEL] };
+  const WAC = { rosa: '#FFB3C7', papier: '#D9C7A8', tinte: '#9DB0C6', gelb: '#FFE08A', mint: MINT, lila: LILA, blau: SKY };
+  const KJ_MIN = { w: 0.06, h: 0.118 }, WA_MIN = { w: 0.04, h: 0.02 };
+  // Arten mit Farbwahl; rows = weitere Kacheln derselben Art in anderer Startgröße (before: steht davor)
+  const FAM = {
+    kanji: { label: 'Kanji-Feld', pal: KJC, draw: (c) => kanji(...c), kj: true, w: 0.112, h: 0.174, min: KJ_MIN, rows: [{ id: 'kanji3', label: 'Kanji-Reihe', w: 0.312 }] },
     // Wort-Kanji: im Unterricht lernt man Kanji über Wörter (風邪 = Erkältung) – die Kästchen-Zahl zeigt, wie viele Kanji das Wort hat
-    { id: 'wortkanji1', as: 'wortkanji', label: 'Wort · 1 Kanji', w: wk(1), h: 0.208 },
-    { id: 'wortkanji', label: 'Wort · 2 Kanji', draw: wortKanji('#EFE6D6', CREAM, O, '#B39A7C'), fit: wkSnap, w: wk(2), h: 0.208, min: { w: 0.06, h: 0.15 } },
-    { id: 'wortkanji3', as: 'wortkanji', label: 'Wort · 3 Kanji', w: wk(3), h: 0.208 },
-    { id: 'wortkanji4', as: 'wortkanji', label: 'Wort · 4 Kanji', w: wk(4), h: 0.208 },
-    { id: 'zettel', label: 'Klebezettel', draw: note('#FFF1A8', '#F5D76E', '#FF9DB8'), w: 0.28, h: 0.2 },
-    { id: 'zettel-rosa', label: 'Zettel rosa', draw: note('#FFD9E6', '#FFB3C7', MINT), w: 0.28, h: 0.2 },
-    { id: 'zettel-mint', label: 'Zettel mint', draw: note('#DFF7EC', MINT, LILA), w: 0.28, h: 0.2 },
-    { id: 'zettel-lila', label: 'Zettel lila', draw: note('#ECE6FF', LILA, YEL), w: 0.28, h: 0.2 },
-    { id: 'zettel-blau', label: 'Zettel blau', draw: note('#DFF1FF', SKY, ROSE), w: 0.28, h: 0.2 },
+    wortkanji: { label: 'Wort · 2', pal: KJC, draw: (c) => wortKanji(...c), fit: wkSnap, w: wk(2), h: 0.208, min: { w: 0.06, h: 0.15 },
+      rows: [{ id: 'wortkanji1', label: 'Wort · 1', w: wk(1), before: true }, { id: 'wortkanji3', label: 'Wort · 3', w: wk(3) }, { id: 'wortkanji4', label: 'Wort · 4', w: wk(4) }] },
+    zettel: { label: 'Klebezettel', pal: NOTEC, draw: (c) => note(...c), w: 0.28, h: 0.2 },
+    washi: { label: 'Washi-Tape', pal: WAC, draw: (c) => washi(c, 'dots'), w: 0.26, h: 0.035, min: WA_MIN },
+    'washi-streifen': { label: 'Washi Streifen', pal: WAC, draw: (c) => washi(c, 'stripes'), w: 0.26, h: 0.035, min: WA_MIN },
+    banner: { label: 'Banner', pal: BANC, draw: (c) => banner(...c), w: 0.3, h: 0.07 },
+  };
+  // Kennung einer Art in einer Farbe: „zettel@rosa“
+  const fam = (f) => COLORS.flatMap(([c]) => {
+    const F = FAM[f], main = { id: `${f}@${c}`, fam: f, col: c, label: F.label, draw: F.draw(F.pal[c]), kj: F.kj, fit: F.fit, w: F.w, h: F.h, min: F.min };
+    const rows = (F.rows || []).map((r) => ({ id: `${r.id}@${c}`, as: main.id, fam: f, col: c, label: r.label, w: r.w, h: r.h || F.h, before: r.before }));
+    return rows.filter((r) => r.before).concat(main, rows.filter((r) => !r.before));
+  });
+  const NOTES = [
+    ...fam('kanji'), ...fam('wortkanji'), ...fam('zettel'),
     { id: 'spiralblock', label: 'Spiralblock', draw: spiral, w: 0.3, h: 0.24, min: { w: 0.1, h: 0.08 } },
     { id: 'kariert', label: 'Kariert', draw: grid, w: 0.3, h: 0.22 },
     { id: 'wolke', label: 'Wolkenrahmen', draw: cloud, w: 0.3, h: 0.2, min: { w: 0.1, h: 0.09 } },
@@ -283,13 +298,14 @@
     { id: 'kasten', label: 'Merkkasten', draw: box, w: 0.34, h: 0.16 },
     { id: 'etikett', label: 'Etikett', draw: tag, w: 0.24, h: 0.09, min: { w: 0.1, h: 0.05 } },
     { id: 'schriftrolle', label: 'Schriftrolle', draw: scroll, w: 0.34, h: 0.16, min: { w: 0.08, h: 0.05 } },
-    { id: 'washi', label: 'Washi-Tape', draw: washi('#FFB3C7', 'dots'), w: 0.26, h: 0.035, min: { w: 0.04, h: 0.02 } },
-    { id: 'washi-mint', label: 'Washi mint', draw: washi(MINT, 'stripes'), w: 0.26, h: 0.035, min: { w: 0.04, h: 0.02 } },
-    { id: 'banner', label: 'Banner', draw: banner(), w: 0.3, h: 0.07 },
-    { id: 'banner-rosa', label: 'Banner rosa', draw: banner('#FFC2D9', ROSE, YEL), w: 0.3, h: 0.07 },
-    { id: 'banner-lila', label: 'Banner lila', draw: banner('#DCD8FA', LILA, MINT), w: 0.3, h: 0.07 },
+    ...fam('washi'), ...fam('washi-streifen'), ...fam('banner'),
     { id: 'band', label: 'Schleifenband', draw: ribbon, w: 0.34, h: 0.09, min: { w: 0.14, h: 0.05 } },
   ];
+  // frühere Kennungen (vor der Farbwahl) – schon aufgeklebte Zettel bleiben, wie sie waren
+  const OLD = { kanji: 'kanji@rosa', 'kanji-papier': 'kanji@papier', 'kanji-tinte': 'kanji@tinte', wortkanji: 'wortkanji@papier',
+    zettel: 'zettel@gelb', 'zettel-rosa': 'zettel@rosa', 'zettel-mint': 'zettel@mint', 'zettel-lila': 'zettel@lila', 'zettel-blau': 'zettel@blau',
+    washi: 'washi@rosa', 'washi-mint': 'washi-streifen@mint', banner: 'banner@mint', 'banner-rosa': 'banner@rosa', 'banner-lila': 'banner@lila' };
+  Object.entries(OLD).forEach(([id, to]) => NOTES.push({ id, as: to, old: true }));
 
   // Stil „Süß“: dieselben Vorlagen ohne Gesichter (alles mit class="f"), Kennung mit Endung „.s“
   const SU = '.s';
@@ -298,7 +314,8 @@
 
   const stickers = new Map(STICKERS.map((s) => [s.id, s])), notes = new Map(NOTES.map((s) => [s.id, s]));
   const free = (id) => notes.has(base(id));
-  const min = (id) => (notes.get(base(id)) || {}).min || MIN;
+  const real = (id) => { const d = notes.get(base(id)); return d && d.as ? notes.get(d.as) : d; }; // Vorlage mit draw (frühere Kennungen und Reihen führen dorthin)
+  const min = (id) => (real(id) || {}).min || MIN;
 
   const sticker = (d, su) => {
     const edge = d.edge || d.sil;
@@ -320,22 +337,22 @@
 
   const SIZE = 0.09; // Kantenlänge eines Stickers beim Einfügen (Anteil der Seitenbreite)
   const KW = STICKERS.map((s) => ({ id: s.id, label: s.label, group: 'sticker', style: 'kawaii', free: false, w: SIZE, h: SIZE }))
-    .concat(NOTES.map((s) => ({ id: s.id, as: s.as || s.id, label: s.label, group: 'zettel', style: 'kawaii', free: true, w: s.w, h: s.h })));
+    .concat(NOTES.filter((s) => !s.old).map((s) => ({ id: s.id, as: s.as || s.id, label: s.label, group: 'zettel', style: 'kawaii', free: true, w: s.w, h: s.h, ...(s.col ? { col: s.col } : {}) })));
   // „Süß“-Fassung nur für Sticker, die ohne Gesicht anders aussehen – so steht nichts doppelt in zwei Reitern
   const LIST = KW.concat(KW.filter((s) => s.group === 'sticker' && svg(s.id + SU, s.w, s.h) !== svg(s.id, s.w, s.h))
     .map((s) => ({ ...s, id: s.id + SU, style: 'suess' })));
-  // Inhalt eines Reiters: 'zettel' (Merkzettel, Kanji-Feld, Banner) oder 'suess' (alle Sticker, ohne Gesicht, wo es eine Fassung ohne gibt).
+  // Inhalt eines Reiters: 'zettel' (Merkzettel, Kanji-Feld, Banner – Arten mit Farbwahl in der Farbe col) oder 'suess' (alle Sticker, ohne Gesicht, wo es eine Fassung ohne gibt).
   // Die Kawaii-Fassung mit Gesicht steht nicht mehr zur Wahl, wird aber weiter gezeichnet, damit schon aufgeklebte Sticker bleiben
   const SUESS = new Set(LIST.filter((s) => s.style === 'suess').map((s) => s.id));
-  const tab = (name) => (name === 'zettel' ? LIST.filter((s) => s.group === 'zettel')
+  const colOk = (c) => (COLORS.some((x) => x[0] === c) ? c : COL0);
+  const tab = (name, col) => (name === 'zettel' ? LIST.filter((s) => s.group === 'zettel' && (!s.col || s.col === colOk(col)))
     : name === 'suess' ? LIST.filter((s) => s.group === 'sticker' && s.style === 'kawaii').map((s) => LIST.find((x) => x.id === (SUESS.has(s.id + SU) ? s.id + SU : s.id))) : []);
   // Bild-Eintrag { k, w, h } → Daten-URL; key ändert sich, sobald das Bild neu gezeichnet werden muss
   const src = (im) => { const s = svg(im.k, im.w, im.h); return s ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s) : ''; };
   const key = (im) => (free(im.k) ? im.k + ':' + Math.round(im.w * 1000) + 'x' + Math.round(im.h * 1000) : im.k);
   // nach dem Ziehen: Kanji-Felder (alle Farben) und Wort-Kanji schnappen auf ganze Kästchen
   const snap = (id, w, h) => {
-    let d = notes.get(base(id)) || {};
-    if (d.as) d = notes.get(d.as) || {};
+    const d = real(id) || {};
     const fit = d.kj ? kjSnap : d.fit;
     if (!fit) return { w, h };
     const [W, H] = fit(w * 1000, h * 1000);
@@ -349,6 +366,11 @@
     return { k: d.as || d.id, x: cl(pt[0] - d.w / 2, 1 - d.w), y: cl(pt[1] - d.h / 2, pageH - d.h), w: d.w, h: d.h };
   };
 
-  const P = { SIZE, LIST, tab, svg, src, key, free, min, snap, place };
+  // Farbe eines aufgeklebten Zettels (null = ohne Farbwahl) und dieselbe Art in anderer Farbe
+  const colorOf = (k) => (real(k) || {}).col || null;
+  const recolor = (k, c) => { const d = real(k); return d && d.fam && notes.has(d.fam + '@' + c) ? d.fam + '@' + c : null; };
+  const COLS = COLORS.map(([id, label, swatch]) => ({ id, label, swatch }));
+
+  const P = { SIZE, LIST, COLS, COL0, tab, svg, src, key, free, min, snap, place, colorOf, recolor };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.inkKawaii = P;
 })(this);

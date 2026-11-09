@@ -735,6 +735,7 @@
     };
     scroller.addEventListener('pointerdown', (e) => {
       if (e.target.closest && e.target.closest('[data-del]')) { e.preventDefault(); deleteSel(); return; }
+      if (e.target.closest && e.target.closest('[data-recol]')) { e.preventDefault(); recolorSel(e.target.closest('[data-recol]').dataset.recol); return; }
       if (e.target.closest && e.target.closest('.bk-turn, .bk-ghost')) return;
       // Antwortfeld: Maus und Stift setzen die Schreibmarke und markieren Text; der Finger scrollt weiter das Blatt
       if (e.target.closest && e.target.closest('.ex-typed') && (e.pointerType !== 'touch' || e.target.closest('button'))) return;
@@ -922,6 +923,8 @@
     // ---------- Bilder: Auswahl, Löschen, Einfügen ----------
     const ROT_PX = 30; // Abstand des Dreh-Griffs über dem Bild (wie in der CSS)
     const selImg = () => st.sel && st.sel.p.images.find((x) => x.id === st.sel.id);
+    // Farbpunkte für Zettel (Sticker-Menü und aufgeklebter Zettel); attr = data-Attribut der Knöpfe
+    const colDots = (cur, attr) => `<div class="stk-cols">${App.inkKawaii.COLS.map((c) => `<button type="button" class="stk-col${c.id === cur ? ' on' : ''}" ${attr}="${c.id}" title="${esc(c.label)}" aria-label="${esc(c.label)}" style="background:${c.swatch}"></button>`).join('')}</div>`;
     const updateSel = () => {
       const old = root.querySelector('.ink-sel');
       const im = selImg();
@@ -933,6 +936,12 @@
         el.className = 'ink-sel';
         el.innerHTML = ['nw', 'ne', 'sw', 'se'].map((h) => `<span class="h" data-h="${h}"></span>`).join('') + `<span class="h rot" title="Drehen"></span><button class="ink-sel-del" data-del title="Bild löschen">${icon('trash')}</button>`;
         st.sel.p.el.appendChild(el);
+      }
+      const col = im.k ? App.inkKawaii.colorOf(im.k) : null, tag = col ? im.id + ':' + col : '';
+      if (el.dataset.col !== tag) {
+        el.dataset.col = tag;
+        const old2 = el.querySelector('.ink-sel-col'); if (old2) old2.remove();
+        if (col) el.insertAdjacentHTML('beforeend', `<div class="ink-sel-col">${colDots(col, 'data-recol')}</div>`);
       }
       const r = st.sel.p.def.ratio;
       Object.assign(el.style, { left: im.x * 100 + '%', top: (im.y / r) * 100 + '%', width: im.w * 100 + '%', height: (im.h / r) * 100 + '%', transform: im.r ? `rotate(${im.r}deg)` : '' });
@@ -1076,6 +1085,17 @@
       p.images.splice(idx, 1);
       st.undo.push({ type: 'img-del', pi: p.i, im, idx }); st.redo = [];
       clearSel(); drawInk(p); markDirty(p);
+    };
+    // Zettel umfärben: die Schrift darauf bleibt, Rückgängig über img-edit
+    const recolorSel = (c) => {
+      const im = selImg(); if (!im || !im.k) return;
+      const k = App.inkKawaii.recolor(im.k, c);
+      if (!k || k === im.k) return;
+      const p = st.sel.p, before = { k: im.k };
+      im.k = k;
+      st.undo.push({ type: 'img-edit', pi: p.i, id: im.id, before, after: { k } }); st.redo = [];
+      App.lsSet('stkCol', c);
+      drawInk(p); markDirty(p); updateSel();
     };
     // ---------- Wort-Verknüpfungen: Schildchen mit Lesung und Bedeutung (Stift/Maus darüber halten, Finger antippen) ----------
     const HW = App.hwLogic;
@@ -1253,10 +1273,12 @@
       const pop = document.createElement('div');
       pop.className = 'stk-pop card';
       // Reiter: Zettel (Merkzettel, Kanji-Feld, Banner), Süß (bunte Sticker), Normal (Kritzel in Stiftfarbe)
-      const kw = (t) => KW.tab(t).map((s) => `<button class="stk" data-stk="k:${s.id}" title="${esc(s.label)}"><img src="${KW.src({ k: s.id, w: s.w, h: s.h })}" alt="" loading="lazy"><span>${esc(s.label)}</span></button>`).join('');
+      const stkCol = () => App.lsGet('stkCol') || KW.COL0;
+      const kw = (t) => KW.tab(t, stkCol()).map((s) => `<button class="stk" data-stk="k:${s.id}" title="${esc(s.label)}"><img src="${KW.src({ k: s.id, w: s.w, h: s.h })}" alt="" loading="lazy"><span>${esc(s.label)}</span></button>`).join('');
       const fill = () => {
         const tab = ['zettel', 'suess', 'normal'].includes(App.lsGet('stkTab')) ? App.lsGet('stkTab') : 'suess';
         pop.innerHTML = `<div class="stk-tabs">${[['zettel', 'Zettel'], ['suess', 'Süß'], ['normal', 'Normal']].map(([t, l]) => `<button class="chip ${tab === t ? 'on' : ''}" data-stk-tab="${t}">${l}</button>`).join('')}</div>`
+          + (tab === 'zettel' ? colDots(stkCol(), 'data-stk-col') : '')
           + (tab !== 'normal' ? kw(tab)
             : STK.LIST.map((s) => `<button class="stk" data-stk="${s.id}" title="${esc(s.label)}">${STK.svg(s.id, st.mcolor)}<span>${esc(s.label)}</span></button>`).join(''));
       };
@@ -1265,7 +1287,7 @@
       const r = btn.getBoundingClientRect(), rr = root.getBoundingClientRect();
       pop.style.left = Math.max(8, Math.min(r.left - rr.left - 80, rr.width - pop.offsetWidth - 8)) + 'px';
       pop.style.top = r.bottom - rr.top + 6 + 'px';
-      pop.addEventListener('click', (e) => { const t = e.target.closest('[data-stk-tab]'); if (t) { App.lsSet('stkTab', t.dataset.stkTab); fill(); return; } const b = e.target.closest('[data-stk]'); if (b) { setStamp(b.dataset.stk); note('Jetzt auf die Stelle im Blatt tippen'); } });
+      pop.addEventListener('click', (e) => { const t = e.target.closest('[data-stk-tab]'); if (t) { App.lsSet('stkTab', t.dataset.stkTab); fill(); return; } const c = e.target.closest('[data-stk-col]'); if (c) { App.lsSet('stkCol', c.dataset.stkCol); fill(); return; } const b = e.target.closest('[data-stk]'); if (b) { setStamp(b.dataset.stk); note('Jetzt auf die Stelle im Blatt tippen'); } });
     };
     // Zielseite = größte sichtbare Fläche; Bild mittig im sichtbaren Ausschnitt
     const insertImage = async (blob) => {

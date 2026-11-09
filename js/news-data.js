@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-zettel-farben', date: '9. November',
+      items: [
+        { t: 'Zettel in deiner Farbe', d: 'Unter Sticker › Zettel steht jede Art nur noch einmal – die Farbe wählst du mit den Punkten darüber.' },
+        { t: 'Nachträglich umfärben', d: 'Einen aufgeklebten Zettel antippen: Unter ihm erscheinen die Farbpunkte. Was du darauf geschrieben hast, bleibt stehen.' },
+      ],
+    },
+    {
       id: '2026-11-09-wort-kanji', date: '9. November',
       items: [
         { t: 'Sticker für Kanji-Wörter', d: 'Sticker › Zettel › „Wort · 1–4 Kanji“: ein Kästchen je Kanji mit Zeile für seine Bedeutung, unten Lesung und Bedeutung des Wortes.' },
