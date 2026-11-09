@@ -201,6 +201,47 @@
     return { adds, updates, removes, counts };
   };
 
+  // Reste eines Pakets: eigene Einträge (_pack === packId), die die aktuelle Paketversion nicht mehr führt – etwa
+  // weil ein Wort doppelt in der Quellliste stand (こくせき neben 国籍) und gestrichen wurde. planMerge sieht sie nie.
+  //   map  – Rest-ID → Eintrag desselben Worts, in dem er aufgeht (Lernstand + Verweise: App.planSeedCleanup)
+  //   del  – unberührte Reste ohne solchen Eintrag (App.isRemovable): einfach weg
+  //   star – Ziel-IDs, die den Stern des Rests übernehmen
+  // Bleiben stehen: bearbeitete oder markierte Reste, Reste, die noch ein anderes Paket führt (packs), berührte ohne
+  // eindeutiges Ziel. Gleiche Treffer-Regeln wie beim Einspielen (vocabMatches); Paket-Einträge gehen vor.
+  App.planPackOrphans = (packItems, existing, packId, ctx) => {
+    const out = { map: {}, del: [], star: [] };
+    const inPack = new Set(packItems.map((p) => p.id));
+    const orphans = existing.filter((it) => it && it._pack === packId && !inPack.has(it.id));
+    if (!orphans.length) return out;
+    const orphanIds = new Set(orphans.map((o) => o.id));
+    const rest = existing.filter((it) => it && !orphanIds.has(it.id));
+    const readingCounts = new Map();
+    packItems.forEach((pi) => {
+      if (pi.type !== 'vocab') return;
+      const r = App.jp.toHira(norm(pi.kana || ''));
+      readingCounts.set(r, (readingCounts.get(r) || 0) + 1);
+    });
+    for (const o of orphans) {
+      if (o._edited || (Array.isArray(o.marks) && o.marks.length)) continue;
+      if ((Array.isArray(o.packs) ? o.packs : []).some((p) => p !== packId)) continue;
+      let hits = [];
+      if (o.type === 'vocab') {
+        const amb = readingCounts.get(App.jp.toHira(norm(o.kana || ''))) > 1;
+        // Wortteil (～時間) und eigenständiges Wort (時間) sind nie dasselbe – Regel 2 schaut darauf nicht
+        hits = vocabMatches(o, rest.filter((ex) => ex.type === 'vocab'), amb).concat(phraseMatches(o, rest))
+          .filter((h) => h.type !== 'vocab' || hasTilde(h) === hasTilde(o));
+      } else if (o.type === 'kanji') hits = kanjiMatches(o, rest.filter((ex) => ex.type === 'kanji'));
+      const ids = [...new Set(hits.map((h) => h.id))];
+      const own = ids.filter((id) => inPack.has(id));
+      const to = own.length === 1 ? own[0] : !own.length && ids.length === 1 ? ids[0] : null;
+      if (to) {
+        out.map[o.id] = to;
+        if (o.star) out.star.push(to);
+      } else if (App.isRemovable(o, ctx)) out.del.push(o.id);
+    }
+    return out;
+  };
+
   // Ob ein Eintrag gefahrlos entfernt werden kann, wenn sein Paket deaktiviert wird
   App.isRemovable = (it, { srs, sessionRefs }) => {
     if (!it._pack) return false;

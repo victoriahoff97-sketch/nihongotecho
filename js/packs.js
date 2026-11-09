@@ -56,10 +56,40 @@
   const deletedSet = async () => new Set(((await App.db.get('meta', 'deletedPackItems')) || {}).value || []);
   const plan = async (pack) => {
     const all = Array.from(S.items.values());
-    return App.planMerge(await loadLevelItems(pack), all, {
+    const items = await loadLevelItems(pack);
+    const res = App.planMerge(items, all, {
       packId: pack.id, level: pack.level, deleted: await deletedSet(),
       ctx: { srs: S.srs, sessionRefs: App.allRefs(all, S.files.values()) },
     });
+    res.items = items;
+    return res;
+  };
+  // Reste aufräumen, die die aktuelle Paketversion nicht mehr führt (App.planPackOrphans): unberührte fliegen raus,
+  // sonst geht der Rest im Eintrag desselben Worts auf (Lernstand: der weiter fortgeschrittene gewinnt)
+  const ORPHANS_DONE = 'packOrphansV1';
+  async function tidyOrphans(pack, items) {
+    if (!App.planPackOrphans || !App.planSeedCleanup) return 0;
+    const all = Array.from(S.items.values());
+    const o = App.planPackOrphans(items, all, pack.id, { srs: S.srs, sessionRefs: App.allRefs(all, S.files.values()) });
+    const r = App.planSeedCleanup(o.map, all, S.srs);
+    const stars = o.star.filter((id) => S.items.has(id) && !S.items.get(id).star).map((id) => Object.assign({}, S.items.get(id), { star: true }));
+    const putItems = r.putItems.concat(stars);
+    const delItems = r.delItems.concat(o.del);
+    if (!delItems.length && !r.delSrs.length) return 0;
+    r.putSrs.forEach((x) => S.srs.set(x.id, x));
+    r.delSrs.forEach((id) => S.srs.delete(id));
+    putItems.forEach((it) => S.items.set(it.id, it));
+    delItems.forEach((id) => S.items.delete(id));
+    if (r.putSrs.length) await App.db.putMany('srs', r.putSrs);
+    if (putItems.length) await App.db.putMany('items', putItems);
+    if (r.delSrs.length) await App.db.delMany('srs', r.delSrs);
+    if (delItems.length) await App.db.delMany('items', delItems);
+    return delItems.length;
+  }
+  const orphansDone = async () => ((await App.db.get('meta', ORPHANS_DONE)) || {}).value || [];
+  const markOrphansDone = async (id) => {
+    const done = await orphansDone();
+    if (!done.includes(id)) await App.db.put('meta', { key: ORPHANS_DONE, value: done.concat(id) });
   };
 
   App.packs = {
@@ -106,6 +136,8 @@
         await App.db.delMany('items', res.removes);
         res.removes.forEach((x) => S.items.delete(x));
       }
+      await tidyOrphans(pack, res.items);
+      await markOrphansDone(id);
       onProgress(0.8, 'Strichfolgen werden gespeichert …');
       await installStrokes(pack);
       await App.packMeta.set(id, { version: pack.version, installed: Date.now() });
@@ -155,6 +187,14 @@
         try { await App.packs.install(p.id, setProgress); done.push(p); } catch (e) { console.error(e); } finally { busy = null; rerender(); }
       }
       if (done.length) App.toast(`JLPT-Pakete aktualisiert: ${done.map((p) => p.level).join(', ')} – dein Lernstand bleibt`);
+      // einmal je Paket: Reste aus früheren Paketversionen aufräumen (vor dieser Regel blieben sie stehen)
+      const seen = await orphansDone();
+      let tidied = 0;
+      for (const p of (window.PACKS || []).filter((x) => x.kind === 'level' && App.packs.status(x) === 'installed' && !seen.includes(x.id))) {
+        if (busy) break;
+        try { tidied += await tidyOrphans(p, await loadLevelItems(p)); await markOrphansDone(p.id); } catch (e) { console.error(e); } finally { freeLevel(p); }
+      }
+      if (tidied) App.emit('items');
       return done.map((p) => p.id);
     },
   };

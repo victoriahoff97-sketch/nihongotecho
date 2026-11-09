@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-paket-reste', date: '9. November',
+      items: [
+        { t: 'Keine doppelten JLPT-Wörter mehr', d: 'Alte Reste früherer JLPT-Pakete (z. B. こくせき zusätzlich zu 国籍, nur auf Englisch) räumt die App jetzt selbst auf – dein Lernstand wandert zum verbliebenen Wort.' },
+      ],
+    },
+    {
       id: '2026-11-09-kanji-woerter', date: '9. November',
       items: [
         { t: 'Vom Kanji zur Vokabel', d: 'Auf einer Kanji-Seite unter „Wörter“: Wörter mit einem kleinen › hast du als Vokabel – antippen öffnet sie.' },
