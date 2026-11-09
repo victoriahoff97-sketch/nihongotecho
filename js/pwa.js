@@ -17,13 +17,11 @@
     const status = state.waiting ? 'Eine neue Version ist geladen und wartet auf den Neustart.'
       : state.version ? `Version ${esc(state.version)} · funktioniert auch ohne Internet.`
         : 'Wird für die Nutzung ohne Internet vorbereitet …';
-    const install = state.standalone ? ''
-      : state.installEvt ? `<button class="btn" data-pwa="install">${icon('download')} Als App installieren</button>`
-        : '<p class="muted small">Als App installieren: im Browser-Menü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen.</p>';
-    return `<div class="card" data-pwa-card><h3>Web-App</h3><p class="muted small">${status}</p>
-      <div class="row">${state.waiting
-    ? `<button class="btn btn-primary" data-pwa="apply">${icon('replay')} Neue Version laden</button>`
-    : `<button class="btn" data-pwa="check">${icon('replay')} Nach Update suchen</button>`}${install}<button class="btn btn-ghost btn-sm" data-welcome-show>Erste Schritte anzeigen</button></div></div>`;
+    const installBtn = !state.standalone && state.installEvt ? `<button class="btn btn-sm" data-pwa="install">${icon('download')} Als App installieren</button>` : '';
+    const install = state.standalone || state.installEvt ? '' : ' Als App installieren: im Browser-Menü „App installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen.';
+    return `<div class="set-row" data-pwa-card><div class="set-l">Web-App<small>${status}${install}</small></div><div class="set-c">${state.waiting
+    ? `<button class="btn btn-sm btn-primary" data-pwa="apply">${icon('replay')} Neue Version laden</button>`
+    : `<button class="btn btn-sm" data-pwa="check">${icon('replay')} Nach Update suchen</button>`}${installBtn}<button class="btn btn-ghost btn-sm" data-welcome-show>Erste Schritte</button></div></div>`;
   };
 
   // install: Installation von außen auslösen (Willkommenskarte); false, wenn der Browser keine angeboten hat

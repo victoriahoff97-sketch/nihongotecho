@@ -367,24 +367,26 @@
       const last = h.saved ? when(h.saved) : 'noch nie';
       return `<p class="muted small">Auf diesem Gerät sichert die App nicht von selbst. Tippe oben auf das Sichern-Symbol und lege die Datei in einen Ordner deiner Wahl (z. B. Google Drive oder iCloud Drive).</p>
         <p class="small"><b>Zuletzt gesichert:</b> ${last}${h.dirty ? ' · seitdem geändert' : ''}</p>
-        <div class="stack">${btn('hand-save', 'Jetzt sichern', 'btn-primary', 'backup')}</div>`;
+        <div class="row">${btn('hand-save', 'Jetzt sichern', 'btn-primary btn-sm', 'backup')}</div>`;
     }
     if (st.kind === 'off') {
       return `<p class="muted small">Die App legt alle Daten von selbst in einen Ordner deiner Wahl. Liegt er in Google Drive, hast du zugleich eine Sicherung außer Haus.</p>
-        <div class="stack">${btn('pick', 'Ordner wählen', 'btn-primary', 'backup')}${btn('restore', 'Aus Ordner wiederherstellen', 'btn-ghost btn-sm')}</div>`;
+        <div class="row">${btn('pick', 'Ordner wählen', 'btn-primary btn-sm', 'backup')}${btn('restore', 'Aus Ordner wiederherstellen', 'btn-ghost btn-sm')}</div>`;
     }
     const cls = st.kind === 'paused' ? 'warn' : st.kind === 'error' ? 'bad' : 'ok';
     const why = st.kind === 'paused' ? PAUSE_WHY[st.ask] || '' : st.kind === 'error' ? st.detail : '';
     return `<p class="small"><b>Ordner:</b> ${esc(st.folder)} · <b>Gerät:</b> ${esc(st.device)}</p>
       <p class="backup-state ${cls}">${App.icon(cls === 'ok' ? 'backup' : 'alert')} <span>${esc(st.text.replace(' – antippen', ''))}${why ? ' – ' + esc(why) : ''}</span></p>
-      <div class="stack">
-        ${st.kind === 'paused' ? btn('resume', 'Sicherung fortsetzen', 'btn-primary') : ''}
-        ${st.kind === 'error' ? btn('retry', 'Erneut versuchen', 'btn-primary') : ''}
-        ${btn('flush', 'Jetzt sichern', st.kind === 'ok' || st.kind === 'busy' ? 'btn-primary' : '', 'backup')}
-        ${btn('restore', 'Aus Ordner wiederherstellen')}
-        ${btn('versions', 'Früheren Stand wiederherstellen')}
-        <div class="row">${btn('pick', 'Anderen Ordner wählen', 'btn-ghost btn-sm')}${btn('disconnect', 'Sicherung trennen', 'btn-ghost btn-sm')}</div>
-      </div>`;
+      <div class="row">
+        ${st.kind === 'paused' ? btn('resume', 'Sicherung fortsetzen', 'btn-primary btn-sm') : ''}
+        ${st.kind === 'error' ? btn('retry', 'Erneut versuchen', 'btn-primary btn-sm') : ''}
+        ${btn('flush', 'Jetzt sichern', 'btn-sm' + (st.kind === 'ok' || st.kind === 'busy' ? ' btn-primary' : ''), 'backup')}
+      </div>
+      <details class="set-more" data-bk-more><summary>Wiederherstellen und Ordner</summary><div class="row">
+        ${btn('restore', 'Aus Ordner wiederherstellen', 'btn-sm')}
+        ${btn('versions', 'Früheren Stand wiederherstellen', 'btn-sm')}
+        ${btn('pick', 'Anderen Ordner wählen', 'btn-ghost btn-sm')}${btn('disconnect', 'Sicherung trennen', 'btn-ghost btn-sm')}
+      </div></details>`;
   };
   // ---------- Sicherung von Hand ----------
   const R = () => App.remindLogic;
@@ -493,7 +495,8 @@
     K.renderStatus();
     K.renderTop();
     if (!document.querySelector) return;
-    const a = document.querySelector('[data-backup-auto]'); if (a) a.innerHTML = K.card();
+    const a = document.querySelector('[data-backup-auto]');
+    if (a) { const open = !!a.querySelector('[data-bk-more][open]'); a.innerHTML = K.card(); const d = open && a.querySelector('[data-bk-more]'); if (d) d.open = true; }
     // Willkommenskarte folgt dem Sicherungszustand (der Ordner wird beim Start erst nach dem ersten Zeichnen geladen); sie zeichnet die Startseiten-Zeile mit
     if (App.welcome && App.welcome.refresh) App.welcome.refresh();
     else { const h = document.querySelector('[data-backup-home]'); if (h) h.innerHTML = K.homeCard({ noRestoreHint: false }); }

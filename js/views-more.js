@@ -522,13 +522,17 @@
   };
 
   // Einstellungen > Lernen: woher neue Kanji zum Schreiben kommen (die WaniKani-Level selbst stehen unter Pakete)
+  // Bausteine der Einstellungen: eine Zeile je Einstellung – Name links, Schalter rechts
+  const setRow = (label, ctrl, hint = '', attrs = '') => `<div class="set-row" ${attrs}><div class="set-l">${label}${hint ? `<small>${hint}</small>` : ''}</div><div class="set-c">${ctrl}</div></div>`;
+  const setSeg = (key, cur, opts) => `<div class="seg seg-sm">${opts.map(([k, l]) => `<button type="button" class="${cur === k ? 'on' : ''}" data-sv="${key}" data-v="${k}">${l}</button>`).join('')}</div>`;
+  const setTgl = (key, on, onV, offV, label) => `<label class="tgl" title="${esc(label)}"><input type="checkbox" data-st="${key}" data-on="${onV}" data-off="${offV}" aria-label="${esc(label)}" ${on ? 'checked' : ''}><span></span></label>`;
+
   const writeSrcField = () => {
     const wk = App.wk, src = App.writeSource();
     const hint = src !== 'wk' ? '' : !wk.connected() ? 'Erst WaniKani unter <a href="#/pakete">Pakete</a> verbinden – bis dahin kommen keine neuen Kanji dazu.' : !wk.levels().length ? 'Schalte unter <a href="#/pakete">Pakete</a> mindestens ein WaniKani-Level frei.' : '';
-    return `<div class="field"><label>Kanji zum Schreiben <small>welche neu drankommen</small></label>
-        <div class="seg" style="flex-wrap:wrap">${[['genki', 'Genki'], ['n5', 'JLPT N5'], ['wk', 'WaniKani'], ['all', 'Alles zusammen']].map(([k, l]) => `<button class="${src === k ? 'on' : ''}" data-wsrc="${k}">${l}</button>`).join('')}</div>
-        <p class="muted small" style="margin:6px 0 0">Gilt nur für einzelne Kanji, nicht für Vokabeln. Jedes Kanji kommt nur einmal dran, auch wenn es in mehreren Quellen steht. Was du schon schreibst, bleibt in der Wiederholung.</p>
-        ${hint ? `<p class="small" style="margin:6px 0 0;color:var(--shu)">${hint}</p>` : ''}</div>`;
+    return `<div class="set-block"><div class="set-l">Kanji zum Schreiben <small>welche neu drankommen – nur einzelne Kanji, jedes nur einmal; was du schon schreibst, bleibt in der Wiederholung</small></div>
+        <div class="seg seg-sm" style="flex-wrap:wrap">${[['genki', 'Genki'], ['n5', 'JLPT N5'], ['wk', 'WaniKani'], ['all', 'Alles zusammen']].map(([k, l]) => `<button class="${src === k ? 'on' : ''}" data-wsrc="${k}">${l}</button>`).join('')}</div>
+        ${hint ? `<p class="small" style="margin:0;color:var(--shu)">${hint}</p>` : ''}</div>`;
   };
 
   // Vorlese-Stimme: Auswahl pro Gerät (localStorage), „Automatisch“ nimmt die natürlichste (voice-logic.js)
@@ -539,9 +543,8 @@
     const weak = !vs.length || App.voiceLogic.score(vs[0]) <= 10;
     const tip = !vs.length ? 'Auf diesem Gerät ist keine japanische Stimme installiert (Windows: Einstellungen › Zeit & Sprache › Sprache › Japanisch hinzufügen).'
       : weak ? 'Natürlicher klingt es in Edge (Nanami) oder Chrome („Google 日本語“). iPad: Einstellungen › Bedienungshilfen › Gesprochene Inhalte › Stimmen › Japanisch.' : '';
-    return `<div class="field"><label>Stimme <small>zum Vorlesen, gilt nur für dieses Gerät</small></label>
-        <select class="input" data-voice ${vs.length ? '' : 'disabled'}><option value="" ${savedOk ? '' : 'selected'}>Automatisch${!savedOk && cur ? ' – ' + esc(App.voiceLogic.label(cur)) : ''}</option>${vs.map((v) => `<option value="${esc(v.voiceURI)}" ${savedOk && v.voiceURI === saved ? 'selected' : ''}>${esc(App.voiceLogic.label(v))}</option>`).join('')}</select>
-        ${tip ? `<p class="muted small" style="margin:6px 0 0">${tip}</p>` : ''}</div>`;
+    return setRow('Stimme', `<select class="input" data-voice ${vs.length ? '' : 'disabled'}><option value="" ${savedOk ? '' : 'selected'}>Automatisch${!savedOk && cur ? ' – ' + esc(App.voiceLogic.label(cur)) : ''}</option>${vs.map((v) => `<option value="${esc(v.voiceURI)}" ${savedOk && v.voiceURI === saved ? 'selected' : ''}>${esc(App.voiceLogic.label(v))}</option>`).join('')}</select>`, 'nur für dieses Gerät')
+      + (tip ? `<p class="muted small set-note">${tip}</p>` : '');
   };
 
   // =========================================================
@@ -571,63 +574,76 @@
   });
 
   // Einstellungen: wie die App sich verhält. Alles, was Inhalte bringt oder weitergibt (JLPT, WaniKani, Teilen), steht unter Pakete.
+  let srcEdit = -1; // welche Quelle gerade zum Bearbeiten offen ist
   App.route('/einstellungen', (view) => {
     const st = S.settings;
+    if (srcEdit >= st.sources.length) srcEdit = -1;
+    const vac = App.pause.vacation();
+    const es = st.sources[srcEdit];
     view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Einstellungen <span class="jp-title">設定</span></h1><p>Persönliches, wie du lernst, Sicherung und deine Geräte. Inhalte holst und teilst du unter <a href="#/pakete">Pakete</a>.</p></div></div>
-      <div class="grid cols-2">
-      <div class="card"><h3>Persönlich</h3><div class="form">
-        <div class="field"><label>Dein Name <small>für die Begrüßung</small></label><input class="input" data-s="name" value="${esc(st.name)}"></div>
-        <div class="field"><label>Name deines Kurses</label><input class="input" data-s="course" value="${esc(st.course)}"></div>
-        <div class="two"><div class="field"><label>Design</label><select class="input" data-s="theme">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<option value="${k}" ${st.theme === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-        <div class="field"><label>Furigana</label><select class="input" data-s="furigana"><option value="on" ${st.furigana === 'on' ? 'selected' : ''}>Immer anzeigen</option><option value="hover" ${st.furigana === 'hover' ? 'selected' : ''}>Nur beim Antippen</option></select></div></div>
+      <div class="set-cols"><div class="set-col">
+      <div class="card"><h3>Persönlich</h3><div class="set-list">
+        ${setRow('Dein Name', `<input class="input" data-s="name" value="${esc(st.name)}">`, 'für die Begrüßung')}
+        ${setRow('Dein Kurs', `<input class="input" data-s="course" value="${esc(st.course)}">`)}
+        ${setRow('Design', setSeg('theme', st.theme || 'auto', [['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']]))}
+        ${setRow('Furigana', setSeg('furigana', st.furigana === 'hover' ? 'hover' : 'on', [['on', 'Immer'], ['hover', 'Beim Antippen']]))}
         ${voiceField()}
-        <div class="field"><label>Sprechtempo <small>${String(st.ttsRate).replace('.', ',')}</small></label><div class="row"><input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}" class="grow">${App.speakBtn('こんにちは、日本語を勉強しています。')}</div></div>
+        ${setRow(`Sprechtempo <b class="set-val">${String(st.ttsRate).replace('.', ',')}</b>`, `<input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}">${App.speakBtn('こんにちは、日本語を勉強しています。')}`)}
       </div></div>
-      <div class="card"><h3>Lernen</h3><div class="form">
-        <div class="two"><div class="field"><label>Neue Karten pro Sitzung</label><input class="input" type="number" min="1" max="100" data-s="newPerDay" value="${st.newPerDay}"></div>
-        ${App.checkOn() ? `<div class="field"><label>Wörter pro Einstufungs-Runde</label><input class="input" type="number" min="3" max="100" data-s="checkBatch" value="${st.checkBatch || 15}"></div>` : ''}</div>
-        <div class="field"><label>Einstufen <small>Bekanntes aus Paketen aussortieren, bevor du es lernst. „Neue lernen“ gibt es immer – für Vokabeln und Ausdrücke blendet „Aus“ nur den Einstufen-Knopf aus.</small></label><select class="input" data-s="check">${[['on', 'An – Neues erst einstufen'], ['off', 'Aus – ohne Einstufen (Kanji liegen direkt in der Lernschlange)']].map(([k, l]) => `<option value="${k}" ${(App.checkOn() ? 'on' : 'off') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-        <div class="field"><label>Verben mit Partikel abfragen <small>Deutsch → Japanisch: statt „treffen → 会う“ kommt „jemanden treffen → 人に会う“. Nur das Wort ohne Partikel gilt dann als halb richtig</small></label><select class="input" data-s="verbPattern">${[['', 'Aus – nur das Wort abfragen'], ['on', 'An – das Muster mit Partikel abfragen']].map(([k, l]) => `<option value="${k}" ${(st.verbPattern ? 'on' : '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-        <details class="adv" data-kanji-adv><summary>Kanji: Lesen, Schreiben, Furigana</summary><div class="form" style="margin-top:10px">
-        <div class="field"><label>Kanji-Schwerpunkt <small>was Startseite und „fällig“ in den Vordergrund stellen</small></label><select class="input" data-s="kanjiFocus">${[['both', 'Lesen und Schreiben'], ['write', 'Schreiben – Lesen lerne ich woanders (z. B. WaniKani)'], ['read', 'Lesen – Schreiben brauche ich nicht']].map(([k, l]) => `<option value="${k}" ${App.writeLogic.focus(st) === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-        ${writeSrcField()}
-        <div class="field"><label>Furigana beim Abfragen <small>über Kanji, die du schon lesen kannst („Kann ich“ oder mit Karten gelernt)</small></label><select class="input" data-s="furiKnown">${[['hide', 'Ausblenden – nur über Kanji, die ich noch lerne'], ['show', 'Über allen Kanji anzeigen']].map(([k, l]) => `<option value="${k}" ${(st.furiKnown === 'show' ? 'show' : 'hide') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div></details>
-        ${App.pause.settingsField()}
-        <div class="row between" style="padding-top:12px;border-top:1px solid var(--line)"><p class="muted small" style="margin:0">Wo neue Einträge landen und wann etwas als „kann ich“ gilt.</p><a class="btn btn-sm" href="#/lernweg">${icon('map')} So läuft das Lernen</a></div>
+      <div class="card"><h3 class="row between">Lernen <a class="btn btn-sm btn-ghost" href="#/lernweg" title="Wo neue Einträge landen und wann etwas als „kann ich“ gilt">${icon('map')} So läuft das Lernen</a></h3><div class="set-list">
+        ${setRow('Neue Karten pro Sitzung', `<input class="input" type="number" min="1" max="100" data-s="newPerDay" value="${st.newPerDay}">`)}
+        ${App.checkOn() ? setRow('Wörter pro Einstufen-Runde', `<input class="input" type="number" min="3" max="100" data-s="checkBatch" value="${st.checkBatch || 15}">`) : ''}
+        ${setRow('Neues erst einstufen', setTgl('check', App.checkOn(), 'on', 'off', 'Neues erst einstufen'), 'Bekanntes aus Paketen aussortieren, bevor du es lernst. Aus: kein Einstufen-Knopf, Kanji liegen direkt in der Lernschlange')}
+        ${setRow('Verben mit Partikel abfragen', setTgl('verbPattern', !!st.verbPattern, 'on', '', 'Verben mit Partikel abfragen'), 'Deutsch → Japanisch: „jemanden treffen → 人に会う“ statt „treffen → 会う“. Nur das Wort gilt dann als halb richtig')}
+        <details class="set-more" data-kanji-adv><summary>Kanji: Lesen, Schreiben, Furigana</summary>
+          ${setRow('Kanji-Schwerpunkt', `<select class="input" data-s="kanjiFocus">${[['both', 'Lesen und Schreiben'], ['write', 'Nur Schreiben'], ['read', 'Nur Lesen']].map(([k, l]) => `<option value="${k}" ${App.writeLogic.focus(st) === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`, 'was Startseite und „fällig“ zeigen. Nur Schreiben: Lesen lernst du woanders (z. B. WaniKani)')}
+          ${writeSrcField()}
+          ${setRow('Furigana auch über bekannten Kanji', setTgl('furiKnown', st.furiKnown === 'show', 'show', 'hide', 'Furigana auch über bekannten Kanji'), 'beim Abfragen. Aus: nur über Kanji, die du noch lernst')}
+        </details>
+        <details class="set-more" ${vac ? 'open' : ''}><summary>${icon('vacation')} Urlaubsmodus${vac ? ' <span class="set-on">ist an</span>' : ''}</summary>${App.pause.settingsField()}</details>
       </div></div>
-      <div class="card"><h3>Quellen</h3><p class="muted small">Damit du deine Inhalte nach Buch, App oder Kurs filtern kannst (z. B. nur Genki-Vokabeln).</p>
-        <div class="stack" data-srcs style="gap:6px">${st.sources.map((s, i) => `<div class="row"><input type="color" value="${s.color}" data-sc="${i}" style="width:44px;height:40px;border:0;background:none"><input class="input grow" value="${esc(s.name)}" data-sn="${i}"><button class="icon-btn sm" data-sd="${i}">${icon('trash')}</button></div>`).join('')}</div>
-        <button class="btn btn-sm" style="margin-top:10px" data-sadd>${icon('plus')} Quelle hinzufügen</button></div>
+      </div><div class="set-col">
       <div class="card"><h3 class="row between">Sicherung <button class="icon-btn sm help-q" data-tour="sicherung" title="So richtest du die Sicherung ein" aria-label="So richtest du die Sicherung ein">${icon('help')}</button></h3>
-        <h4 class="sub-h">Automatische Sicherung</h4><div data-backup-auto>${App.backup.card()}</div>
+        <h4 class="sub-h">Automatisch</h4><div data-backup-auto>${App.backup.card()}</div>
         <h4 class="sub-h">Von Hand</h4><p class="muted small" data-backup-manual ${App.backup.manualHint() ? '' : 'hidden'}>Alles wird lokal in diesem Browser gespeichert. Mach regelmäßig ein Backup – damit kannst du auch auf ein anderes Gerät umziehen.</p>
-        <div class="stack"><button class="btn" data-exp>${icon('download')} Komplett-Backup (mit Dateien & Stiftnotizen)</button>
-        <button class="btn" data-exp-light>${icon('download')} Backup ohne Dateien (klein)</button>
-        <label class="btn">${icon('upload')} Backup einspielen<input type="file" accept=".json,.zip,application/json,application/zip" hidden data-imp></label></div></div>
+        <div class="row"><button class="btn btn-sm" data-exp title="Komplett-Backup mit Dateien und Stiftnotizen">${icon('download')} Komplett</button>
+        <button class="btn btn-sm" data-exp-light title="Backup ohne Dateien (klein)">${icon('download')} Ohne Dateien</button>
+        <label class="btn btn-sm" title="Backup-Datei wieder einspielen">${icon('upload')} Einspielen<input type="file" accept=".json,.zip,application/json,application/zip" hidden data-imp></label></div></div>
+      <div class="card"><h3>Quellen</h3><p class="muted small">Damit du deine Inhalte nach Buch, App oder Kurs filtern kannst. Antippen zum Ändern.</p>
+        <div class="chips" data-srcs>${st.sources.map((s, i) => `<button type="button" class="chip ${i === srcEdit ? 'on' : ''}" data-sedit="${i}" style="--c:${esc(s.color)}"><span class="sw"></span>${esc(s.name)}</button>`).join('')}<button type="button" class="chip" data-sadd title="Quelle hinzufügen">${icon('plus')} Quelle</button></div>
+        ${es ? `<div class="row src-edit"><input type="color" value="${esc(es.color)}" data-sc="${srcEdit}" aria-label="Farbe"><input class="input grow" value="${esc(es.name)}" data-sn="${srcEdit}" aria-label="Name der Quelle"><button class="icon-btn sm" data-sd="${srcEdit}" title="Quelle entfernen">${icon('trash')}</button><button class="btn btn-sm" data-sdone>Fertig</button></div>` : ''}</div>
       ${App.extensionCard()}
-      ${App.pwa.card()}
       <div class="card"><h3>Über</h3><p class="small">Nihongo Techō 日本語手帳 · läuft komplett offline in deinem Browser.<br>Strichfolge-Daten: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, CC BY-SA 3.0. PDF-Anzeige: pdf.js (Mozilla).<br>Inhalte orientieren sich an Genki I (3. Aufl.) – bitte mit deinem Buch abgleichen.</p>
-        <button class="btn btn-sm btn-ghost" data-hallo-open>Über diese App</button>
+        <div class="row"><button class="btn btn-sm btn-ghost" data-hallo-open>Über diese App</button>
         <button class="btn btn-sm btn-ghost" data-news-open>Was ist neu?</button>
-        <button class="btn btn-sm btn-ghost btn-danger" data-reset>${icon('trash')} Alle Daten löschen</button></div>
-      </div></div>`;
+        <button class="btn btn-sm btn-ghost btn-danger" data-reset>${icon('trash')} Alle Daten löschen</button></div></div>
+      </div></div></div>`;
     const root = view.firstElementChild;
+    root.addEventListener('input', (e) => {
+      const r = e.target.closest('[data-s="ttsRate"]');
+      if (r) { const v = r.closest('.set-row').querySelector('.set-val'); if (v) v.textContent = String(r.value).replace('.', ','); }
+    });
     root.addEventListener('change', async (e) => {
       const vo = e.target.closest('[data-voice]');
       if (vo) { JP.setVoice(vo.value); JP.speak('こんにちは、日本語を勉強しています。'); return; }
+      const t = e.target.closest('[data-st]');
+      if (t) { const k = t.dataset.st; await App.saveSettings({ [k]: t.checked ? t.dataset.on : t.dataset.off }); if (k === 'check') App.render(true); return; }
       const s = e.target.closest('[data-s]');
-      if (s) { let v = s.value; if (s.type === 'number' || s.type === 'range') v = +v; await App.saveSettings({ [s.dataset.s]: v }); if (s.dataset.s === 'theme') App.applyTheme(); if (s.dataset.s === 'ttsRate' || s.dataset.s === 'check') App.render(true); }
+      if (s) { let v = s.value; if (s.type === 'number' || s.type === 'range') v = +v; await App.saveSettings({ [s.dataset.s]: v }); }
       const sn = e.target.closest('[data-sn]');
-      if (sn) { const i = +sn.dataset.sn; const old = st.sources[i].name; const nn = sn.value.trim(); if (nn && nn !== old) { st.sources[i].name = nn; for (const it of S.items.values()) if (it.source === old) { it.source = nn; await App.db.put('items', it); } for (const f of S.files.values()) if (f.source === old) { f.source = nn; await App.db.put('files', f); } await App.saveSettings({}); App.toast('Quelle umbenannt'); } }
+      if (sn) { const i = +sn.dataset.sn; const old = st.sources[i].name; const nn = sn.value.trim(); if (nn && nn !== old) { st.sources[i].name = nn; for (const it of S.items.values()) if (it.source === old) { it.source = nn; await App.db.put('items', it); } for (const f of S.files.values()) if (f.source === old) { f.source = nn; await App.db.put('files', f); } await App.saveSettings({}); App.toast('Quelle umbenannt'); App.render(true); } }
       const sc = e.target.closest('[data-sc]');
-      if (sc) { st.sources[+sc.dataset.sc].color = sc.value; await App.saveSettings({}); }
+      if (sc) { st.sources[+sc.dataset.sc].color = sc.value; await App.saveSettings({}); App.render(true); }
       const imp = e.target.closest('[data-imp]');
       if (imp && imp.files[0]) { const file = imp.files[0]; imp.value = ''; try { const r = await App.paket.open(file); App.toast(r.text); App.render(); } catch (er) { App.toast(er.message); } }
     });
     root.addEventListener('click', async (e) => {
       const b = e.target.closest('button'); if (!b) return;
-      if (b.matches('[data-sadd]')) { st.sources.push({ name: 'Neue Quelle', color: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0') }); await App.saveSettings({}); App.render(true); }
-      if (b.matches('[data-sd]')) { const s = st.sources[+b.dataset.sd]; if (await App.confirm(`Quelle „${s.name}“ aus der Liste entfernen? Einträge behalten ihre Quelle.`, { ok: 'Entfernen' })) { st.sources.splice(+b.dataset.sd, 1); await App.saveSettings({}); App.render(true); } }
+      if (b.matches('[data-sv]')) { const k = b.dataset.sv; await App.saveSettings({ [k]: b.dataset.v }); if (k === 'theme') App.applyTheme(); App.render(true); }
+      if (b.matches('[data-sedit]')) { const i = +b.dataset.sedit; srcEdit = srcEdit === i ? -1 : i; App.render(true); }
+      if (b.matches('[data-sdone]')) { srcEdit = -1; App.render(true); }
+      if (b.matches('[data-sadd]')) { st.sources.push({ name: 'Neue Quelle', color: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0') }); srcEdit = st.sources.length - 1; await App.saveSettings({}); App.render(true); const n = document.querySelector('[data-sn]'); if (n) { n.focus(); n.select(); } }
+      if (b.matches('[data-sd]')) { const s = st.sources[+b.dataset.sd]; if (await App.confirm(`Quelle „${s.name}“ aus der Liste entfernen? Einträge behalten ihre Quelle.`, { ok: 'Entfernen' })) { st.sources.splice(+b.dataset.sd, 1); srcEdit = -1; await App.saveSettings({}); App.render(true); } }
       if (b.matches('[data-exp]')) App.backup.saveByHand();
       if (b.matches('[data-exp-light]')) App.exportData({ withFiles: false });
       if (b.matches('[data-wsrc]')) { await App.saveSettings({ writeSource: b.dataset.wsrc }); App.render(true); }

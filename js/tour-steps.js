@@ -117,7 +117,7 @@
     ],
     '/einstellungen': [
       { target: '#view .card:has([data-bk]) h3', text: 'Deine Daten liegen nur auf diesem Gerät. Hier sicherst du sie – das „?“ daneben zeigt, wie.' },
-      { target: EXT + ' h3', title: 'Text aus dem Browser', text: 'Mit der Erweiterung holst du japanischen Text von jeder Webseite in die App.', link: { label: 'Schritt für Schritt zeigen', tour: 'erweiterung' } },
+      { target: EXT + ' [data-ext-get]', title: 'Text aus dem Browser', text: 'Mit der Erweiterung holst du japanischen Text von jeder Webseite in die App.', link: { label: 'Schritt für Schritt zeigen', tour: 'erweiterung' } },
     ],
     // Sicherungs-Hilfe („?“ an der Karte Sicherung) – je Gerät eine, gewählt in tour-logic.js (backupTourKey).
     // Immer zuerst automatisch, dann von Hand. So kurz wie möglich.
@@ -149,10 +149,10 @@
     ],
     // Browser-Erweiterung: läuft immer auf der Karte in den Einstellungen
     erweiterung: [
-      { target: EXT + ' h3', title: 'Wozu?', text: 'Japanischen Text auf einer Webseite markieren und mit einem Klick in die App holen. Nur mit Chrome oder Edge am PC.' },
-      { target: EXT + ' .row', title: 'Holen', text: 'Lade die Erweiterung herunter und entpacke sie an einen Ort, an dem der Ordner bleiben kann, zum Beispiel Dokumente.' },
-      { target: EXT + ' ol', title: 'Einmal einrichten', text: 'Öffne im Browser chrome://extensions, schalte den Entwicklermodus ein und wähle über „Entpackte Erweiterung laden“ den Ordner aus.' },
-      { target: EXT + ' ol', title: 'Benutzen', text: 'Lass die App geöffnet, lade die Webseite neu und markiere japanischen Text. An der Markierung erscheinen zwei Knöpfe.' },
+      { target: EXT + ' [data-ext-get]', title: 'Wozu?', text: 'Japanischen Text auf einer Webseite markieren und mit einem Klick in die App holen. Nur mit Chrome oder Edge am PC.' },
+      { target: EXT + ' [data-ext-get] .set-c', title: 'Holen', text: 'Lade die Erweiterung herunter und entpacke sie an einen Ort, an dem der Ordner bleiben kann, zum Beispiel Dokumente.' },
+      { target: EXT + ' [data-tour-open] ol', title: 'Einmal einrichten', text: 'Öffne im Browser chrome://extensions, schalte den Entwicklermodus ein und wähle über „Entpackte Erweiterung laden“ den Ordner aus.' },
+      { target: EXT + ' [data-tour-open] ol', title: 'Benutzen', text: 'Lass die App geöffnet, lade die Webseite neu und markiere japanischen Text. An der Markierung erscheinen zwei Knöpfe.' },
     ],
   };
 

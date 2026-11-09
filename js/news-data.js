@@ -7,6 +7,19 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-suche-leeren', date: '9. November',
+      items: [
+        { t: 'Suche räumt sich auf', d: 'Die Suche oben wird leer, sobald du fertig bist: Treffer angetippt, daneben getippt, Esc oder auf eine andere Seite gewechselt.' },
+      ],
+    },
+    {
+      id: '2026-11-09-einstellungen', date: '9. November',
+      items: [
+        { t: 'Einstellungen aufgeräumt', d: 'Unter Einstellungen steht jetzt jede Einstellung in einer Zeile mit Schalter rechts – die Seite ist nur noch halb so lang. Seltenes wie Kanji, Urlaubsmodus oder Wiederherstellen klappst du bei Bedarf auf.' },
+        { t: 'Quellen als Farbpunkte', d: 'Deine Quellen (Genki, Unterricht …) stehen als kleine Farbknöpfe da. Antippen, um Name oder Farbe zu ändern; Erweiterung, Android-App und Web-App findest du gesammelt unter „Geräte“.' },
+      ],
+    },
+    {
       id: '2026-11-09-tempo', date: '9. November',
       items: [
         { t: 'Vokabeln öffnen schneller', d: 'Der Wechsel zur Vokabelliste (und von dort weg) hakt nicht mehr, auch bei tausenden Wörtern – die Karten weiter unten laden unmerklich nach.' },

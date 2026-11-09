@@ -22,10 +22,12 @@
   let cur = null;      // laufende Tour
   let pending = null;  // Tour, die nach dem Seitenwechsel startet
 
-  // erstes sichtbares Element; in der Seitenleiste zählt auch ein verborgenes (sie wird für den Schritt geöffnet)
+  // erstes sichtbares Element; in der Seitenleiste zählt auch ein verborgenes (sie wird für den Schritt geöffnet).
+  // Liegt es in einem zugeklappten Abschnitt mit data-tour-open, klappt die Tour ihn auf.
   const find = (sel) => {
     let all;
     try { all = [...document.querySelectorAll(sel)]; } catch (e) { return null; }
+    all.forEach((el) => { const d = el.closest('details[data-tour-open]:not([open])'); if (d) d.open = true; });
     return all.find((el) => el.getClientRects().length || el.closest('#sidebar')) || null;
   };
 

@@ -1431,6 +1431,50 @@ body.ink-fit #view { padding-bottom: 16px; }
 .backup-line { display: flex; gap: 12px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 18px; }
 .sub-h { margin: 14px 0 6px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .sub-h:first-of-type { margin-top: 4px; }
+/* Einstellungen: Karten in zwei Spalten ohne Lücken, je Einstellung eine Zeile (Name links, Schalter rechts) */
+.set-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; }
+.set-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (max-width: 760px) { .set-cols { grid-template-columns: minmax(0, 1fr); } }
+.set-list { display: flex; flex-direction: column; }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+.set-list > .set-row:first-child { border-top: 0; padding-top: 0; }
+.set-l { min-width: 0; flex: 1 1 auto; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+.set-l small { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; line-height: 1.4; color: var(--muted); }
+.set-c { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; flex: 0 1 auto; max-width: 62%; }
+.set-c .input { width: 210px; max-width: 100%; min-height: 36px; padding-top: 4px; padding-bottom: 4px; }
+.set-c input[type=number] { width: 76px; }
+.set-c input[type=range] { width: 130px; }
+.set-val { font-weight: 600; color: var(--muted); margin-left: 4px; }
+.set-note { margin: -4px 0 8px; }
+.set-block { display: flex; flex-direction: column; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
+.set-on { font-size: 12px; font-weight: 700; color: var(--shu); margin-left: 4px; }
+.seg.seg-sm { flex-wrap: nowrap; }
+.seg.seg-sm button { min-height: 32px; padding: 0 10px; font-size: 13px; }
+details.set-more { border-top: 1px solid var(--line); padding: 9px 0 0; margin-top: 0; }
+.set-list > details.set-more + details.set-more { margin-top: 9px; }
+details.set-more > summary { cursor: pointer; font-size: 14px; font-weight: 700; color: var(--ink-2); min-height: 30px; display: flex; align-items: center; gap: 6px; }
+details.set-more > summary::-webkit-details-marker { display: none; }
+details.set-more > summary::before { content: "›"; display: inline-block; width: 10px; font-size: 18px; line-height: 1; color: var(--muted); transition: transform .15s; }
+details.set-more[open] > summary::before { transform: rotate(90deg); }
+details.set-more[open] > summary { margin-bottom: 6px; }
+details.set-more > .set-row:first-of-type, details.set-more > .set-block:first-of-type { border-top: 0; }
+details.set-more .vac-field > label { display: none; }
+[data-backup-auto] details.set-more { margin-top: 10px; }
+.src-edit { margin-top: 10px; flex-wrap: nowrap; }
+.src-edit input[type=color] { width: 44px; height: 40px; border: 0; background: none; flex: none; }
+/* An/Aus-Schalter */
+.tgl { position: relative; display: inline-flex; flex: none; width: 44px; height: 26px; cursor: pointer; }
+.tgl input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.tgl span { position: absolute; inset: 0; border-radius: 13px; background: var(--line-2); transition: background .15s; pointer-events: none; }
+.tgl span::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+.tgl input:checked + span { background: var(--sec, var(--shu)); }
+.tgl input:checked + span::after { transform: translateX(18px); }
+.tgl input:focus-visible + span { outline: 2px solid var(--sec, var(--shu)); outline-offset: 2px; }
+@media (max-width: 560px) {
+  .set-row { flex-wrap: wrap; }
+  .set-c { max-width: 100%; justify-content: flex-start; }
+  .set-row:has(.tgl) { flex-wrap: nowrap; }
+}
 
 /* ---------- Pitch Accent (Tonhöhenkurve an Vokabeln) ---------- */
 .pitch { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; }

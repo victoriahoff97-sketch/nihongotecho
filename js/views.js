@@ -985,13 +985,17 @@
         '<div data-dict-box></div>' +
         `<a class="btn btn-sm btn-ghost" style="width:100%;margin-top:6px" href="#/suche?q=${encodeURIComponent(q)}">Alle Ergebnisse anzeigen ↵</a>`;
       pop.hidden = false;
-      fillDictBox(pop.querySelector('[data-dict-box]'), q, () => my === gen, () => { pop.hidden = true; });
+      fillDictBox(pop.querySelector('[data-dict-box]'), q, () => my === gen, done);
     };
+    // fertig mit der Suche (Treffer gewählt, daneben getippt, Esc, andere Seite): Feld leeren, damit es frei ist für die nächste
+    const done = () => { gen++; pop.hidden = true; inp.value = ''; };
     inp.addEventListener('input', App.debounce(draw, 120));
     inp.addEventListener('focus', draw);
-    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { pop.hidden = true; App.go('#/suche?q=' + encodeURIComponent(inp.value.trim())); inp.blur(); } if (e.key === 'Escape') { inp.blur(); pop.hidden = true; } });
-    document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.search-wrap, .sp-panel')) pop.hidden = true; });
-    pop.addEventListener('click', (e) => { if (e.target.closest('a')) { pop.hidden = true; inp.value = ''; } });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { pop.hidden = true; App.go('#/suche?q=' + encodeURIComponent(inp.value.trim())); inp.blur(); } if (e.key === 'Escape') { inp.blur(); done(); } });
+    document.addEventListener('pointerdown', (e) => { if (!pop.hidden && !e.target.closest('.search-wrap, .sp-panel')) done(); });
+    pop.addEventListener('click', (e) => { if (e.target.closest('a')) done(); });
+    // die Ergebnisseite zeigt den Suchbegriff oben im Feld; jede andere Seite startet mit leerem Feld
+    window.addEventListener('hashchange', () => { if (!location.hash.startsWith('#/suche')) done(); });
   };
 
   App.lsGet = (k) => { try { return localStorage.getItem('nt-' + k); } catch (e) { return null; } };

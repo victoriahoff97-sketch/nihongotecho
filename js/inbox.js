@@ -7,29 +7,32 @@
   const { icon } = App;
 
   // Karte in den Einstellungen: Browser-Erweiterung holen und einrichten
+  // Karte „Geräte“ in den Einstellungen: Browser-Erweiterung, Android-Zusatz-App und Web-App – Anleitungen zum Aufklappen
   App.extensionCard = () => {
     const web = L.extSource(location.protocol) === 'download';
+    const row = (label, hint, ctrl, attrs = '') => `<div class="set-row" ${attrs}><div class="set-l">${label}<small>${hint}</small></div><div class="set-c">${ctrl}</div></div>`;
     const get = web
-      ? `<a class="btn btn-sec" href="extension.zip" download="NihongoTecho-Erweiterung.zip">${icon('download')} Erweiterung herunterladen</a>`
-      : '<p class="small">Der Ordner <b>extension</b> liegt im App-Ordner (nach der Installation: <b>Dokumente\\NihongoTecho\\extension</b>).</p>';
-    return `<div class="card sec-vocab" data-ext-card><h3>Aus dem Browser direkt in die App</h3>
-      <p class="muted small">Mit der Browser-Erweiterung (Chrome oder Edge am PC) markierst du japanischen Text auf einer beliebigen Webseite (z. B. NHK Easy oder WaniKani) und landest mit einem Klick bei „Sätze zuordnen“ oder im Vokabel-Formular – mit Lesung, Beispielsatz und Fundstelle.</p>
-      <div class="row">${get}<button class="btn btn-ghost btn-sm" data-tour="erweiterung">So geht's</button></div>
-      <ol class="small" style="margin:10px 0 0;padding-left:20px">
+      ? `<a class="btn btn-sm btn-sec" href="extension.zip" download="NihongoTecho-Erweiterung.zip">${icon('download')} Herunterladen</a>`
+      : '';
+    return `<div class="card sec-vocab" data-ext-card><h3>Geräte</h3><div class="set-list">
+      ${row('Browser-Erweiterung', `Japanischen Text auf einer beliebigen Webseite (z. B. NHK Easy oder WaniKani) markieren und mit einem Klick bei „Sätze zuordnen“ oder im Vokabel-Formular landen – mit Lesung, Beispielsatz und Fundstelle. Chrome oder Edge am PC.${web ? '' : ' Der Ordner <b>extension</b> liegt im App-Ordner (nach der Installation: <b>Dokumente\\NihongoTecho\\extension</b>).'}`,
+        `${get}<button class="btn btn-ghost btn-sm" data-tour="erweiterung">So geht's</button>`, 'data-ext-get')}
+      <details class="set-more" data-tour-open><summary>Erweiterung einrichten</summary>
+      <ol class="small" style="margin:0;padding-left:20px">
         ${web ? '<li>Die heruntergeladene ZIP-Datei entpacken – an einen Ort, an dem der Ordner bleiben kann (z. B. Dokumente).</li>' : ''}
         <li>Im Browser <b>chrome://extensions</b> (Edge: <b>edge://extensions</b>) öffnen und den <b>Entwicklermodus</b> einschalten.</li>
         <li><b>Entpackte Erweiterung laden</b> antippen und den Ordner <b>extension</b> wählen.</li>
         <li>Diese App geöffnet lassen, die Webseite neu laden und japanischen Text markieren – an der Markierung erscheinen zwei Knöpfe.</li>
-      </ol>${web ? `
-      <h4 style="margin:16px 0 4px">Auf dem Android-Tablet</h4>
-      <p class="muted small">Chrome auf Android kann keine Erweiterungen. Die kleine Zusatz-App bringt „Nihongo Techō“ in das Menü, das beim Markieren von Text erscheint (manchmal unter „⋮“) – in Chrome und anderen Apps.</p>
-      <div class="row"><a class="btn btn-sec" href="nihongotecho-markieren.apk" download="NihongoTecho-Markieren.apk">${icon('download')} Android-App herunterladen</a>
-        <a class="btn btn-ghost btn-sm" href="extension-firefox.zip" download="NihongoTecho-Erweiterung-Firefox.zip">Erweiterung für Firefox</a></div>
-      <ol class="small" style="margin:10px 0 0;padding-left:20px">
+      </ol></details>${web ? `
+      ${row('Android-Tablet', 'Chrome auf Android kann keine Erweiterungen. Die kleine Zusatz-App bringt „Nihongo Techō“ in das Menü, das beim Markieren von Text erscheint (manchmal unter „⋮“) – in Chrome und anderen Apps.',
+        `<a class="btn btn-sm btn-sec" href="nihongotecho-markieren.apk" download="NihongoTecho-Markieren.apk">${icon('download')} Android-App</a><a class="btn btn-ghost btn-sm" href="extension-firefox.zip" download="NihongoTecho-Erweiterung-Firefox.zip">Für Firefox</a>`)}
+      <details class="set-more"><summary>Android-App einrichten</summary>
+      <ol class="small" style="margin:0;padding-left:20px">
         <li>Diese App zuerst installieren („Als App installieren“), damit der Text später in ihr landet.</li>
         <li>Die heruntergeladene Datei antippen. Android fragt einmal, ob Chrome Apps installieren darf – erlauben, dann „Installieren“.</li>
         <li>Auf einer Webseite japanischen Text markieren und im Menü <b>Nihongo Techō</b> antippen.</li>
-      </ol>` : ''}</div>`;
+      </ol></details>` : ''}
+      ${App.pwa.card()}</div></div>`;
   };
 
   // Adresse ersetzen (Neuladen/„Zurück“ holt nichts ein zweites Mal herein) und die Zielseite zeichnen
