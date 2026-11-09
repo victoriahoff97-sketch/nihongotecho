@@ -123,6 +123,14 @@
     }
     const list = App.itemsOf('kanji').sort((a, b) => (+a.lesson || 99) - (+b.lesson || 99) || App.ord(a) - App.ord(b));
     const kDe = (x) => esc(String(x.de || '').split(/[,;]/)[0].trim());
+    // Beispielwort → eigene Vokabel mit derselben Schreibung (bei mehreren: gleiche Lesung zuerst), sonst null
+    const hira = (t) => String(t || '').replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+    const vocab = App.itemsOf('vocab');
+    const wordEntry = (w) => {
+      const sp = JP.plain(w.jp), rd = hira(JP.kana(w.jp));
+      const hits = vocab.filter((x) => x.kanji === sp);
+      return hits.find((x) => hira(x.kana) === rd) || hits[0] || null;
+    };
     const hopNav = App.detailHop(it, list, (x) => (x.lesson ?? '') === '' ? 'ohne Lektion' : 'Lektion ' + x.lesson, (x) => `<span lang="ja">${esc(x.char)}</span>${x.de ? ' ' + kDe(x) : ''}`, 'Kanji');
     const media = App.filesFor({ itemId: it.id }).filter((f) => ['image', 'video'].includes(App.fileKind(f)));
     view.innerHTML = `<div class="${sec.cls}"><div class="row between detail-nav">${App.crumbs(sec, it)}${hopNav}</div>
@@ -141,7 +149,7 @@
           </div>
           ${it.mnemonic ? `<div class="pitfall" style="background:var(--murasaki-soft);border-color:var(--murasaki)">💡 ${JP.ruby(it.mnemonic)}</div>` : ''}
           </div></div></div>
-        ${(it.words || []).length ? `<div class="section-title">Wörter</div><div class="grid cols-3">${it.words.map((w) => `<div class="card row between" style="padding:12px 16px"><div><div lang="ja" style="font-size:22px">${JP.ruby(w.jp)}</div><div class="muted">${App.meaningHtml(w)}</div></div>${App.speakBtn(w.jp)}</div>`).join('')}</div>` : ''}
+        ${(it.words || []).length ? `<div class="section-title">Wörter</div><div class="grid cols-3">${it.words.map((w) => { const v = wordEntry(w), inner = `<div lang="ja" style="font-size:22px">${JP.ruby(w.jp)}</div><div class="muted">${App.meaningHtml(w)}</div>`; return `<div class="card row between kw-card${v ? ' kw-link' : ''}" style="padding:12px 16px">${v ? `<a class="kw-go" href="${App.link(v)}" title="Vokabel öffnen">${inner}</a>` : `<div>${inner}</div>`}${App.speakBtn(w.jp)}</div>`; }).join('')}</div>` : ''}
         <div class="section-title">Schreiben üben</div><div data-pad></div>
         <div class="section-title">Eigene Strichfolge-Videos & GIFs</div>
         <div class="row" style="margin-bottom:10px"><button class="btn btn-sm" data-add-media>${icon('upload')} GIF / Video hinzufügen</button><span class="small muted">z. B. aus WaniKani, Jisho oder selbst aufgenommen</span></div>

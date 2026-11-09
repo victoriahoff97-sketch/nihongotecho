@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-kanji-woerter', date: '9. November',
+      items: [
+        { t: 'Vom Kanji zur Vokabel', d: 'Auf einer Kanji-Seite unter „Wörter“: Wörter mit einem kleinen › hast du als Vokabel – antippen öffnet sie.' },
+      ],
+    },
+    {
       id: '2026-11-09-challenge-archiv', date: '9. November',
       items: [
         { t: 'Frühere Challenges', d: 'Unten in der Täglichen Gruppen-Challenge: „Frühere Challenges ansehen“ zeigt die Aufgaben der letzten Tage mit allen Sätzen.' },
