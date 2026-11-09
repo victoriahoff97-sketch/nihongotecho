@@ -15,8 +15,8 @@
     {
       id: '2026-11-09-einstellungen', date: '9. November',
       items: [
-        { t: 'Einstellungen aufgeräumt', d: 'Unter Einstellungen steht jetzt jede Einstellung in einer Zeile mit Schalter rechts – die Seite ist nur noch halb so lang. Seltenes wie Kanji, Urlaubsmodus oder Wiederherstellen klappst du bei Bedarf auf.' },
-        { t: 'Quellen als Farbpunkte', d: 'Deine Quellen (Genki, Unterricht …) stehen als kleine Farbknöpfe da. Antippen, um Name oder Farbe zu ändern; Erweiterung, Android-App und Web-App findest du gesammelt unter „Geräte“.' },
+        { t: 'Einstellungen aufgeräumt', d: 'Unter Einstellungen steht jede Einstellung in einer Zeile mit Schalter rechts – halb so lang. Seltenes wie Kanji oder Urlaubsmodus klappst du bei Bedarf auf.' },
+        { t: 'Quellen als Farbpunkte', d: 'Deine Quellen (Genki, Unterricht …) sind kleine Farbknöpfe – antippen zum Ändern. Erweiterung, Android-App und Web-App stehen gesammelt unter „Geräte“.' },
       ],
     },
     {
