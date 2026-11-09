@@ -1,10 +1,10 @@
 /* Nihongo Techō – Verb-Index: Verbklasse und Partikel-Muster je Paket-Verb (generiert von tools/build/build-verb-index.mjs)
  * Schlüssel: Schreibung|Lesung → [Klasse u|ru|irr, Partikel-Muster, Bedeutung des Wortes]
  * Wortliste siehe packs/<level>/vocab.js
- * Version: 208714829
+ * Version: 731717777
  */
-window.VERB_INDEX = {version:208714829,v:{
-"がる|がる":["u",[{"jp":"犬[いぬ]|を|怖[こわ]がる","de":"Angst vor dem Hund haben"}],"Anzeichen von … zeigen (Gefühle Dritter)"],
+window.VERB_INDEX = {version:731717777,v:{
+"続ける|つづける":["ru",[{"jp":"仕事[しごと]|を|続[つづ]ける","de":"die Arbeit fortsetzen"},{"jp":"勉強[べんきょう]|を|続[つづ]ける","de":"mit dem Lernen weitermachen"}],"fortsetzen; weitermachen"],
 "会う|あう":["u",[{"jp":"人[ひと]|に|会[あ]う","de":"jemanden treffen"},{"jp":"人[ひと]|と|会[あ]う","de":"sich mit jemandem treffen"}],"treffen; begegnen"],
 "開く|あく":["u",[{"jp":"ドア|が|開[あ]く","de":"die Tür geht auf"}],"aufgehen; sich öffnen"],
 "開ける|あける":["ru",[{"jp":"ドア|を|開[あ]ける","de":"die Tür öffnen"}],"öffnen; aufmachen"],
@@ -122,9 +122,6 @@ window.VERB_INDEX = {version:208714829,v:{
 "忘れる|わすれる":["ru",[{"jp":"名前[なまえ]|を|忘[わす]れる","de":"den Namen vergessen"},{"jp":"家[うち]|に|傘[かさ]|を|忘[わす]れる","de":"den Schirm zu Hause liegen lassen"}],"vergessen; liegen lassen"],
 "渡す|わたす":["u",[{"jp":"人[ひと]|に|手紙[てがみ]|を|渡[わた]す","de":"jemandem einen Brief übergeben"}],"übergeben; überreichen"],
 "渡る|わたる":["u",[{"jp":"道[みち]|を|渡[わた]る","de":"die Straße überqueren"}],"überqueren; hinübergehen (Straße, Brücke)"],
-"おわる|おわる":["u",[{"jp":"本[ほん]|を|読[よ]みおわる","de":"ein Buch zu Ende lesen"}],"zu Ende …; fertig … (etwas zu Ende tun)"],
-"だす|だす":["u",[{"jp":"雨[あめ]|が|降[ふ]りだす","de":"es fängt an zu regnen"}],"anfangen zu … (plötzlich)"],
-"続ける|つづける":["ru",[{"jp":"雨[あめ]|が|降[ふ]り続[つづ]ける","de":"es regnet ununterbrochen"}],"weiter …; ununterbrochen … (etwas fortsetzen)"],
 "合う|あう":["u",[{"jp":"服[ふく]|に|合[あ]う","de":"zur Kleidung passen"},{"jp":"サイズ|が|合[あ]う","de":"die Größe passt"}],"passen; zusammenpassen; übereinstimmen"],
 "上がる|あがる":["u",[{"jp":"二階[にかい]|に|上[あ]がる","de":"in den ersten Stock hinaufgehen"},{"jp":"値段[ねだん]|が|上[あ]がる","de":"der Preis steigt"}],"steigen; hinaufgehen"],
 "空く|あく":["u",[{"jp":"席[せき]|が|空[あ]く","de":"ein Platz wird frei"}],"frei werden; leer werden (Platz, Zimmer)"],
@@ -681,5 +678,6 @@ window.VERB_INDEX = {version:208714829,v:{
 "分かれる|わかれる":["ru",[{"jp":"意見[いけん]|が|分[わ]かれる","de":"die Meinungen gehen auseinander"},{"jp":"二[ふた]つ|に|分[わ]かれる","de":"sich in zwei Teile teilen"}],"sich teilen; sich aufteilen; abzweigen"],
 "湧く|わく":["u",[{"jp":"水[みず]|が|湧[わ]く","de":"Wasser quillt hervor"},{"jp":"興味[きょうみ]|が|湧[わ]く","de":"Interesse kommt auf"}],"hervorquellen; sprudeln; aufkommen (Gefühl)"],
 "分ける|わける":["ru",[{"jp":"ケーキ|を|二[ふた]つ|に|分[わ]ける","de":"den Kuchen in zwei Teile teilen"}],"teilen; aufteilen; trennen"],
-"割る|わる":["u",[{"jp":"窓[まど]|を|割[わ]る","de":"ein Fenster einschlagen"},{"jp":"六[ろく]|を|二[に]|で|割[わ]る","de":"sechs durch zwei teilen"}],"zerbrechen (etwas); teilen; dividieren"]
+"割る|わる":["u",[{"jp":"窓[まど]|を|割[わ]る","de":"ein Fenster einschlagen"},{"jp":"六[ろく]|を|二[に]|で|割[わ]る","de":"sechs durch zwei teilen"}],"zerbrechen (etwas); teilen; dividieren"],
+"がる|がる":["u",[{"jp":"犬[いぬ]|を|怖[こわ]がる","de":"Angst vor dem Hund haben"}],"Anzeichen von … zeigen (Gefühle Dritter)"]
 }};

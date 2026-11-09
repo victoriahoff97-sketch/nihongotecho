@@ -426,6 +426,8 @@
     }
     // Teilen-Paket: Wörter, die es hier schon gibt, nicht doppelt anlegen
     const skip = data.share ? App.paketLogic.shareSkip(Array.from(S.items.values()), data.items, App.autofillLogic.dupes) : new Set();
+    // Teilen-Paket: Verben bekommen Partikel-Muster und Verbklasse wie selbst angelegte (eine Sicherung bleibt, wie sie ist)
+    if (data.share && App.verbFillMany) await App.verbFillMany((data.items || []).filter((it) => !skip.has(it.id)));
     for (const it of data.items || []) {
       if (skip.has(it.id)) continue;
       const cur = S.items.get(it.id);

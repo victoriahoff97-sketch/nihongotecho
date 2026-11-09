@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-verb-import', date: '9. November',
+      items: [
+        { t: 'Partikeln auch für importierte Verben', d: 'Verben aus Wortlisten und geteilten Paketen zeigen jetzt beim Abfragen das Partikel-Muster (z. B. 人に会う) und ob es ein う-, る- oder unregelmäßiges Verb ist.' },
+        { t: 'Muster aus deinem Satz', d: 'Steht ein Verb in keinem Paket (z. B. 散歩する), nimmt die App das Muster aus deinem Beispielsatz: 公園を散歩します → 公園を散歩する.' },
+        { t: 'Verbklasse berichtigt', d: 'Selbst getippte Verben wie 片付ける wurden manchmal als う-Verb angezeigt – das ist korrigiert, auch bei schon gespeicherten.' },
+      ],
+    },
+    {
       id: '2026-11-09-suche-stift', date: '9. November',
       items: [
         { t: 'Suchen mit dem Stift', d: 'In jedem Suchfeld (oben, in den Listen, im Forum …) sitzt rechts ein kleiner Stift: antippen, Wort hineinschreiben – die Suche startet von selbst.' },

@@ -196,7 +196,7 @@
   App.useHtml = (it, compact) => {
     const list = Array.isArray(it.use) ? it.use.filter((u) => u && u.jp) : [];
     if (!list.length) return '';
-    const rows = list.map((u) => `<div class="use-row"><span class="use-jp" lang="ja">${JP.useRuby(u.jp)}</span><span class="use-de">${esc(u.de || u.en || '')}</span></div>`).join('');
+    const rows = list.map((u) => `<div class="use-row"><span class="use-jp" lang="ja">${JP.useRuby(u.jp)}</span><span class="use-de">${u.de || u.en ? esc(u.de || u.en) : u.src === 'satz' ? '<span class="muted">aus deinem Beispielsatz</span>' : ''}</span></div>`).join('');
     return `${compact ? '' : '<div class="section-title">Partikeln</div>'}<div class="use-list${compact ? ' compact' : ''}">${rows}</div>`;
   };
   // tools: weitere Knöpfe neben dem Vorlesen (nur Text – als map-Rückruf kommen hier Index und Liste an)

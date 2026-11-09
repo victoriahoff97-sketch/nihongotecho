@@ -145,7 +145,7 @@
     if (App.exampleBackfill) App.exampleBackfill().catch((e) => console.error(e));
     // Beispielsätze von Tatoeba/WaniKani ohne Lesung: Furigana nachtragen (js/examples.js)
     if (App.exampleFuriRepair) App.exampleFuriRepair().catch((e) => console.error(e));
-    // eigene Verben: Partikel-Muster und Verbklasse aus dem Verb-Index ergänzen (einmal je Index-Version)
+    // eigene Verben: Partikel-Muster und Verbklasse ergänzen, falsch geratene Klassen berichtigen (bei jedem Start, js/verbs.js)
     if (App.verbBackfill) App.verbBackfill().catch((e) => console.error(e));
     // eigene Kanji: falsche Strichzahl aus dem Kanji-Index berichtigen (einmal je Gerät, js/editors.js)
     if (App.kanjiStrokeRepair) App.kanjiStrokeRepair().catch((e) => console.error(e));

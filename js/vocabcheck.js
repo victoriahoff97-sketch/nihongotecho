@@ -455,7 +455,11 @@
   };
   const guessPos = (kana, de) => {
     if (/^(der|die|das) /i.test(de)) return 'noun';
-    if (/[うくぐすつぬぶむる]$/.test(kana) && /^(sich )?[a-zäöüß]+n$/.test(de.split(/[,;]/)[0].trim())) return 'verb';
+    // する-Verben (さんぽする) sind immer Verben; sonst Lesung auf u-Laut + deutsche Grundform am Ende, auch mehrteilig
+    // („zur Schule gehen“, „im Ausland studieren“) – Nomen beginnen groß oder mit Artikel
+    if (/.する$/.test(JP.toHira(kana))) return 'verb';
+    const first = de.split(/[,;]/)[0].replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+    if (/[うくぐすつぬぶむる]$/.test(kana) && /^[a-zäöüß][a-zA-ZäöüÄÖÜß. ]*[a-zäöüß](e|r|l)?n$/.test(first)) return 'verb';
     if (/い$/.test(kana) && !/^(der|die|das) /i.test(de) && /^[a-zäöüß]+$/.test(de.split(/[,;]/)[0].trim()) && de[0] === de[0].toLowerCase()) return 'i-adj';
     return '';
   };
@@ -961,10 +965,13 @@
       const status = form.status;
       nextB.disabled = true; nextB.textContent = 'Wird übernommen …';
       const now = Date.now();
+      // Verben: Partikel-Muster und Verbklasse wie bei selbst angelegten (Verb-Index, sonst aus dem Satz der Liste)
+      if (App.verbFillMany) await App.verbFillMany(r.items);
       r.items.forEach((it, i) => { it.created = now + i; it.updated = now + i; S.items.set(it.id, it); });
       await App.db.putMany('items', r.items);
       // Beispielsatz aus der Liste bei schon vorhandenen Wörtern: vorne, damit er in den Abfragen erscheint
       const changed = r.addEx.map((a) => { const it = S.items.get(a.id); it.examples = [a.ex].concat(it.examples || []); it.updated = now; return it; });
+      if (changed.length && App.verbFillMany) await App.verbFillMany(changed);
       if (changed.length) await App.db.putMany('items', changed);
       if (status !== 'unchecked') for (const it of r.items) await App.setCheck(it.id, status);
       // Ausdrücke: wie selbst angelegte (App.saveItem → Lernschlange in beide Richtungen); „kann ich schon“ gilt für beide Richtungen.

@@ -44,12 +44,30 @@
     return out;
   };
 
-  const guessClass = (kana) => {
-    if (/(する|くる)$/.test(kana)) return 'irr';
-    if (!/る$/.test(kana)) return 'u';
-    const EXC = ['かえる', 'はいる', 'しる', 'はしる', 'しゃべる', 'すべる', 'にぎる', 'へる', 'まいる', 'ける', 'かぎる', 'まじる'];
-    if (EXC.some((x) => kana.endsWith(x))) return 'u';
-    const prev = kana.slice(-2, -1);
+  // Verbklasse geraten, wenn das Wörterbuch nichts weiß. kanji (optional) entscheidet bei gleicher Lesung:
+  // 帰る (u) / 変える (ru), 切る (u) / 着る (ru), 作る (u, endet nur auf „くる“) / 来る (irr).
+  // Kanji, deren 〜る trotz i/e-Laut ein う-Verb ist (帰る, 入る, 要る, 切る, 知る, 走る, 減る …), wenn nur „る“ folgt
+  const U_KANJI = '帰入要切知走蹴減滑握限散湿焦練照茂参陥翻罵遮捻嘲蘇甦喋覆交混';
+  // dieselben Wörter in Kana (ganzes Wort bzw. Wortende): bei kurzen Lesungen das häufigere う-Verb
+  const U_KANA = ['かえる', 'はいる', 'しる', 'はしる', 'ける', 'へる', 'ちる', 'しゃべる', 'すべる', 'にぎる', 'かぎる', 'まじる', 'まいる', 'あせる', 'いじる'];
+  const U_KANA_END = ['しゃべる', 'すべる', 'にぎる', 'かぎる', 'まじる', 'はしる', 'はいる', 'まいる', 'うらぎる', 'よこぎる', 'きにいる'];
+  const guessClass = (kana, kanji) => {
+    const k = hira(String(kana || '').trim()), w = String(kanji || '').trim();
+    if (w) {
+      if (/(する|為る|ずる)$/.test(w)) return 'irr';
+      if (/来る$/.test(w)) return 'irr';
+    } else {
+      if (k === 'くる' || /する$/.test(k)) return 'irr';
+    }
+    if (!/る$/.test(k)) return 'u';
+    // lange, eindeutige Wortenden (しゃべる, 混じる …) gelten mit und ohne Schreibung
+    if (U_KANA_END.some((x) => k.endsWith(x))) return 'u';
+    if (w) {
+      // Schreibung 〇る: Kanji direkt vor る → Lesung des Kanji entscheidet (U_KANJI), sonst der Laut vor る
+      const before = w.slice(-2, -1);
+      if (/る$/.test(w) && U_KANJI.includes(before)) return 'u';
+    } else if (U_KANA.includes(k)) return 'u';
+    const prev = k.slice(-2, -1);
     return /[いきぎしじちぢにひびぴみりえけげせぜてでねへべぺめれ]/.test(prev) ? 'ru' : 'u';
   };
 
@@ -69,7 +87,7 @@
     } else if (it.pos === 'verb') {
       const v = o('v');
       const inf = v.inf || first;
-      it.v = { cls: v.cls || opts.cls || guessClass(it.kana || ''), inf, ich: v.ich || inf.replace(/(e?n)$/, 'e'), pp: v.pp || ('ge' + inf.replace(/(e?n)$/, 't')), aux: v.aux || 'habe', sep: v.sep || '', obj: v.obj || [] };
+      it.v = { cls: v.cls || opts.cls || guessClass(it.kana || '', it.kanji || ''), inf, ich: v.ich || inf.replace(/(e?n)$/, 'e'), pp: v.pp || ('ge' + inf.replace(/(e?n)$/, 't')), aux: v.aux || 'habe', sep: v.sep || '', obj: v.obj || [] };
       it.cat = cat;
       if (it.v.obj.length && !it.cat.includes('objekt')) it.cat.push('objekt');
     } else if (/adj/.test(it.pos || '')) {
