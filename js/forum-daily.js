@@ -83,6 +83,7 @@
       Promise.resolve().then(() => App.sentenceReading(jp)).then((r) => {
         furi[jp] = r && r.furi && r.furi !== jp ? r.furi : '';
         if (furi[jp] && m && !m.editing && !m.furiEdit) drawList();
+        if (furi[jp] && arch) drawArchive();
       }, (e) => { console.error(e); furi[jp] = ''; });
     }
     return furi[jp] ? App.jp.ruby(furi[jp]) : textHtml(jp);
@@ -253,7 +254,8 @@
     const name = (st && st.name) || mm.ctx.name; // nach dem Umbenennen gilt der neue Name (die Regeln prüfen ihn)
     const p = mm.prompt;
     const usedPrompt = !!(p.item && (p.kind === 'word' || p.kind === 'grammar') && Y.usesPrompt(text, p.item));
-    if (ownToday()) await D.editDaily(code, today, { text, usedPrompt });
+    const own = ownToday();
+    if (own) await D.editDaily(code, today, { text, usedPrompt, furi: await carryFuri(own, text) });
     else {
       try { await D.sendDaily(code, today, { name, text, usedPrompt }); }
       catch (e) {
@@ -263,6 +265,14 @@
     }
     markDay(mm);
     syncStreak(mm, true);
+  };
+  // Satz geändert, Lesung war von Hand korrigiert: die Korrektur auf den neuen Text übertragen, statt sie zu verlieren.
+  // undefined = Feld nicht anfassen (nichts korrigiert oder Text gleich geblieben)
+  const carryFuri = async (own, text) => {
+    if (!Y.furiFits(own.furi, own.text) || text === own.text) return undefined;
+    let auto = null;
+    try { const r = App.sentenceReading ? await App.sentenceReading(text) : null; auto = r && r.furi; } catch (e) { /* ohne automatische Lesung */ }
+    return Y.furiCarry(own.furi, own.text, text, auto);
   };
   // Abhaken für das Datum des Satzes (ctx.today) – nur solange das noch heute ist: ein Satz von gestern (kurz nach
   // Mitternacht abgeschickt) darf das dayLog von heute nicht auf gestern zurücksetzen
@@ -296,6 +306,67 @@
     if (m.streakChecked && !m.streakPending) return;
     m.streakChecked = true;
     syncStreak(m, false);
+  };
+
+  // ---------- Frühere Challenges ----------
+  // Rückwärts ab gestern, je 7 Tage auf einmal: Anstoß (auf dem Gerät berechnet) + alle Sätze des Tages, nur zum Lesen.
+  // Ein Wochenende (Mini-Kette) steht als eine Geschichte da. Kostet je Tag eine Abfrage – für den Gratis-Plan nichts.
+  const ARCHIVE_FROM = '2026-11-08'; // erster Tag mit echten Sätzen
+  const PAGE = 7;
+  let arch = null; // { md, entries: [{ dates, prompt, list }], next: Datum oder '', busy, error }
+  const dayLabel = (d) => `${['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][new Date(d + 'T12:00').getDay()]} ${Number(d.slice(8))}.${Number(d.slice(5, 7))}.`;
+  const prevDay = (d) => { const x = new Date(d + 'T12:00'); x.setDate(x.getDate() - 1); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+  const archLine = (x) => `<div class="fd-line"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${x.editedAt ? '<span class="muted small">(bearbeitet)</span>' : ''}
+      <span class="grow"></span>${x.likes.length ? `<span class="muted small" title="${esc(F.likeNames(x.likes, m.ctx.members).join(', '))}">♥ ${x.likes.length}</span>` : ''}</div>
+      <div class="fd-text forum-text" lang="ja">${furiHtml(x.text, x.furi)}</div></div>`;
+  const archEntry = (en) => {
+    const p = en.prompt;
+    const head = en.dates.length > 1 ? `${dayLabel(en.dates[0])} + ${dayLabel(en.dates[1])}` : dayLabel(en.dates[0]);
+    const list = sorted(en.list);
+    const body = p.kind === 'chain' ? storyRead(p.chainStart, list) : (list.length ? `<div class="fd-lines">${list.map(archLine).join('')}</div>` : '');
+    return `<section class="fd-arch-day"><p class="muted small fd-day"><b>${esc(head)}</b> · ${esc(KIND[p.kind])}</p>
+      ${p.kind === 'chain' ? '' : promptHtml(p)}${body}
+      ${list.length ? '' : '<p class="muted small">An diesem Tag hat niemand geschrieben.</p>'}</section>`;
+  };
+  const storyRead = (start, list) => `<div class="fd-story">${start ? `<div class="fd-start"><span lang="ja" class="fd-jp">${App.jp.ruby(start.jp)}</span>${start.de ? `<span class="muted small">${esc(start.de)}</span>` : ''}</div>` : ''}${list.map(archLine).join('')}</div>`;
+  const drawArchive = () => {
+    if (!arch || !m) return;
+    const box = arch.md.body;
+    const keep = box.scrollTop;
+    box.innerHTML = `<div class="fd-arch">${arch.entries.map(archEntry).join('')}
+      ${arch.error ? `<div class="forum-note fd-note">${esc(arch.error)}</div>` : ''}
+      ${arch.busy ? '<p class="muted small">Lade …</p>' : arch.next ? '<button type="button" class="btn btn-sm" data-amore>Ältere laden</button>' : (arch.entries.length ? '<p class="muted small">Das war die erste Challenge.</p>' : '<p class="muted small">Noch keine früheren Challenges.</p>')}</div>`;
+    App.hydrateIcons(box);
+    box.scrollTop = keep;
+  };
+  const loadArchive = async () => {
+    if (!arch || arch.busy || !arch.next) return;
+    const a = arch, code = m.ctx.code;
+    a.busy = true; a.error = ''; drawArchive();
+    try {
+      let d = a.next, n = 0;
+      while (d && d >= ARCHIVE_FROM && n < PAGE) {
+        const prompt = Y.prompt(d, code, window.SEED, App.DAILY_PROMPTS);
+        // Wochenende: Sa + So als eine Geschichte (vom Sonntag aus beide holen)
+        const dates = prompt.kind === 'chain' ? Y.chainDays(d).filter((x) => x >= ARCHIVE_FROM && x <= d) : [d];
+        const lists = await Promise.all(dates.map((x) => D.getDaily(code, x)));
+        if (arch !== a) return;
+        a.entries.push({ dates, prompt, list: lists.flat() });
+        d = prevDay(dates[0]); n += dates.length;
+      }
+      a.next = d >= ARCHIVE_FROM ? d : '';
+    } catch (e) {
+      a.error = (e && e.code === 'permission-denied' ? 'Keine Berechtigung.' : 'Gerade keine Verbindung.') + fmtTech('Frühere Challenges', e);
+    }
+    a.busy = false;
+    if (arch === a) drawArchive();
+  };
+  const openArchive = () => {
+    if (!m) return;
+    const md = App.modal({ title: 'Frühere Challenges', body: '', foot: false, cls: 'forum-modal fd-arch-modal', onClose: () => { arch = null; } });
+    arch = { md, entries: [], next: prevDay(m.ctx.today), busy: false, error: '' };
+    md.body.addEventListener('click', (e) => { if (e.target.closest('[data-amore]')) loadArchive(); });
+    loadArchive();
   };
 
   // ---------- Ein- und aushängen ----------
@@ -343,7 +414,8 @@
         <p class="muted small fd-sub">${prompt.kind === 'chain' ? 'Schreibt gemeinsam weiter – ein Satz pro Tag' : `Ein Satz, höchstens ${Y.MAX} Zeichen`}</p></div>
         <div class="fd-myflame" data-dmyflame hidden></div></div>
       ${m.weekend ? '<button type="button" class="fd-link" data-dweekend>Geschichte vom Wochenende lesen</button>' : ''}
-      <div data-dlist></div><div data-dfield></div></div>`;
+      <div data-dlist></div><div data-dfield></div>
+      ${today > ARCHIVE_FROM ? `<button type="button" class="fd-link fd-archlink" data-darchive>${icon('calendar')} Frühere Challenges ansehen</button>` : ''}</div>`;
     el.querySelector('[data-dfield]').appendChild(fieldEl(drafts[today] || '', false));
     App.hydrateIcons(el);
     el.onclick = onClick;
@@ -390,6 +462,7 @@
       }
       return;
     }
+    if (e.target.closest('[data-darchive]')) { openArchive(); return; }
     if (e.target.closest('[data-dgenki]')) { e.preventDefault(); if (App.forum && App.forum.close) App.forum.close(); App.go('#/pakete'); return; }
     if (e.target.closest('[data-dweekend]')) {
       const wk = m.weekend;

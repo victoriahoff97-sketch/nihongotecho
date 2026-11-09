@@ -37,7 +37,7 @@
   let gen = 0;
   let members = {}; // uid → { name, avatar }
   let unsubM = null;
-  let adminUid = null; // wer die Gruppe gegründet hat – darf wie der Autor „besprochen“ setzen
+  let adminUid = null; // Admin (Gründer oder per Admin-Code) – darf wie der Autor „besprochen“ setzen; hier = eigene uid, wenn ich es bin
   const stop = () => { gen++; if (unsub) unsub(); if (unsubM) unsubM(); unsub = unsubM = null; posts = []; members = {}; adminUid = null; status = 'idle'; };
   const start = () => {
     if (!D.configured() || !st.code || unsub || status === 'loading') return;
@@ -47,8 +47,37 @@
     D.load().then(mine(() => {
       unsub = D.watchPosts(st.code, mine(onPosts), mine(onError));
       if (!unsubM) unsubM = D.watchMembers(st.code, mine((m) => { members = m; keepAvatar(); if (ui && ui.onMembers) ui.onMembers(); }));
-      D.groupAdmin(st.code).then(mine((a) => { adminUid = a; if (ui && ui.onMembers) ui.onMembers(); }), () => {});
+      checkAdmin(mine);
     })).catch(mine(onError));
+  };
+  // Admin: Gründer der Gruppe oder per Admin-Code eingetragen. Der Code liegt auf dem Gerät (st.adminKey) – nach einem
+  // stillen Neu-Beitritt (neue uid) trägt sich das Gerät damit leise wieder ein.
+  const checkAdmin = (mine) => {
+    const done = mine((a) => { adminUid = a; if (ui && ui.onMembers) ui.onMembers(); });
+    Promise.all([D.groupAdmin(st.code).catch(() => null), D.isAdmin(st.code)]).then(async ([founder, coded]) => {
+      if (founder === D.uid() || coded) return done(D.uid());
+      if (st.adminKey) { try { await D.claimAdmin(st.code, st.adminKey); return done(D.uid()); } catch (e) { /* Code passt nicht mehr */ } }
+      done(founder);
+    });
+  };
+  const isAdminHere = () => !!D.uid() && adminUid === D.uid();
+  const enterAdmin = async () => {
+    if (isAdminHere()) {
+      App.toast('Du bist auf diesem Gerät Admin ✓ – du kannst alle Themen auf „besprochen“ setzen.');
+      return;
+    }
+    const r = await App.ask('Admin-Code', [{ label: 'Admin-Code', value: '' }]);
+    if (!r || !String(r[0]).trim()) return;
+    const key = String(r[0]).trim();
+    try {
+      await D.claimAdmin(st.code, key);
+      st.adminKey = key; save();
+      adminUid = D.uid();
+      if (ui && ui.onMembers) ui.onMembers();
+      App.toast('Admin ✓ – du kannst jetzt alle Themen auf „besprochen“ setzen.');
+    } catch (e) {
+      App.toast(e && e.code === 'permission-denied' ? 'Der Code stimmt nicht.' : OFFLINE);
+    }
   };
   // eigenen Avatar auch auf dem Gerät merken: geht die Anmeldung verloren, nimmt das Wiederbeitreten ihn mit
   const keepAvatar = () => {
@@ -638,6 +667,7 @@
     const item = (k, ic, label, cls = '') => `<button class="more-item ${cls}" data-m="${k}">${icon(ic)}<span>${label}</span></button>`;
     pop.innerHTML = st.code
       ? item('code', 'link', 'Gruppencode anzeigen') + item('name', 'edit', 'Meinen Namen ändern') + item('avatar', 'sparkle', 'Mein Avatar') + item('help', 'help', 'Hilfe')
+        + item('admin', 'check', isAdminHere() ? 'Admin ✓' : 'Admin-Code eingeben')
         + item('leave', 'close', 'Gruppe auf diesem Gerät verlassen', 'danger')
       : item('help', 'help', 'Hilfe');
     host.appendChild(pop);
@@ -653,6 +683,7 @@
       if (m === 'help') App.tour.start('gruppe');
       if (m === 'name') rename();
       if (m === 'avatar') pickAvatar();
+      if (m === 'admin') enterAdmin();
       if (m === 'leave') leave();
     };
   };
@@ -932,7 +963,7 @@
       const p = posts.find((x) => x.id === id);
       if (!p) { if (status === 'live') showList(); return; }
       loadPic(p);
-      // „besprochen“ setzen: wer den Beitrag geschrieben hat und wer die Gruppe gegründet hat
+      // „besprochen“ setzen: wer den Beitrag geschrieben hat und Admins (Gründer oder per Admin-Code)
       const done = p.kind === 'rede'
         ? `${p.done ? `<span class="badge">Besprochen · von ${esc(p.doneBy)}${p.doneAt ? ', ' + dayMonth(p.doneAt) : ''}</span>` : ''}
             ${F.canSetDone(p, me(), adminUid) ? `<button class="btn btn-sm" data-done>${p.done ? 'Wieder öffnen' : `${icon('check')} Als besprochen markieren`}</button>` : ''}` : '';
@@ -1003,7 +1034,7 @@
       if (img) { showBig(img.getAttribute('src')); return; }
       const p = posts.find((x) => x.id === id);
       if (e.target.closest('[data-done]') && p) {
-        try { await D.setDone(st.code, id, !p.done, st.name); } catch (x) { App.toast(x && x.code === 'permission-denied' ? 'Nur wer das Thema geschrieben oder die Gruppe gegründet hat, kann es auf „besprochen“ setzen.' : OFFLINE); }
+        try { await D.setDone(st.code, id, !p.done, st.name); } catch (x) { App.toast(x && x.code === 'permission-denied' ? 'Nur wer das Thema geschrieben hat oder Admin ist, kann es auf „besprochen“ setzen.' : OFFLINE); }
         return;
       }
       const ed = e.target.closest('[data-edit]');

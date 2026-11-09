@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-challenge-archiv', date: '9. November',
+      items: [
+        { t: 'Frühere Challenges', d: 'Unten in der Täglichen Gruppen-Challenge: „Frühere Challenges ansehen“ zeigt die Aufgaben der letzten Tage mit allen Sätzen.' },
+        { t: 'Furigana bleiben', d: 'Hast du die Lesung deines Satzes korrigiert und änderst danach den Text, bleibt deine Korrektur erhalten.' },
+      ],
+    },
+    {
       id: '2026-11-09-grosses-woerterbuch', date: '9. November',
       items: [
         { t: 'Seltenere Wörter ausfüllen', d: 'Findet „Automatisch ausfüllen“ ein Wort nicht (z. B. キャンプ場), kannst du dort gleich das große Wörterbuch laden – danach füllt die App aus.' },

@@ -150,6 +150,12 @@
   D.likeReply = (code, postId, rid, on) => replies(code, postId).doc(rid).update({ likes: likeOp(on) });
   // „besprochen“ dürfen Autor und wer die Gruppe gegründet hat
   D.groupAdmin = async (code) => { const g = await group(code).get(); const by = g.exists ? g.data().createdBy : null; return typeof by === 'string' ? by : null; };
+  // Admin per Code (Vicky): groups/{code}/admins/{uid} – die Regeln vergleichen den Code mit dem in firestore.rules.
+  // Lesen darf jedes Gerät nur seinen eigenen Eintrag; nach einem stillen Neu-Beitritt trägt die App sich mit dem
+  // gemerkten Code wieder ein (js/forum.js).
+  const adminDoc = (code) => group(code).collection('admins').doc(D.uid());
+  D.isAdmin = async (code) => { try { return (await adminDoc(code).get()).exists; } catch (e) { return false; } };
+  D.claimAdmin = (code, key) => adminDoc(code).set({ key: String(key), at: now() });
   D.setDone = (code, id, done, name) => posts(code).doc(id).update(done
     ? { done: true, doneBy: name, doneAt: now() }
     : { done: false, doneBy: null, doneAt: null });
@@ -157,16 +163,20 @@
   // ---------- Satz des Tages ----------
   // groups/{code}/daily/{Datum}/s/{uid}: ein Satz pro Mitglied und Tag
   const dailyCol = (code, date) => group(code).collection('daily').doc(date).collection('s');
+  const dailyItem = (d) => {
+    const x = raw(d);
+    return { id: d.id, uid: x.uid, name: x.name, text: x.text, usedPrompt: !!x.usedPrompt, createdAt: x.createdAt, editedAt: x.editedAt || null,
+      likes: Array.isArray(x.likes) ? x.likes.filter((u) => typeof u === 'string') : [], furi: typeof x.furi === 'string' ? x.furi : null };
+  };
   D.watchDaily = (code, date, onList, onError) => dailyCol(code, date)
-    .onSnapshot((snap) => onList(snap.docs.map((d) => {
-      const x = raw(d);
-      return { id: d.id, uid: x.uid, name: x.name, text: x.text, usedPrompt: !!x.usedPrompt, createdAt: x.createdAt, editedAt: x.editedAt || null,
-        likes: Array.isArray(x.likes) ? x.likes.filter((u) => typeof u === 'string') : [], furi: typeof x.furi === 'string' ? x.furi : null };
-    })), onError);
+    .onSnapshot((snap) => onList(snap.docs.map(dailyItem)), onError);
   D.sendDaily = (code, date, { name, text, usedPrompt }) => dailyCol(code, date).doc(D.uid())
     .set({ uid: D.uid(), name, text, usedPrompt: !!usedPrompt, createdAt: now(), editedAt: null, likes: [] });
-  D.editDaily = (code, date, { text, usedPrompt }) => dailyCol(code, date).doc(D.uid())
-    .update({ text, usedPrompt: !!usedPrompt, editedAt: now() });
+  // furi: von Hand korrigierte Lesung, auf den neuen Text übertragen (undefined = Feld nicht anfassen)
+  D.editDaily = (code, date, { text, usedPrompt, furi }) => dailyCol(code, date).doc(D.uid())
+    .update(Object.assign({ text, usedPrompt: !!usedPrompt, editedAt: now() }, furi === undefined ? {} : { furi: furi || null }));
+  // Archiv: die Sätze eines früheren Tages einmal lesen (kein Listener)
+  D.getDaily = async (code, date) => (await dailyCol(code, date).get()).docs.map(dailyItem);
   // Lesung von Hand korrigiert (jedes Mitglied, für alle sichtbar); null = wieder automatisch
   D.setDailyFuri = (code, date, uid, furi) => dailyCol(code, date).doc(uid).update({ furi: furi || null });
   D.likeDaily = (code, date, uid, on) => dailyCol(code, date).doc(uid).update({ likes: likeOp(on) });

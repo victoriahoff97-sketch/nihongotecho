@@ -177,4 +177,30 @@
   // Gilt die gespeicherte Notation noch für diesen Satz? (nach dem Bearbeiten nicht mehr)
   Y.furiFits = (note, text) => typeof note === 'string' && !!note && note.length <= 400
     && Y.furiSegments(note).map((x) => x.t).join('') === String(text || '');
+  // Satz bearbeitet: von Hand gesetzte Lesungen (oldNote zum alten Text) auf den neuen Text übertragen – überall, wo
+  // dasselbe Kanji-Stück wieder vorkommt; der Rest kommt aus der automatischen Lesung (autoNote, falls sie passt).
+  // null = nichts zu übertragen (dann wieder ganz automatisch).
+  Y.furiCarry = (oldNote, oldText, newText, autoNote) => {
+    const text = String(newText || '');
+    if (!Y.furiFits(oldNote, oldText) || !text) return null;
+    const fixes = Y.furiSegments(oldNote).filter((s) => s.edit && s.r).sort((a, b) => b.t.length - a.t.length);
+    if (!fixes.length) return null;
+    const base = Y.furiSegments(Y.furiFits(autoNote, text) ? autoNote : text);
+    const startAt = {};
+    let pos = 0;
+    base.forEach((s) => { startAt[pos] = s; pos += s.t.length; });
+    const out = [];
+    let used = false;
+    for (let i = 0; i < text.length;) {
+      const f = fixes.find((x) => text.startsWith(x.t, i));
+      if (f) { out.push({ t: f.t, r: f.r, edit: true }); i += f.t.length; used = true; continue; }
+      const b = startAt[i];
+      // ein automatisches Stück nur ganz, wenn keine Korrektur mitten hinein fällt
+      if (b && !fixes.some((x) => { const k = text.indexOf(x.t, i + 1); return k > i && k < i + b.t.length; })) { out.push(b); i += b.t.length; continue; }
+      out.push({ t: text[i], r: '', edit: false }); i += 1;
+    }
+    if (!used) return null;
+    const note = Y.furiBuild(out);
+    return Y.furiFits(note, text) ? note : null;
+  };
 })(window.App = window.App || {});
