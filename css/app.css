@@ -444,6 +444,11 @@ details.adv[open] summary { margin-bottom: 12px; }
 .list { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
 .list-row { display: grid; grid-template-columns: minmax(140px, 1.1fr) minmax(120px, 1fr) minmax(150px, 1.4fr) auto; gap: 14px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); text-decoration: none; min-height: 58px; }
 .list-row:last-child { border-bottom: 0; }
+/* Lange Listen (Vokabeln): Blöcke außerhalb des Bildschirms werden nicht angeordnet/gezeichnet; "auto" merkt sich die echte Höhe */
+.lazy-chunk { content-visibility: auto; contain-intrinsic-size: auto var(--chunk-h, 1400px); }
+.grid.lazy-chunk + .grid.lazy-chunk { margin-top: 14px; }
+.list-chunk { display: flex; flex-direction: column; }
+.list-chunk:not(:last-child) .list-row:last-child { border-bottom: 1px solid var(--line); }
 .list-row:hover { background: var(--card-2); }
 .list-row .k { font-family: var(--font-jp); font-size: 20px; }
 .list-row .r { font-family: var(--font-jp); color: var(--muted); }

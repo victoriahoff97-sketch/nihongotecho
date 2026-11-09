@@ -545,6 +545,8 @@
   // =========================================================
   // Vokabeln
   // =========================================================
+  const chunkH = {}; // gemessene Blockhöhe je Ansicht + Fensterbreite
+  const chunks = (list, n) => { const out = []; for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n)); return out; };
   App.route('/vokabeln', (view, p, q) => {
     const sec = App.SECTIONS.vocab;
     const all = App.itemsOf('vocab');
@@ -573,13 +575,50 @@
     else if (!items.length) body.innerHTML = `<div class="empty-state"><div class="big">単</div><h3>Keine Vokabeln gefunden</h3><p>Passe die Filter an oder lege ein neues Wort an.</p></div>`;
     else {
       const groups = App.listSort.isLevel(sortK) ? App.levelGroups(items) : groupBySource(items, q.src);
-      let html = '';
+      // Bei tausenden Wörtern hing jeder Seitenwechsel von/zu Vokabeln fast eine Sekunde: Wörter kommen in Blöcken
+      // zu 60. Die ersten zwei Blöcke stehen sofort da, der Rest wird gleich danach nachgefüllt (erst Platzhalter
+      // mit der gemessenen Blockhöhe), und Blöcke außerhalb des Bildschirms ordnet der Browser nicht an (css .lazy-chunk).
+      const rowHtml = (it) => `<a class="list-row" href="${App.link(it)}"><span class="k" lang="ja">${esc(it.kanji || it.kana)}</span><span class="r" lang="ja">${esc(it.kanji ? it.kana : '')}</span><span>${App.meaningHtml(it)}</span><span class="row" style="gap:4px">${App.levelBadge(it)}${App.statusBadge(it.id)}${it.star ? icon('starFill') : ''}<span class="badge">${esc(App.POS[it.pos] || '')}</span></span></a>`;
+      const chunkCls = mode === 'list' ? 'list-chunk lazy-chunk' : 'grid cols-4 lazy-chunk';
+      const inner = (c) => c.map(mode === 'list' ? rowHtml : App.vocabCard).join('');
+      const later = [];
+      let html = '', n = 0;
       groups.forEach((list, key) => {
         html += `<div class="group-head"><h2>${esc(key)}</h2><span class="badge">${list.length}</span><span class="line"></span></div>`;
-        if (mode === 'list') html += `<div class="list">${list.map((it) => `<a class="list-row" href="${App.link(it)}"><span class="k" lang="ja">${esc(it.kanji || it.kana)}</span><span class="r" lang="ja">${esc(it.kanji ? it.kana : '')}</span><span>${App.meaningHtml(it)}</span><span class="row" style="gap:4px">${App.levelBadge(it)}${App.statusBadge(it.id)}${it.star ? icon('starFill') : ''}<span class="badge">${esc(App.POS[it.pos] || '')}</span></span></a>`).join('')}</div>`;
-        else html += `<div class="grid cols-4">${list.map(App.vocabCard).join('')}</div>`;
+        const cs = chunks(list, 60).map((c) => {
+          if (n++ < 2) return `<div class="${chunkCls}">${inner(c)}</div>`;
+          later.push(c);
+          return `<div class="${chunkCls}" data-fill="${later.length - 1}" style="height:${c.length === 60 ? 'var(--chunk-h, 1400px)' : `calc(var(--chunk-h, 1400px) * ${(c.length / 60).toFixed(3)})`}"></div>`;
+        }).join('');
+        html += mode === 'list' ? `<div class="list">${cs}</div>` : cs;
       });
       body.innerHTML = html;
+      // Platzhalter-Höhe = echte Höhe eines vollen Blocks (einmal je Ansicht + Fensterbreite gemessen), damit die
+      // Scrollposition beim Neuzeichnen stimmt
+      const hKey = mode + ':' + window.innerWidth;
+      const full = Array.from(body.querySelectorAll('.lazy-chunk:not([data-fill])')).find((c) => c.children.length === 60);
+      if (full && !chunkH[hKey]) {
+        full.style.contentVisibility = 'visible';
+        chunkH[hKey] = Math.round(full.getBoundingClientRect().height);
+        full.style.contentVisibility = '';
+      }
+      if (chunkH[hKey]) body.style.setProperty('--chunk-h', chunkH[hKey] + 'px');
+      if (later.length) {
+        let first = true;
+        const fill = (el) => { el.innerHTML = inner(later[+el.dataset.fill]); el.removeAttribute('data-fill'); el.removeAttribute('style'); App.hydrateThumbs(el); };
+        const step = () => {
+          if (!body.isConnected) return; // Seite schon verlassen oder neu aufgebaut
+          if (first) { // zuerst, was gerade auf dem Bildschirm ist (Neuzeichnen weiter unten in der Liste)
+            first = false;
+            body.querySelectorAll('[data-fill]').forEach((el) => { const r = el.getBoundingClientRect(); if (r.bottom > 0 && r.top < window.innerHeight) fill(el); });
+          }
+          const t0 = performance.now();
+          let el;
+          while ((el = body.querySelector('[data-fill]')) && performance.now() - t0 < 12) fill(el);
+          if (el) setTimeout(step, 0);
+        };
+        setTimeout(step, 0);
+      }
     }
     App.hydrateThumbs(body);
     bindFilter(view);

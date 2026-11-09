@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-tempo', date: '9. November',
+      items: [
+        { t: 'Vokabeln öffnen schneller', d: 'Der Wechsel zur Vokabelliste (und von dort weg) hakt nicht mehr, auch bei tausenden Wörtern – die Karten weiter unten laden unmerklich nach.' },
+      ],
+    },
+    {
       id: '2026-11-09-verb-import', date: '9. November',
       items: [
         { t: 'Partikeln auch für importierte Verben', d: 'Verben aus Wortlisten und geteilten Paketen zeigen jetzt beim Abfragen das Partikel-Muster (z. B. 人に会う) und ob es ein う-, る- oder unregelmäßiges Verb ist.' },
