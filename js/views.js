@@ -951,7 +951,7 @@
     inp.addEventListener('input', App.debounce(draw, 120));
     inp.addEventListener('focus', draw);
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { pop.hidden = true; App.go('#/suche?q=' + encodeURIComponent(inp.value.trim())); inp.blur(); } if (e.key === 'Escape') { inp.blur(); pop.hidden = true; } });
-    document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.search-wrap')) pop.hidden = true; });
+    document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.search-wrap, .sp-panel')) pop.hidden = true; });
     pop.addEventListener('click', (e) => { if (e.target.closest('a')) { pop.hidden = true; inp.value = ''; } });
   };
 

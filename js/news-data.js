@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-suche-stift', date: '9. November',
+      items: [
+        { t: 'Suchen mit dem Stift', d: 'In jedem Suchfeld (oben, in den Listen, im Forum …) sitzt rechts ein kleiner Stift: antippen, Wort hineinschreiben – die Suche startet von selbst.' },
+      ],
+    },
+    {
       id: '2026-11-09-vergleichen', date: '9. November',
       items: [
         { t: 'Zwei Wörter vergleichen', d: 'Knopf ⇄ oben neben der Suche (oder Taste V): links steht, was du gerade siehst, rechts suchst du ein zweites Wort oder Kanji – der Unterschied ist gelb.' },

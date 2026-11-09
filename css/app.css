@@ -2450,3 +2450,15 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 mark.cmp-diff { background: var(--hl); color: inherit; padding: 0 1px; border-radius: 4px; }
 @media (max-width: 600px) { .cmp-pop.lookup-pop { right: 8px; width: calc(100vw - 16px); } .cmp-big { font-size: 32px; } }
 .cmp-col.cmp-hidden .cmp-big { color: var(--muted); }
+
+/* Stift in Suchfeldern (js/search-pen.js): Knopf sitzt rechts im Feld, Schreibfeld schwebt darunter */
+input.sp-has { padding-right: 40px; }
+.sp-btn.icon-btn.sm { flex: none; width: 30px; height: 30px; margin-left: -36px; position: relative; z-index: 1; color: var(--muted); }
+.search-wrap .sp-btn + kbd { right: 46px; }
+#topbar .search-wrap input.sp-has { padding-right: 104px; }
+.search-wrap.sp-open > .search-pop { top: calc(52px + var(--sp-h, 0px)); }
+.sp-panel { position: fixed; z-index: 300; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 8px; }
+.sp-panel .sp-cands { margin-top: 8px; }
+@media (max-width: 860px) {
+  #topbar .search-wrap input.sp-has { padding-right: 38px; }
+}

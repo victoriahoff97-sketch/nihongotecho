@@ -937,7 +937,7 @@
     const sel = new Set(selected);
     let kIndex = null;
     const body = document.createElement('div');
-    body.innerHTML = `<div class="row"><input class="input grow" placeholder="Suchen (Deutsch, かな, 漢字, Romaji) …" autofocus>
+    body.innerHTML = `<div class="row"><input class="input grow" data-pen-search placeholder="Suchen (Deutsch, かな, 漢字, Romaji) …" autofocus>
       <select class="input" data-t><option value="">Alle Bereiche</option>${types.map((t) => `<option value="${t}">${App.SECTIONS[t].label}</option>`).join('')}</select></div>
       <div class="picker-list"></div>`;
     const inp = body.querySelector('input'), list = body.querySelector('.picker-list'), tsel = body.querySelector('[data-t]');
