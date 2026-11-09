@@ -642,8 +642,9 @@
     };
     document.addEventListener('keydown', onKey);
     App.screenItem = () => cur; // fürs Forum: „Diese Karte anhängen“
+    App.parkHere = () => { wantPark = true; }; // „Eintrag öffnen“ außerhalb der Karte (Vergleichen-Fenster) parkt die Runde ebenso
     App.onLeave(() => {
-      App.screenItem = null;
+      App.screenItem = null; App.parkHere = null;
       document.removeEventListener('keydown', onKey);
       if (ans && ans.pad) ans.pad.stop();
       if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue).map((e) => Object.assign({}, e, { known: cardKnown(e) })), done, right, total, open: flipped };

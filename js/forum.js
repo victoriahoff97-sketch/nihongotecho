@@ -158,16 +158,7 @@
   const toRef = (it) => F.makeRef(it, { label: App.itemPlain(it), sub: App.itemSub(it), kanji: kanjiCopy(it) });
   // Eintrag, der gerade unter dem Fenster offen ist (z. B. #/grammatik/g-n5-wa) – für „Diesen Eintrag anhängen“
   // Lernrunden ohne eigene Adresse (Karteikarten, Kanji schreiben) melden ihre aktuelle Karte über App.screenItem
-  const pageItem = () => {
-    const card = App.screenItem && App.screenItem();
-    if (card) return F.REF_TYPES.includes(card.type) ? card : null;
-    const parts = App.parseHash().path.split('/').filter(Boolean);
-    if (parts.length !== 2) return null;
-    const key = decodeURIComponent(parts[1]);
-    if (parts[0] === 'kanji') return App.kanjiByChar(key) || App.item(key);
-    const it = App.item(key);
-    return it && F.REF_TYPES.includes(it.type) && App.link(it) === '#/' + parts.join('/') ? it : null;
-  };
+  const pageItem = () => { const it = App.pageItem(); return it && F.REF_TYPES.includes(it.type) ? it : null; };
   const byWord = (w) => { for (const it of App.store.items.values()) if (it.type === 'vocab' && (it.kanji === w || it.kana === w)) return it; return null; };
   // label ist auf 60 Zeichen gekürzt – lange Sätze nur am Anfang vergleichen
   const byPhrase = (s) => App.itemsOf('phrase').find((p) => App.jp.plain(p.jp || '').slice(0, 60) === s) || null;

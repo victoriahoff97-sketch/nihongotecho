@@ -100,6 +100,78 @@
   const rowHtml = (r, i, grp) => r.grammar
     ? `<button class="lk-row lk-gram ${App.SECTIONS.grammar.cls}" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-de">${esc(r.title)}</span></span></button>`
     : `<button class="lk-row" data-lk="${grp}:${i}"><span class="lk-jp">${esc(r.jp)}</span><span class="lk-txt"><span class="lk-kana">${r.kind === 'kanji' ? `<span class="badge sec ${App.SECTIONS.kanji.cls}">Kanji</span> ` : ''}${esc(r.kana !== r.jp ? r.kana : '')}</span><span class="lk-de">${r.lang === 'en' ? '<span class="badge">EN</span> ' : ''}${esc(r.meaning)}</span>${formHtml(r)}</span></button>`;
+  LK.rowHtml = rowHtml;
+
+  // ---------- Schreibfeld im Fenster (auch vom Vergleichen-Fenster genutzt) ----------
+  // scope enthält LK.padHtml(): Striche (Anteile der Feldbreite) bleiben nur hier; nach einer Schreibpause erkennen,
+  // der beste Vorschlag (und jeder angetippte) geht an onText
+  LK.padHtml = () => `<div class="lk-pad empty" hidden><canvas></canvas><span class="lk-pad-hint muted small">Hier mit dem Stift schreiben</span>
+        <div class="lk-pad-tools"><button class="icon-btn sm" data-lkundo title="Letzten Strich zurücknehmen">${icon('undo')}</button><button class="icon-btn sm" data-lkclear title="Schreibfeld leeren">${icon('trash')}</button></div></div>
+      <div class="lk-cands" hidden></div>`;
+  LK.pad = (scope, onText) => {
+    const pad = scope.querySelector('.lk-pad'), cv = pad.querySelector('canvas'), cands = scope.querySelector('.lk-cands');
+    let strokes = [], cur = null, padTimer = 0, padRun = 0;
+    const padDraw = () => {
+      pad.classList.toggle('empty', !strokes.length && !cur);
+      const W = pad.clientWidth, k = window.devicePixelRatio || 1;
+      if (!W) return;
+      if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(pad.clientHeight * k); }
+      const c = cv.getContext('2d'), u = W * k;
+      c.clearRect(0, 0, cv.width, cv.height);
+      c.strokeStyle = getComputedStyle(scope).color; c.lineWidth = 3 * k; c.lineCap = c.lineJoin = 'round';
+      strokes.concat(cur || []).forEach((s) => {
+        c.beginPath();
+        s.pts.forEach((q, i) => (i ? c.lineTo(q[0] * u, q[1] * u) : c.moveTo(q[0] * u, q[1] * u)));
+        if (s.pts.length === 1) c.lineTo(s.pts[0][0] * u + 0.1, s.pts[0][1] * u); // Punkt
+        c.stroke();
+      });
+    };
+    const padPt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width]; };
+    const candMsg = (t) => { cands.innerHTML = `<span class="muted small">${esc(t)}</span>`; cands.hidden = false; };
+    const padClear = () => { clearTimeout(padTimer); padRun++; strokes = []; cur = null; cands.innerHTML = ''; cands.hidden = true; padDraw(); };
+    const padRecognize = async () => {
+      const n = ++padRun;
+      if (!strokes.length) { padClear(); return; }
+      if (strokes.length > HW.MAX_STROKES) { candMsg('Zu viel geschrieben – bitte ein Wort'); return; }
+      if (!(await App.hw.consent('Zum Erkennen werden die Striche aus dem Schreibfeld an Google gesendet (nur diese Linien, nicht die Seite). Einverstanden?'))) { if (n === padRun) padClear(); return; }
+      if (n !== padRun) return;
+      if (!cands.querySelector('.chip')) candMsg('…');
+      const { ja, de } = await App.hw.recognize(strokes);
+      if (n !== padRun || !scope.isConnected) return; // inzwischen weitergeschrieben, geleert oder geschlossen
+      if (!ja.length && !de.length) { candMsg('Erkennung gerade nicht erreichbar'); return; }
+      const best = HW.bestGuess(ja, de);
+      const chips = (list, cls) => list.map((t) => `<button class="chip ${cls}${t === best ? ' on' : ''}" data-lkcand="${esc(t)}">${esc(t)}</button>`).join('');
+      cands.innerHTML = chips(ja, 'lk-ja') + chips(de.filter((t) => !ja.includes(t)), '');
+      cands.hidden = false;
+      onText(best);
+    };
+    cv.addEventListener('pointerdown', (e) => {
+      if (cur || (e.pointerType === 'mouse' && e.button > 0)) return;
+      e.preventDefault();
+      clearTimeout(padTimer); padRun++; // eine laufende Erkennung soll das Suchfeld nicht mitten im Schreiben ändern
+      cv.setPointerCapture(e.pointerId);
+      cur = { id: e.pointerId, pts: [padPt(e)] };
+      padDraw();
+    });
+    cv.addEventListener('pointermove', (e) => { if (cur && e.pointerId === cur.id) { cur.pts.push(padPt(e)); padDraw(); } });
+    const padEnd = (e) => {
+      if (!cur || e.pointerId !== cur.id) return;
+      strokes.push({ pts: cur.pts }); cur = null;
+      padDraw();
+      padTimer = setTimeout(padRecognize, PAD_WAIT);
+    };
+    cv.addEventListener('pointerup', padEnd);
+    cv.addEventListener('pointercancel', padEnd);
+    pad.addEventListener('click', (e) => {
+      if (e.target.closest('[data-lkundo]')) { if (strokes.length) { strokes.pop(); padDraw(); padRecognize(); } }
+      if (e.target.closest('[data-lkclear]')) padClear();
+    });
+    cands.addEventListener('click', (e) => {
+      const cand = e.target.closest('[data-lkcand]');
+      if (cand) { cands.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === cand)); onText(cand.dataset.lkcand); }
+    });
+    return { clear: padClear };
+  };
 
   // Ein Fenster pro Schreibfläche; erneutes Öffnen holt das vorhandene nach vorn
   // onLink(r) (optional): Treffer mit dem zuletzt eingekreisten Wort verknüpfen – zeigt in der Detailansicht „Verknüpfen“;
@@ -110,9 +182,7 @@
     const pop = document.createElement('div');
     pop.className = 'lookup-pop card';
     pop.innerHTML = `<div class="lk-head"><input class="input" type="search" autocomplete="off" placeholder="Deutsch, かな, 漢字 oder Romaji"><button class="icon-btn sm" data-lkpad title="Mit dem Stift schreiben">${icon('pen')}</button><button class="icon-btn sm" data-lkclose title="Schließen">${icon('close')}</button></div>
-      <div class="lk-pad empty" hidden><canvas></canvas><span class="lk-pad-hint muted small">Hier mit dem Stift schreiben</span>
-        <div class="lk-pad-tools"><button class="icon-btn sm" data-lkundo title="Letzten Strich zurücknehmen">${icon('undo')}</button><button class="icon-btn sm" data-lkclear title="Schreibfeld leeren">${icon('trash')}</button></div></div>
-      <div class="lk-cands" hidden></div><div class="lk-body"></div>`;
+      ${LK.padHtml()}<div class="lk-body"></div>`;
     const bar = root.querySelector('.viewer-bar');
     const top = (bar ? bar.offsetHeight : 0) + 8;
     pop.style.top = top + 'px';
@@ -182,60 +252,9 @@
       body.querySelectorAll('.lk-stroke').forEach((host, i) => App.stroke.animator(host, chars[i], { compact: true, autoplay: i === 0 }));
     };
 
-    // ---------- Schreibfeld: Striche (Anteile der Feldbreite) bleiben nur im Fenster; nach einer Schreibpause erkennen, bester Vorschlag wird gesucht ----------
-    const padBtn = pop.querySelector('[data-lkpad]'), pad = pop.querySelector('.lk-pad'), cv = pad.querySelector('canvas'), cands = pop.querySelector('.lk-cands');
-    let strokes = [], cur = null, padTimer = 0, padRun = 0;
-    const padDraw = () => {
-      pad.classList.toggle('empty', !strokes.length && !cur);
-      const W = pad.clientWidth, k = window.devicePixelRatio || 1;
-      if (!W) return;
-      if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(pad.clientHeight * k); }
-      const c = cv.getContext('2d'), u = W * k;
-      c.clearRect(0, 0, cv.width, cv.height);
-      c.strokeStyle = getComputedStyle(pop).color; c.lineWidth = 3 * k; c.lineCap = c.lineJoin = 'round';
-      strokes.concat(cur || []).forEach((s) => {
-        c.beginPath();
-        s.pts.forEach((q, i) => (i ? c.lineTo(q[0] * u, q[1] * u) : c.moveTo(q[0] * u, q[1] * u)));
-        if (s.pts.length === 1) c.lineTo(s.pts[0][0] * u + 0.1, s.pts[0][1] * u); // Punkt
-        c.stroke();
-      });
-    };
-    const padPt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width]; };
-    const candMsg = (t) => { cands.innerHTML = `<span class="muted small">${esc(t)}</span>`; cands.hidden = false; };
-    const padClear = () => { clearTimeout(padTimer); padRun++; strokes = []; cur = null; cands.innerHTML = ''; cands.hidden = true; padDraw(); };
-    const padRecognize = async () => {
-      const n = ++padRun;
-      if (!strokes.length) { padClear(); return; }
-      if (strokes.length > HW.MAX_STROKES) { candMsg('Zu viel geschrieben – bitte ein Wort'); return; }
-      if (!(await App.hw.consent('Zum Erkennen werden die Striche aus dem Schreibfeld an Google gesendet (nur diese Linien, nicht die Seite). Einverstanden?'))) { if (n === padRun) padClear(); return; }
-      if (n !== padRun) return;
-      if (!cands.querySelector('.chip')) candMsg('…');
-      const { ja, de } = await App.hw.recognize(strokes);
-      if (n !== padRun || !pop.isConnected) return; // inzwischen weitergeschrieben, geleert oder geschlossen
-      if (!ja.length && !de.length) { candMsg('Erkennung gerade nicht erreichbar'); return; }
-      const best = HW.bestGuess(ja, de);
-      const chips = (list, cls) => list.map((t) => `<button class="chip ${cls}${t === best ? ' on' : ''}" data-lkcand="${esc(t)}">${esc(t)}</button>`).join('');
-      cands.innerHTML = chips(ja, 'lk-ja') + chips(de.filter((t) => !ja.includes(t)), '');
-      cands.hidden = false;
-      input.value = best; search();
-    };
-    cv.addEventListener('pointerdown', (e) => {
-      if (cur || (e.pointerType === 'mouse' && e.button > 0)) return;
-      e.preventDefault();
-      clearTimeout(padTimer); padRun++; // eine laufende Erkennung soll das Suchfeld nicht mitten im Schreiben ändern
-      cv.setPointerCapture(e.pointerId);
-      cur = { id: e.pointerId, pts: [padPt(e)] };
-      padDraw();
-    });
-    cv.addEventListener('pointermove', (e) => { if (cur && e.pointerId === cur.id) { cur.pts.push(padPt(e)); padDraw(); } });
-    const padEnd = (e) => {
-      if (!cur || e.pointerId !== cur.id) return;
-      strokes.push({ pts: cur.pts }); cur = null;
-      padDraw();
-      padTimer = setTimeout(padRecognize, PAD_WAIT);
-    };
-    cv.addEventListener('pointerup', padEnd);
-    cv.addEventListener('pointercancel', padEnd);
+    // ---------- Schreibfeld (LK.pad): der erkannte Vorschlag wird gesucht ----------
+    const padBtn = pop.querySelector('[data-lkpad]'), pad = pop.querySelector('.lk-pad');
+    const padClear = LK.pad(pop, (t) => { input.value = t; search(); }).clear;
     const setPad = (on) => { pad.hidden = !on; padBtn.classList.toggle('active', on); padClear(); };
 
     const close = () => { run++; padClear(); pop.remove(); root._lookup = null; };
@@ -254,10 +273,6 @@
       if (e.target.closest('[data-lkclose]')) { close(); return; }
       if (e.target.closest('[data-lkback]')) { list(last); return; }
       if (e.target.closest('[data-lkpad]')) { setPad(pad.hidden); App.saveSettings({ lkPad: !pad.hidden }); return; }
-      if (e.target.closest('[data-lkundo]')) { if (strokes.length) { strokes.pop(); padDraw(); padRecognize(); } return; }
-      if (e.target.closest('[data-lkclear]')) { padClear(); return; }
-      const cand = e.target.closest('[data-lkcand]');
-      if (cand) { cands.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === cand)); input.value = cand.dataset.lkcand; search(); return; }
       if (e.target.closest('[data-lklink]')) { if (onLink && shown) onLink(shown); return; }
       const nw = e.target.closest('[data-lknew]');
       if (nw) { const q = nw.dataset.q || last.q; if (onLink && q) onLink({ create: nw.dataset.lknew, q }); return; }

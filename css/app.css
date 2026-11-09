@@ -1109,6 +1109,7 @@ body.ink-fit #view { padding-bottom: 16px; }
   #topbar .search-wrap kbd { display: none; }
   .badge { white-space: normal; }
   #topbar .icon-btn { width: 36px; }
+  @media (max-width: 430px) { #topbar { gap: 2px; padding: 0 6px; } #topbar .icon-btn { width: 32px; } #topbar .btn-primary { padding: 0 10px; } } /* ⇄ Vergleichen braucht Platz: Suchfeld nicht zu schmal */
   #view { padding: 20px 16px 80px; }
   .form .two, .form .three { grid-template-columns: 1fr; }
   .list-row { grid-template-columns: 1fr 1fr; }
@@ -2424,3 +2425,28 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 .kw-go::after { content: '›'; position: absolute; right: 2px; top: 50%; transform: translateY(-50%); color: var(--murasaki); font-size: 22px; opacity: .7; }
 .kw-link { cursor: pointer; transition: background .15s; }
 .kw-link:hover { background: var(--paper-2); }
+
+/* ---------- Vergleichen (⇄ in der oberen Leiste, js/compare.js) ---------- */
+.cmp-pop.lookup-pop { position: fixed; top: calc(var(--topbar-h) + 6px); right: 12px; z-index: 60; width: min(580px, calc(100vw - 24px)); max-width: none; max-height: calc(100vh - var(--topbar-h) - 18px); }
+.cmp-head { display: flex; align-items: center; gap: 4px; }
+.cmp-head b { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.cmp-head .grow { flex: 1; }
+.cmp-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 6px 0 8px; flex: none; max-height: 52vh; overflow: auto; }
+.cmp-col { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--sec-soft, var(--paper-2)); cursor: pointer; min-width: 0; }
+.cmp-col.on { border-color: var(--sec, var(--shu)); }
+.cmp-col.empty { align-items: center; justify-content: center; text-align: center; min-height: 110px; border-style: dashed; background: transparent; }
+.cmp-col.empty.on { border-color: var(--shu); }
+.cmp-top { display: flex; align-items: center; justify-content: space-between; margin: -4px -6px 0 0; }
+.cmp-top .icon-btn.sm { width: 28px; height: 28px; color: var(--muted); }
+.cmp-big { font-family: var(--font-kanji); font-size: 40px; line-height: 1.15; word-break: break-all; }
+.cmp-big.cmp-anim { max-width: 160px; }
+.cmp-kana { font-size: 15px; color: var(--muted); }
+.cmp-de { font-size: 14px; font-weight: 600; }
+.cmp-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.cmp-use, .cmp-ex { font-size: 13px; line-height: 1.5; }
+.cmp-ex { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 2px; }
+.cmp-col .btn-sm { align-self: flex-start; }
+.cmp-open { margin-top: 4px; align-self: flex-start; }
+mark.cmp-diff { background: var(--hl); color: inherit; padding: 0 1px; border-radius: 4px; }
+@media (max-width: 600px) { .cmp-pop.lookup-pop { right: 8px; width: calc(100vw - 16px); } .cmp-big { font-size: 32px; } }
+.cmp-col.cmp-hidden .cmp-big { color: var(--muted); }

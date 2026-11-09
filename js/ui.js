@@ -34,6 +34,18 @@
     return App.SECTIONS[it.type].route + '/' + encodeURIComponent(it.id);
   };
   App.kanjiByChar = (c) => { for (const it of App.store.items.values()) if (it.type === 'kanji' && it.char === c) return it; return null; };
+  // Eintrag, der gerade zu sehen ist: Lernrunden ohne eigene Adresse (Karteikarten, Kanji schreiben) melden ihre Karte
+  // über App.screenItem, sonst die Detailseite aus der Adresse (#/grammatik/g-n5-wa, #/kanji/待)
+  App.pageItem = () => {
+    const card = App.screenItem && App.screenItem();
+    if (card) return card;
+    const parts = App.parseHash().path.split('/').filter(Boolean);
+    if (parts.length !== 2) return null;
+    const key = decodeURIComponent(parts[1]);
+    if (parts[0] === 'kanji') return App.kanjiByChar(key) || App.item(key);
+    const it = App.item(key);
+    return it && App.SECTIONS[it.type] && App.link(it) === '#/' + parts.join('/') ? it : null;
+  };
 
   // ---------- Toast / Modal ----------
   App.toast = (msg, action) => {

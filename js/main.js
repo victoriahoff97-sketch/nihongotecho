@@ -61,6 +61,7 @@
     if (act === 'open-sidebar') document.body.classList.toggle('sidebar-open');
     if (act === 'help') App.tour.startForPage();
     if (act === 'forum') App.forum.open();
+    if (act === 'compare') App.compare.toggle();
     if (act === 'back') history.back();
   });
   document.addEventListener('keydown', (e) => {
@@ -69,6 +70,7 @@
     if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && !$('.modal-back') && !$('.viewer') && !$('.ink-embed')) {
       if (e.key === '/') { e.preventDefault(); $('#global-search').focus(); }
       if (e.key === 'n') { e.preventDefault(); App.quickAdd(); }
+      if (e.key === 'v') { e.preventDefault(); App.compare.toggle(); }
     }
   });
   document.addEventListener('click', (e) => { if (document.body.classList.contains('sidebar-open') && !App.tour.active() && !e.target.closest('#sidebar') && !e.target.closest('[data-action="open-sidebar"]')) document.body.classList.remove('sidebar-open'); });
