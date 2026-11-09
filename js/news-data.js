@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-09-wort-kanji', date: '9. November',
+      items: [
+        { t: 'Sticker für Kanji-Wörter', d: 'Sticker › Zettel › „Wort · 1–4 Kanji“: ein Kästchen je Kanji mit Zeile für seine Bedeutung, unten Lesung und Bedeutung des Wortes.' },
+      ],
+    },
+    {
       id: '2026-11-09-suche-leeren', date: '9. November',
       items: [
         { t: 'Suche räumt sich auf', d: 'Die Suche oben wird leer, sobald du fertig bist: Treffer angetippt, daneben getippt, Esc oder auf eine andere Seite gewechselt.' },

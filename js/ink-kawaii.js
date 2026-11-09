@@ -227,6 +227,34 @@
     }
     return out;
   };
+  const kjSnap = (W, H) => { const f = kjFit(W, H); return [f.T + 2 * KJ.pad, f.s + 2 * KJ.pad + KJ.top + KJ.bot + 2 * KJ.gap]; };
+  // Wort-Kanji: ein Kästchen je Kanji des Wortes, darunter je eine Zeile für die Bedeutung des einzelnen Kanji,
+  // unten Lesung und Bedeutung des ganzen Wortes; breiter ziehen = mehr Kanji
+  const WK = { pad: 9, gap: 6, one: 24, sep: 6, row: 26 };
+  const WK_EXTRA = 2 * WK.pad + WK.gap + WK.one + 2 * WK.sep + WK.row + WK.gap + WK.row;
+  const wkFit = (W, H) => {
+    const s = Math.max(20, H - WK_EXTRA);
+    const n = Math.max(1, Math.round((W - 2 * WK.pad + WK.gap) / (s + WK.gap)));
+    return { s, n, T: n * s + (n - 1) * WK.gap };
+  };
+  const wkSnap = (W, H) => { const f = wkFit(W, H); return [f.T + 2 * WK.pad, f.s + WK_EXTRA]; };
+  const wortKanji = (bg, cell, line, guide) => (W, H) => {
+    const { s, n, T } = wkFit(W, H), x0 = n1((W - T) / 2);
+    const q = (d, fill, w) => `<path d="${d}" fill="${fill}" stroke="${line}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lab = (x, y, t) => `<text x="${n1(x)}" y="${n1(y)}" font-size="10" fill="${guide}" font-family="sans-serif">${t}</text>`;
+    const y0 = WK.pad, y1 = y0 + s + WK.gap, ys = y1 + WK.one + WK.sep, y2 = ys + WK.sep, y3 = y2 + WK.row + WK.gap;
+    let out = q(rr(2, 2, W - 4, H - 4, 10), bg, 2.5);
+    for (let i = 0; i < n; i++) {
+      const x = n1(x0 + i * (s + WK.gap));
+      out += `<rect x="${x}" y="${y0}" width="${n1(s)}" height="${n1(s)}" fill="${cell}" stroke="${line}" stroke-width="2"/><path d="M${n1(x + s / 2)} ${y0}v${n1(s)}M${x} ${n1(y0 + s / 2)}h${n1(s)}" fill="none" stroke="${guide}" stroke-width="1.4" stroke-dasharray="4 4"/>`
+        + q(rr(x, n1(y1), n1(s), WK.one, 4), cell, 1.5);
+    }
+    out += `<path d="M${x0} ${n1(ys)}h${n1(T)}" fill="none" stroke="${line}" stroke-width="1" stroke-opacity=".5"/>`
+      + q(rr(x0, n1(y2), n1(T), WK.row, 5), cell, 1.8) + lab(x0 + 5, y2 + 11, 'Lesung')
+      + q(rr(x0, n1(y3), n1(T), WK.row, 5), cell, 1.8) + lab(x0 + 5, y3 + 11, 'Bedeutung');
+    return out;
+  };
+  const wk = (n) => +((n * 90 + (n - 1) * WK.gap + 2 * WK.pad) / 1000).toFixed(3);
 
   const MIN = { w: 0.06, h: 0.04 };
   const NOTES = [
@@ -237,6 +265,11 @@
     { id: 'kanji3-papier', as: 'kanji-papier', label: 'Kanji-Reihe Papier', w: 0.312, h: 0.174 },
     { id: 'kanji-tinte', label: 'Kanji-Feld Tinte', draw: kanji('#DCE4EE', '#fff', '#4A5870', '#9DB0C6'), kj: true, w: 0.112, h: 0.174, min: { w: 0.06, h: 0.118 } },
     { id: 'kanji3-tinte', as: 'kanji-tinte', label: 'Kanji-Reihe Tinte', w: 0.312, h: 0.174 },
+    // Wort-Kanji: im Unterricht lernt man Kanji über Wörter (風邪 = Erkältung) – die Kästchen-Zahl zeigt, wie viele Kanji das Wort hat
+    { id: 'wortkanji1', as: 'wortkanji', label: 'Wort · 1 Kanji', w: wk(1), h: 0.208 },
+    { id: 'wortkanji', label: 'Wort · 2 Kanji', draw: wortKanji('#EFE6D6', CREAM, O, '#B39A7C'), fit: wkSnap, w: wk(2), h: 0.208, min: { w: 0.06, h: 0.15 } },
+    { id: 'wortkanji3', as: 'wortkanji', label: 'Wort · 3 Kanji', w: wk(3), h: 0.208 },
+    { id: 'wortkanji4', as: 'wortkanji', label: 'Wort · 4 Kanji', w: wk(4), h: 0.208 },
     { id: 'zettel', label: 'Klebezettel', draw: note('#FFF1A8', '#F5D76E', '#FF9DB8'), w: 0.28, h: 0.2 },
     { id: 'zettel-rosa', label: 'Zettel rosa', draw: note('#FFD9E6', '#FFB3C7', MINT), w: 0.28, h: 0.2 },
     { id: 'zettel-mint', label: 'Zettel mint', draw: note('#DFF7EC', MINT, LILA), w: 0.28, h: 0.2 },
@@ -299,11 +332,14 @@
   // Bild-Eintrag { k, w, h } → Daten-URL; key ändert sich, sobald das Bild neu gezeichnet werden muss
   const src = (im) => { const s = svg(im.k, im.w, im.h); return s ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s) : ''; };
   const key = (im) => (free(im.k) ? im.k + ':' + Math.round(im.w * 1000) + 'x' + Math.round(im.h * 1000) : im.k);
-  // nach dem Ziehen: Kanji-Felder (alle Farben) schnappen auf ganze Kästchen
+  // nach dem Ziehen: Kanji-Felder (alle Farben) und Wort-Kanji schnappen auf ganze Kästchen
   const snap = (id, w, h) => {
-    if (!(notes.get(base(id)) || {}).kj) return { w, h };
-    const f = kjFit(w * 1000, h * 1000);
-    return { w: +((f.T + 2 * KJ.pad) / 1000).toFixed(4), h: +((f.s + 2 * KJ.pad + KJ.top + KJ.bot + 2 * KJ.gap) / 1000).toFixed(4) };
+    let d = notes.get(base(id)) || {};
+    if (d.as) d = notes.get(d.as) || {};
+    const fit = d.kj ? kjSnap : d.fit;
+    if (!fit) return { w, h };
+    const [W, H] = fit(w * 1000, h * 1000);
+    return { w: +(W / 1000).toFixed(4), h: +(H / 1000).toFixed(4) };
   };
   // Platz beim Einfügen: Mitte am Tipp-Punkt, ganz auf der Seite
   const place = (id, pt, pageH) => {
