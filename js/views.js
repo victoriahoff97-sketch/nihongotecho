@@ -551,7 +551,10 @@
     const sec = App.SECTIONS.vocab;
     const all = App.itemsOf('vocab');
     let items = filterItems(all, q);
-    if (q.pos) items = items.filter((i) => i.pos === q.pos);
+    // „Lautmalerei“ steht mit in der Wortart-Auswahl (kein eigenes Feld, die Filterzeile ist voll): Schlagwort statt Wortart,
+    // denn Lautwörter sind mal Adverb, mal Verb (わくわくする) – js/ono.js
+    if (q.pos === 'ono') items = items.filter(App.ono.has);
+    else if (q.pos) items = items.filter((i) => i.pos === q.pos);
     // Lernstand wie auf der Startseite (beide Richtungen); alte Links mit dem Lese-Stand (unchecked/learn) gehen weiter
     if (q.st) items = items.filter((i) => (App.WORD_STATE[q.st] ? App.wordState(i) : App.vocabStatus(i.id)) === q.st);
     const sortK = App.listSortOf('vocab', q);
@@ -565,7 +568,7 @@
       ${tabsHtml(q, items.length, files.length, App.GK_TAB(false) + App.GB_TAB(false))}
       <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
-        <select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}<option disabled>──────</option><option value="ono" title="${esc(App.ono.LABEL)}: ごろごろ, わくわく, ドキドキ …" ${q.pos === 'ono' ? 'selected' : ''}>Lautmalerei</option></select>
         ${App.levelSelect(q.lvl)}
         <select class="input" data-q-select="st"><option value="">Lernstand</option>${Object.entries(App.WORD_STATE).map(([k, x]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${x.dot} ${x.label}</option>`).join('')}</select>
         ${starChip(q)}${App.sortSelect(sortK)}<div class="seg"><button class="${mode === 'cards' ? 'on' : ''}" data-mode="cards" title="Als Karten">${icon('cards')}</button><button class="${mode === 'list' ? 'on' : ''}" data-mode="list" title="Als Liste">${icon('list')}</button></div></div></div>

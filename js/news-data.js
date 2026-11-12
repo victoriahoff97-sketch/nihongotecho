@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-12-lautmalerei', date: '12. November',
+      items: [
+        { t: 'Lautmalerei (オノマトペ)', d: 'Wörter wie ごろごろ, わくわく oder ドキドキ bekommen von selbst das Schlagwort „lautmalerei“ – auch deine eigenen und alle, die du schon hast.' },
+        { t: 'Danach filtern', d: 'Unter Vokabeln › Wortart ganz unten „Lautmalerei“ wählen: Dann siehst du nur diese Wörter.' },
+      ],
+    },
+    {
       id: '2026-11-09-zettel-farben', date: '9. November',
       items: [
         { t: 'Zettel in deiner Farbe', d: 'Unter Sticker › Zettel steht jede Art nur noch einmal – die Farbe wählst du mit den Punkten darüber.' },

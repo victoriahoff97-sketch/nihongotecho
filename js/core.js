@@ -328,6 +328,8 @@ window.App = window.App || {};
     if (!it.created && it.type === 'vocab' && App.exampleFill) await App.exampleFill(it);
     // eigenes Verb ohne Partikel-Muster oder Verbklasse: aus dem Verb-Index der Pakete ergänzen (js/verbs.js)
     if (it.type === 'vocab' && App.verbFill) await App.verbFill(it);
+    // Lautwort (ごろごろ, わくわく …): Schlagwort „lautmalerei“ (js/ono.js)
+    if (it.type === 'vocab' && App.onoFill) App.onoFill(it);
     if (!it.id) it.id = uid(it.type[0]);
     const isNew = !it.created;
     if (isNew) it.created = now;
