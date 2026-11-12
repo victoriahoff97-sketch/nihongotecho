@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-12-adj-no', date: '12. November',
+      items: [
+        { t: 'Mehr Abwechslung bei „Adjektiv + の“', d: 'Die Übungssätze wechseln jetzt auch die Adjektive (groß/klein, neu/alt …) und haben fünf verschiedene Satzarten statt immer „teuer – gibt es was Billigeres?“.' },
+      ],
+    },
+    {
       id: '2026-11-12-lautmalerei-karten', date: '12. November',
       items: [
         { t: 'Lautmalerei üben', d: 'Karteikarten und Einstufen haben jetzt auch das Feld „Wortart“ – dort „Lautmalerei“ wählen, und du übst nur Wörter wie ごろごろ oder わくわく.' },

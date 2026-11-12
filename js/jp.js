@@ -248,6 +248,10 @@
       case 'dat': return bare ? w : `${ART.def.dat[g]} ${w}`;
       case 'rel': return bare ? 'das' : ART.def.akk[g]; // Relativpronomen im Akkusativ: „der Tee, den ich …“
       case 'dies': return bare ? w : `${{ m: 'dieser', f: 'diese', n: 'dieses', pl: 'diese' }[g]} ${w}`; // この〜
+      // Pronomen für の (= „einer/der …e“): „Gibt es auch einen, der billig ist?“
+      case 'einen': return { m: 'einen', f: 'eine', n: 'eins' }[g] || 'eins';
+      case 'der': return { m: 'der', f: 'die', n: 'das' }[g] || 'das'; // Relativpronomen im Nominativ
+      case 'welch': return bare ? `welches ${w}` : `${{ m: 'welcher', f: 'welche', n: 'welches', pl: 'welche' }[g]} ${w}`;
       case 'zu':
         if (n.zu) return n.zu; // eigene Richtungsangabe: „in die Stadt“, „ans Meer“
         if (home) return 'nach Hause';
@@ -285,14 +289,24 @@
       if (slot.cat && slot.cat.length && !slot.cat.some((c) => cats.includes(c))) return false;
       if (slot.objOf) { const v = chosen[slot.objOf]; if (!v || !v.v || !v.v.obj || !v.v.obj.some((c) => cats.includes(c))) return false; }
       if (slot.subjOf) { const a = chosen[slot.subjOf]; if (!a || !a.a || !a.a.subj || !a.a.subj.some((c) => cats.includes(c))) return false; }
+      // opp: Gegenteil des Adjektivs in einer anderen Lücke (高い → 安い)
+      if (slot.opp) { const a = chosen[slot.opp]; if (!a || !(JP.OPPOSITE[a.id] || []).includes(it.id)) return false; }
+      // fits: das Adjektiv muss zum Nomen in einer anderen Lücke passen
+      if (slot.fits) { const n = chosen[slot.fits]; if (!n || !it.a || !(it.a.subj || []).some((c) => (n.cat || []).includes(c))) return false; }
       return true;
     });
   };
+  // Gegensatzpaare für Muster wie „Das ist teuer – gibt es auch ein billiges?“
+  JP.OPPOSITE = {};
+  [['v-g2-takai', 'v-g5-yasui'], ['v-g5-ookii', 'v-g5-chiisai'], ['v-g5-atarashii', 'v-g5-furui'], ['p-farbe-5', 'p-farbe-6'],
+    ['v-g5-nigiyaka', 'v-g5-shizuka'], ['v-g5-muzukashii', 'v-g5-yasashii'], ['v-g5-omoshiroi', 'v-g5-tsumaranai'], ['v-g7-nagai', 'v-g7-mijikai']]
+    .forEach(([a, b]) => { (JP.OPPOSITE[a] = JP.OPPOSITE[a] || []).push(b); (JP.OPPOSITE[b] = JP.OPPOSITE[b] || []).push(a); });
+  const DEPENDS = (s) => (s.opp || s.fits ? 2 : 0) + (s.objOf || s.subjOf ? 1 : 0);
   // prefer(it): passt so ein Wort in eine Lücke, kommt nur eines davon hinein (Lernschlange vor Füllwörtern)
   JP.fill = (pattern, pool, prefer) => { for (let t = 0; t < 12; t++) { const r = fillOnce(pattern, pool, prefer); if (r) return r; } return null; };
   const fillOnce = (pattern, pool, prefer) => {
     const slots = pattern.slots || {};
-    const names = Object.keys(slots).sort((a, b) => ((slots[a].objOf || slots[a].subjOf) ? 1 : 0) - ((slots[b].objOf || slots[b].subjOf) ? 1 : 0));
+    const names = Object.keys(slots).sort((a, b) => DEPENDS(slots[a]) - DEPENDS(slots[b]));
     const chosen = {};
     for (const n of names) {
       const slot = pattern.not ? Object.assign({}, slots[n], { not: (slots[n].not || []).concat(pattern.not) }) : slots[n];
@@ -319,6 +333,8 @@
       }
       if (it.pos === 'i-adj' || it.pos === 'na-adj') return it.a.de;
       if (it.pos === 'time') return form === 'w' ? JP.nounDe(it).w : it.t.adv;
+      // großgeschriebene Form ({N:Einen}) = Satzanfang in Anführungszeichen
+      if (form && /^[A-Z]/.test(form)) { const s = JP.deNoun(it, form.toLowerCase()); return s.charAt(0).toUpperCase() + s.slice(1); }
       return JP.deNoun(it, form || 'w');
     };
     const jp = pattern.jp.replace(/\{([A-Z])(?::(\w+))?\}/g, (m, n, f) => jpForm(n, f));
