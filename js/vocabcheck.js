@@ -246,6 +246,7 @@
     if (q.mark) items = items.filter((i) => App.hasMark(i, q.mark));
     if (q.lvl) items = items.filter((i) => App.levelMatch(i, q.lvl));
     if (isP && q.g) items = items.filter((i) => i.group === q.g);
+    if (type === 'vocab' && q.pos) items = items.filter((i) => App.posMatch(i, q.pos));
     // Vokabeln haben zwei Einstufungen: lesen (Japanisch → Deutsch) und aktiv (Deutsch → Japanisch, eigener Lernstand unter „w:<Id>“).
     // Aktiv eingestuft wird, was man schon lesen kann.
     // Vokabeln: „Alle Lektionen gemischt“ (Wörter quer durch alle Lektionen gewürfelt) oder „Pro Lektion“ (perLesson, Buchreihenfolge).
@@ -264,7 +265,7 @@
     const ac = mix ? W.activeCounts(items, S.srs, App.needsCheck) : null;
     const open = c.unchecked + (ac ? ac.unchecked : 0);
     // Lektionen der Auswahl (ohne den Lektionsfilter) und ob in ihnen noch etwas einzustufen ist
-    const pool = type !== 'vocab' ? [] : all.filter((i) => App.srcMatch(i, q.src) && (!q.lvl || App.levelMatch(i, q.lvl)));
+    const pool = type !== 'vocab' ? [] : all.filter((i) => App.srcMatch(i, q.src) && (!q.lvl || App.levelMatch(i, q.lvl)) && App.posMatch(i, q.pos));
     const lessons = Array.from(new Set(pool.map((i) => i.lesson).filter((l) => l !== '' && l != null))).sort((a, b) => (+a) - (+b) || String(a).localeCompare(String(b)));
     const lessonOpen = (l) => pool.some((i) => String(i.lesson) === String(l) && ((dir !== 'de' && readOpen(i)) || (dir !== 'jp' && App.activeStatus(i) === 'unchecked')));
     const nextLesson = perLesson ? lessons.slice(lessons.findIndex((l) => String(l) === q.l) + 1).find(lessonOpen) : undefined;
@@ -282,12 +283,12 @@
       <div class="card" data-setup><div class="stack">
         <div class="row"><div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div>
           ${isK ? '' : `<div class="seg">${[['jp', `JP ${F.jp} → DE ${F.de}`, 'Japanisch → Deutsch (lesen)'], ['de', `DE ${F.de} → JP ${F.jp}`, 'Deutsch → Japanisch (aktiv)'], ['mix', 'Beide', 'Beide Richtungen gemischt']].map(([k, l, t]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k}" title="${t}">${l}</button>`).join('')}</div>`}
-          ${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}${isP ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${App.phraseGroups().map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}</div>
+          ${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}${type === 'vocab' ? App.posSelect(q.pos) : ''}${isP ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${App.phraseGroups().map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}</div>
         <div class="row between"><div class="row" style="gap:18px">
           <span><b style="font-size:22px;color:var(--muted)">${c.unchecked}</b> ungeprüft</span>
           <span><b style="font-size:22px;color:var(--ai)">${c.learn}</b> in der Lernschlange</span>
           <span><b style="font-size:22px;color:var(--matcha)">${c.known}</b> kann ich${active ? ' aktiv' : ''}</span></div>
-          <span class="small muted">${mix ? `DE → JP: ${ac.unchecked} offen · ${ac.learn} in der Lernschlange · ${ac.known} kann ich` : q.src || q.l || q.lvl || (isP && q.g) ? `Insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
+          <span class="small muted">${mix ? `DE → JP: ${ac.unchecked} offen · ${ac.learn} in der Lernschlange · ${ac.known} kann ich` : q.src || q.l || q.lvl || q.pos || (isP && q.g) ? `Insgesamt ${cAll.unchecked} ungeprüft` : ''}</span></div>
         <div class="progress" style="display:flex;height:10px"><i style="width:${pct(c.known)}%;background:var(--matcha);border-radius:0"></i><i style="width:${pct(c.learn)}%;background:var(--ai);border-radius:0"></i></div>
         <div class="row between karten-go"><div class="row">
           <button class="btn btn-primary" data-go ${open ? '' : 'disabled'}>${icon('play')} Runde starten (${Math.min(batch, open)})</button>

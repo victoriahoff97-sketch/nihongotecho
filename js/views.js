@@ -551,24 +551,22 @@
     const sec = App.SECTIONS.vocab;
     const all = App.itemsOf('vocab');
     let items = filterItems(all, q);
-    // „Lautmalerei“ steht mit in der Wortart-Auswahl (kein eigenes Feld, die Filterzeile ist voll): Schlagwort statt Wortart,
-    // denn Lautwörter sind mal Adverb, mal Verb (わくわくする) – js/ono.js
-    if (q.pos === 'ono') items = items.filter(App.ono.has);
-    else if (q.pos) items = items.filter((i) => i.pos === q.pos);
+    // Wortart inkl. „Lautmalerei“ (steht mit in der Auswahl, die Filterzeile ist voll) – App.posMatch in js/ui.js
+    if (q.pos) items = items.filter((i) => App.posMatch(i, q.pos));
     // Lernstand wie auf der Startseite (beide Richtungen); alte Links mit dem Lese-Stand (unchecked/learn) gehen weiter
     if (q.st) items = items.filter((i) => (App.WORD_STATE[q.st] ? App.wordState(i) : App.vocabStatus(i.id)) === q.st);
     const sortK = App.listSortOf('vocab', q);
     items = App.listSort.sort(items, sortK, byLesson);
     const mode = q.view || (App.lsGet('vocabView') || 'cards');
     const files = App.filesFor({ section: 'vocab', source: q.src || undefined, lesson: q.l || undefined });
-    const cardsQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'vocab', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v))).toString();
-    const unchecked = App.vocabCounts(filterItems(all, { src: q.src, l: q.l, lvl: q.lvl })).unchecked;
+    const cardsQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'vocab', src: q.src, l: q.l, lvl: q.lvl, pos: q.pos }).filter(([, v]) => v))).toString();
+    const unchecked = App.vocabCounts(filterItems(all, { src: q.src, l: q.l, lvl: q.lvl }).filter((i) => App.posMatch(i, q.pos))).unchecked;
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Alle Wörter mit Lesung, Kanji, Übersetzung und Beispielsätzen – nach Quelle und Lektion sortiert.',
       `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>${pageMore(`<button class="btn" data-action="import-vocab">${icon('upload')} Wortliste importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a>`)}`)}
       ${tabsHtml(q, items.length, files.length, App.GK_TAB(false) + App.GB_TAB(false))}
       <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
-        <select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${q.pos === k ? 'selected' : ''}>${l}</option>`).join('')}<option disabled>──────</option><option value="ono" title="${esc(App.ono.LABEL)}: ごろごろ, わくわく, ドキドキ …" ${q.pos === 'ono' ? 'selected' : ''}>Lautmalerei</option></select>
+        ${App.posSelect(q.pos)}
         ${App.levelSelect(q.lvl)}
         <select class="input" data-q-select="st"><option value="">Lernstand</option>${Object.entries(App.WORD_STATE).map(([k, x]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${x.dot} ${x.label}</option>`).join('')}</select>
         ${starChip(q)}${App.sortSelect(sortK)}<div class="seg"><button class="${mode === 'cards' ? 'on' : ''}" data-mode="cards" title="Als Karten">${icon('cards')}</button><button class="${mode === 'list' ? 'on' : ''}" data-mode="list" title="Als Liste">${icon('list')}</button></div></div></div>

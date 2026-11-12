@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-12-lautmalerei-karten', date: '12. November',
+      items: [
+        { t: 'Lautmalerei üben', d: 'Karteikarten und Einstufen haben jetzt auch das Feld „Wortart“ – dort „Lautmalerei“ wählen, und du übst nur Wörter wie ごろごろ oder わくわく.' },
+      ],
+    },
+    {
       id: '2026-11-12-lautmalerei', date: '12. November',
       items: [
         { t: 'Lautmalerei (オノマトペ)', d: 'Wörter wie ごろごろ, わくわく oder ドキドキ bekommen von selbst das Schlagwort „lautmalerei“ – auch deine eigenen und alle, die du schon hast.' },

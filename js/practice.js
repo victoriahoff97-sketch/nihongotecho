@@ -69,6 +69,7 @@
     if (q.star) items = items.filter((i) => i.star);
     if (q.mark) items = items.filter((i) => App.hasMark(i, q.mark));
     if (q.lvl) items = items.filter((i) => App.levelMatch(i, q.lvl));
+    if (q.pos && type === 'vocab') items = items.filter((i) => App.posMatch(i, q.pos));
     if (type === 'kanji') items = items.filter((i) => i.char !== '々');
     return items;
   };
@@ -277,7 +278,7 @@
       <div class="card" data-setup><div class="stack">
         <div class="row"><div class="seg">${[['vocab', 'Vokabeln'], ['kanji', 'Kanji'], ['grammar', 'Grammatik'], ['phrase', 'Ausdrücke']].map(([k, l]) => `<button class="${type === k ? 'on' : ''}" data-q-type="${k === 'vocab' ? '' : k}">${l}</button>`).join('')}</div>
           <div class="seg">${(type === 'kanji' ? [['jp', 'Lesen', 'Kanji → Bedeutung'], ['de', 'Schreiben', 'Bedeutung → Kanji']] : [['jp', `JP ${FLAG.jp} → DE ${FLAG.de}`, 'Japanisch → Deutsch'], ['de', `DE ${FLAG.de} → JP ${FLAG.jp}`, 'Deutsch → Japanisch']]).map(([k, l, t]) => `<button class="${dir === k ? 'on' : ''}" data-q-dir="${k === defDir ? '' : k}" title="${t}">${l}</button>`).join('')}</div>
-          ${App.sourceSelect(allOfType, q.src)}${App.lessonSelect(allOfType.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}
+          ${App.sourceSelect(allOfType, q.src)}${App.lessonSelect(allOfType.filter((i) => App.srcMatch(i, q.src)), q.l)}${App.levelSelect(q.lvl)}${type === 'vocab' ? App.posSelect(q.pos) : ''}
           ${groups.length ? `<select class="input" data-q-select="g"><option value="">Alle Gruppen</option>${groups.map((g) => `<option ${q.g === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>` : ''}</div>
         <div class="row">${stKeys.map(stChip).join('')}<span class="karten-sep"></span>
           <button class="chip ${q.star ? 'on' : ''}" data-q-star="${q.star ? '' : '1'}">${icon('star')} Nur gemerkte</button></div>
@@ -286,7 +287,7 @@
           ${chunkSelect()}</div>
         <div class="small muted">${isG ? 'Grammatik übst du frei. Den Haken „Kann ich“ setzt du selbst auf der Seite des Grammatikpunkts.' : 'Wiederholen und Neue lernen zählen für deinen Lernstand, Frei üben nicht.'}${write ? ' Hier schreibst du auf Papier – <a href="#/ueben/kanji">mit dem Stift in der App schreiben</a>.' : ''}</div>
         ${unchecked ? `<div class="row between karten-hint"><span>${unchecked} ${type === 'kanji' ? 'Kanji' : type === 'phrase' ? 'Ausdrücke' : 'Vokabeln'} sind ${active ? 'aktiv noch nicht eingestuft' : 'noch ungeprüft'}.</span>
-          ${!App.checkOn() ? '' : `<a class="btn btn-sm" href="#/ueben/einstufen?${new URLSearchParams(Object.fromEntries(Object.entries({ type: type === 'vocab' ? '' : type, dir: active ? 'de' : '', src: q.src, l: q.l, lvl: q.lvl, g: type === 'phrase' ? q.g : '' }).filter(([, v]) => v)))}">${icon('check')} Einstufen</a>`}</div>` : ''}</div></div>
+          ${!App.checkOn() ? '' : `<a class="btn btn-sm" href="#/ueben/einstufen?${new URLSearchParams(Object.fromEntries(Object.entries({ type: type === 'vocab' ? '' : type, dir: active ? 'de' : '', src: q.src, l: q.l, lvl: q.lvl, pos: type === 'vocab' ? q.pos : '', g: type === 'phrase' ? q.g : '' }).filter(([, v]) => v)))}">${icon('check')} Einstufen</a>`}</div>` : ''}</div></div>
       <div data-stage></div></div>`;
     if (resume) return resumeCards(view, resume);
     const stage = view.querySelector('[data-stage]');
