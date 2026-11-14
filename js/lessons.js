@@ -75,7 +75,7 @@
     return `<a class="card session-card no-num" href="${App.link(s)}">
       <div><h3 lang="ja">${esc(sessionTitle(s))}</h3>${s.topic ? `<div class="muted" style="margin:-2px 0 4px">${esc(s.topic)}</div>` : ''}<div class="row small muted" style="gap:8px">${s.number ? `Nr. ${esc(s.number)} · ` : ''}${icon('calendar')} ${App.fmtDate(s.date)} ${bookRef(s) ? `· <span class="badge src" style="--c:${App.sourceColor(s.bookSource)}">${esc(bookRef(s))}</span>` : ''}</div>
       <div class="row" style="margin-top:8px;gap:6px">${g.slice(0, 4).map((x) => `<span class="badge sec sec-grammar" lang="ja">${esc(x.title)}</span>`).join('')}${g.length > 4 ? `<span class="badge">+${g.length - 4}</span>` : ''}</div></div>
-      <div class="stack small muted" style="gap:2px;text-align:right"><span>${n('vocabIds')} Vokabeln</span><span>${n('grammarIds')} Grammatik</span>${hw.length ? `<span style="color:${open ? 'var(--shu)' : 'var(--matcha)'}"><b>${open ? open + ' HA offen' : 'HA erledigt ✓'}</b></span>` : ''}</div></a>`;
+      <div class="stack small muted" style="gap:2px;text-align:right"><span>${n('vocabIds')} Vokabeln</span><span>${n('grammarIds')} Grammatik</span>${hw.length ? `<span style="color:${open ? 'var(--shu)' : 'var(--matcha)'}"><b>${open ? open + ' HA offen' : 'HA erledigt ✓'}</b></span>` : s.noHomework ? '<span style="color:var(--matcha)"><b>Keine HA ✓</b></span>' : ''}</div></a>`;
   };
   App.route('/unterricht', (view) => {
     const sec = App.SECTIONS.session;
@@ -114,7 +114,7 @@
       <div class="card session-head"><div><h1 lang="ja">${esc(sessionTitle(s))}</h1>${s.topic ? `<div class="topic">${esc(s.topic)}</div>` : ''}
         <div class="row small muted" style="margin-top:4px;gap:8px">${esc(s.course || 'Ohne Kurs')}${s.number ? ` · Nr. ${esc(s.number)}` : ''}${bookRef(s) ? ` · <a class="badge src" style="--c:${App.sourceColor(s.bookSource)};text-decoration:none" href="#/grammatik?src=${encodeURIComponent(s.bookSource)}${s.bookLesson !== '' ? '&l=' + s.bookLesson : ''}">${esc(bookRef(s))}</a>` : ''}</div></div>
         <button class="btn btn-sm" data-edit-session>${icon('edit')} Bearbeiten</button></div>
-      <div class="tabs">${[['hand', `${icon('pen')} Handschrift`], ['typed', `${icon('edit')} Getippt${typedDot}`], ['material', `${icon('library')} Material <span class="badge">${mat.length}</span>`], ['homework', `${icon('notebook')} Hausaufgaben <span class="badge">${hw.length}</span>`], ['learned', `${icon('grammar')} Gelernt <span class="badge">${learnedN}</span>`], ['summary', `${icon('sparkle')} Zusammenfassung`]].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-q-tab="${k === 'hand' ? '' : k}">${l}</button>`).join('')}</div>
+      <div class="tabs">${[['hand', `${icon('pen')} Handschrift`], ['typed', `${icon('edit')} Getippt${typedDot}`], ['material', `${icon('library')} Material <span class="badge">${mat.length}</span>`], ['homework', `${icon('notebook')} Hausaufgaben <span class="badge">${!hw.length && s.noHomework ? '✓' : hw.length}</span>`], ['learned', `${icon('grammar')} Gelernt <span class="badge">${learnedN}</span>`], ['summary', `${icon('sparkle')} Zusammenfassung`]].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-q-tab="${k === 'hand' ? '' : k}">${l}</button>`).join('')}</div>
       <div data-body></div></div>`;
     view.querySelector('[data-edit-session]').onclick = () => App.editSession(s);
     const body = view.querySelector('[data-body]');
@@ -151,7 +151,10 @@
       body.innerHTML = `<div class="row" style="margin-bottom:14px"><button class="btn btn-sec" data-up>${icon('upload')} Hausaufgabe (PDF/Foto) hochladen</button><button class="btn" data-blank>${icon('notebook')} Leeres Blatt</button></div>
         ${hw.length ? `<div class="stack">${hw.map((f) => `<div class="card row hw-row"><label class="chip ${f.done ? 'on' : ''}" style="--sec:var(--matcha)"><input type="checkbox" data-done="${f.id}" ${f.done ? 'checked' : ''} hidden>${f.done ? '✓ Erledigt' : 'Offen'}</label>
           <button type="button" class="hw-open" data-open-file="${f.id}" title="Mit Stift bearbeiten"><b>${esc(f.name)}</b><span class="small muted">${App.store.inkCount.get(f.id) ? `✎ ${App.store.inkCount.get(f.id)} Seite(n) beschrieben` : 'noch nicht bearbeitet'}</span></button></div>`).join('')}</div>`
-        : '<div class="empty-state"><div class="big">宿</div><h3>Keine Hausaufgaben</h3><p>Lade das Aufgabenblatt als PDF hoch – dann kannst du es mit dem Surface-Stift direkt ausfüllen und als PDF wieder ausdrucken/abgeben.</p></div>'}`;
+        : s.noHomework
+          ? `<div class="card row between hw-none"><div class="row" style="gap:10px"><span class="hw-none-ico">✓</span><div><b>Keine Hausaufgaben</b><div class="small muted">In dieser Stunde wurde nichts aufgegeben.</div></div></div><button class="btn btn-sm" data-no-hw="0">Doch Hausaufgaben</button></div>`
+          : `<div class="empty-state"><div class="big">宿</div><h3>Noch keine Hausaufgabe</h3><p>Lade das Aufgabenblatt als PDF hoch – dann kannst du es mit dem Surface-Stift direkt ausfüllen und als PDF wieder ausdrucken/abgeben.</p><button class="btn" data-no-hw="1">✓ Es gibt keine Hausaufgaben</button></div>`}`;
+      body.querySelectorAll('[data-no-hw]').forEach((b) => { b.onclick = async () => { await save({ noHomework: b.dataset.noHw === '1' }); App.render(true); }; });
       body.querySelector('[data-up]').onclick = () => App.uploadDialog({ sessionId: s.id, role: 'homework', section: 'session', source: UL.CLASS_SOURCE, accept: 'application/pdf,image/*' });
       // Ohne Titel-Abfrage: das Blatt heißt nach der Stunde (umbenennen geht im Blatt über „⋯“)
       body.querySelector('[data-blank]').onclick = () => {
@@ -214,6 +217,7 @@
       ${k.length ? `<h3>Kanji</h3><div class="row">${k.map((x) => `<a href="${App.link(x)}" style="text-decoration:none;text-align:center"><div style="font-family:var(--font-kanji);font-size:34px">${esc(x.char)}</div><div class="small muted">${esc(App.meaning(x).text.split(',')[0])}</div></a>`).join('')}</div>` : ''}
       ${ph.length ? `<h3>Ausdrücke</h3><ul>${ph.map((x) => `<li><span lang="ja">${JP.ruby(x.jp)}</span> – ${esc(x.de)}</li>`).join('')}</ul>` : ''}
       ${files.length ? `<h3>Material & Hausaufgaben</h3><ul>${files.map((f) => `<li>${esc(f.name)}${f.role === 'homework' ? (f.done ? ' – <b style="color:var(--matcha)">erledigt ✓</b>' : ' – <b style="color:var(--shu)">offen</b>') : ''}</li>`).join('')}</ul>` : ''}
+      ${s.noHomework && !files.some((f) => f.role === 'homework') ? '<p><b style="color:var(--matcha)">Keine Hausaufgaben ✓</b></p>' : ''}
       ${s.summaryNote ? `<h3>Mein Fazit</h3><div class="prose">${JP.md(s.summaryNote)}</div>` : ''}
       ${!g.length && !v.length && !ex.length ? '<p class="muted" style="margin-top:14px">Noch leer: Verknüpfe unter „Gelernt“ die Grammatik und Vokabeln dieser Stunde oder markiere Wichtiges in der Mitschrift.</p>' : ''}`;
   };

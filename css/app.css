@@ -764,6 +764,8 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .hw-row:hover { background: var(--card-2); }
 .hw-row:has(.hw-open:focus-visible) { outline: 2px solid var(--sec, var(--shu)); outline-offset: 2px; }
 .hw-row .chip { position: relative; z-index: 1; flex: none; }
+.hw-none { border-color: color-mix(in srgb, var(--matcha) 45%, transparent); background: color-mix(in srgb, var(--matcha) 10%, var(--card)); }
+.hw-none-ico { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--matcha); color: #fff; font-weight: 700; font-size: 18px; flex: none; }
 .hw-open { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; flex: 1; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .hw-open:focus-visible { outline: none; }
 .hw-open::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }

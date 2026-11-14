@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-keine-hausaufgaben', date: '14. November',
+      items: [
+        { t: 'Keine Hausaufgaben eintragen', d: 'Unter Unterricht › Stunde › Hausaufgaben kannst du „Es gibt keine Hausaufgaben“ antippen – die Stunde zeigt dann einen grünen Haken statt leer zu bleiben.' },
+      ],
+    },
+    {
       id: '2026-11-14-ono-haekchen', date: '14. November',
       items: [
         { t: 'Onomatopoesie beim Eintragen', d: 'Im Vokabel-Formular (Ausführlich) steht neben der Wortart „＋ Onomatopoesie“. Das Häkchen setzt sich beim Eintippen von selbst – z. B. Adverb und Onomatopoesie zugleich.' },
