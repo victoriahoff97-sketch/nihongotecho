@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-vergleichen-rechts', date: '14. November',
+      items: [
+        { t: 'Vergleichen ist umgezogen', d: 'Das Vergleichen-Symbol (⇄) steht jetzt oben rechts direkt neben „Speichern“ bei den anderen Symbolen.' },
+      ],
+    },
+    {
       id: '2026-11-14-onomatopoesie', date: '14. November',
       items: [
         { t: 'Onomatopoesie (オノマトペ)', d: 'Lautwörter wie ドキドキ oder わくわく heißen jetzt „Onomatopoesie“ – zu finden unter Vokabeln › Wortart ganz unten.' },
