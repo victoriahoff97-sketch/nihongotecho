@@ -1476,6 +1476,7 @@ body.ink-fit #view { padding-bottom: 16px; }
 .set-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 @media (max-width: 760px) { .set-cols { grid-template-columns: minmax(0, 1fr); } }
 .set-list { display: flex; flex-direction: column; }
+.set-top { margin-bottom: 14px; }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
 .set-list > .set-row:first-child { border-top: 0; padding-top: 0; }
 .set-l { min-width: 0; flex: 1 1 auto; font-size: 14px; font-weight: 700; color: var(--ink-2); }

@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-update-oben', date: '14. November',
+      items: [
+        { t: 'Update-Knopf ganz oben', d: '„Nach Update suchen“ steht jetzt direkt oben in den Einstellungen – kein Runterscrollen mehr.' },
+      ],
+    },
+    {
       id: '2026-11-14-versionsnummer', date: '14. November',
       items: [
         { t: 'Versionsnummer zum Hochzählen', d: 'Oben in der Titelleiste steht jetzt „Version …“ mit einer einfachen Nummer, die mit jedem Update wächst. Auch in den Einstellungen unter „Web-App“.' },

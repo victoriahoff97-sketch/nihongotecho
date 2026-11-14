@@ -581,6 +581,7 @@
     const vac = App.pause.vacation();
     const es = st.sources[srcEdit];
     view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Einstellungen <span class="jp-title">設定</span></h1><p>Persönliches, wie du lernst, Sicherung und deine Geräte. Inhalte holst und teilst du unter <a href="#/pakete">Pakete</a>.</p></div></div>
+      ${App.pwa.card() ? `<div class="card set-top"><div class="set-list">${App.pwa.card()}</div></div>` : ''}
       <div class="set-cols"><div class="set-col">
       <div class="card"><h3>Persönlich</h3><div class="set-list">
         ${setRow('Dein Name', `<input class="input" data-s="name" value="${esc(st.name)}">`, 'für die Begrüßung')}

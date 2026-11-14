@@ -32,7 +32,7 @@
         <li>Die heruntergeladene Datei antippen. Android fragt einmal, ob Chrome Apps installieren darf – erlauben, dann „Installieren“.</li>
         <li>Auf einer Webseite japanischen Text markieren und im Menü <b>Nihongo Techō</b> antippen.</li>
       </ol></details>` : ''}
-      ${App.pwa.card()}</div></div>`;
+      </div></div>`;
   };
 
   // Adresse ersetzen (Neuladen/„Zurück“ holt nichts ein zweites Mal herein) und die Zielseite zeichnen
