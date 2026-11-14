@@ -187,6 +187,8 @@
       placeholder, linkLabel, newPhrase, markTitle, dictate, kanjiDefaults: newDefaults,
       onRefItem: linkRefs && onLinked ? (it) => onLinked(it, false) : undefined,
       onKanji: (text) => App.linkKanji(text, newDefaults, onLinked),
+      // „Erkennen“: Treffer verknüpfen wie beim Erkennen in der Handschrift; neue Vokabeln bekommen den Satz als Fundort
+      onLookupLink: (r, ctx) => App.wordLinker((type) => (type === 'vocab' ? Object.assign({}, newDefaults, { contexts: [ctx] }, ctx.label ? { sourceRef: ctx.label } : {}) : newDefaults), onLinked)(r),
       onNewItem: (t, d, cb) => App.newLinked(t, Object.assign({}, newDefaults, d), async (it) => { cb && cb(it); if (onLinked) await onLinked(it, true); }),
       contextInfo,
       // Bestehende Vokabel verknüpfen: Kontext anhängen (gleicher Ort + Satz wird ersetzt), ggf. zum Lernen vormerken

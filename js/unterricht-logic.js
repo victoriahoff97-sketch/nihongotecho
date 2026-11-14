@@ -14,9 +14,20 @@
   };
   const isAutoTitle = (title, iso) => { const t = String(title || '').trim(); return t === '' || t === jpDate(iso); };
 
-  const suggestCourse = (sessions) => {
+  // Werkseinstellung von „Dein Kurs“ (DEFAULT_SETTINGS.course in core.js) – gilt als „nicht selbst eingetragen“
+  const SETTINGS_COURSE_DEFAULT = 'VHS Japanisch A1';
+  // Vorschlag für eine neue Stunde: selbst eingetragener Kurs aus den Einstellungen, sonst der Kurs der letzten Stunde
+  const suggestCourse = (sessions, settingsCourse) => {
+    const own = trimC(settingsCourse);
+    if (own && own !== SETTINGS_COURSE_DEFAULT) return own;
     const withCourse = sessions.filter((s) => trimC(s.course)).sort(byDateDesc);
     return withCourse.length ? trimC(withCourse[0].course) : DEFAULT_COURSE;
+  };
+  // Lehrbuch für eine neue Stunde: wie die letzte Stunde desselben Kurses, sonst leer (kein Lehrbuch)
+  const suggestBook = (sessions, course) => {
+    const c = trimC(course);
+    const last = sessions.filter((s) => trimC(s.course) === c).sort(byDateDesc)[0];
+    return last ? trimC(last.bookSource) : '';
   };
   const nextNumber = (sessions, course) => {
     const c = trimC(course);
@@ -88,6 +99,6 @@
     || (r.images || []).some((im) => im.y + im.h > ratio));
   const knownPaper = (p) => (PAPERS.some(([k]) => k === p) ? p : 'lines');
 
-  const L = { DEFAULT_COURSE, PAPERS, NO_COURSE, jpDate, isAutoTitle, suggestCourse, nextNumber, groupByCourse, courseNeighbors, courseSummary, toggleFolded, CLASS_SOURCE, clearClassLessons, pagePaper, extraPaper, appendPaper, setPaper, knownPaper, ORIENT, orientOf, sheetRatio, inkBelow };
+  const L = { DEFAULT_COURSE, PAPERS, NO_COURSE, jpDate, isAutoTitle, suggestCourse, suggestBook, nextNumber, groupByCourse, courseNeighbors, courseSummary, toggleFolded, CLASS_SOURCE, clearClassLessons, pagePaper, extraPaper, appendPaper, setPaper, knownPaper, ORIENT, orientOf, sheetRatio, inkBelow };
   if (typeof module !== 'undefined' && module.exports) module.exports = L; else root.App.uLogic = L;
 })(this);

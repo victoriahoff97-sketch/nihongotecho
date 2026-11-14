@@ -27,8 +27,8 @@
     let it;
     if (s) it = Object.assign({}, s);
     else {
-      const course = UL.suggestCourse(all), date = App.today();
-      it = { type: 'session', course, date, title: UL.jpDate(date), titleAuto: true, topic: '', number: UL.nextNumber(all, course), bookSource: 'Genki I', bookLesson: '', grammarIds: [], vocabIds: [], kanjiIds: [], phraseIds: [], notesHtml: '' };
+      const course = UL.suggestCourse(all, S.settings.course), date = App.today();
+      it = { type: 'session', course, date, title: UL.jpDate(date), titleAuto: true, topic: '', number: UL.nextNumber(all, course), bookSource: UL.suggestBook(all, course), bookLesson: '', grammarIds: [], vocabIds: [], kanjiIds: [], phraseIds: [], notesHtml: '' };
     }
     const courses = Array.from(new Set(all.map((x) => String(x.course || '').trim()).filter(Boolean)));
     const body = `<div class="form sec-session">
@@ -37,7 +37,7 @@
       <div class="field"><label>Titel</label><input class="input" name="title" lang="ja" value="${esc(it.title || '')}"></div></div>
       <div class="field"><label>Thema</label><input class="input" name="topic" value="${esc(it.topic || '')}" placeholder="optional, z. B. Uhrzeit & Tagesablauf"></div>
       <div class="three"><div class="field"><label>Nr.</label><input class="input" type="number" name="number" value="${esc(it.number || '')}" style="max-width:90px"></div>
-      <div class="field"><label>Lehrbuch</label><select class="input" name="bookSource">${App.sourceOptions(it.bookSource)}</select></div>
+      <div class="field"><label>Lehrbuch</label><select class="input" name="bookSource">${App.sourceOptions(it.bookSource).replace('– keine –', '– kein Lehrbuch –')}</select></div>
       <div class="field"><label>Lektion im Lehrbuch</label><input class="input" name="bookLesson" value="${esc(it.bookLesson ?? '')}" placeholder="z. B. 3"></div></div></div>`;
     const md = App.modal({ title: isNew ? 'Neue Unterrichtsstunde' : 'Stunde bearbeiten', body, foot: `${!isNew ? `<button class="btn btn-ghost btn-danger" data-del>${icon('trash')} Löschen</button>` : ''}<span class="grow"></span><button class="btn" data-no>Abbrechen</button><button class="btn btn-primary" data-ok>${icon('check')} Speichern</button>` });
     const el = (n) => md.el.querySelector(`[name=${n}]`);
@@ -47,7 +47,10 @@
       if (UL.isAutoTitle(el('title').value, lastDate)) el('title').value = UL.jpDate(el('date').value);
       lastDate = el('date').value;
     });
-    if (isNew) el('course').addEventListener('change', () => { el('number').value = UL.nextNumber(all, el('course').value); });
+    if (isNew) el('course').addEventListener('change', () => { el('number').value = UL.nextNumber(all, el('course').value); el('bookSource').value = UL.suggestBook(all, el('course').value); });
+    // ohne Lehrbuch gibt es keine Lektion im Lehrbuch
+    const syncBook = () => { const none = !el('bookSource').value; el('bookLesson').disabled = none; if (none) el('bookLesson').value = ''; };
+    el('bookSource').addEventListener('change', syncBook); syncBook();
     md.el.querySelector('[data-no]').onclick = md.close;
     md.el.querySelector('[data-ok]').onclick = async () => {
       const g = (n) => el(n).value.trim();

@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-unterricht-tippen', date: '14. November',
+      items: [
+        { t: 'Erkennen beim Tippen', d: 'In getippten Notizen ein Wort markieren → „Erkennen“: zeigt passende Vokabeln und Grammatik, ein Tipp verknüpft sie.' },
+        { t: 'Neue Stunde mit deinem Kurs', d: 'Eine neue Unterrichtsstunde übernimmt den Kursnamen aus den Einstellungen. Das Lehrbuch darf leer bleiben („– kein Lehrbuch –“).' },
+      ],
+    },
+    {
       id: '2026-11-14-keine-hausaufgaben', date: '14. November',
       items: [
         { t: 'Keine Hausaufgaben eintragen', d: 'Unter Unterricht › Stunde › Hausaufgaben kannst du „Es gibt keine Hausaufgaben“ antippen – die Stunde zeigt dann einen grünen Haken statt leer zu bleiben.' },

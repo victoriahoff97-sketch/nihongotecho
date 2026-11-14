@@ -878,7 +878,9 @@
   // newPhrase: zusätzlich „＋ Ausdruck“ (wo auch Ausdrücke verknüpft werden, z. B. Unterricht)
   // markTitle: Hinweis am Markieren-Knopf (im Unterricht: landet in der Zusammenfassung)
   // dictate: Sprache fürs Diktieren (z. B. 'ja-JP') – Knopf „Diktieren“, der Text landet an der Schreibmarke (js/dictate.js)
-  App.rte = (host, html, onSave, { placeholder = 'Hier mitschreiben …', onNewItem, onLinkItem, onRefItem, contextInfo, linkLabel, newPhrase = false, markTitle = 'Markieren', dictate, onKanji, kanjiDefaults = {} } = {}) => {
+  // onLookupLink(r, ctx) (optional): „Erkennen“ in der Markier-Leiste – markierten Text nachschlagen (wie das Erkennen bei der
+  //   Handschrift); ein angetippter Treffer wird über diese Funktion verknüpft (liefert den Eintrag) und ersetzt die Markierung als Verweis
+  App.rte = (host, html, onSave, { placeholder = 'Hier mitschreiben …', onNewItem, onLinkItem, onRefItem, onLookupLink, contextInfo, linkLabel, newPhrase = false, markTitle = 'Markieren', dictate, onKanji, kanjiDefaults = {} } = {}) => {
     host.innerHTML = `<div class="editor-toolbar">
       <button class="icon-btn sm" data-cmd="h2" title="Überschrift">${icon('h')}</button>
       <button class="icon-btn sm" data-cmd="bold" title="Fett (Strg+B)">${icon('bold')}</button>
@@ -1010,13 +1012,35 @@
       }
     };
 
+    // ---- Erkennen: markierten Text im Nachschlagen-Fenster suchen, Treffer mit der Stelle verknüpfen ----
+    // Das Fenster liegt rechts über der Seite (eigene feste Ebene, die Klicks daneben durchlässt).
+    let lkRoot = null;
+    const lookupSel = () => {
+      const range = savedRange ? savedRange.cloneRange() : null;
+      const word = range ? range.toString().trim() : '';
+      if (!word) return App.toast('Markiere zuerst ein Wort in deiner Mitschrift');
+      const cx = contextOf(range, range.toString());
+      const base = contextInfo ? contextInfo() : {};
+      const ctx = Object.assign({}, base, { text: cx.line, date: base.date || App.today() });
+      if (!lkRoot) { lkRoot = document.createElement('div'); lkRoot.className = 'lk-float'; document.body.appendChild(lkRoot); App.onLeave(() => lkRoot.remove()); }
+      App.lookup.open(lkRoot, word, {
+        onLink: async (r) => {
+          const it = await onLookupLink(r, ctx);
+          if (!it) return;
+          savedRange = range; insertHtml(refHtml(it));
+          if (lkRoot._lookup) lkRoot._lookup.close();
+          App.toast('Verknüpft: ' + App.itemPlain(it));
+        },
+      });
+    };
+
     // ---- Schwebende Leiste über markiertem Text (gut für Stift/Touch) ----
     if (onNewItem) {
       const bar = document.createElement('div');
       bar.className = 'sel-bar';
       bar.hidden = true;
       // „＋ Kanji“ nur, wenn Kanji markiert sind: legt sie fertig ausgefüllt an und verknüpft sie (onKanji)
-      bar.innerHTML = `<button data-b="vocab">${icon('plus')} Vokabel</button>${onKanji ? `<button data-b="kanji" title="Markierte Kanji anlegen und verknüpfen">${icon('plus')} Kanji</button>` : ''}<button data-b="mark">${icon('highlight')} Markieren</button><button data-b="ref">${icon('link')} Verlinken</button>`;
+      bar.innerHTML = `${onLookupLink ? `<button data-b="lookup" title="Markierten Text nachschlagen: eigene Vokabeln, Grammatik und Wörterbuch – Treffer antippen und verknüpfen">${icon('search')} Erkennen</button>` : ''}<button data-b="vocab">${icon('plus')} Vokabel</button>${onKanji ? `<button data-b="kanji" title="Markierte Kanji anlegen und verknüpfen">${icon('plus')} Kanji</button>` : ''}<button data-b="mark">${icon('highlight')} Markieren</button><button data-b="ref">${icon('link')} Verlinken</button>`;
       document.body.appendChild(bar);
       App.onLeave(() => bar.remove());
       const kBtn = bar.querySelector('[data-b="kanji"]');
@@ -1025,6 +1049,7 @@
         const b = e.target.closest('[data-b]'); if (!b) return;
         bar.hidden = true;
         if (b.dataset.b === 'vocab') newVocab();
+        else if (b.dataset.b === 'lookup') lookupSel();
         else if (b.dataset.b === 'kanji') onKanji(savedRange ? savedRange.toString() : '');
         else host.querySelector(`.editor-toolbar [data-cmd="${b.dataset.b}"]`).click();
       });
