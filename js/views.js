@@ -261,6 +261,7 @@
     uebersetzen: ['sec-practice', 'href="#/ueben/saetze"', 'edit', 'Übersetzen', 'Sätze selbst übersetzen'],
     konjugieren: ['sec-practice', 'href="#/ueben/konjugieren"', 'shuffle', 'Konjugieren', 'Verbformen üben'],
     schreiben: ['sec-kanji', 'href="#/ueben/kanji"', 'pen', 'Kanji schreiben', 'Mit dem Stift üben'],
+    kana: ['sec-kanji', 'href="#/ueben/kana"', 'pen', 'Kana schreiben', 'Hiragana und Katakana'],
     lernweg: ['sec-practice', 'href="#/lernweg"', 'list', 'Lernweg', 'Wie deine Wörter wandern'],
     eingang: ['sec-vocab', 'href="#/eingang"', 'download', 'Eingang', 'Aus dem Browser übernommen'],
     suche: ['sec-home', 'href="#/suche"', 'search', 'Suche', 'Alles in der App durchsuchen'],
@@ -419,7 +420,7 @@
       ${arc ? `<circle cx="60" cy="60" r="50" class="hh-arc" stroke-dasharray="${arc} ${C}" transform="rotate(-90 60 60)"/>` : ''}
       <text x="60" y="${r.due ? 73 : 76}" text-anchor="middle" class="hh-num">${r.due || '✓'}</text></svg>`;
   };
-  const homeHandy = ({ due, next, vacation, genkiCard }) => {
+  const homeHandy = ({ due, next, vacation, genkiCard, kanaOn }) => {
     const done = App.viewModeLogic.doneToday(S.srs.values(), new Date().setHours(0, 0, 0, 0));
     const r = App.viewModeLogic.ring(done, due);
     const side = vacation
@@ -439,6 +440,7 @@
         ${row(`<span class="hh-ic">${icon('thought')}</span>`, 'Forum', '<span class="forum-dot hh-new" hidden>neu</span>', { extra: 'data-action="forum"' })}
         ${row('<span class="hh-k" lang="ja">活</span>', 'Konjugieren', '<span class="hh-hint" lang="ja">飲む → 飲んで ›</span>', { href: '#/ueben/konjugieren' })}
         ${row('<span class="hh-k" lang="ja">助</span>', 'Lückensätze', '<span class="hh-hint" lang="ja">は・が・を ›</span>', { href: '#/ueben/luecken' })}
+        ${kanaOn ? row('<span class="hh-k" lang="ja">あ</span>', 'Kana üben', '<span class="hh-hint" lang="ja">あ・ア ›</span>', { href: '#/ueben/kana' }) : ''}
       </nav>
       <div class="hh-short" data-hh-short>
         <a class="hh-sc sec-practice" href="#/ueben"><span class="hh-bg" lang="ja">練</span>${icon('practice')}<b>Üben</b><span>Karten, Kanji, Übersetzen</span></a>
@@ -476,6 +478,8 @@
     if (focus !== 'read') queues.splice(focus === 'write' ? 0 : 3, 0, { label: 'Kanji schreiben', due: wq.due.length, fresh: wq.fresh.length, href: '#/ueben/kanji?auto=1' });
     // Fälliges läuft über einen Knopf: eine gemischte Runde quer durch alles (auch Kanji schreiben). Fällig gilt für den ganzen Tag.
     const dueQ = App.todayParts(), due = dueQ.reduce((n, x) => n + x.n, 0), tomorrow = App.dueTomorrow();
+    // „Kana üben“ im Begrüßungsbereich: Einstellungen › Lernen (kanaHero), mit fälligen Kana als Zahl
+    const kanaBtn = S.settings.kanaHero === 'on' ? (() => { const n = App.kanaQueue().due.length; return `<a class="btn" href="#/ueben/kana" data-kana-hero><span lang="ja" class="kana-ic">あ</span> Kana üben${n ? ` <span class="badge">${n}</span>` : ''}</a>`; })() : '';
     const vacation = App.pause.vacation(); // Urlaubsmodus: Startkasten zeigt nur einen Hinweis (js/pause.js)
     const next = queues.find((x) => x.fresh);
     // „Wiederholen“ startet nur Fälliges – ohne Fälliges ist der Knopf aus, Neues kommt nie von selbst dazu
@@ -502,13 +506,13 @@
     const stat = (t, n, sub) => { const s = App.SECTIONS[t]; const link = `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; const pop = stagePop(t); return pop ? `<div class="stat-wrap">${link}${pop}</div>` : link; };
     // Genki-Freischaltung: auf der Startseite nur, solange sie noch aussteht (nicht bei none/open)
     const genkiCard = App.genki && ['locked', 'stale'].includes(App.genki.state()) ? `<div style="margin-bottom:18px">${App.genki.card()}</div>` : '';
-    if (document.body.classList.contains('view-handy')) { view.innerHTML = homeHandy({ due, next, vacation, genkiCard }); App.forum && App.forum.refreshDot && App.forum.refreshDot(); return; }
+    if (document.body.classList.contains('view-handy')) { view.innerHTML = homeHandy({ due, next, vacation, genkiCard, kanaOn: !!kanaBtn }); App.forum && App.forum.refreshDot && App.forum.refreshDot(); return; }
     const blocks = {
       hero: `<div class="hero"><div class="big-jp">日本語</div>
         <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
         ${vacation ? `<p>${App.pause.heroText()}</p>
-        <div class="row">${App.pause.heroButton()}<a class="btn" href="#/ueben/karten">${icon('practice')} Karteikarten</a></div></div>` : `<p>${due ? `Heute: <b>${due} ${due === 1 ? 'Karte' : 'Karten'}</b> – ${dueQ.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : `Für heute ist alles wiederholt${next ? ' – wenn du magst, ist Zeit für neue Karten.' : '.'}`}</p>
-        <div class="row">${due ? `<a class="btn solid" href="#/ueben/heute?auto=1">${icon('shuffle')} Jetzt wiederholen <span class="badge">${due}</span></a>` : `<a class="btn solid" href="${next ? next.href : '#/ueben/karten'}">${icon(next ? 'play' : 'practice')} ${next ? 'Neue Karten lernen' : 'Karteikarten'}</a>`}${App.refresh.button()}${App.grammarRefresh.button()}</div>
+        <div class="row">${App.pause.heroButton()}<a class="btn" href="#/ueben/karten">${icon('practice')} Karteikarten</a>${kanaBtn}</div></div>` : `<p>${due ? `Heute: <b>${due} ${due === 1 ? 'Karte' : 'Karten'}</b> – ${dueQ.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : `Für heute ist alles wiederholt${next ? ' – wenn du magst, ist Zeit für neue Karten.' : '.'}`}</p>
+        <div class="row">${due ? `<a class="btn solid" href="#/ueben/heute?auto=1">${icon('shuffle')} Jetzt wiederholen <span class="badge">${due}</span></a>` : `<a class="btn solid" href="${next ? next.href : '#/ueben/karten'}">${icon(next ? 'play' : 'practice')} ${next ? 'Neue Karten lernen' : 'Karteikarten'}</a>`}${kanaBtn}${App.refresh.button()}${App.grammarRefresh.button()}</div>
         <p class="small" style="margin-top:10px">${due ? 'Alles gemischt in einer Runde' : ''}${due && tomorrow ? ' · ' : ''}${tomorrow ? `morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu` : ''}<button class="fc-btn" data-forecast title="Prognose: die nächsten 7 Tage" aria-label="Prognose für die nächsten 7 Tage">${icon('chart')}</button>${App.pause.button()}</p></div>`}`,
       actions: quickHtml(),
       read: readStrip(),
@@ -538,7 +542,7 @@
           <span><b style="font-size:20px;color:var(--matcha)">${w.known}</b> kann ich</span>
           <span><b style="font-size:20px;color:var(--ai)">${w.learn}</b> in der Lernschlange</span>
           <span><b style="font-size:20px;color:var(--muted)">${w.new}</b> noch nie geschrieben</span></div>
-          <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}</div></div>`; })()}</div>`; })(),
+          <div class="row">${repeatBtn('pen', wq.due.length, '#/ueben/kanji?round=due')}${newN ? `<a class="btn ${wq.due.length ? '' : 'btn-sec'}" href="#/ueben/kanji?round=new">${icon('plus')} Neue schreiben <span class="badge">${newN}</span></a>` : ''}<a class="btn btn-ghost" href="#/ueben/kana" title="Hiragana und Katakana mit dem Stift"><span lang="ja">あ</span> Kana</a></div></div>`; })()}</div>`; })(),
       bottom: fitRow('home-bottom', [`<div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
           <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>`,
         `<div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>

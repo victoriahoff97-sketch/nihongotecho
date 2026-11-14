@@ -96,6 +96,8 @@
     let n = 0;
     srs.forEach((s) => {
       if (W.isId(s.id)) {
+        // Kana schreiben (js/kana-logic.js): feste Liste ohne Eintrag in der Sammlung, unabhängig vom Kanji-Schwerpunkt
+        if (W.itemId(s.id).startsWith('kana:')) { if (s.due <= now && !W.isKnown(s)) n++; return; }
         const wi = items.get(W.itemId(s.id));
         if (!wi || s.due > now || W.isKnown(s)) return;
         // Vokabeln und Ausdrücke aktiv · Kanji schreiben – andere Einträge (Grammatik …) haben keinen zweiten Lernstand

@@ -33,6 +33,7 @@
   App.link = (it) => {
     if (!it) return '#/';
     if (it.type === 'kanji') return '#/kanji/' + encodeURIComponent(it.char || it.id);
+    if (it.type === 'kana') return '#/ueben/kana' + (it.script === 'k' ? '?s=k' : ''); // Kana schreiben: feste Liste, keine Detailseite
     if (it.type === 'notebook') return App.heftLink(it.id);
     if (it._ctr) return '#/ausdruecke?g=' + encodeURIComponent('Zähler'); // Zelle einer Zähler-Tabelle, kein eigener Eintrag
     return App.SECTIONS[it.type].route + '/' + encodeURIComponent(it.id);

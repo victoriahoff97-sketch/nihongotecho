@@ -597,6 +597,7 @@
         ${App.checkOn() ? setRow('Wörter pro Einstufen-Runde', `<input class="input" type="number" min="3" max="100" data-s="checkBatch" value="${st.checkBatch || 15}">`) : ''}
         ${setRow('Neues erst einstufen', setTgl('check', App.checkOn(), 'on', 'off', 'Neues erst einstufen'), 'Bekanntes aus Paketen aussortieren, bevor du es lernst. Aus: kein Einstufen-Knopf, Kanji liegen direkt in der Lernschlange')}
         ${setRow('Verben mit Partikel abfragen', setTgl('verbPattern', !!st.verbPattern, 'on', '', 'Verben mit Partikel abfragen'), 'Deutsch → Japanisch: „jemanden treffen → 人に会う“ statt „treffen → 会う“. Nur das Wort gilt dann als halb richtig')}
+        ${setRow('„Kana üben“ auf der Startseite', setTgl('kanaHero', st.kanaHero === 'on', 'on', '', '„Kana üben“ auf der Startseite'), 'Knopf im Begrüßungsbereich: Hiragana und Katakana mit dem Stift schreiben')}
         <details class="set-more" data-kanji-adv><summary>Kanji: Lesen, Schreiben, Furigana</summary>
           ${setRow('Kanji-Schwerpunkt', `<select class="input" data-s="kanjiFocus">${[['both', 'Lesen und Schreiben'], ['write', 'Nur Schreiben'], ['read', 'Nur Lesen']].map(([k, l]) => `<option value="${k}" ${App.writeLogic.focus(st) === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`, 'was Startseite und „fällig“ zeigen. Nur Schreiben: Lesen lernst du woanders (z. B. WaniKani)')}
           ${writeSrcField()}

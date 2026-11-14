@@ -54,6 +54,7 @@
         <a class="mode-card sec-grammar" href="#/ueben/saetze"><span class="k">訳</span><h3>Übersetzen</h3><span class="muted">Sätze aus deinen Grammatik- und Vokabelbausteinen – nur mit dem, was du schon kennst.</span></a>
         <a class="mode-card sec-grammar" href="#/ueben/luecken"><span class="k">助</span><h3>Lückensätze</h3><span class="muted">Welche Partikel gehört in die Lücke? Mehrere Sätze auf einer Seite, Partikeln aus der Wortbank hineinziehen.</span></a>
         <a class="mode-card sec-kanji" href="#/ueben/kanji"><span class="k">書</span><h3>Kanji-Quiz</h3><span class="muted">Bedeutung sehen → mit dem Stift schreiben, oder Lesungen erkennen.</span>${wDue ? `<span class="badge count">${wDue} zu schreiben</span>` : ''}</a>
+        <a class="mode-card sec-kanji" href="#/ueben/kana"><span class="k">あ</span><h3>Kana schreiben</h3><span class="muted">Hiragana und Katakana: Strichfolge ansehen, nachspuren, dann aus dem Kopf schreiben.</span>${(() => { const n = App.kanaQueue().due.length; return n ? `<span class="badge count">${n} fällig</span>` : ''; })()}</a>
       </div></div>`;
   });
 
@@ -87,7 +88,7 @@
   // Auf der Seite der geparkten Runde: Herkunft wiederherstellen und den Stand zum Fortsetzen liefern
   const takeParked = () => {
     if (!P.same(parked, location.hash)) return null;
-    const p = parked, r = P.revive(p, App.item, cardKnown);
+    const p = parked, r = P.revive(p, (id) => App.item(id) || App.kanaLogic.item(id), cardKnown); // Kana stehen nicht in der Sammlung
     parked = null;
     nextRound = null;
     App.setOrigin(p.origin);
@@ -168,6 +169,7 @@
       part('Vokabeln aktiv', 'Vokabel aktiv', 'active', App.activeQueue(), { dir: 'de' }),
       focus === 'write' ? null : part('Kanji', 'Kanji', 'read', App.cardQueue({ type: 'kanji', dir: 'jp' }), { dir: 'jp' }),
       focus === 'read' ? null : part('Kanji schreiben', 'Kanji schreiben', 'write', App.writeQueue(), { pad: true }),
+      App.kanaQueue ? part('Kana schreiben', 'Kana schreiben', 'write', App.kanaQueue(), { pad: true }) : null, // js/kana.js
       part('Ausdrücke', 'Ausdruck', 'read', App.cardQueue({ type: 'phrase', dir: 'jp' }), { dir: 'jp' }),
       part('Ausdrücke aktiv', 'Ausdruck aktiv', 'active', App.activeQueue({ type: 'phrase' }), { dir: 'de' }),
     ].filter((x) => x && x.n);
@@ -176,7 +178,7 @@
   App.todayQueue = () => W.mixRound(App.todayParts().flatMap((x) => x.entries), App.shuffle);
   // „Meine Lernschlange üben“: alles, was im Wiederholungsplan steckt – dieselben Arten wie „Jetzt wiederholen“, nur ohne „heute fällig“.
   // Frei geübt: Lernstand und Termine bleiben, wie sie sind. Kanji schreiben: die ganze Schreib-Lernschlange, unabhängig von der Quelle für Neues.
-  App.learningParts = () => mixParts((q, kind) => W.learning(kind === 'write' ? cardFilter({ type: 'kanji' }) : q.items, S.srs, kind));
+  App.learningParts = () => mixParts((q, kind) => W.learning(kind === 'write' && !q.kana ? cardFilter({ type: 'kanji' }) : q.items, S.srs, kind));
   App.learningQueue = () => W.mixRound(App.learningParts().flatMap((x) => x.entries), App.shuffle);
   const learningSum = (parts) => parts.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ');
   // In Häppchen: eine gemischte Reihenfolge, Runde für Runde, bis alles einmal dran war. Größe wählbar (0 = alles in einer Runde).
@@ -376,6 +378,7 @@
     b.className = 'stack pad-btns'; b.style.marginTop = '';
     col.insertBefore(b, col.querySelector('[data-p="tpl"]')); // vor „Vorlage“/„Vergleichen“, die erst nach dem Auflösen erscheinen
   };
+  App.writeKit = { padButtons, againTxt }; // auch für Kana schreiben (js/kana.js)
   // Lesungen der Kanji aus der Sammlung und dem Kanji-Index (wird beim ersten Antwortfeld geladen), um Mischungen wie 勉きょう zu erkennen
   let kIndex = null;
   const loadKanjiIndex = () => { if (!kIndex) App.kanjiIndex().then((x) => { kIndex = x; }); };
@@ -526,8 +529,9 @@
     };
     // Kanji schreiben in der gemischten Runde: mit dem Stift schreiben, auflösen, selbst bewerten – wie im Kanji-Quiz
     const padCard = () => {
-      stage.innerHTML = `<div class="sec-kanji">${head()}<div class="card pad-lg"><div class="small muted">Schreibe das Kanji:${W.isFirst(S.srs, cur.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div><div class="ex-prompt">${App.meaningHtml(cur, true)}</div>
-          <div class="muted" lang="ja">${esc((cur.kun || []).map(App.kanjiLogic.kunText).concat(cur.on || []).slice(0, 4).join('、'))}</div>
+      const kana = cur.type === 'kana'; // Kana schreiben (js/kana.js): Lesung statt Bedeutung, kein Eintrag zum Öffnen
+      stage.innerHTML = `<div class="sec-kanji">${head()}<div class="card pad-lg"><div class="small muted">Schreibe ${kana ? 'das Kana' : 'das Kanji'}:${W.isFirst(S.srs, cur.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div>${kana ? App.kanaPromptHtml(cur) : `<div class="ex-prompt">${App.meaningHtml(cur, true)}</div>
+          <div class="muted" lang="ja">${esc((cur.kun || []).map(App.kanjiLogic.kunText).concat(cur.on || []).slice(0, 4).join('、'))}</div>`}
           <div class="kanji-stage quiz-stage" style="margin-top:14px"><div data-sol class="stroke-box" style="display:grid;place-items:center;min-height:240px;color:var(--muted)">?</div><div data-pad></div></div>
           <div class="row" style="margin-top:14px" data-btns><button class="btn btn-primary" data-show>${icon('eye')} Auflösen</button></div></div></div>`;
       const pad = App.stroke.pad(stage.querySelector('[data-pad]'), cur.char, { template: false, quiz: true });
@@ -536,7 +540,7 @@
         flipped = true;
         pad.then((p) => p.reveal());
         App.stroke.animator(stage.querySelector('[data-sol]'), cur.char);
-        stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · ${cram ? 'kommt gleich noch einmal' : againTxt(cur.id, 0)}</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig${cram ? '' : ' · ' + againTxt(cur.id, 2)}</button><a class="btn btn-ghost" href="${App.link(cur)}" data-park>Kanji öffnen</a>`;
+        stage.querySelector('[data-btns]').innerHTML = `<button class="btn" style="background:var(--shu-soft)" data-r="0">✗ Falsch · ${cram ? 'kommt gleich noch einmal' : againTxt(cur.id, 0)}</button><button class="btn" style="background:var(--matcha-soft)" data-r="2">✓ Richtig${cram ? '' : ' · ' + againTxt(cur.id, 2)}</button>${kana ? '' : `<a class="btn btn-ghost" href="${App.link(cur)}" data-park>Kanji öffnen</a>`}`;
       };
     };
     let busy = false;

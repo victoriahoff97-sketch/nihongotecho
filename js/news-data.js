@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-kana-schreiben', date: '14. November',
+      items: [
+        { t: 'Kana schreiben', d: 'Hiragana und Katakana mit dem Stift üben: Strichfolge ansehen, nachspuren, dann aus dem Kopf schreiben. Zu finden unter Üben › Kana schreiben.' },
+        { t: '„Kana üben“ auf der Startseite', d: 'Unter Einstellungen › Lernen einschalten, dann steht „Kana üben“ oben im Begrüßungsbereich. Fällige Kana kommen auch in „Jetzt wiederholen“.' },
+      ],
+    },
+    {
       id: '2026-11-14-hoeren-ziel', date: '14. November',
       items: [
         { t: 'Listening: Hör-Kette oder Shun', d: 'Beim Tagesziel „Listening“ auf der Startseite wählst du jetzt „Hör-Kette“ oder „Shun“. Die Minuten aus beiden zählen zusammen.' },
