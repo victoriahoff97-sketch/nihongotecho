@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-zeigen-besprochen', date: '14. November',
+      items: [
+        { t: '„Besprochen“ auch bei 💡', d: 'In der Gruppe kann man jetzt auch „Zum Zeigen“-Beiträge als besprochen markieren – sie rutschen dann unten zu „Besprochen“.' },
+      ],
+    },
+    {
       id: '2026-11-14-update-oben', date: '14. November',
       items: [
         { t: 'Update-Knopf ganz oben', d: '„Nach Update suchen“ steht jetzt direkt oben in den Einstellungen – kein Runterscrollen mehr.' },

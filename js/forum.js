@@ -1040,10 +1040,9 @@
       const p = posts.find((x) => x.id === id);
       if (!p) { if (status === 'live') showList(); return; }
       loadPic(p);
-      // „besprochen“ setzen: wer den Beitrag geschrieben hat und Admins (Gründer oder per Admin-Code)
-      const done = p.kind === 'rede'
-        ? `${p.done ? `<span class="badge">Besprochen · von ${esc(p.doneBy)}${p.doneAt ? ', ' + dayMonth(p.doneAt) : ''}</span>` : ''}
-            ${F.canSetDone(p, me(), adminUid) ? `<button class="btn btn-sm" data-done>${p.done ? 'Wieder öffnen' : `${icon('check')} Als besprochen markieren`}</button>` : ''}` : '';
+      // „besprochen“ setzen (💬 und 💡): wer den Beitrag geschrieben hat und Admins (Gründer oder per Admin-Code)
+      const done = `${p.done ? `<span class="badge">Besprochen · von ${esc(p.doneBy)}${p.doneAt ? ', ' + dayMonth(p.doneAt) : ''}</span>` : ''}
+            ${F.canSetDone(p, me(), adminUid) ? `<button class="btn btn-sm" data-done>${p.done ? 'Wieder öffnen' : `${icon('check')} Als besprochen markieren`}</button>` : ''}`;
       head.innerHTML = `<div class="forum-post-top">${dateCol(p.createdAt)}<div class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}</div></div>
         ${withKanji(`<div class="forum-text">${textHtml(p.text)}</div>${p.hasImage ? imgsHtml(pics[id] || [], !(id in pics)) : ''}${refsHtml(p.refs, 'post', own(p))}
           <div class="forum-row forum-acts">${likeBtn(p, 'post')}${done}<span class="grow"></span>${tools(p, 'post')}</div>`, p.refs, 'post')}`;

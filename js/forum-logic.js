@@ -287,15 +287,15 @@
   };
 
   // ---------- Liste ----------
-  // Offene 💬 zuerst, dann alle 💡, besprochene 💬 getrennt – jeweils neueste Aktivität zuerst.
+  // Offene 💬 zuerst, dann offene 💡, alle besprochenen (💬 und 💡) getrennt – jeweils neueste Aktivität zuerst.
   // Ein gerade abgeschickter Beitrag hat evtl. noch keinen Server-Zeitstempel: zählt als „jetzt“.
   F.sections = (posts, now) => {
     const at = (p) => p.lastActivityAt ?? now;
     const sorted = Array.from(posts).sort((a, b) => at(b) - at(a));
     return {
       open: sorted.filter((p) => p.kind === 'rede' && !p.done),
-      show: sorted.filter((p) => p.kind !== 'rede'),
-      done: sorted.filter((p) => p.kind === 'rede' && p.done),
+      show: sorted.filter((p) => p.kind !== 'rede' && !p.done),
+      done: sorted.filter((p) => p.done),
     };
   };
 
