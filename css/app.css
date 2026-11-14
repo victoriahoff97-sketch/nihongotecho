@@ -715,19 +715,19 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
   transition: transform .12s;
 }
 .stat:hover { transform: translateY(-2px); }
-/* Sammlung: Hover-Fenster mit den Lernstufen (views.js stagePop) – nur mit Maus/Stift, Tippen öffnet wie bisher die Seite */
+/* Sammlung: Hover-Fenster mit den Lernstufen (views.js stagePop) – mit Maus und schwebendem Stift; Tippen öffnet wie bisher die Seite.
+   Absichtlich OHNE @media (hover: hover): auf dem Surface gilt der Touchscreen als Haupt-Zeiger, dann wäre das Fenster aus, obwohl der Stift schwebt. */
 .stat-wrap { position: relative; display: flex; }
 .stat-wrap > .stat { flex: 1; min-width: 0; }
-.stat-pop { display: none; }
-@media (hover: hover) {
-  .stat-pop {
-    display: block; position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; width: max-content; min-width: 250px; max-width: 320px;
-    background: var(--card); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 14px; font-size: 13.5px;
-    opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .12s, transform .12s, visibility 0s .12s; pointer-events: none;
-  }
-  .stat-wrap:last-child .stat-pop, .stat-wrap:nth-last-child(2) .stat-pop { left: auto; right: 0; }
-  .stat-wrap:hover .stat-pop, .stat-wrap:focus-within .stat-pop { opacity: 1; visibility: visible; transform: none; transition-delay: .15s, .15s, .15s; }
+.stat-pop {
+  display: block; position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; width: max-content; min-width: 250px; max-width: 320px;
+  background: var(--card); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 14px; font-size: 13.5px;
+  opacity: 0; visibility: hidden; transform: translateY(-4px); transition: opacity .12s, transform .12s, visibility 0s .12s; pointer-events: none;
 }
+.stat-wrap:last-child .stat-pop, .stat-wrap:nth-last-child(2) .stat-pop { left: auto; right: 0; }
+.stat-wrap:hover .stat-pop, .stat-wrap:focus-within .stat-pop { opacity: 1; visibility: visible; transform: none; transition-delay: .15s, .15s, .15s; }
+/* Handy: Kacheln stehen untereinander – das Fenster würde die nächste Kachel verdecken, darum dort aus */
+@media (max-width: 640px) { .stat-pop { display: none; } }
 .sp-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 2px 0 10px; background: var(--line); }
 .sp-bar i { display: block; height: 100%; }
 .sp-row { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
