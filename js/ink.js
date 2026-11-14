@@ -908,6 +908,11 @@
       else if (drawing.erase) { if (drawing.act.removed.length) { st.undo.push(drawing.act); st.redo = []; dirty.add(p.i); saveInk(p.i); } }
       else {
         const s = drawing.s;
+        // Abhebepunkt mitnehmen, wenn er woanders liegt: bei schnellen kurzen Strichlein (Dakuten) fehlt sonst das Ende
+        if (!drawing.line && e.type === 'pointerup' && e.pointerId === drawing.pid) {
+          const q = norm(p, e), l = s.pts[s.pts.length - 1];
+          if (Math.hypot(q[0] - l[0], q[1] - l[1]) > 0.0002) s.pts.push([q[0], q[1], l[2]]);
+        }
         s.pts = s.pts.map((q) => [+q[0].toFixed(4), +q[1].toFixed(4), +q[2].toFixed(2)]);
         clearLive(p);
         p.strokes.push(s); st.undo.push({ type: 'add', pi: p.i, s }); st.redo = [];

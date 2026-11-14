@@ -20,8 +20,8 @@
       // wie der Stift auf dem Schreibblatt: geglättet, Dicke nach Druck, rund 3 px
       strokes.concat(cur || []).forEach((s) => App.ink.drawStroke(c, { t: 'pen', w: 3 / W, c: col, o: 1, pts: s.pts }, u));
     };
-    // [x, y, Druck] wie auf dem Schreibblatt; die Erkennung nutzt nur x und y
-    const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width, e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5]; };
+    // [x, y, Druck, Zeit in ms] wie auf dem Schreibblatt (+ Zeit); die Erkennung nutzt x, y und Zeit
+    const pt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width, e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5, e.timeStamp]; };
     const clear = () => { clearTimeout(timer); run++; strokes = []; cur = null; fresh = false; draw(); if (onClear) onClear(); };
     const recognize = () => { job = recognizeNow(); jobRun = run; return job; };
     const recognizeNow = async () => {
@@ -54,6 +54,8 @@
     });
     const end = (e) => {
       if (!cur || e.pointerId !== cur.id) return;
+      // Abhebepunkt mitnehmen: bei schnellen kurzen Strichlein (Dakuten) fehlt sonst das Ende
+      if (e.type === 'pointerup') { const q = pt(e), l = cur.pts[cur.pts.length - 1]; if (q[0] !== l[0] || q[1] !== l[1]) cur.pts.push([q[0], q[1], l[2], q[3]]); }
       strokes.push({ pts: cur.pts }); cur = null;
       draw();
       timer = setTimeout(recognize, WAIT);

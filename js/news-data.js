@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-kleine-striche', date: '14. November',
+      items: [
+        { t: 'Kleine Striche mit dem Stift', d: 'Dakuten (゛), der Kreis bei ぽ und Kommas bleiben jetzt sichtbar und werden beim Erkennen zuverlässiger gelesen.' },
+      ],
+    },
+    {
       id: '2026-11-14-forum-geraete', date: '14. November',
       items: [
         { t: 'Gruppe auf Handy und Tablet', d: 'Mehrere Geräte zählen jetzt als eine Person – Flamme und Avatar bleiben gleich. Die Gruppe fragt einmal „Bist du das?“, sonst ⋯ › Meine anderen Geräte.' },

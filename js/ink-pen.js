@@ -6,20 +6,27 @@
   const DEFAULT_THINNING = 0.65;
   const clampThinning = (v) => { const n = parseFloat(v); return isNaN(n) ? DEFAULT_THINNING : Math.min(0.9, Math.max(0.3, n)); };
 
+  // Länge des Strichs (in derselben Einheit wie die Punkte)
+  const pathLen = (pts) => { let n = 0; for (let i = 1; i < pts.length; i++) n += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return n; };
+  // Auslauf erst ab gut sechs Strichbreiten Länge – mit Auslauf schrumpft ein kurzes Strichlein (Dakuten, Komma)
+  // in perfect-freehand fast auf nichts; ohne bekommt es runde Enden wie ein Kugelschreiber
+  const SHORT = 6;
+  const taper = (want, len, size) => (len >= size * SHORT ? want : 0);
   // pts: [x, y, Druck] als Anteil der Seitenbreite → Umriss in Pixeln
   const fountainOutline = (pts, W, s) => {
     if (!pts || !pts.length) return [];
-    const size = s.w * W;
+    const size = s.w * W, len = pathLen(pts) * W;
     // kurzes Auslaufen an Anfang/Ende (true hieße: über die ganze Strichlänge)
     return PF.getStroke(pts.map((q) => [q[0] * W, q[1] * W, q[2]]), {
       size, thinning: s.th, smoothing: 0.5, streamline: 0.4, simulatePressure: !!s.sim, last: true,
-      start: { taper: size * 1.5 }, end: { taper: size * 2.5 },
+      start: { taper: taper(size * 1.5, len, size) }, end: { taper: taper(size * 2.5, len, size) },
     });
   };
 
-  // Tipper: kein Punkt entfernt sich weiter als gut eine Strichbreite vom Aufsetzpunkt
+  // Tipper: kein Punkt entfernt sich weiter als eine halbe Strichbreite vom Aufsetzpunkt.
+  // Bewusst knapp: sonst wurden kleine Strichlein (Dakuten, 、) zu runden Punkten
   const isDot = (pts, w) => {
-    const a = pts[0], lim = Math.max(w * 1.2, 0.0025);
+    const a = pts[0], lim = Math.max(w * 0.5, 0.0012);
     for (let i = 1; i < pts.length; i++) if (Math.hypot(pts[i][0] - a[0], pts[i][1] - a[1]) > lim) return false;
     return true;
   };
@@ -141,10 +148,10 @@
   // Pinsel: sehr druckempfindlich, setzt rund auf und läuft lang aus
   const brushOutline = (pts, W, s) => {
     if (!pts || !pts.length) return [];
-    const size = s.w * W;
+    const size = s.w * W, len = pathLen(pts) * W;
     return PF.getStroke(pts.map((q) => [q[0] * W, q[1] * W, q[2]]), {
       size, thinning: s.th, smoothing: 0.6, streamline: 0.45, simulatePressure: !!s.sim, last: true,
-      start: { taper: size * 0.4 }, end: { taper: size * 3 },
+      start: { taper: taper(size * 0.4, len, size) }, end: { taper: taper(size * 3, len, size) },
     });
   };
   // Kalligrafie-Feder: schräge Spitze (40°) – Striche quer zur Spitze breit, längs dazu haarfein.
@@ -165,7 +172,7 @@
   };
 
   const P = {
-    FOUNTAIN_WIDTHS, DEFAULT_THINNING, PEN_TOOLS, clampThinning, fountainOutline, isDot, dot, straight, linePts, penWidths,
+    FOUNTAIN_WIDTHS, DEFAULT_THINNING, PEN_TOOLS, clampThinning, fountainOutline, pathLen, isDot, dot, straight, linePts, penWidths,
     PAGE_MM, MAX_PENS, TYPES, TYPE, PALETTE, SLIDER, palette, mmToW, mmLabel, toSlider, fromSlider, normPen, retype, copyPen, legacyPens, normPens, startPen, stroke, alpha, brushOutline, nibQuads,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.inkPen = P;

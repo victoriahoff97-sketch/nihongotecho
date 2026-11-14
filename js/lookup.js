@@ -126,7 +126,8 @@
         c.stroke();
       });
     };
-    const padPt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width]; };
+    // [x, y, Druck, Zeit in ms] – die Zeit hilft der Erkennung, Punkt und kurzen Strich zu unterscheiden
+    const padPt = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width, 0.5, e.timeStamp]; };
     const candMsg = (t) => { cands.innerHTML = `<span class="muted small">${esc(t)}</span>`; cands.hidden = false; };
     const padClear = () => { clearTimeout(padTimer); padRun++; strokes = []; cur = null; cands.innerHTML = ''; cands.hidden = true; padDraw(); };
     const padRecognize = async () => {
@@ -153,9 +154,17 @@
       cur = { id: e.pointerId, pts: [padPt(e)] };
       padDraw();
     });
-    cv.addEventListener('pointermove', (e) => { if (cur && e.pointerId === cur.id) { cur.pts.push(padPt(e)); padDraw(); } });
+    cv.addEventListener('pointermove', (e) => {
+      if (!cur || e.pointerId !== cur.id) return;
+      // alle Zwischenpunkte des Stifts – sonst bestehen kurze Strichlein nur aus 1–2 Punkten
+      const ce = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+      (ce.length ? ce : [e]).forEach((ev) => cur.pts.push(padPt(ev)));
+      padDraw();
+    });
     const padEnd = (e) => {
       if (!cur || e.pointerId !== cur.id) return;
+      // Abhebepunkt mitnehmen: bei schnellen kurzen Strichlein (Dakuten) fehlt sonst das Ende
+      if (e.type === 'pointerup') { const q = padPt(e), l = cur.pts[cur.pts.length - 1]; if (q[0] !== l[0] || q[1] !== l[1]) cur.pts.push(q); }
       strokes.push({ pts: cur.pts }); cur = null;
       padDraw();
       padTimer = setTimeout(padRecognize, PAD_WAIT);

@@ -25,16 +25,33 @@
     });
   };
 
-  // Punkte (Anteil der Seitenbreite) → ganze Zahlen relativ zum Rahmen der Auswahl
+  // Punkte (Anteil der Seitenbreite) → ganze Zahlen relativ zum Rahmen der Auswahl.
+  // Der Rahmen wird auf INK_SIZE gestreckt: auf dem Blatt ist ein Wort nur wenige Hundertstel der Seite breit –
+  // ×1000 gerundet blieben von einem Dakuten-Strichlein 2–3 Rasterpunkte, Google las dann einen Punkt.
+  // Zeit (q[3], ms) geht mit, wenn alle Punkte sie haben (Schreibfelder) – hilft beim Unterscheiden von Punkt und Strich.
+  const INK_SIZE = 1000;
   const inkPayload = (strokes, lang) => {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     strokes.forEach((s) => s.pts.forEach((q) => { minX = Math.min(minX, q[0]); minY = Math.min(minY, q[1]); maxX = Math.max(maxX, q[0]); maxY = Math.max(maxY, q[1]); }));
-    const X = (v) => Math.round((v - minX) * 1000), Y = (v) => Math.round((v - minY) * 1000);
+    const side = Math.max(maxX - minX, maxY - minY), k = side > 0 ? INK_SIZE / side : 1;
+    const X = (v) => Math.round((v - minX) * k), Y = (v) => Math.round((v - minY) * k);
+    const timed = strokes.every((s) => s.pts.every((q) => typeof q[3] === 'number'));
+    const t0 = timed && strokes.length ? strokes[0].pts[0][3] : 0;
+    const one = (s) => {
+      // gleiche Rasterpunkte direkt hintereinander nur einmal
+      const xs = [], ys = [], ts = [];
+      s.pts.forEach((q) => {
+        const x = X(q[0]), y = Y(q[1]);
+        if (xs.length && xs[xs.length - 1] === x && ys[ys.length - 1] === y) return;
+        xs.push(x); ys.push(y); if (timed) ts.push(Math.max(0, Math.round(q[3] - t0)));
+      });
+      return timed ? [xs, ys, ts] : [xs, ys];
+    };
     return {
       options: 'enable_pre_space',
       requests: [{
         writing_guide: { writing_area_width: Math.max(1, X(maxX)), writing_area_height: Math.max(1, Y(maxY)) },
-        ink: strokes.map((s) => [s.pts.map((q) => X(q[0])), s.pts.map((q) => Y(q[1]))]),
+        ink: strokes.map(one),
         language: lang,
         max_num_results: 10,
       }],
@@ -80,6 +97,6 @@
     return (links || []).filter((l) => !same(l)).concat(link);
   };
 
-  const P = { MAX_STROKES, HW_URL, pointInPoly, strokesInLasso, inkPayload, parseCandidates, bestGuess, wordBox, linkAt, addLink };
+  const P = { MAX_STROKES, INK_SIZE, HW_URL, pointInPoly, strokesInLasso, inkPayload, parseCandidates, bestGuess, wordBox, linkAt, addLink };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.hwLogic = P;
 })(this);
