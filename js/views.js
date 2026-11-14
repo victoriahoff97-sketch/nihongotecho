@@ -483,7 +483,23 @@
     const vocab = App.itemsOf('vocab');
     const sessions = App.itemsOf('session').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const recent = Array.from(S.items.values()).filter((i) => i.created && i.type !== 'session' && i.type !== 'notebook' && !App.APPLY_TYPES.includes(i.type)).sort((a, b) => b.created - a.created).slice(0, 8);
-    const stat = (t, n, sub) => { const s = App.SECTIONS[t]; return `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; };
+    // Hover-Fenster je Sammlungs-Kachel: wie viele in welcher Lernstufe (js/stufen-logic.js) – schwächste Stufe oben und im Balken links
+    const SL = App.stufenLogic;
+    const stagePop = (t) => {
+      if (!['vocab', 'phrase', 'kanji', 'grammar'].includes(t)) return '';
+      const items = App.itemsOf(t).filter((i) => i.char !== '々');
+      if (!items.length) return '';
+      const c = App.stageCounts(items), gram = t === 'grammar';
+      const info = (k) => (gram ? { open: { label: 'Offen', hint: 'noch nicht abgehakt' }, known: { label: 'Kann ich', hint: 'abgehakt' } }[k] : SL.INFO[k]);
+      const keys = SL.ORDER.filter((k) => !gram || k === 'open' || k === 'known');
+      const bar = `<div class="sp-bar">${SL.segments(c).map((x) => `<i style="width:${x.pct}%;background:${SL.INFO[x.k].color}"></i>`).join('')}</div>`;
+      const rows = keys.map((k) => `<div class="sp-row${c[k] ? '' : ' zero'}"><span class="sp-dot" style="background:${SL.INFO[k].color}"></span>${info(k).label}<small>${info(k).hint}</small><b>${c[k]}</b></div>`).join('');
+      let extra = '';
+      if (t === 'kanji' && focus !== 'read') { const w = App.writeLogic.counts(wq.items, S.srs, wq.unlocked); extra = `<div class="sp-extra">Schreiben: <b>${w.known}</b> kann ich · <b>${w.learn}</b> in der Lernschlange · <b>${w.new}</b> noch nie</div>`; }
+      const note = App.writeLogic.direct(t) ? '<div class="sp-note">Es zählt die schwächere Richtung.</div>' : '';
+      return `<div class="stat-pop" role="tooltip">${bar}${rows}${extra}${note}</div>`;
+    };
+    const stat = (t, n, sub) => { const s = App.SECTIONS[t]; const link = `<a class="stat ${s.cls}" href="${s.route}"><span class="bg">${s.jp}</span><span class="n">${n}</span><span class="l">${s.label}</span><span class="s">${sub}</span></a>`; const pop = stagePop(t); return pop ? `<div class="stat-wrap">${link}${pop}</div>` : link; };
     // Genki-Freischaltung: auf der Startseite nur, solange sie noch aussteht (nicht bei none/open)
     const genkiCard = App.genki && ['locked', 'stale'].includes(App.genki.state()) ? `<div style="margin-bottom:18px">${App.genki.card()}</div>` : '';
     if (document.body.classList.contains('view-handy')) { view.innerHTML = homeHandy({ due, next, vacation, genkiCard }); App.forum && App.forum.refreshDot && App.forum.refreshDot(); return; }

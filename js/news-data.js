@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-lernstufen', date: '14. November',
+      items: [
+        { t: 'Lernstufen auf einen Blick', d: 'Fahr unter „Deine Sammlung“ mit Maus oder Stift über eine Kachel: Du siehst, wie viele Einträge keimen, wachsen, blühen oder schon sitzen.' },
+      ],
+    },
+    {
       id: '2026-11-14-import-entwurf', date: '14. November',
       items: [
         { t: 'Wortliste geht nicht mehr verloren', d: 'Beim Vokabel-Import wird deine bearbeitete Liste laufend zwischengespeichert. Geht die App aus Versehen zu, machst du unter Importieren einfach weiter.' },

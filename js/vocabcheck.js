@@ -147,6 +147,15 @@
     const a = W.activeStatus(S.srs, it, App.needsCheck);
     return a === 'known' ? 'known' : a === 'learn' && W.activeAsked(S.srs, it) ? 'queue' : 'open';
   };
+  // Feinere Lernstufe (js/stufen-logic.js): die Lernschlange nach Abstand geteilt. Bei Vokabeln und Ausdrücken zählt die schwächere Richtung –
+  // solange das Lesen läuft, dessen Karte, sonst die Deutsch → Japanisch-Karte.
+  App.wordStage = (it) => {
+    const st = App.wordState(it);
+    if (st !== 'queue') return st;
+    const readDone = App.vocabStatus(it.id) === 'known';
+    return App.stufenLogic.queueStage(S.srs.get(W.direct(it.type) && readDone ? W.id(it.id) : it.id));
+  };
+  App.stageCounts = (items) => App.stufenLogic.count(items.map((v) => App.wordStage(S.items.get(v.id) || v)));
   App.WORD_STATE = {
     known: { label: 'Kann ich', color: 'var(--matcha)', dot: '●' },
     queue: { label: 'In der Lernschlange', color: 'var(--ai)', dot: '◐' },
