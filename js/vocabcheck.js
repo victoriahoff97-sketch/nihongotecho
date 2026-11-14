@@ -643,11 +643,32 @@
   // Zwei Schritte: 1) Liste wählen (Datei, Bibliothek oder Text einfügen) – eine Datei wird gleich ausgelesen;
   // 2) Wörter prüfen und ergänzen: Wort, Lesung, Deutsch und Satz-Übersetzung direkt eintippen, ✎ ändert auch den Satz, Haken = übernehmen.
   // Spalten, Seiten und der ausgelesene Text stecken eingeklappt unter „Wörter falsch erkannt?“.
-  App.importVocab = ({ fileId } = {}) => {
+  // Zwischenspeicher (pro Gerät, localStorage „nt-importDraft“): Schritt 2 wird laufend gesichert, damit nichts verloren geht,
+  // wenn das Fenster aus Versehen zugeht oder die App weggewischt wird. Weg ist er erst nach „übernehmen“ oder „Verwerfen“.
+  const DRAFT = 'importDraft';
+  const readDraft = () => { try { const d = JSON.parse(App.lsGet(DRAFT) || 'null'); return d && d.v === 1 && d.raw != null ? d : null; } catch (e) { return null; } };
+  const dropDraft = () => { try { localStorage.removeItem('nt-' + DRAFT); } catch (e) { /* egal */ } };
+  const draftWhen = (at) => {
+    const d = new Date(at), t = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(at).setHours(0, 0, 0, 0)) / 864e5);
+    return days === 0 ? `heute ${t}` : days === 1 ? `gestern ${t}` : d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' }) + ` ${t}`;
+  };
+  const draftWords = (d) => (d.entries || []).filter((e) => !e.off).length;
+  // beim Start: angefangene Liste mit eigenen Änderungen → Hinweis mit „Weiter bearbeiten“
+  App.importDraftBoot = () => {
+    const d = readDraft();
+    if (!d || !d.touched || $('.modal-back')) return;
+    App.toast(`Angefangene Wortliste „${d.fname || 'Eingefügter Text'}“ ist noch zwischengespeichert`, { label: 'Weiter bearbeiten', fn: () => App.importVocab({ resume: true }), ms: 15000 });
+  };
+
+  App.importVocab = ({ fileId, resume } = {}) => {
     const body = document.createElement('div');
     body.className = 'sec-vocab imp';
     const libPdfs = Array.from(S.files.values()).filter((f) => App.fileKind(f) === 'pdf').sort((a, b) => b.created - a.created);
+    const draft0 = readDraft();
     body.innerHTML = `<div class="stack" data-step1>
+        ${draft0 ? `<div class="imp-draft" data-draft>${icon('file')}<span class="grow"><b>Angefangene Liste: ${esc(draft0.fname || 'Eingefügter Text')}</b><span class="small muted">${draftWords(draft0)} Wörter · zwischengespeichert ${draftWhen(draft0.at)}</span></span>
+          <button type="button" class="btn btn-sm" data-draftdrop>Verwerfen</button><button type="button" class="btn btn-sm btn-primary" data-draftopen>Weiter bearbeiten</button></div>` : ''}
         <p class="muted" style="margin:0">Wähle deine Wortliste. Die App liest die Wörter heraus und ergänzt fehlendes Deutsch – danach siehst du alles noch einmal und kannst es ändern.</p>
         <div class="imp-choices">
           <label class="imp-choice">${icon('upload')}<b>Datei wählen</b><span>PDF aus dem Unterricht, Anki-Export (.txt) oder Tabelle (.csv)</span><input type="file" accept=".pdf,application/pdf,.txt,.csv,.tsv,text/plain,text/csv" hidden data-file></label>
@@ -660,7 +681,18 @@
         </div>
         <div class="small muted" data-status></div>
       </div><div class="stack" data-step2 hidden></div>`;
-    const md = App.modal({ title: 'Vokabeln importieren', body, wide: true, foot: '<button class="btn" data-back hidden>← Andere Liste</button><span class="grow"></span><button class="btn" data-no>Abbrechen</button><button class="btn btn-primary" data-next hidden disabled>Weiter</button>' });
+    // Fenster zu (✕, daneben getippt, Esc, Abbrechen): ohne eigene Änderungen ist der Zwischenstand egal, sonst bleibt er
+    let imported = false, touched = 0, saveT = 0;
+    const onClose = () => {
+      clearTimeout(saveT);
+      window.removeEventListener('pagehide', saveNow);
+      document.removeEventListener('visibilitychange', onVis);
+      if (imported || step !== 2) return;
+      if (!touched) { const d = readDraft(); if (d && !d.touched) dropDraft(); return; }
+      saveNow();
+      App.toast('Deine Änderungen sind zwischengespeichert', { label: 'Wieder öffnen', fn: () => App.importVocab({ resume: true }), ms: 8000 });
+    };
+    const md = App.modal({ title: 'Vokabeln importieren', body, wide: true, onClose, foot: '<button class="btn" data-back hidden>← Andere Liste</button><span class="grow"></span><button class="btn" data-no>Abbrechen</button><button class="btn btn-primary" data-next hidden disabled>Weiter</button>' });
     const ta = body.querySelector('[data-text]');
     const step1 = body.querySelector('[data-step1]'), s2 = body.querySelector('[data-step2]');
     const statusEl = body.querySelector('[data-status]');
@@ -675,6 +707,31 @@
     const form = { status: 'learn', group: App.lsGet('importPhraseGroup') || 'Aus dem Unterricht' }; // Lernstand neuer Wörter: standardmäßig gleich in die Lernschlange
     const entryOf = (eid) => entries.find((e) => e.eid === eid);
     const phraseOf = (pid) => phrases.find((p) => p.pid === pid);
+
+    // ---------- Zwischenspeicher ----------
+    const saveNow = () => {
+      clearTimeout(saveT);
+      if (step !== 2 || imported) return;
+      const d = { v: 1, at: Date.now(), touched, fname, isPdf: !!pdfBlob, pdfInfo, fileId: meta.id || '', meta: { source: meta.source || '', lesson: meta.lesson ?? '' },
+        raw, map, entries, phrases, nextEid, nextPid, choice: Array.from(choice), form };
+      App.lsSet(DRAFT, JSON.stringify(d));
+    };
+    const saveSoon = () => { clearTimeout(saveT); saveT = setTimeout(saveNow, 400); };
+    const onVis = () => { if (document.visibilityState === 'hidden') saveNow(); };
+    window.addEventListener('pagehide', saveNow); // App weggewischt / Tab zu
+    document.addEventListener('visibilitychange', onVis);
+    const restore = async (d) => {
+      raw = d.raw; fname = d.fname || ''; pdfInfo = d.pdfInfo || ''; meta = Object.assign({}, d.meta, d.fileId ? { id: d.fileId } : {});
+      st = detect(raw); map = d.map && d.map.length === st.ncol ? d.map : st.map.slice();
+      entries = d.entries || []; phrases = d.phrases || []; nextEid = d.nextEid || entries.length; nextPid = d.nextPid || phrases.length;
+      choice.clear(); (d.choice || []).forEach(([k, v]) => choice.set(k, v));
+      Object.assign(form, d.form || {});
+      touched = d.touched || 0; editing = null;
+      pdfBlob = null; pdfPages = ''; pdfTwo = 'auto';
+      // PDF aus der Bibliothek: wieder dazuholen, damit „Neu auslesen“ geht
+      if (d.fileId && S.files.get(d.fileId)) { try { pdfBlob = await App.fileBlob(d.fileId); } catch (er) { console.error(er); } }
+      showStep2();
+    };
 
     // ---------- Schritt 1: Liste wählen ----------
     const readPdf = async () => {
@@ -718,7 +775,12 @@
     };
     const lib = body.querySelector('[data-libpdf]');
     if (lib) lib.onchange = async () => { if (lib.value) { const f = S.files.get(lib.value); usePdf(await App.fileBlob(f.id), f.name, f); } };
-    if (lib && fileId) lib.onchange();
+    if (lib && fileId && !resume) lib.onchange();
+    const dBox = body.querySelector('[data-draft]');
+    if (dBox) {
+      dBox.querySelector('[data-draftopen]').onclick = () => { const d = readDraft(); if (d) restore(d); else dBox.remove(); };
+      dBox.querySelector('[data-draftdrop]').onclick = () => { dropDraft(); dBox.remove(); };
+    }
     body.querySelector('[data-paste]').onclick = () => {
       body.querySelector('[data-pastebox]').hidden = false;
       nextB.hidden = false; nextB.innerHTML = 'Weiter';
@@ -726,6 +788,8 @@
     };
     ta.addEventListener('input', () => { nextB.disabled = !ta.value.trim(); });
     backB.onclick = () => {
+      if (!touched) dropDraft(); // mit eigenen Änderungen bleibt der Zwischenstand, bis eine andere Liste ihn ersetzt
+      touched = 0;
       step = 1; ++run; editing = null; entries = []; phrases = [];
       s2.hidden = true; step1.hidden = false; backB.hidden = true;
       nextB.hidden = body.querySelector('[data-pastebox]').hidden; nextB.innerHTML = 'Weiter'; nextB.disabled = !ta.value.trim();
@@ -780,6 +844,7 @@
     const prev = async () => {
       const my = ++run;
       const r = buildItems(entries, opts0());
+      saveSoon();
       const need = r.items.some((v) => !v.de && !v._deOwn) || sentences(r).length > 0;
       busy = need;
       draw(applyCache(r, cache));
@@ -822,7 +887,7 @@
       const val = (k) => inp(k).value.trim();
       const changed = (k) => val(k) !== inp(k).dataset.o.trim();
       let kanji = val('kanji'), kana = val('kana');
-      editing = null;
+      editing = null; touched++;
       if (!kanji && !kana) { if (e.manual) entries.splice(entries.indexOf(e), 1); return prev(); }
       if (kanji && !JP.hasKanji(kanji) && !kana) { kana = kanji; kanji = ''; }
       if (kanji && !kana) { try { const r = await App.sentenceReading(kanji); if (!r.missing.length) kana = r.kana; } catch (er) { console.error(er); } }
@@ -907,11 +972,13 @@
       p.jp = s;
       if (JP.hasKanji(s)) { try { const r = await App.sentenceReading(s); if (r.furi) p.jp = r.furi; } catch (er) { console.error(er); } }
       if (!p.deOwn) p.de = '';
+      touched++;
       prev();
     };
 
     s2.addEventListener('input', (ev) => {
       const t = ev.target, row = t.closest('[data-eid]');
+      if (t.dataset.f || t.dataset.pf || t.dataset.w) { touched++; saveSoon(); }
       if (t.dataset.f && row) {
         const e = entryOf(row.dataset.eid), v = t.value.trim();
         if (t.dataset.f === 'de') { e.de = v; e.deOwn = 1; } else if (t.dataset.f === 'exde') { e.exde = v; e.exdeOwn = 1; } else e[t.dataset.f] = v; // Kanji/Lesung: neu prüfen erst beim Verlassen (change)
@@ -921,6 +988,7 @@
     });
     s2.addEventListener('change', (ev) => {
       const t = ev.target, row = t.closest('[data-eid]');
+      if (t.matches('[data-on], [data-pon], [data-maybe], [data-col], [data-w]')) touched++;
       if (t.matches('[data-on]')) { entryOf(row.dataset.eid).off = !t.checked; prev(); }
       else if (t.matches('[data-pon]')) { phraseOf(t.closest('[data-pid]').dataset.pid).off = !t.checked; prev(); }
       else if (t.matches('[data-maybe]')) { choice.set(t.dataset.maybe, t.value); prev(); }
@@ -950,7 +1018,7 @@
         const e = { eid: 'e' + nextEid++, manual: 1, kanji: '', kana: '', de: '', exjp: '', exde: '', lesson: '', tags: '' };
         entries.push(e); editing = e.eid; draw(last);
         const f = s2.querySelector('.editing [data-e="kanji"]'); if (f) { f.scrollIntoView({ block: 'nearest' }); f.focus(); }
-      } else if (b.matches('[data-v]')) { form.status = b.dataset.v; $$('[data-st] [data-v]', s2).forEach((x) => x.classList.toggle('on', x === b)); }
+      } else if (b.matches('[data-v]')) { form.status = b.dataset.v; touched++; saveSoon(); $$('[data-st] [data-v]', s2).forEach((x) => x.classList.toggle('on', x === b)); }
       else if (b.matches('[data-reread]')) { pdfPages = s2.querySelector('[data-pages]').value.trim(); reread(); }
       else if (b.matches('[data-reparse]')) { raw = s2.querySelector('[data-raw]').value; if (parse()) { drawAdv(); prev(); } }
     });
@@ -985,6 +1053,7 @@
         await App.saveItem(it, { silent: true });
         if (status === 'known') { await App.setCheck(it.id, 'known'); await App.setCheck(W.id(it.id), 'known'); }
       }
+      imported = true; dropDraft();
       md.close();
       App.emit('items');
       const exMsg = changed.length ? `${changed.length} ${changed.length === 1 ? 'Beispielsatz' : 'Beispielsätze'} bei vorhandenen Wörtern ergänzt` : '';
@@ -997,6 +1066,7 @@
       raw = ta.value; fname = ''; meta = {}; pdfBlob = null; pdfInfo = '';
       open(false);
     };
+    if (resume && draft0) restore(draft0); // erst hier: restore braucht showStep2 & Co.
   };
   document.addEventListener('click', (e) => { if (e.target.closest('[data-action="import-vocab"]')) App.importVocab(); });
 })(window.App);

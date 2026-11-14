@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-import-entwurf', date: '14. November',
+      items: [
+        { t: 'Wortliste geht nicht mehr verloren', d: 'Beim Vokabel-Import wird deine bearbeitete Liste laufend zwischengespeichert. Geht die App aus Versehen zu, machst du unter Importieren einfach weiter.' },
+      ],
+    },
+    {
       id: '2026-11-14-vorlesen-auto', date: '14. November',
       items: [
         { t: 'Wort beim Aufdecken vorlesen', d: 'Karteikarten lesen das Wort beim Umdrehen einmal vor, wie bei WaniKani. Einschalten mit „Auto“ neben dem Lautsprecher unter der Karte oder in den Einstellungen.' },

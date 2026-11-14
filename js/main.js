@@ -141,6 +141,8 @@
     if (App.hallo) App.hallo.boot();
     // nach einem Update kurz zeigen, was neu ist (js/news.js)
     if (App.news) App.news.boot();
+    // angefangene Wortliste (Vokabeln importieren) noch im Zwischenspeicher: Hinweis zum Weitermachen (js/vocabcheck.js)
+    if (App.importDraftBoot) setTimeout(App.importDraftBoot, 1500);
     // eigene Vokabeln ohne Beispielsatz aus dem Satz-Index der Pakete auffüllen (einmal je Index-Version)
     if (App.exampleBackfill) App.exampleBackfill().catch((e) => console.error(e));
     // Beispielsätze von Tatoeba/WaniKani ohne Lesung: Furigana nachtragen (js/examples.js)

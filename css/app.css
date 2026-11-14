@@ -770,6 +770,9 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 /* Vokabeln importieren: Liste wählen → prüfen und ergänzen */
 .imp-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
 .imp-choice { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 18px; border: 1.5px dashed color-mix(in srgb, var(--sec) 45%, transparent); border-radius: 16px; background: var(--sec-soft); cursor: pointer; text-align: left; font: inherit; color: var(--ink); }
+.imp-draft { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-radius: 14px; background: var(--sec-soft); border: 1.5px solid color-mix(in srgb, var(--sec) 45%, transparent); }
+.imp-draft > .grow { display: flex; flex-direction: column; gap: 2px; min-width: 180px; }
+.imp-draft svg { color: var(--sec); flex: none; }
 .imp-choice:hover { border-style: solid; border-color: var(--sec); }
 .imp-choice > .ico svg { width: 26px; height: 26px; color: var(--sec); }
 .imp-choice b { font-size: 16px; }
