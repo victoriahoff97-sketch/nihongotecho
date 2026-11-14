@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-versionsnummer', date: '14. November',
+      items: [
+        { t: 'Versionsnummer zum Hochzählen', d: 'Oben in der Titelleiste steht jetzt „Version …“ mit einer einfachen Nummer, die mit jedem Update wächst. Auch in den Einstellungen unter „Web-App“.' },
+      ],
+    },
+    {
       id: '2026-11-14-lernstufen', date: '14. November',
       items: [
         { t: 'Lernstufen auf einen Blick', d: 'Fahr unter „Deine Sammlung“ mit Maus oder Stift über eine Kachel: Du siehst, wie viele Einträge keimen, wachsen, blühen oder schon sitzen.' },
