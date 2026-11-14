@@ -3,7 +3,7 @@
 (function (App) {
   const Y = App.dailyLogic = {};
   Y.START = '2026-11-09'; // ein Montag
-  Y.MAX = 40;             // höchstens so viele Zeichen pro Satz
+  Y.MAX = 60;             // höchstens so viele Zeichen pro Satz
 
   const L12_FROM = 28;    // Lektion-12-Wörter ab START + 28 Tagen
   const WORD_POS = ['noun', 'verb', 'i-adj', 'na-adj'];
