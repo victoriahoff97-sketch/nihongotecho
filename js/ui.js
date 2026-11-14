@@ -26,10 +26,10 @@
     expression: 'Ausdruck', question: 'Fragewort', pronoun: 'Pronomen', particle: 'Partikel', counter: 'Zähler',
     'prefix-suffix': 'Prä-/Suffix', conjunction: 'Konjunktion',
   };
-  // Wortart-Filter (?pos=) für Vokabeln, Karteikarten und Einstufen. „ono“ = Lautmalerei: Schlagwort statt Wortart,
+  // Wortart-Filter (?pos=) für Vokabeln, Karteikarten und Einstufen. „ono“ = Onomatopoesie: Schlagwort statt Wortart,
   // denn Lautwörter sind mal Adverb, mal Verb (わくわくする) – js/ono.js
   App.posMatch = (it, pos) => (!pos ? true : pos === 'ono' ? App.ono.has(it) : it.pos === pos);
-  App.posSelect = (active) => `<select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${active === k ? 'selected' : ''}>${l}</option>`).join('')}<option disabled>──────</option><option value="ono" title="${App.esc(App.ono.LABEL)}: ごろごろ, わくわく, ドキドキ …" ${active === 'ono' ? 'selected' : ''}>Lautmalerei</option></select>`;
+  App.posSelect = (active) => `<select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${active === k ? 'selected' : ''}>${l}</option>`).join('')}<option disabled>──────</option><option value="ono" title="${App.esc(App.ono.LABEL)}: ごろごろ, わくわく, ドキドキ …" ${active === 'ono' ? 'selected' : ''}>${App.ono.NAME}</option></select>`;
   App.link = (it) => {
     if (!it) return '#/';
     if (it.type === 'kanji') return '#/kanji/' + encodeURIComponent(it.char || it.id);

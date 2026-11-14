@@ -1,5 +1,5 @@
-/* Nihongo Techō – Lautmalerei (オノマトペ): Vokabeln wie ごろごろ, わくわく, ドキドキ bekommen von selbst das
- * Schlagwort „lautmalerei“ – neue beim Speichern, der Bestand bei jedem Start und nach dem Laden von Paketen
+/* Nihongo Techō – Onomatopoesie (オノマトペ): Vokabeln wie ごろごろ, わくわく, ドキドキ bekommen von selbst das
+ * Schlagwort „onomatopoesie“ – neue beim Speichern, der Bestand bei jedem Start und nach dem Laden von Paketen
  * (Logik: js/ono-logic.js, Liste: js/ono-data.js) */
 'use strict';
 (function (App) {
@@ -11,7 +11,8 @@
   App.onoFill = (it) => O.fill(index(), it);
 
   // Bestand: alle Vokabeln (eigene, Pakete, Genki) einmal prüfen; schnell, nur Nachschlagen.
-  // Still, ohne Meldung – wer nachsehen will, filtert unter Vokabeln nach Wortart „Lautmalerei“.
+  // Still, ohne Meldung – wer nachsehen will, filtert unter Vokabeln nach Wortart „Onomatopoesie“
+  // oder öffnet unter Ausdrücke den Reiter „Onomatopoesie“.
   let running = false;
   App.onoBackfill = async () => {
     if (running) return 0;

@@ -7,6 +7,15 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-onomatopoesie', date: '14. November',
+      items: [
+        { t: 'Onomatopoesie (オノマトペ)', d: 'Lautwörter wie ドキドキ oder わくわく heißen jetzt „Onomatopoesie“ – zu finden unter Vokabeln › Wortart ganz unten.' },
+        { t: 'Eigener Reiter bei Ausdrücke', d: 'Unter Ausdrücke gibt es den Reiter „Onomatopoesie“: alle Lautwörter auf einen Blick, mit Lernen-Knopf.' },
+        { t: '10 Lautwörter im N5-Paket', d: 'Das N5-Paket bringt jetzt zehn bekannte Lautwörter mit, z. B. ペコペコ (Riesenhunger) und ペラペラ (fließend sprechen).' },
+        { t: 'Gruppen in einer Zeile', d: 'Die Gruppen unter Ausdrücke stehen wieder in einer Zeile – zur Seite schieben, um alle zu sehen.' },
+      ],
+    },
+    {
       id: '2026-11-14-zeigen-besprochen', date: '14. November',
       items: [
         { t: '„Besprochen“ auch bei 💡', d: 'In der Gruppe kann man jetzt auch „Zum Zeigen“-Beiträge als besprochen markieren – sie rutschen dann unten zu „Besprochen“.' },

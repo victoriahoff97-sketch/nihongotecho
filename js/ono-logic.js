@@ -1,10 +1,12 @@
-/* Nihongo Techō – Lautmalerei (オノマトペ): erkennt Vokabeln wie ごろごろ, わくわく, ドキドキ, しっかり über die
- * JMdict-Liste in js/ono-data.js und gibt ihnen das Schlagwort „lautmalerei“ (reine Logik) */
+/* Nihongo Techō – Onomatopoesie (オノマトペ, Lautwörter): erkennt Vokabeln wie ごろごろ, わくわく, ドキドキ, しっかり über
+ * die JMdict-Liste in js/ono-data.js und gibt ihnen das Schlagwort „onomatopoesie“ (reine Logik) */
 'use strict';
 (function (App) {
   const O = App.ono = {};
-  O.TAG = 'lautmalerei';
-  O.LABEL = 'Lautmalerei (オノマトペ)';
+  O.TAG = 'onomatopoesie';
+  O.OLD_TAG = 'lautmalerei'; // bis 2026-11-14, wird beim Start umbenannt
+  O.NAME = 'Onomatopoesie';
+  O.LABEL = 'Onomatopoesie (オノマトペ)';
 
   // Nachschlage-Index aus App.ONO_DATA ("kana,!kana|kanji,kanji"): kana = Schreibungen, die allein reichen;
   // pairs = „Kanji⇥Kana“ desselben Eintrags (mit „!“ markierte Kana gelten nur so, Gleichklang mit häufigen Wörtern)
@@ -48,7 +50,14 @@
   // Schlagwort setzen, einmal je Eintrag (onoAuto): wer es von Hand wieder löscht, bekommt es nicht zurück.
   // true = Eintrag geändert
   O.fill = (idx, it) => {
-    if (!it || it.type !== 'vocab' || it.onoAuto || !O.is(idx, it)) return false;
+    if (!it || it.type !== 'vocab') return false;
+    // altes Schlagwort „lautmalerei“ → „onomatopoesie“ (auch von Hand gesetzte)
+    if (Array.isArray(it.tags) && it.tags.includes(O.OLD_TAG)) {
+      it.tags = [...new Set(it.tags.map((t) => (t === O.OLD_TAG ? O.TAG : t)))];
+      if (!it.onoAuto && O.is(idx, it)) it.onoAuto = true;
+      return true;
+    }
+    if (it.onoAuto || !O.is(idx, it)) return false;
     it.onoAuto = true;
     const tags = Array.isArray(it.tags) ? it.tags : [];
     if (!tags.includes(O.TAG)) it.tags = tags.concat(O.TAG);
