@@ -531,6 +531,9 @@ details.adv[open] summary { margin-bottom: 12px; }
 .rel-item .x { min-width: 0; }
 .rel-item .x b { display: block; font-family: var(--font-jp); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rel-item .x small { color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rel-ix .x { flex: 1; }
+.rel-ix .x b { font-family: var(--font-ui); white-space: normal; line-height: 1.3; }
+.rel-ix [data-kanji-take] { flex: none; }
 
 /* Sektionsfarben */
 .sec-grammar { --sec: var(--daidai); --sec-soft: var(--daidai-soft); }

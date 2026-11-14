@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-kanji-im-wort', date: '14. November',
+      items: [
+        { t: 'Jedes Kanji eines Wortes erklärt', d: 'Bei einer Vokabel steht rechts unter „Kanji in diesem Wort“ jedes Kanji mit Bedeutung und Lesungen – auch noch nicht gespeicherte (mit „＋ Aufnehmen“).' },
+      ],
+    },
+    {
       id: '2026-11-14-kleine-striche', date: '14. November',
       items: [
         { t: 'Kleine Striche mit dem Stift', d: 'Dakuten (゛), der Kreis bei ぽ und Kommas bleiben jetzt sichtbar und werden beim Erkennen zuverlässiger gelesen.' },

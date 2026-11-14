@@ -414,6 +414,50 @@
     return `<div class="rel-list">${r.items.map((u) => `<a class="rel-use" href="${App.link(u.item)}"><span lang="ja">${mark(u)}</span><small>${u.item.type === 'answer' ? 'Smalltalk' : 'Tagebuch'} · ${esc(App.fmtDate(u.item.date))}</small></a>`).join('')}</div>`
       + (r.more > 0 ? `<div class="small muted" style="margin-top:6px">… und ${r.more} weitere</div>` : '');
   };
+  // Kanji eines Wortes: eigene Kanji-Einträge wie bisher; Zeichen ohne Eintrag kommen aus dem Kanji-Index
+  // (Bedeutung + Lesungen) mit „＋ Aufnehmen“. Der Index lädt erst bei Bedarf – bis dahin steht „…“ da, dann füllt sich die Zeile.
+  let kIx = null, kIxLoading = false;
+  const ixRow = (c) => {
+    const e = kIx && App.kanjiLogic.entry(kIx, c);
+    if (kIx && !e) return '';
+    const rd = e ? e.kun.map(App.kanjiLogic.kunText).concat(e.on).slice(0, 4).join('、') : '';
+    const lv = App.jlptOf ? App.jlptOf({ type: 'kanji', char: c }) : '';
+    const mean = e ? esc(e.de || e.en) + (e.de ? '' : ' <span class="en-tag" title="Englische Bedeutung – noch keine deutsche Übersetzung">EN</span>') : '…';
+    return `<div class="rel-item sec-kanji rel-ix" data-kanji-ix="${esc(c)}"><span class="t">${esc(c)}</span><span class="x"><b>${mean}${App.levelBadge({ level: lv })}</b><small lang="ja">${esc(rd)}</small></span>`
+      + (e ? `<button type="button" class="btn btn-sm btn-ghost" data-kanji-take="${esc(c)}" title="Kanji in deine Sammlung aufnehmen – es kommt in die Lernschlange">＋ Aufnehmen</button>` : '') + '</div>';
+  };
+  // eigenes Kanji in derselben Form: Bedeutung fett, Lesungen darunter – Tipp öffnet die Kanji-Seite
+  const ownRow = (k) => {
+    const rd = (k.kun || []).map(App.kanjiLogic.kunText).concat(k.on || []).slice(0, 4).join('、');
+    return `<a class="rel-item sec-kanji rel-ix" href="${App.link(k)}"><span class="t">${esc(k.char)}</span><span class="x"><b>${App.meaningHtml(k)}${App.levelBadge(k)}</b><small lang="ja">${esc(rd)}</small></span></a>`;
+  };
+  const fillIx = () => {
+    if (kIx || kIxLoading || !App.kanjiIndex) return;
+    kIxLoading = true;
+    App.kanjiIndex().then((ix) => {
+      kIx = ix || {};
+      document.querySelectorAll('[data-kanji-ix]').forEach((el) => { el.outerHTML = ixRow(el.dataset.kanjiIx); });
+    }).catch((e) => console.error(e)).finally(() => { kIxLoading = false; });
+  };
+  const kanjiOfHtml = (chars) => {
+    const uniq = [...new Set(chars)];
+    const rows = uniq.map((c) => { const own = App.kanjiByChar(c); return own ? ownRow(own) : ixRow(c); });
+    if (!kIx && uniq.some((c) => !App.kanjiByChar(c))) setTimeout(fillIx, 0);
+    return `<div class="rel-list">${rows.join('')}</div>`;
+  };
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-kanji-take]');
+    if (!b || !App.createKanji) return;
+    b.disabled = true;
+    const c = b.dataset.kanjiTake;
+    try {
+      const it = await App.createKanji(c);
+      if (!it) { b.disabled = false; App.toast('Zu diesem Kanji hat die App keine Angaben'); return; }
+      const row = b.closest('[data-kanji-ix]');
+      if (row && row.isConnected) row.outerHTML = ownRow(it);
+      App.toast(`${c} aufgenommen – steht jetzt in der Lernschlange`);
+    } catch (err) { console.error(err); b.disabled = false; App.toast('Aufnehmen hat nicht geklappt'); }
+  });
   App.related = (it) => {
     const groups = [];
     const all = Array.from(App.store.items.values());
@@ -423,7 +467,7 @@
     const sameLesson = (x) => it.source && x.source === it.source && String(x.lesson) === String(it.lesson);
     if (it.type === 'vocab') {
       const chars = kanjiChars(it.kanji);
-      add('Kanji in diesem Wort', chars.map(App.kanjiByChar));
+      if (chars.length) groups.push({ title: 'Kanji in diesem Wort', html: kanjiOfHtml(chars) });
       add('Wörter mit gleichem Kanji', all.filter((x) => x.type === 'vocab' && chars.some((c) => (x.kanji || '').includes(c))));
       const ex = (it.examples || []).map((e) => e.jp).join('');
       add('Ausdrücke', all.filter((x) => x.type === 'phrase' && it.kanji && JP.plain(x.jp).includes(it.kanji)), 5);
@@ -440,7 +484,8 @@
     }
     if (it.type === 'phrase') {
       add('Gleiche Gruppe', all.filter((x) => x.type === 'phrase' && x.group === it.group).sort((a, b) => (a.order || 0) - (b.order || 0)), 12);
-      add('Kanji darin', kanjiChars(JP.plain(it.jp)).map(App.kanjiByChar));
+      const pc = kanjiChars(JP.plain(it.jp));
+      if (pc.length) groups.push({ title: 'Kanji darin', html: kanjiOfHtml(pc) });
     }
     if (it.type !== 'session') add('Im Unterricht behandelt', App.sessionsFor(it.id));
     return groups;
