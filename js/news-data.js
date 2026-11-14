@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-ono-haekchen', date: '14. November',
+      items: [
+        { t: 'Onomatopoesie beim Eintragen', d: 'Im Vokabel-Formular (Ausführlich) steht neben der Wortart „＋ Onomatopoesie“. Das Häkchen setzt sich beim Eintippen von selbst – z. B. Adverb und Onomatopoesie zugleich.' },
+      ],
+    },
+    {
       id: '2026-11-14-doppelte', date: '14. November',
       items: [
         { t: 'Keine doppelten Wörter mehr', d: 'Stand ein Wort zweimal in deinen Vokabeln (z. B. ゆっくり aus Genki und aus JLPT N5), wird es jetzt zu einem zusammengelegt – dein Lernstand bleibt.' },

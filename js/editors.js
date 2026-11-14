@@ -260,6 +260,7 @@
       set('kana', w.kana); set('kanji', w.kanji);
       Object.entries(found).forEach(([n, v]) => set(n, v));
       root.querySelector('[name=pos]').dispatchEvent(new Event('change'));
+      root.dispatchEvent(new Event('nt-autofilled')); // z. B. Kategorie neu raten
       const auto = root.querySelector('[name=jlpt] option[value=auto]');
       const lv = App.levelFor({ type: 'vocab', kana: w.kana, kanji: w.kanji });
       if (auto) auto.textContent = 'automatisch' + (lv ? ' (' + lv + ')' : '');
@@ -505,7 +506,8 @@
       <div class="sugg" data-af hidden></div>
       ${!it._existing ? '<div class="dupe-warn" data-dupe hidden></div>' : ''}
       <div class="two"><div class="field"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}" placeholder="z. B. essen / die Schule"></div>
-      <div class="field full-only"><label>Wortart</label><select class="input" name="pos"><option value="">–</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${it.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+      <div class="field full-only"><label>Wortart</label><div class="row" style="gap:10px;flex-wrap:nowrap"><select class="input" name="pos" style="flex:1;min-width:0"><option value="">–</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${it.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <label class="row small" style="gap:6px;flex-wrap:nowrap;white-space:nowrap;cursor:pointer" title="Zusätzlich zur Wortart: Lautwort wie ドキドキ, わくわく (オノマトペ). Hakt sich beim Eintippen von selbst an."><input type="checkbox" name="kategorie" ${App.ono && (it._existing ? App.ono.has(it) : App.onoIs && App.onoIs(it)) ? 'checked' : ''}> ＋ Onomatopoesie</label></div></div></div>
       <div class="full-only">${enLevelFields(it)}</div>
       <div class="field full-only"><label>Pitch Accent <small>0 = flach, 1 = Abfall nach der 1. More … · leer = automatisch</small></label><input class="input" name="accent" inputmode="numeric" style="max-width:120px" value="${esc(it.accent ?? '')}" placeholder="auto"></div>
       ${exBlock(it.examples, true)}
@@ -541,6 +543,15 @@
         else if (/(る|う|く|ぐ|す|つ|ぬ|ぶ|む)$/.test(kana.value) && /^[a-zäöüß]+(en|n)$/.test(de)) pos.value = 'verb';
       });
       root.querySelector('[name=de]').addEventListener('blur', () => { if (!pos.value && /^(der|die|das) /i.test(val(root, 'de'))) pos.value = 'noun'; });
+      // Häkchen „＋ Onomatopoesie“ bei der Wortart: folgt dem eingetippten Wort, bis man es selbst umstellt
+      const cat = root.querySelector('[name=kategorie]');
+      if (cat && App.onoIs) {
+        let own = false;
+        cat.addEventListener('change', () => { own = true; });
+        const guess = () => { if (!own) cat.checked = App.onoIs({ type: 'vocab', kana: val(root, 'kana'), kanji: val(root, 'kanji') }); };
+        ['input', 'change'].forEach((ev) => { kana.addEventListener(ev, guess); root.querySelector('[name=kanji]').addEventListener(ev, guess); });
+        root.addEventListener('nt-autofilled', guess);
+      }
     },
     read: (root, it) => {
       it.kana = val(root, 'kana'); it.kanji = val(root, 'kanji'); it.de = val(root, 'de'); it.pos = val(root, 'pos');
@@ -556,6 +567,13 @@
       it.notes = val(root, 'notes');
       if (root.querySelector('[name=check]')) it._check = val(root, 'check');
       readCommon(root, it);
+      // Häkchen Onomatopoesie entscheidet (gesetzt oder bewusst leer) – danach setzt der Start das Schlagwort nicht neu
+      const cat = root.querySelector('[name=kategorie]');
+      if (cat && App.ono) {
+        const tags = (it.tags || []).filter((t) => t !== App.ono.TAG && t !== App.ono.OLD_TAG);
+        it.tags = cat.checked ? tags.concat(App.ono.TAG) : tags;
+        it.onoAuto = true;
+      }
       // Satzbau-Angaben für die Übersetzungsübungen: automatisch (Verbklasse aus dem Wörterbuch, wenn ausgefüllt wurde)
       App.autofillLogic.sentenceData(it, root._old, { nounDe: JP.nounDe, cls: val(root, 'vcls') });
     },

@@ -9,6 +9,8 @@
 
   // Eine Vokabel vor dem Speichern (App.saveItem); true = geändert
   App.onoFill = (it) => O.fill(index(), it);
+  // Ist das ein Lautwort? (Feld „Kategorie“ im Vokabel-Formular rät damit beim Eintippen)
+  App.onoIs = (it) => O.is(index(), it);
 
   // Bestand: alle Vokabeln (eigene, Pakete, Genki) einmal prüfen; schnell, nur Nachschlagen.
   // Still, ohne Meldung – wer nachsehen will, filtert unter Vokabeln nach Wortart „Onomatopoesie“
