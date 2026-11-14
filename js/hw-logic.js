@@ -35,8 +35,13 @@
     strokes.forEach((s) => s.pts.forEach((q) => { minX = Math.min(minX, q[0]); minY = Math.min(minY, q[1]); maxX = Math.max(maxX, q[0]); maxY = Math.max(maxY, q[1]); }));
     const side = Math.max(maxX - minX, maxY - minY), k = side > 0 ? INK_SIZE / side : 1;
     const X = (v) => Math.round((v - minX) * k), Y = (v) => Math.round((v - minY) * k);
-    const timed = strokes.every((s) => s.pts.every((q) => typeof q[3] === 'number'));
-    const t0 = timed && strokes.length ? strokes[0].pts[0][3] : 0;
+    // Zeit nur, wenn sie stimmig ist: fortlaufend und unter 2 Minuten (Safari liefert bei Zwischenpunkten teils andere Zeitbasen)
+    let timed = strokes.length > 0 && strokes.every((s) => s.pts.every((q) => typeof q[3] === 'number' && isFinite(q[3])));
+    if (timed) {
+      const ts = strokes.flatMap((s) => s.pts.map((q) => q[3]));
+      timed = ts.every((t, i) => !i || t >= ts[i - 1]) && ts[ts.length - 1] - ts[0] < 120000;
+    }
+    const t0 = timed ? strokes[0].pts[0][3] : 0;
     const one = (s) => {
       // gleiche Rasterpunkte direkt hintereinander nur einmal
       const xs = [], ys = [], ts = [];

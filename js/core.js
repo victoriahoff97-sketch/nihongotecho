@@ -2,6 +2,12 @@
 'use strict';
 window.App = window.App || {};
 
+// Ältere iPads (Safari vor iPadOS 16) kennen AbortSignal.timeout nicht – ohne Ersatz scheitert dort jede Anfrage
+// (Handschrift-Erkennung, Übersetzung, Tatoeba, WaniKani) still mit „nicht erreichbar“
+if (window.AbortController && window.AbortSignal && !AbortSignal.timeout) {
+  AbortSignal.timeout = (ms) => { const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; };
+}
+
 (function (App) {
   // ---------- kleine Helfer ----------
   const $ = (sel, root = document) => root.querySelector(sel);

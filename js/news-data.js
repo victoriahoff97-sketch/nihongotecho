@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-ipad-stift', date: '14. November',
+      items: [
+        { t: 'Handschrift-Erkennung auf älteren iPads', d: 'Auf iPads mit älterem iPadOS kam beim Schreiben mit dem Stift kein Vorschlag. Das sollte jetzt klappen – überall, wo du mit dem Stift schreibst und erkennen lässt.' },
+      ],
+    },
+    {
       id: '2026-11-14-unterricht-tippen', date: '14. November',
       items: [
         { t: 'Erkennen beim Tippen', d: 'In getippten Notizen ein Wort markieren → „Erkennen“: zeigt passende Vokabeln und Grammatik, ein Tipp verknüpft sie.' },
