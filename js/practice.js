@@ -412,6 +412,10 @@
     let ans = null, suggest = null, readingsOf = null; // Antwortfeld der Karte · vorgeschlagene Bewertung nach dem Prüfen
     let faces = null; // Kartenseiten der aktuellen Karte (bei Konjugieren mit Auswahl-Antworten und Lösung fürs Antwortfeld)
     let last = null; // zuletzt bewertete Karte – „Rückgängig“ holt sie mit ihrem alten Lernstand zurück
+    // Vorlesen beim Aufdecken (wie bei WaniKani): Schalter „Auto“ neben dem Lautsprecher = dieselbe Einstellung wie unter Einstellungen › Persönlich
+    const autoSay = () => S.settings.ttsAuto === 'on';
+    const sayTitle = () => (autoSay() ? 'Wird beim Aufdecken vorgelesen – antippen zum Ausschalten' : 'Beim Aufdecken automatisch vorlesen');
+    const sayBtns = (txt) => `<span class="seg say-seg"><button data-speak="${esc(txt)}" title="Vorlesen" aria-label="Vorlesen">${icon('speak')}</button><button data-autosay class="${autoSay() ? 'on' : ''}" aria-pressed="${autoSay()}" title="${sayTitle()}">Auto</button></span>`;
     const own = () => ent.kind !== 'read';
     const srsKey = () => (ent.kind === 'read' ? cur.id : W.id(cur.id));
     // „neue lernen“ bei Vokabeln und Ausdrücken: beim ersten Zeigen lässt sich Bekanntes gleich aussortieren – danach nicht mehr
@@ -447,7 +451,7 @@
         ${mc ? `<div class="conj-mc" data-mc>${mc.list.map((s, i) => `<button class="conj-opt" data-mci="${i}" lang="ja"><kbd>${i + 1}</kbd>${JP.ruby(s)}</button>`).join('')}</div>` : ''}
         ${answerable(ent) ? '<div class="ans-box" data-answer></div>' : ''}
         <div class="grade-row"${cram ? ' style="grid-template-columns:repeat(2,1fr)"' : ''} hidden>${cram ? '<button class="g0" data-g="0">Nicht gewusst<small>kommt gleich noch einmal</small></button><button class="g2" data-g="2">Gewusst</button>' : [['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, own())}</small></button>`).join('')}</div>
-        <div class="row" style="justify-content:center;margin-top:10px">${mc ? `<button class="btn btn-primary" data-g-mc hidden>Weiter ${icon('next')}</button>` : ''}${canSkip() ? `<button class="btn btn-sm check-known" data-known hidden title="Gilt als gelernt und wird in dieser Richtung nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-sm btn-ghost" href="${App.link(cur)}" data-park>${icon('info')} Eintrag öffnen</a>${f.speak ? App.speakBtn(f.speak) : ''}${answerable(ent) ? `<span class="seg ans-mode" title="Antwort aufschreiben?">${AMODES.filter(([k]) => !conjWrite(ent) || k !== 'off').map(([k, ic, t]) => `<button data-amode="${k}" title="${t}" aria-label="${t}">${icon(ic)}</button>`).join('')}</span>` : ''}</div></div>`;
+        <div class="row" style="justify-content:center;margin-top:10px">${mc ? `<button class="btn btn-primary" data-g-mc hidden>Weiter ${icon('next')}</button>` : ''}${canSkip() ? `<button class="btn btn-sm check-known" data-known hidden title="Gilt als gelernt und wird in dieser Richtung nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-sm btn-ghost" href="${App.link(cur)}" data-park>${icon('info')} Eintrag öffnen</a>${f.speak && JP.canSpeak() ? sayBtns(f.speak) : ''}${answerable(ent) ? `<span class="seg ans-mode" title="Antwort aufschreiben?">${AMODES.filter(([k]) => !conjWrite(ent) || k !== 'off').map(([k, ic, t]) => `<button data-amode="${k}" title="${t}" aria-label="${t}">${icon(ic)}</button>`).join('')}</span>` : ''}</div></div>`;
       if (answerable(ent)) answerBox();
     };
     // Antwortfeld unter der Karte: Stift (Schreibfeld + Vorschläge) oder Tastatur (Romaji wird zu かな); Prüfen deckt die Karte auf
@@ -546,10 +550,11 @@
       if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
       next();
     };
-    const flip = () => {
+    const flip = (quiet) => {
       if (!cur || flipped || ent.pad) return;
       if (ans && !ans.checked && checkAnswer()) return; // etwas geschrieben: Umdrehen prüft gleich mit
       flipped = true;
+      if (quiet !== true && autoSay() && faces && faces.speak) JP.speak(faces.speak);
       stage.querySelector('.back').hidden = false;
       stage.querySelector('.tap-hint').hidden = true;
       // Auswahl: die richtige Antwort leuchtet grün, bewertet wird nach der Wahl – nur noch „Weiter“ (ohne Wahl aufgedeckt = nicht gewusst)
@@ -612,6 +617,15 @@
       if (e.target.closest('a[data-park]')) wantPark = true;
       if (e.target.closest('[data-speak]') || e.target.closest('a')) return;
       if (e.target.closest('[data-undo-card]')) return undo();
+      const as = e.target.closest('[data-autosay]');
+      if (as) {
+        const on = !autoSay();
+        App.saveSettings({ ttsAuto: on ? 'on' : '' }, { silent: true });
+        as.classList.toggle('on', on); as.setAttribute('aria-pressed', on); as.title = sayTitle();
+        App.toast(on ? 'Wird ab jetzt beim Aufdecken vorgelesen' : 'Automatisches Vorlesen aus');
+        if (on && flipped && faces && faces.speak) JP.speak(faces.speak);
+        return;
+      }
       if (e.target.closest('[data-flip]')) flip();
       const am = e.target.closest('[data-amode]');
       if (am) { App.lsSet('answerMode', am.dataset.amode); if (!flipped) answerBox(); else stage.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b === am)); return; }
@@ -651,7 +665,7 @@
       if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue).map((e) => Object.assign({}, e, { known: cardKnown(e) })), done, right, total, open: flipped };
     });
     next();
-    if (resume && resume.open && cur) { if (ent.pad) stage.querySelector('[data-show]').click(); else flip(); }
+    if (resume && resume.open && cur) { if (ent.pad) stage.querySelector('[data-show]').click(); else flip(true); }
   }
 
   // =========================================================

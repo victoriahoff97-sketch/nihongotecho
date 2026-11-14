@@ -1050,6 +1050,11 @@ body.ink-fit #view { padding-bottom: 16px; }
 /* Antwort auf Karteikarten (Deutsch → Japanisch): Auswahl als drei kleine Symbole, Feld unter der Karte */
 .seg.ans-mode { padding: 2px; }
 .seg.ans-mode button { min-height: 30px; padding: 0 8px; }
+/* Vorlesen unter der Karte: Lautsprecher + „Auto“ (beim Aufdecken vorlesen) */
+.seg.say-seg { padding: 2px; }
+.seg.say-seg button { min-height: 30px; padding: 0 8px; font-size: 12px; font-weight: 700; }
+.seg.say-seg button svg { width: 16px; height: 16px; }
+.seg.say-seg button[data-autosay].on { color: var(--accent, var(--ink)); }
 .flash-stage:has(.ans-box:not([hidden]) .ans-line) .flash { min-height: 180px; } /* mit Antwortfeld: Karte niedriger, damit alles auf den Bildschirm passt */
 .ans-box { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .ans-box.done { flex-direction: row; flex-wrap: wrap; align-items: center; } /* nach dem Prüfen: Antwort und Ergebnis in einer Zeile */

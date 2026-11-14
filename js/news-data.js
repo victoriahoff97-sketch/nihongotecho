@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-vorlesen-auto', date: '14. November',
+      items: [
+        { t: 'Wort beim Aufdecken vorlesen', d: 'Karteikarten lesen das Wort beim Umdrehen einmal vor, wie bei WaniKani. Einschalten mit „Auto“ neben dem Lautsprecher unter der Karte oder in den Einstellungen.' },
+      ],
+    },
+    {
       id: '2026-11-14-kanji-im-wort', date: '14. November',
       items: [
         { t: 'Jedes Kanji eines Wortes erklärt', d: 'Bei einer Vokabel steht rechts unter „Kanji in diesem Wort“ jedes Kanji mit Bedeutung und Lesungen – auch noch nicht gespeicherte (mit „＋ Aufnehmen“).' },

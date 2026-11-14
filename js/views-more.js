@@ -589,6 +589,7 @@
         ${setRow('Furigana', setSeg('furigana', st.furigana === 'hover' ? 'hover' : 'on', [['on', 'Immer'], ['hover', 'Beim Antippen']]))}
         ${voiceField()}
         ${setRow(`Sprechtempo <b class="set-val">${String(st.ttsRate).replace('.', ',')}</b>`, `<input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}">${App.speakBtn('こんにちは、日本語を勉強しています。')}`)}
+        ${setRow('Beim Aufdecken vorlesen', setTgl('ttsAuto', st.ttsAuto === 'on', 'on', '', 'Beim Aufdecken vorlesen'), 'Karteikarten lesen das Wort beim Umdrehen einmal vor – wie bei WaniKani. Auch in der Runde mit „Auto“ umschaltbar')}
       </div></div>
       <div class="card"><h3 class="row between">Lernen <a class="btn btn-sm btn-ghost" href="#/lernweg" title="Wo neue Einträge landen und wann etwas als „kann ich“ gilt">${icon('map')} So läuft das Lernen</a></h3><div class="set-list">
         ${setRow('Neue Karten pro Sitzung', `<input class="input" type="number" min="1" max="100" data-s="newPerDay" value="${st.newPerDay}">`)}
