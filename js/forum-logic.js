@@ -164,11 +164,15 @@
   const byLength = (members) => Object.entries(members || {})
     .filter(([, m]) => m && typeof m.name === 'string' && m.name.trim())
     .sort((a, b) => b[1].name.length - a[1].name.length);
+  // myUid: eine uid oder alle Geräte der eigenen Person (F.myUids)
+  const isMe = (u, me) => (Array.isArray(me) ? me.includes(u) : u === me);
+  const hasMe = (me) => (Array.isArray(me) ? me.length > 0 : !!me);
   F.findMentions = (text, members, myUid) => byLength(members)
-    .filter(([uid, m]) => uid !== myUid && atHits(text, m.name).length).map(([uid]) => uid).slice(0, F.MAX_MENTIONS);
+    .filter(([uid, m]) => !isMe(uid, myUid) && atHits(text, m.name).length).map(([uid]) => uid).slice(0, F.MAX_MENTIONS);
   // Herz an/aus: die eigene uid kommt dazu bzw. geht raus
   F.toggleLike = (likes, uid) => (likes.includes(uid) ? likes.filter((u) => u !== uid) : likes.concat(uid));
-  F.likeNames = (likes, members) => likes.map((u) => (members[u] && members[u].name) || 'jemand, der nicht mehr dabei ist');
+  // eine Person mit zwei Geräten nur einmal
+  F.likeNames = (likes, members) => [...new Set(likes.map((u) => (members[u] && members[u].name) || 'jemand, der nicht mehr dabei ist'))];
   // Wer „besprochen“ setzen darf: wer den Beitrag geschrieben hat, und wer die Gruppe gegründet hat
   F.canSetDone = (post, myUid, adminUid) => !!myUid && (post.uid === myUid || adminUid === myUid);
 
@@ -197,8 +201,8 @@
     likes: uids(d.likes, F.MAX_LIKES), mentions: uids(d.mentions, F.MAX_MENTIONS),
   });
   // „@ dich“ in der Liste: im Beitrag selbst erwähnt, oder in der letzten, noch ungelesenen Antwort
-  F.mentionsMe = (post, seen, myUid) => !!myUid && (post.mentions.includes(myUid)
-    || (post.lastMentions.includes(myUid) && F.isNew(post, seen, myUid)));
+  F.mentionsMe = (post, seen, myUid) => hasMe(myUid) && (post.mentions.some((u) => isMe(u, myUid))
+    || (post.lastMentions.some((u) => isMe(u, myUid)) && F.isNew(post, seen, myUid)));
 
   // ---------- Flamme pro Mitglied ----------
   // Im Member-Dokument: { n, hold, days } – n Tage in Folge, hold = letzter Tag, an dem die Flamme ohne Eintrag noch lebt
@@ -221,6 +225,67 @@
   };
   F.flameOf = (streak, today) => (streak && streak.n >= 1 && streak.hold && today <= streak.hold ? streak.n : 0);
 
+  // ---------- Eine Person, mehrere Geräte ----------
+  // Firebase kennt nur Geräte (anonyme uid). Ein Mitglied-Eintrag mit person = <uid> gehört zu derselben Person wie
+  // der Eintrag <uid> (Handy + Tablet, oder dasselbe Gerät nach verlorener Anmeldung). Schlüssel der Person = die uid
+  // am Ende der Kette; personKey folgt ihr höchstens ein paar Schritte (Ringe und Lücken enden sicher).
+  F.personKey = (uid, members) => {
+    let k = uid;
+    const seen = new Set([k]);
+    for (let i = 0; i < 6; i++) {
+      const p = members && members[k] && members[k].person;
+      if (!p || seen.has(p) || !members[p]) break;
+      seen.add(p);
+      k = p;
+    }
+    return k;
+  };
+  // Alle Geräte einer Person zusammen anzeigen: Name des Haupt-Eintrags, Avatar = zuletzt geänderter, Flamme = die
+  // längste, Tage = alle Tage aller Geräte (daraus rechnet das Gerät beim nächsten Satz die Flamme neu)
+  F.mergeMembers = (members, today) => {
+    const groups = {};
+    Object.keys(members || {}).forEach((u) => { const k = F.personKey(u, members); (groups[k] = groups[k] || []).push(u); });
+    const out = {};
+    Object.entries(groups).forEach(([k, list]) => {
+      const docs = list.map((u) => members[u]);
+      const head = members[k] || docs[0];
+      const av = docs.filter((d) => d.avatar).sort((a, b) => ((b.avatarAt || 0) - (a.avatarAt || 0)) || ((b === head) - (a === head)))[0];
+      const streaks = docs.map((d) => d.streak).filter(Boolean);
+      const best = streaks.slice().sort((a, b) => (F.flameOf(b, today) - F.flameOf(a, today)) || (b.n - a.n))[0] || null;
+      const days = [...new Set(streaks.flatMap((s) => s.days))].sort().slice(-F.MAX_STREAK_DAYS);
+      const merged = {
+        name: head.name || (docs.find((d) => d.name) || {}).name || '',
+        avatar: av ? av.avatar : '',
+        streak: best ? { n: best.n, hold: best.hold, days } : null,
+        key: k, devices: list.slice(),
+      };
+      list.forEach((u) => { out[u] = Object.assign({}, merged, { own: members[u] }); });
+    });
+    return out;
+  };
+  // alle uids der eigenen Person (mindestens die eigene)
+  F.myUids = (merged, myUid) => {
+    if (!myUid) return [];
+    const m = merged && merged[myUid];
+    return m && m.devices ? m.devices.slice() : [myUid];
+  };
+  // Andere Personen mit genau meinem Namen (Groß-/Kleinschreibung, Leerzeichen egal): vermutlich ich auf einem anderen Gerät
+  const normName = (n) => String(n || '').trim().split(/\s+/).join(' ').toLowerCase();
+  F.sameNamePeople = (merged, myUid) => {
+    const me = merged && merged[myUid];
+    if (!me || !normName(me.name)) return [];
+    const keys = new Set();
+    Object.values(merged).forEach((m) => { if (m.key !== me.key && normName(m.name) === normName(me.name)) keys.add(m.key); });
+    return [...keys];
+  };
+  // Personen zur Auswahl (jede einmal, ohne mich), nach Namen sortiert
+  F.otherPeople = (merged, myUid) => {
+    const mine = merged && merged[myUid] ? merged[myUid].key : myUid;
+    const seen = new Set();
+    return Object.values(merged || {}).filter((m) => m.key !== mine && m.name && !seen.has(m.key) && seen.add(m.key))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  };
+
   // ---------- Liste ----------
   // Offene 💬 zuerst, dann alle 💡, besprochene 💬 getrennt – jeweils neueste Aktivität zuerst.
   // Ein gerade abgeschickter Beitrag hat evtl. noch keinen Server-Zeitstempel: zählt als „jetzt“.
@@ -236,7 +301,7 @@
 
   // Neu = jemand anderes hat zuletzt etwas geschrieben, und das ist nach dem letzten Ansehen auf diesem Gerät passiert
   F.isNew = (post, seen, myUid) => {
-    if (!post || post.lastActivityUid === myUid) return false;
+    if (!post || isMe(post.lastActivityUid, myUid)) return false;
     const s = seen && seen[post.id];
     return !s || (post.lastActivityAt ?? Infinity) > s;
   };

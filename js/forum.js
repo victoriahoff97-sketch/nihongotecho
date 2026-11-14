@@ -35,10 +35,14 @@
   // gen zählt jede Verbindung: Antworten einer schon beendeten (stop während des Ladens) werden verworfen,
   // sonst hingen zwei Listener dran oder ein alter Fehler würfe eine gerade beigetretene Gruppe wieder raus
   let gen = 0;
-  let members = {}; // uid → { name, avatar }
+  // members: je uid die ganze Person (alle Geräte zusammengelegt, F.mergeMembers); rawMembers: die Einträge selbst
+  let members = {}; // uid → { name, avatar, streak, key, devices, own }
+  let rawMembers = {};
   let unsubM = null;
+  // alle Geräte der eigenen Person: eigene Beiträge gelten nicht als „neu“, man erwähnt sich nicht selbst …
+  const mineIds = () => F.myUids(members, D.uid());
   let adminUid = null; // Admin (Gründer oder per Admin-Code) – darf wie der Autor „besprochen“ setzen; hier = eigene uid, wenn ich es bin
-  const stop = () => { gen++; if (unsub) unsub(); if (unsubM) unsubM(); unsub = unsubM = null; posts = []; members = {}; adminUid = null; status = 'idle'; };
+  const stop = () => { gen++; if (unsub) unsub(); if (unsubM) unsubM(); unsub = unsubM = null; posts = []; members = {}; rawMembers = {}; adminUid = null; status = 'idle'; };
   const start = () => {
     if (!D.configured() || !st.code || unsub || status === 'loading') return;
     status = 'loading';
@@ -46,7 +50,11 @@
     const mine = (fn) => (...a) => { if (g === gen) fn(...a); };
     D.load().then(mine(() => {
       unsub = D.watchPosts(st.code, mine(onPosts), mine(onError));
-      if (!unsubM) unsubM = D.watchMembers(st.code, mine((m) => { members = m; keepAvatar(); if (ui && ui.onMembers) ui.onMembers(); }));
+      if (!unsubM) unsubM = D.watchMembers(st.code, mine((m) => {
+        rawMembers = m; members = F.mergeMembers(m, App.today()); keepAvatar(); refreshDot();
+        if (ui && ui.onMembers) ui.onMembers();
+        askSamePerson();
+      }));
       checkAdmin(mine);
     })).catch(mine(onError));
   };
@@ -80,9 +88,12 @@
     }
   };
   // eigenen Avatar auch auf dem Gerät merken: geht die Anmeldung verloren, nimmt das Wiederbeitreten ihn mit
+  // … und die Person (st.person): nach verlorener Anmeldung tritt das Gerät als dieselbe Person wieder bei
   const keepAvatar = () => {
-    const a = (members[D.uid()] && members[D.uid()].avatar) || '';
-    if (a && a !== st.avatar) { st.avatar = a; save(); }
+    const me = members[D.uid()];
+    if (!me) return;
+    if (me.avatar && me.avatar !== st.avatar) { st.avatar = me.avatar; save(); }
+    if (me.key && me.key !== st.person) { st.person = me.key; save(); }
   };
   // Firebase kann die anonyme Anmeldung vergessen (Browserdaten aufgeräumt …): mit neuer ID ist das Gerät dann kein
   // Mitglied mehr. Code und Name liegen noch hier – also einmal still wieder beitreten, statt die Gruppe zu vergessen.
@@ -91,7 +102,8 @@
     rejoining = true;
     status = 'loading';
     const g = ++gen;
-    D.load().then(() => D.joinGroup(st.code, st.name, st.avatar)).then(() => {
+    // die alte uid (st.person) bleibt die Person – so gehen Flamme und Avatar nicht verloren
+    D.load().then(() => D.joinGroup(st.code, st.name, st.avatar, st.person && st.person !== D.uid() ? st.person : null)).then(() => {
       if (g !== gen) return;
       stop();
       start();
@@ -126,7 +138,7 @@
 
   const refreshDot = () => {
     // Punkt oben in der Kopfzeile und „neu“ auf der Handy-Startseite
-    const on = status === 'live' && F.hasNew(posts, st.seen, D.uid());
+    const on = status === 'live' && F.hasNew(posts, st.seen, mineIds());
     $$('.forum-dot').forEach((dot) => { dot.hidden = !on; });
   };
   const markSeen = (id) => { st.seen = F.markSeen(st.seen, id, F.seenAt(posts.find((p) => p.id === id), Date.now())); save(); refreshDot(); };
@@ -417,9 +429,9 @@
     let atTyped = false;
     const showAt = (typed) => {
       atTyped = typed;
-      const others = Object.entries(members).filter(([u, m]) => u !== D.uid() && m.name).sort((a, b) => a[1].name.localeCompare(b[1].name));
+      const others = F.otherPeople(members, D.uid());
       atPop.innerHTML = others.length
-        ? others.map(([u, m]) => `<button type="button" class="chip" data-atname="${esc(m.name)}">${avatarHtml(F.parseAvatar(m.avatar), m.name)}${esc(m.name)}</button>`).join('')
+        ? others.map((m) => `<button type="button" class="chip" data-atname="${esc(m.name)}">${avatarHtml(F.parseAvatar(m.avatar), m.name)}${esc(m.name)}</button>`).join('')
         : '<span class="muted small">Noch niemand sonst in der Gruppe.</span>';
       atPop.hidden = false;
     };
@@ -596,7 +608,7 @@
       if (msg) { setErr(msg); return; }
       busy = true;
       try {
-        await onSubmit({ kind, text, images, refs, mentions: F.findMentions(text, members, D.uid()) });
+        await onSubmit({ kind, text, images, refs, mentions: F.findMentions(text, members, mineIds()) });
         if (key) { saveDraft(key, ''); ta.value = ''; drawPrev(); bar.hidden = true; emoPop.hidden = true; setImages([]); refs = []; drawRefs(); atPop.hidden = true; ta.blur(); setClosed(true); }
       } catch (x) {
         setErr(OFFLINE);
@@ -657,7 +669,8 @@
     pop.className = 'more-pop card';
     const item = (k, ic, label, cls = '') => `<button class="more-item ${cls}" data-m="${k}">${icon(ic)}<span>${label}</span></button>`;
     pop.innerHTML = st.code
-      ? item('code', 'link', 'Gruppencode anzeigen') + item('name', 'edit', 'Meinen Namen ändern') + item('avatar', 'sparkle', 'Mein Avatar') + item('help', 'help', 'Hilfe')
+      ? item('code', 'link', 'Gruppencode anzeigen') + item('name', 'edit', 'Meinen Namen ändern') + item('avatar', 'sparkle', 'Mein Avatar')
+        + item('devices', 'link', 'Meine anderen Geräte') + item('help', 'help', 'Hilfe')
         + item('admin', 'check', isAdminHere() ? 'Admin ✓' : 'Admin-Code eingeben')
         + item('leave', 'close', 'Gruppe auf diesem Gerät verlassen', 'danger')
       : item('help', 'help', 'Hilfe');
@@ -674,6 +687,7 @@
       if (m === 'help') App.tour.start('gruppe');
       if (m === 'name') rename();
       if (m === 'avatar') pickAvatar();
+      if (m === 'devices') showDevices();
       if (m === 'admin') enterAdmin();
       if (m === 'leave') leave();
     };
@@ -694,6 +708,77 @@
     if (msg) { App.toast(msg); return; }
     try { await D.rename(st.code, r[0]); st.name = r[0]; save(); App.toast('Name geändert – gilt für neue Beiträge.'); } catch (e) { App.toast(OFFLINE); }
   };
+  // ---------- Eine Person, mehrere Geräte ----------
+  // Jedes Gerät hat in Firebase eine eigene, anonyme Kennung. Handy + Tablet werden erst durch „person“ eine Person:
+  // dann gelten Flamme, Avatar und „@ dich“ für beide. Gleicher Name in der Gruppe → einmal nachfragen; sonst von Hand
+  // unter ⋯ › Meine anderen Geräte.
+  const RULES_OLD = 'Das geht erst nach dem nächsten Gruppen-Update (die Gruppe kennt das Verbinden noch nicht).';
+  const linkTo = async (key) => {
+    const target = members[key];
+    if (!target || key === D.uid()) return false;
+    try {
+      await D.setPerson(st.code, key);
+      // gleicher Name wie auf dem anderen Gerät, damit neue Beiträge und Sätze gleich aussehen
+      if (target.name && target.name !== st.name && !F.checkName(target.name)) { await D.rename(st.code, target.name); st.name = target.name; }
+      st.person = key; if (st.notMe) delete st.notMe[key]; save();
+      App.toast(`Verbunden ✓ – du bist hier und auf dem anderen Gerät „${target.name}“. Flamme und Avatar gelten für beide.`);
+      return true;
+    } catch (e) {
+      App.toast(e && e.code === 'permission-denied' ? RULES_OLD : OFFLINE);
+      return false;
+    }
+  };
+  const unlink = async () => {
+    // getrennt = bewusst nicht dieselbe Person: nicht gleich wieder „Bist du das?“ fragen
+    const was = rawMembers[D.uid()] && rawMembers[D.uid()].person;
+    try { await D.setPerson(st.code, null); st.person = D.uid(); if (was) st.notMe = Object.assign({}, st.notMe, { [F.personKey(was, rawMembers)]: true }); save(); App.toast('Getrennt – dieses Gerät zählt jetzt wieder für sich.'); return true; }
+    catch (e) { App.toast(e && e.code === 'permission-denied' ? RULES_OLD : OFFLINE); return false; }
+  };
+  // Gleicher Name schon in der Gruppe (anderes Gerät, verbunden noch nicht): einmal fragen, solange das Fenster offen ist.
+  // „Nein“ merkt sich das Gerät (st.notMe), damit zwei Leute gleichen Namens nicht immer wieder gefragt werden.
+  let asking = false;
+  const askSamePerson = () => {
+    if (!ui || asking || status !== 'live' || !rawMembers[D.uid()] || rawMembers[D.uid()].person) return;
+    const notMe = st.notMe || {};
+    const key = F.sameNamePeople(members, D.uid()).find((k) => !notMe[k]);
+    if (!key) return;
+    asking = true;
+    const p = members[key];
+    const md = App.modal({
+      title: 'Bist du das?', cls: 'forum-av-modal',
+      body: `<div class="forum-av-preview">${avatarHtml(F.parseAvatar(p.avatar), p.name, 'is-big')}<b>${esc(p.name)}</b>${flameOf(key)}</div>
+        <p>In der Gruppe gibt es schon <b>${esc(p.name)}</b> – vermutlich du auf einem anderen Gerät (Handy, Tablet, PC).</p>
+        <p class="muted small">Wenn du „Ja“ sagst, zählen beide Geräte als eine Person: deine Flamme läuft weiter, und du hast überall denselben Avatar.</p>`,
+      foot: '<button class="btn" data-no>Nein, jemand anderes</button><button class="btn btn-primary" data-ok>Ja, das bin ich</button>',
+      onClose: () => { asking = false; },
+    });
+    md.el.querySelector('[data-no]').onclick = () => { st.notMe = Object.assign({}, st.notMe, { [key]: true }); save(); md.close(); };
+    md.el.querySelector('[data-ok]').onclick = async (e) => { e.target.disabled = true; if (await linkTo(key)) md.close(); else e.target.disabled = false; };
+  };
+  // ⋯ › Meine anderen Geräte: zeigt, ob dieses Gerät verbunden ist; sonst die Leute der Gruppe zum Antippen
+  const showDevices = () => {
+    const me = members[D.uid()];
+    const linked = me && me.devices && me.devices.length > 1;
+    const canUnlink = !!(rawMembers[D.uid()] && rawMembers[D.uid()].person);
+    const others = F.otherPeople(members, D.uid());
+    const md = App.modal({
+      title: 'Meine anderen Geräte', foot: false, cls: 'forum-modal',
+      body: linked
+        ? `<p>Dieses Gerät ist verbunden ✓ – du bist hier „${esc(me.name)}“ mit ${me.devices.length} Geräten. Flamme und Avatar gelten für alle.</p>
+          ${canUnlink ? '<div class="row"><button class="btn" data-unlink>Dieses Gerät trennen</button></div>' : '<p class="muted small">Trennen geht auf dem anderen Gerät.</p>'}`
+        : `<p>Nutzt du das Forum auch auf dem Handy, Tablet oder PC? Tipp hier auf deinen Namen von dem anderen Gerät –
+            dann zählen beide als eine Person (Flamme, Avatar, „@ dich“).</p>
+          <div class="forum-at-pop forum-devices">${others.length ? others.map((m) => `<button type="button" class="chip" data-person="${esc(m.key)}">${avatarHtml(F.parseAvatar(m.avatar), m.name)}${esc(m.name)}</button>`).join('')
+            : '<span class="muted small">Noch niemand sonst in der Gruppe.</span>'}</div>
+          <p class="muted small">Nur dich selbst auswählen – nicht jemand anderen.</p>`,
+    });
+    md.body.onclick = async (e) => {
+      const b = e.target.closest('[data-person]');
+      if (b) { const p = members[b.dataset.person]; if (p && await App.confirm(`Bist du „${p.name}“ auf deinem anderen Gerät?`, { ok: 'Ja, das bin ich', danger: false, title: 'Geräte verbinden' }) && await linkTo(b.dataset.person)) md.close(); }
+      if (e.target.closest('[data-unlink]') && await unlink()) md.close();
+    };
+  };
+
   // Kawaii-Motiv im Pastellkreis oder ein eigenes Kanji als Hanko-Stempel
   const COLOR_NAMES = { sakura: 'Kirschblüte', matcha: 'Matcha', sora: 'Himmel', yuzu: 'Yuzu', fuji: 'Glyzinie', kumo: 'Wolke' };
   const pickAvatar = () => {
@@ -829,11 +914,11 @@
   const dateCol = (ms) => { const d = new Date(ms || Date.now()); return `<span class="forum-date"><span class="forum-day">${d.getDate()}</span><span class="forum-wd">${WEEKDAY[d.getDay()]}</span></span>`; };
   const refChips = (refs) => F.cleanRefs(refs).map((r) => `<span class="badge sec ${App.SECTIONS[r.type === 'satz' ? 'vocab' : r.type].cls}" lang="ja">${r.type === 'satz' ? '例文 ' : ''}${esc(r.label)}</span>`).join('');
   const row = (p) => {
-    const fresh = F.isNew(p, st.seen, D.uid());
+    const fresh = F.isNew(p, st.seen, mineIds());
     const replies = p.replyCount ? `<span class="badge">${icon('chat')} ${p.replyCount} ${p.replyCount === 1 ? 'Antwort' : 'Antworten'}</span>` : '';
     const likes = p.likes.length ? `<span class="badge forum-likes" title="${esc(F.likeNames(p.likes, members).join(', '))}">♥ ${p.likes.length}</span>` : '';
     const foot = refChips(p.refs) + replies + likes;
-    const atMe = F.mentionsMe(p, st.seen, D.uid());
+    const atMe = F.mentionsMe(p, st.seen, mineIds());
     return `<button class="forum-item ${fresh ? 'is-new' : ''}" data-open="${esc(p.id)}">${dateCol(p.createdAt)}
       <span class="forum-item-body">
         <span class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}${p.hasImage ? ` ${icon('image')}` : ''}
@@ -872,6 +957,7 @@
     FD.mount(r.querySelector('[data-daily]'), { code: st.code, uid: D.uid(), name: st.name, members, today: App.today() });
     ui.cleanup = () => FD.unmount();
     if (ui.wantDaily) { ui.wantDaily = false; FD.focus(); }
+    askSamePerson();
     const tabs = r.querySelector('[data-tabs]');
     const list = r.querySelector('[data-list]');
     const head = (ico, label, n, extra, cls, toggle) => `<${toggle ? 'button type="button" data-donetoggle' : 'div'} class="forum-sec ${cls}">${icon(ico)}<b>${label}</b><span>· ${n}${extra ? ' ' + extra : ''}</span></${toggle ? 'button' : 'div'}>`;

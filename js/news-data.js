@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-forum-geraete', date: '14. November',
+      items: [
+        { t: 'Gruppe auf Handy und Tablet', d: 'Mehrere Geräte zählen jetzt als eine Person – Flamme und Avatar bleiben gleich. Die Gruppe fragt einmal „Bist du das?“, sonst ⋯ › Meine anderen Geräte.' },
+      ],
+    },
+    {
       id: '2026-11-14-satz-60', date: '14. November',
       items: [
         { t: 'Satz des Tages: mehr Platz', d: 'Dein Satz im Forum darf jetzt bis zu 60 Zeichen lang sein statt 40 – genug Raum für einen etwas längeren Satz.' },

@@ -26,6 +26,8 @@
   const fmtTech = (step, e) => '\n\nTechnisch: ' + step + ' – ' + String((e && (e.code || e.message)) || e);
   const vacation = () => (App.pause && App.pause.vacation ? App.pause.vacation() : App.store.settings.vacation);
   const me = () => (m && (D.uid() || m.ctx.uid)) || null;
+  // alle Geräte der eigenen Person (Handy + Tablet): ein Satz von dort zählt hier als „heute geschafft“
+  const isMine = (uid) => { const u = me(); return !!u && F.myUids(m.ctx.members, u).includes(uid); };
 
   // ---------- Anstoß ----------
   const promptHtml = (p) => {
@@ -96,8 +98,8 @@
     return `<button type="button" class="forum-like ${on ? 'on' : ''}" data-dlike="${esc(x.date)}|${esc(x.id)}" aria-pressed="${on}" title="${n ? esc(F.likeNames(x.likes, m.ctx.members).join(', ')) : 'Gefällt mir'}">${on ? '♥' : '♡'}${n ? `<span>${n}</span>` : ''}</button>`;
   };
   const lineHtml = (x) => {
-    const own = x.uid === me();
-    const canEdit = own && x.date === m.ctx.today;
+    const own = isMine(x.uid);
+    const canEdit = x.uid === me() && x.date === m.ctx.today; // bearbeiten nur vom Gerät, das ihn geschrieben hat
     if (m.editing && canEdit) return `<div class="fd-line is-own" data-dline="${esc(x.id)}"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}</div><div data-deditslot></div></div>`;
     // Kopf: Avatar, Name, Tage in Folge – rechts Herz und Bearbeiten; darunter der Satz
     return `<div class="fd-line ${own ? 'is-own' : ''}"><div class="fd-who">${avatar(x)}<b>${esc(x.name)}</b>${flame(x.uid)}${x.editedAt ? '<span class="muted small">(bearbeitet)</span>' : ''}
@@ -121,6 +123,7 @@
   const all = (dates) => dates.flatMap((d) => (m.lists[d] || []).map((x) => Object.assign({ date: d }, x)));
   const sorted = (list) => Y.chainContext(list.map((x) => Object.assign({}, x, { createdAt: at(x) })));
   const ownToday = () => (m.lists[m.ctx.today] || []).find((x) => x.uid === me()) || null;
+  const personToday = () => (m.lists[m.ctx.today] || []).find((x) => isMine(x.uid)) || null;
 
   const storyHtml = (start, list) => `<div class="fd-story">
       ${start ? `<div class="fd-start"><span lang="ja" class="fd-jp">${App.jp.ruby(start.jp)}</span>${start.de ? `<span class="muted small">${esc(start.de)}</span>` : ''}</div>` : ''}
@@ -161,7 +164,7 @@
     if (!m) return;
     const box = m.el.querySelector('[data-dlist]');
     const p = m.prompt;
-    const mine = ownToday();
+    const mine = personToday();
     if (m.error) { box.innerHTML = `<div class="forum-note fd-note">${esc(m.error)}</div>`; return; }
     if (!m.loaded) { box.innerHTML = '<p class="muted small">Lade die Sätze von heute …</p>'; return; }
     if (p.kind === 'chain') {
@@ -171,8 +174,8 @@
     } else {
       // der eigene Satz oben; die der anderen bleiben verwischt, bis du selbst geschrieben hast
       const list = sorted(all([m.ctx.today]));
-      const lines = (mine ? list.filter((x) => x.uid === me()) : []).concat(list.filter((x) => x.uid !== me()));
-      const others = list.filter((x) => x.uid !== me()).length;
+      const lines = (mine ? list.filter((x) => isMine(x.uid)) : []).concat(list.filter((x) => !isMine(x.uid)));
+      const others = list.filter((x) => !isMine(x.uid)).length;
       box.innerHTML = lines.length ? `<div class="fd-lines">${lines.map((x) => (mine ? lineHtml(x) : veiledHtml(x))).join('')}</div>`
           + (!mine && others ? '<p class="muted small fd-count">Schreib deinen Satz – dann siehst du die der anderen.</p>' : '')
         : '<p class="muted small fd-count">Noch hat heute niemand geschrieben – du kannst den Anfang machen ✨</p>';
@@ -292,7 +295,8 @@
     const mem = mm.ctx.members[uid];
     if (!mem) { if (sent) mm.streakPending = true; return; }
     const t = mm.ctx.today, cur = mem.streak;
-    const wrote = sent || mm.streakPending || (mm.lists[t] || []).some((x) => x.uid === uid);
+    const mineIds = F.myUids(mm.ctx.members, uid);
+    const wrote = sent || mm.streakPending || (mm.lists[t] || []).some((x) => mineIds.includes(x.uid));
     mm.streakPending = false;
     if (!cur && !wrote) return; // noch nie geschrieben: nichts zu speichern
     const off = K.offDays(App.store.settings && App.store.settings.vacationLog, vacation(), t);
@@ -377,7 +381,7 @@
       if (date === m.ctx.today) {
         m.loaded = true; m.error = '';
         // auf einem anderen Gerät schon geschrieben: hier ebenfalls abhaken
-        const mine = list.some((x) => x.uid === me());
+        const mine = list.some((x) => isMine(x.uid));
         if (mine && !App.dayCheckLogic.isDone(App.store.settings && App.store.settings.dayLog, m.ctx.today, 'forum')) markDay(m);
         // eigener Satz von heute da: heute gehört in die Flamme (heilt ein fehlgeschlagenes setStreak) – einmal je Karte
         if (mine && !m.healed && m.ctx.members[me()]) { m.healed = true; syncStreak(m, false); }
@@ -504,7 +508,16 @@
   App.forumDaily = {
     mount, unmount, check, flush,
     // neue Mitgliederliste (Namen, Avatare, Flammen)
-    members: (members) => { if (!m) return; m.ctx.members = members || {}; refreshStreak(); if (!m.editing) drawList(); },
+    members: (members) => {
+      if (!m) return;
+      m.ctx.members = members || {};
+      // Gerät gerade verbunden (oder getrennt): Flamme aus den Tagen aller eigenen Geräte neu rechnen
+      const devs = F.myUids(m.ctx.members, me()).sort().join();
+      if (m.devs !== undefined && m.devs !== devs) m.streakChecked = false;
+      m.devs = devs;
+      refreshStreak();
+      if (!m.editing) drawList();
+    },
     // aus der 今日-Karte: zur Karte scrollen und ins Feld
     focus: () => {
       if (!m) return;

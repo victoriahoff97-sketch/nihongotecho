@@ -74,10 +74,15 @@
     await b.commit();
   };
   // Die Regeln lassen den Mitglied-Eintrag nur zu, wenn es die Gruppe gibt: „verweigert“ heißt also „falscher Code“
-  D.joinGroup = async (code, name, avatar) => {
+  // person: uid des Eintrags, zu dem dieses Gerät gehört (gleiche Person, anderes Gerät oder verlorene Anmeldung)
+  D.joinGroup = async (code, name, avatar, person) => {
     D.step = 'Gruppe beitreten';
+    const doc = (p) => Object.assign({ name, joinedAt: now() }, avatar ? { avatar } : {}, p ? { person: p } : {});
     try {
-      await group(code).collection('members').doc(D.uid()).set(Object.assign({ name, joinedAt: now() }, avatar ? { avatar } : {}));
+      try { await group(code).collection('members').doc(D.uid()).set(doc(person)); } catch (e) {
+        // Regeln noch ohne „person“: dann eben erst einmal ohne Verknüpfung beitreten
+        if (person && e && e.code === 'permission-denied') await group(code).collection('members').doc(D.uid()).set(doc(null)); else throw e;
+      }
     } catch (e) {
       if (e && e.code === 'permission-denied') throw Object.assign(new Error('no-group'), { code: 'no-group' });
       throw e;
@@ -85,11 +90,20 @@
   };
   D.leaveGroup = (code) => group(code).collection('members').doc(D.uid()).delete();
   D.rename = (code, name) => group(code).collection('members').doc(D.uid()).update({ name });
-  D.setAvatar = (code, avatar) => group(code).collection('members').doc(D.uid()).update({ avatar });
-  // Mitglieder → { uid: { name, avatar, streak } } – für die Avatare neben den Namen (gelten auch für alte Beiträge)
+  // avatarAt: welcher Avatar der neueste ist, wenn eine Person mehrere Geräte hat (Geräteuhr reicht dafür)
+  D.setAvatar = (code, avatar) => group(code).collection('members').doc(D.uid()).update({ avatar, avatarAt: Date.now() })
+    .catch((e) => { if (e && e.code === 'permission-denied') return group(code).collection('members').doc(D.uid()).update({ avatar }); throw e; });
+  // Gerät einer Person zuordnen (uid ihres Haupt-Eintrags) bzw. mit null wieder lösen
+  D.setPerson = (code, person) => group(code).collection('members').doc(D.uid()).update({ person: person || null });
+  // Mitglieder → { uid: { name, avatar, avatarAt, person, streak } } – für die Avatare neben den Namen (gelten auch für alte Beiträge)
   D.watchMembers = (code, onMembers) => group(code).collection('members').onSnapshot((snap) => {
     const out = {};
-    snap.docs.forEach((d) => { const x = d.data(); out[d.id] = { name: typeof x.name === 'string' ? x.name : '', avatar: typeof x.avatar === 'string' ? x.avatar : '', streak: F().cleanStreak(x.streak) }; });
+    const s = (v, max) => (typeof v === 'string' && v.length <= max ? v : '');
+    snap.docs.forEach((d) => {
+      const x = d.data();
+      out[d.id] = { name: s(x.name, 200), avatar: s(x.avatar, 40), avatarAt: Number.isFinite(x.avatarAt) ? x.avatarAt : 0,
+        person: s(x.person, 128) || null, streak: F().cleanStreak(x.streak) };
+    });
     onMembers(out);
   }, () => {});
 
