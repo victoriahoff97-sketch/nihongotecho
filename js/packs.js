@@ -65,15 +65,22 @@
     return res;
   };
   // Reste aufräumen, die die aktuelle Paketversion nicht mehr führt (App.planPackOrphans): unberührte fliegen raus,
-  // sonst geht der Rest im Eintrag desselben Worts auf (Lernstand: der weiter fortgeschrittene gewinnt)
-  const ORPHANS_DONE = 'packOrphansV1';
+  // sonst geht der Rest im Eintrag desselben Worts auf (Lernstand: der weiter fortgeschrittene gewinnt).
+  // Ebenso Paket-Vokabeln, die es genauso schon als anderen Eintrag gibt (App.planPackDupes, ゆっくり neben Genki).
+  // V2: läuft auf jedem Gerät noch einmal, damit die schon vorhandenen Doppelten verschwinden
+  const ORPHANS_DONE = 'packOrphansV2';
   async function tidyOrphans(pack, items) {
     if (!App.planPackOrphans || !App.planSeedCleanup) return 0;
     const all = Array.from(S.items.values());
     const o = App.planPackOrphans(items, all, pack.id, { srs: S.srs, sessionRefs: App.allRefs(all, S.files.values()) });
-    const r = App.planSeedCleanup(o.map, all, S.srs);
-    const stars = o.star.filter((id) => S.items.has(id) && !S.items.get(id).star).map((id) => Object.assign({}, S.items.get(id), { star: true }));
-    const putItems = r.putItems.concat(stars);
+    const d = App.planPackDupes ? App.planPackDupes(items, all.filter((it) => !(it.id in o.map) && !o.del.includes(it.id)), pack.id) : { map: {}, star: [] };
+    const r = App.planSeedCleanup({ ...o.map, ...d.map }, all, S.srs);
+    // der verbleibende Eintrag gehört jetzt auch zum Paket (Stern übernommen, Paket-Kennung in packs)
+    const byId = new Map(r.putItems.map((it) => [it.id, it]));
+    const touch = (id, fn) => { const cur = byId.get(id) || S.items.get(id); if (cur) byId.set(id, fn(Object.assign({}, cur))); };
+    o.star.concat(d.star).forEach((id) => touch(id, (it) => Object.assign(it, { star: true })));
+    Object.values(d.map).forEach((id) => touch(id, (it) => Object.assign(it, { packs: [...new Set([...(Array.isArray(it.packs) ? it.packs : []), pack.id])] })));
+    const putItems = [...byId.values()];
     const delItems = r.delItems.concat(o.del);
     if (!delItems.length && !r.delSrs.length) return 0;
     r.putSrs.forEach((x) => S.srs.set(x.id, x));

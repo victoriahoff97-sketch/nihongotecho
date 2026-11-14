@@ -242,6 +242,35 @@
     return out;
   };
 
+  // Doppelte: eigene Vokabeln des Pakets, deren Wort (gleiche Schreibung + Lesung) ein anderer Eintrag schon führt –
+  // etwa ゆっくり neben Genki, weil das Paket früher „ゆっくりと“ hieß und erst später angeglichen wurde. planMerge
+  // entfernt sie nur unberührt; mit Lernstand blieben sie doppelt stehen. Hier gehen sie in dem anderen Eintrag auf
+  // (Lernstand + Verweise: App.planSeedCleanup, der weiter fortgeschrittene gewinnt).
+  //   map  – Paket-ID → ID des anderen Eintrags;  star – Ziel-IDs, die den Stern übernehmen
+  // Bleiben stehen: bearbeitete oder markierte, solche, die noch ein anderes Paket führt, und Wörter, die es mehr als
+  // einmal anderswo gibt.
+  App.planPackDupes = (packItems, existing, packId) => {
+    const out = { map: {}, star: [] };
+    const inPack = new Set(packItems.filter((p) => p.type === 'vocab').map((p) => p.id));
+    const others = new Map();
+    existing.forEach((it) => {
+      if (!it || it.type !== 'vocab' || it._pack === packId) return;
+      const k = App.vocabKey(it);
+      if (!others.has(k)) others.set(k, []);
+      others.get(k).push(it);
+    });
+    for (const o of existing) {
+      if (!o || o.type !== 'vocab' || o._pack !== packId || !inPack.has(o.id)) continue;
+      if (o._edited || (Array.isArray(o.marks) && o.marks.length)) continue;
+      if ((Array.isArray(o.packs) ? o.packs : []).some((p) => p !== packId)) continue;
+      const hits = (others.get(App.vocabKey(o)) || []).filter((h) => hasTilde(h) === hasTilde(o));
+      if (hits.length !== 1) continue;
+      out.map[o.id] = hits[0].id;
+      if (o.star) out.star.push(hits[0].id);
+    }
+    return out;
+  };
+
   // Ob ein Eintrag gefahrlos entfernt werden kann, wenn sein Paket deaktiviert wird
   App.isRemovable = (it, { srs, sessionRefs }) => {
     if (!it._pack) return false;
