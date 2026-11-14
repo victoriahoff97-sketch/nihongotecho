@@ -118,7 +118,7 @@
   const sub = (key, g) => ({
     review: `${g.reviews} Karten – oder alle, wenn es weniger sind`,
     apply: 'Tagebuch oder Smalltalk',
-    listen: `${mins(g.listenMin)} <span lang="ja">今日のリスニング</span> gehört`,
+    listen: `${mins(g.listenMin)} gehört – Hör-Kette, Shun oder Anderes selbst abhaken`,
     new: 'Ein neues Wort ins Lernen genommen',
     kanji: 'Mit dem Stift geübt',
     conj: 'Eine Runde Verbformen',
@@ -127,16 +127,20 @@
   const ACTION = {
     review: '<a class="btn btn-sm" href="#/ueben/heute?auto=1">Wiederholen</a>',
     apply: '<button type="button" class="btn btn-sm" data-day-journal>Schreiben</button>',
-    listen: '<button type="button" class="btn btn-sm" data-listen-play>Anhören</button>',
+    // Beides zählt fürs Ziel: das heutige Stück der Hör-Kette oder die nächste Folge von Japanese with Shun
+    listen: '<span class="day-acts"><button type="button" class="btn btn-sm" data-listen-play title="Heutiges Stück der Hör-Kette">Hör-Kette</button><button type="button" class="btn btn-sm" data-day-shun title="Nächste Folge von Japanese with Shun">Shun</button></span>',
     new: '<a class="btn btn-sm" href="#/ueben/einstufen">Einstufen</a>',
     kanji: '<a class="btn btn-sm" href="#/ueben/kanji">Schreiben</a>',
     conj: '<a class="btn btn-sm" href="#/ueben/konjugieren">Üben</a>',
     nhk: `<a class="btn btn-sm" href="${NHK_URL}" target="_blank" rel="noopener" data-read-out>Öffnen</a>`,
   };
   // NHK und eigene Ziele hakt man selbst ab; alles andere prüft die App
-  const manual = (x) => x.own || x.key === 'nhk';
-  const box = (x, on) => (manual(x)
-    ? `<button type="button" class="day-box" data-day-toggle="${esc(x.key)}" aria-pressed="${on}" title="${on ? 'Haken entfernen' : 'Abhaken'}">${icon('check')}</button>`
+  // Listening lässt sich auch selbst abhaken (etwas ganz anderes gehört) – zurücknehmen nur einen selbst gesetzten Haken,
+  // nicht die wirklich abgespielten Minuten
+  const manual = (x, on) => x.own || x.key === 'nhk' || (x.key === 'listen' && (!on || L.isDone(log(), App.today(), 'listen')));
+  const tip = (x, on) => (on ? 'Haken entfernen' : x.key === 'listen' ? 'Selbst abhaken – z. B. wenn du etwas anderes gehört hast' : 'Abhaken');
+  const box = (x, on) => (manual(x, on)
+    ? `<button type="button" class="day-box" data-day-toggle="${esc(x.key)}" aria-pressed="${on}" title="${tip(x, on)}">${icon('check')}</button>`
     : `<span class="day-box">${icon('check')}</span>`);
 
   const row = (x, on, g, fl) => `<div class="day-row ${on ? 'on' : ''}">${box(x, on)}
@@ -203,6 +207,7 @@
   document.addEventListener('click', (e) => {
     if (!e.target.closest) return;
     if (e.target.closest('[data-day-journal]')) { openJournal(); return; }
+    if (e.target.closest('[data-day-shun]')) { const n = App.shun.nextUp(S.settings.shunHeard); if (n) App.shunUi.open(n.id); return; }
     if (e.target.closest('[data-day-edit]')) { editing = !editing; redraw(); if (!editing) check(); return; }
     if (e.target.closest('[data-day-forum]')) { App.forum.open({ daily: true }); return; }
     const fh = e.target.closest('[data-day-forumhint]');

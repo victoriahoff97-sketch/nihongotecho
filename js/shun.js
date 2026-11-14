@@ -34,12 +34,14 @@
     if (d.open) openLessons.add(n); else openLessons.delete(n);
   }, true);
 
-  const setHeard = async (id, on, quiet) => {
+  // day: „Gehört“ im Abspielfenster hakt auch „Listening“ in der Tagesliste ab – wie bei der Hör-Kette
+  const setHeard = async (id, on, quiet, day) => {
     const before = heard();
     if (before.includes(id) === on) return;
     await App.saveSettings({ shunHeard: S.toggle(before, id) });
+    if (day) App.dayCheck.mark('listen', on);
     // Rückgängig nimmt nur diese Folge zurück – spätere Haken bleiben stehen
-    if (!quiet) App.toast(on ? 'Gehört' : 'Nicht mehr als gehört markiert', { label: 'Rückgängig', fn: () => setHeard(id, !on, true) });
+    if (!quiet) App.toast(on ? 'Gehört' : 'Nicht mehr als gehört markiert', { label: 'Rückgängig', fn: () => setHeard(id, !on, true, day) });
   };
   U.toggleHeard = (id) => setHeard(id, !isHeard(id));
 
@@ -74,7 +76,7 @@
       if (cur) cur.t = 0; // fertig gehört: keine Stelle merken
       md.close();
       await App.saveSettings({ shunAt: null });
-      await setHeard(id, true);
+      await setHeard(id, true, false, true);
     };
     const audio = md.el.querySelector('audio');
     if (at) audio.addEventListener('loadedmetadata', () => { audio.currentTime = at; }, { once: true });

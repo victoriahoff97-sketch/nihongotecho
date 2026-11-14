@@ -1854,6 +1854,7 @@ a.r:hover { border-color: var(--sec); color: var(--sec); }
 .day-row + .day-row { border-top: 1px solid var(--line); }
 .day-row .grow { display: flex; flex-direction: column; min-width: 0; }
 .day-row small { color: var(--muted); font-size: 13px; }
+.day-acts { display: flex; gap: 6px; flex-shrink: 0; }
 .day-box { width: 24px; height: 24px; flex: none; border-radius: 7px; border: 2px solid var(--line); background: none; padding: 0; display: grid; place-items: center; color: transparent; }
 .day-box .ico { width: 15px; height: 15px; }
 .day-row.on .day-box { background: var(--matcha); border-color: var(--matcha); color: #fff; }

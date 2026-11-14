@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-14-hoeren-ziel', date: '14. November',
+      items: [
+        { t: 'Listening: Hör-Kette oder Shun', d: 'Beim Tagesziel „Listening“ auf der Startseite wählst du jetzt „Hör-Kette“ oder „Shun“. Die Minuten aus beiden zählen zusammen.' },
+        { t: 'Listening selbst abhaken', d: 'Hast du etwas ganz anderes auf Japanisch gehört? Dann tipp einfach auf das Kästchen vor „Listening“.' },
+      ],
+    },
+    {
       id: '2026-11-14-ipad-stift', date: '14. November',
       items: [
         { t: 'Handschrift-Erkennung auf älteren iPads', d: 'Auf iPads mit älterem iPadOS kam beim Schreiben mit dem Stift kein Vorschlag. Das sollte jetzt klappen – überall, wo du mit dem Stift schreibst und erkennen lässt.' },
