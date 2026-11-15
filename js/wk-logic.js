@@ -6,7 +6,7 @@
   K.MASTER = 7; // zum Schreiben kommt ein Kanji ab Master (7), Enlightened (8), Burned (9) – Guru (5/6) reicht nicht
   const STAGES = ['in den Lektionen', 'Apprentice 1', 'Apprentice 2', 'Apprentice 3', 'Apprentice 4', 'Guru 1', 'Guru 2', 'Master', 'Enlightened', 'Burned'];
   K.stageName = (n) => STAGES[n] || 'noch nicht begonnen';
-  K.empty = () => ({ kanji: {}, stage: {}, vocab: {}, vstage: {} });
+  K.empty = () => ({ kanji: {}, stage: {}, vocab: {}, vstage: {}, own: {} });
 
   // Eine Seite von /v2/subjects?types=kanji einarbeiten (auch Nachträge über updated_after)
   K.mergeSubjects = (state, page) => {
@@ -216,7 +216,8 @@
   // ---------- Deutsche Bedeutung ----------
   // Nie aus dem Wörterbuch: dessen Deutsch hängt bei vielen Wörtern am falschen Eintrag (一 „f-Rauschen“, 三つ „Mawashi“).
   // Zuerst die geprüfte Bedeutung aus dem Satz-Index der Pakete (gleiches Wort, auch in anderer Schreibweise mit Kanji),
-  // sonst die übersetzte englische Bedeutung von WaniKani (js/wanikani.js). _de = 'pack' | 'mt' merkt die Herkunft.
+  // sonst die übersetzte englische Bedeutung von WaniKani (js/wanikani.js). Vor beidem: eigene Bedeutung bei WaniKani (K.applyOwn).
+  // _de = 'own' | 'pack' | 'mt' merkt die Herkunft.
   K.needsGerman = (it) => wkVocab(it) && !it._edited && (!it.de || !it._de);
   K.packGerman = (index, it, alts) => {
     if (!index || !index.v) return '';
@@ -224,6 +225,34 @@
     for (const k of [key, ...(alts || []).filter((x) => KANJI.test(x.split('|')[0]))]) if (index.v[k] && index.v[k][2]) return index.v[k][2];
     return '';
   };
+  // Eigene Bedeutungen („User Synonyms“ bei WaniKani): own = WaniKani-Nummer → [Bedeutungen].
+  // Eine Seite von /v2/study_materials einarbeiten; leere Liste oder versteckt = wieder weg.
+  K.mergeOwn = (state, page) => {
+    state.own = state.own || {};
+    ((page && page.data) || []).forEach((d) => {
+      const x = d && d.data;
+      if (!x || !VOCAB.includes(x.subject_type)) return;
+      const syn = (x.meaning_synonyms || []).map((m) => String(m || '').trim()).filter(Boolean);
+      if (x.hidden_at || !syn.length) delete state.own[x.subject_id];
+      else state.own[x.subject_id] = syn;
+    });
+    return state;
+  };
+  K.ownGerman = (state, it) => {
+    const s = state && state.own && state.own[String(it.id).replace(/^v-wk/, '')];
+    return s && s.length ? s.join('; ') : '';
+  };
+  // Eigene Bedeutung eintragen, geänderte übernehmen, gelöschte wieder freigeben (dann gilt Paket/Übersetzung).
+  // In der App Bearbeitetes bleibt. Liefert die geänderten Einträge.
+  K.applyOwn = (state, items) => items.filter((it) => wkVocab(it) && !it._edited).filter((it) => {
+    const own = K.ownGerman(state, it);
+    if (own) {
+      if (it.de === own && it._de === 'own') return false;
+      it.de = own; it._de = 'own'; return true;
+    }
+    if (it._de !== 'own') return false;
+    it.de = ''; delete it._de; return true;
+  });
   // Was zum Übersetzen geht: die ersten zwei englischen Bedeutungen
   K.enQuery = (it) => String(it.en || '').split(/;\s*/).filter(Boolean).slice(0, 2).join('; ');
 

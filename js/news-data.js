@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-15-wk-eigene', date: '15. November',
+      items: [
+        { t: 'Eigene Bedeutungen aus WaniKani', d: 'Hast du bei WaniKani unter „User Synonyms“ eine eigene Bedeutung eingetragen, wird sie zum Deutsch der Vokabel – sofort mit Pakete › WaniKani › „Abgleichen“.' },
+      ],
+    },
+    {
       id: '2026-11-14-kana-schreiben', date: '14. November',
       items: [
         { t: 'Kana schreiben', d: 'Hiragana und Katakana mit dem Stift üben: Strichfolge ansehen, nachspuren, dann aus dem Kopf schreiben. Zu finden unter Üben › Kana schreiben.' },

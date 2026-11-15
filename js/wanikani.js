@@ -62,6 +62,9 @@
     if (vsAt) next.vSubjectsAt = vsAt;
     const vaAt = await pages(token, API + 'assignments?subject_types=vocabulary,kana_vocabulary' + since(next.vAssignmentsAt), (p) => K.mergeVocabAssignments(next, p));
     if (vaAt) next.vAssignmentsAt = vaAt;
+    // Eigene Bedeutungen („User Synonyms“) der Vokabeln – gehen vor Paket und Übersetzung
+    const oAt = await pages(token, API + 'study_materials?subject_types=vocabulary,kana_vocabulary' + since(next.ownAt), (p) => K.mergeOwn(next, p));
+    if (oAt) next.ownAt = oAt;
     next.token = token;
     next.syncedAt = Date.now();
     wk.state = next;
@@ -134,6 +137,7 @@
     const keys = haveKeys(true), hasId = (id) => S.items.has(id);
     await loadAlts(K.vMissing(wk.state, level, { hasKey: () => false, hasId }));
     const adds = K.vMissing(wk.state, level, { hasKey: (k) => keys.has(k), hasId, alts: altsOf });
+    K.applyOwn(wk.state, adds);
     packGerman(await App.exampleIndex(), adds);
     const now = Date.now();
     adds.forEach((it, i) => { it.created = it.updated = now + i; if (App.levelFor) it.level = App.levelFor(it); S.items.set(it.id, it); }); // + i: WaniKani-Reihenfolge bleibt die Lernreihenfolge
@@ -154,7 +158,7 @@
 
   // ---------- Aufräumen und Nachholen (wk.enrich), still im Hintergrund ----------
   // 1. Doppelte entfernen (gibt es schon als Vokabel oder Ausdruck, auch in anderer Schreibweise)
-  // 2. Deutsch: Paket → übersetzte englische Bedeutung von WaniKani (nur mit Zustimmung zum Google Übersetzer)
+  // 2. Deutsch: eigene Bedeutung bei WaniKani → Paket → übersetzte englische Bedeutung von WaniKani (nur mit Zustimmung zum Google Übersetzer)
   // 3. Beispielsatz: Satz-Index der Pakete → kürzester Tatoeba-Satz → kürzester Satz von WaniKani
   // Wort für Wort; nie über App.saveItem – das würde die Vokabel als bearbeitet markieren.
   // Ohne Internet oder wenn Tatoeba hakt, bleibt der Rest für den nächsten Lauf.
@@ -177,6 +181,7 @@
     await loadAlts(wkItems());
     const has = haveKeys(false);
     if (await dropVocab((items, ctx) => K.vDupes(items, (k) => has.has(k), altsOf, ctx))) App.emit('items');
+    await put(K.applyOwn(wk.state, wkItems()));
     await put(packGerman(idx, wkItems()));
     await put(wkItems().filter((it) => needsEx(it) && App.exampleLogic.fill(idx, it)));
     let batch = [];
