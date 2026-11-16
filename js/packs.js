@@ -389,6 +389,8 @@
     (window.PACK_CREDITS || []).forEach(add);
     (window.PACKS || []).forEach((p) => (p.credits || []).forEach(add));
     if (!list.some((c) => /kanjivg/i.test(c.name))) add({ name: 'KanjiVG', license: 'CC-BY-SA 3.0', url: 'https://kanjivg.tagaini.net' });
+    // Stimmen der Hördialoge in den Prüfungen (Pflichtangabe laut VOICEVOX- und Sprecher-Nutzungsbedingungen)
+    if (window.EXAM_AUDIO_CREDIT) add({ name: 'Stimmen der Prüfungen (Hören): ' + window.EXAM_AUDIO_CREDIT, license: 'VOICEVOX-Nutzungsbedingungen', url: 'https://voicevox.hiroshiba.jp' });
     view.innerHTML = `<div class="sec-settings"><div class="page-head"><div class="titles"><h1>Lizenzen <span class="jp-title">権利</span></h1>
       <p>Die Paket-Inhalte stammen aus freien Quellen. Die Paketdateien stehen unter CC-BY-SA 4.0 (Einzelheiten in packs/LIZENZEN.txt).</p></div>
       <a class="btn btn-sm" href="#/pakete">${icon('back')} Pakete</a></div>

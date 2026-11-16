@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-16-pruefung-stimmen', date: '16. November',
+      items: [
+        { t: 'Natürliche Stimmen in den Prüfungen', d: 'Die Hörgespräche in den Prüfungen (試験) sprechen jetzt japanische KI-Stimmen mit richtigem Tonfall – mehrere Sprecher statt der Computerstimme.' },
+      ],
+    },
+    {
       id: '2026-11-16-verb-muster', date: '16. November',
       items: [
         { t: 'Verben mit Partikel – öfter gefunden', d: 'Eigene Verben bekommen ihr Partikel-Muster (人に会う) jetzt auch in der ます-Form, nur in Kana oder mit anderem Kanji aus den Paketen.' },

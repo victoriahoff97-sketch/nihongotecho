@@ -74,7 +74,45 @@
   const isListen = (q) => q.part === 'listening';
 
   // Hören: Satz oder Gespräch nacheinander vorlesen; A und B mit zwei Stimmen, wenn das Gerät zwei japanische hat
+  // Vertonte Dialoge (VOICEVOX, js/exam-audio.js); fehlt die Datei oder lädt sie nicht, liest die Browser-Stimme
+  X.audioUrl = (q) => (q && (window.EXAM_AUDIO || {})[q.id]) || null;
+  let playing = null;
+  X.stop = () => {
+    if (playing) { playing.pause(); playing = null; }
+    if (JP.canSpeak()) speechSynthesis.cancel();
+  };
   X.play = (q) => {
+    X.stop();
+    const url = X.audioUrl(q);
+    if (!url) return speakTts(q);
+    const a = new Audio();
+    playing = a;
+    let fellBack = false;
+    const fallback = () => { if (playing === a && !fellBack) { fellBack = true; playing = null; speakTts(q); } };
+    a.onerror = fallback;
+    // als Blob abspielen: kommt so aus dem Offline-Speicher, ohne Teil-Anfragen; im Tablet-ZIP (file://) direkt
+    const start = (src) => {
+      if (playing !== a) return;
+      a.src = src || url;
+      a.play().catch((e) => { if (!e || e.name !== 'NotAllowedError') fallback(); });
+    };
+    // schon vorgeladen: sofort (iPad-Safari lässt Ton nur direkt nach dem Tippen zu), sonst nach dem Laden
+    if (location.protocol === 'file:') start(url);
+    else if (ready.has(url)) start(ready.get(url));
+    else blobOf(url).then(start);
+  };
+  // Tondateien einer Prüfung vorab holen (Web-App: landen im Offline-Speicher „nt-audio“)
+  const blobs = new Map(), ready = new Map();
+  const blobOf = (url) => {
+    if (!blobs.has(url)) {
+      blobs.set(url, fetch(url).then((r) => (r.ok ? r.blob() : null)).then((b) => (b ? URL.createObjectURL(b) : null))
+        .catch(() => null).then((u) => { if (u) ready.set(url, u); else blobs.delete(url); return u; }));
+    }
+    return blobs.get(url);
+  };
+  X.preload = (qs) => { if (location.protocol !== 'file:') qs.map(X.audioUrl).filter(Boolean).forEach(blobOf); };
+  window.addEventListener('hashchange', () => X.stop());
+  const speakTts = (q) => {
     if (!JP.canSpeak()) return;
     speechSynthesis.cancel();
     const voices = JP.voices().filter((v) => /^ja/i.test(v.lang));
@@ -109,9 +147,11 @@
     const qs = L.flat(run), q = qs[pos], chosen = run.answers[pos];
     const [jpI, deI] = INSTR[q.kind] || ['', ''];
     const listen = isListen(q);
-    const speak = JP.canSpeak();
+    const audio = listen && X.audioUrl(q);
+    const speak = !!audio || JP.canSpeak();
+    const credit = audio && window.EXAM_AUDIO_CREDIT ? `<span class="small muted exam-credit">Stimmen: ${esc(window.EXAM_AUDIO_CREDIT)}</span>` : '';
     const body = listen
-      ? `<div class="exam-listen"><button class="btn btn-sec exam-play" data-play>${icon('speak')} Anhören</button><span class="small muted">so oft du willst</span></div>
+      ? `<div class="exam-listen"><button class="btn btn-sec exam-play" data-play>${icon('speak')} Anhören</button><span class="small muted">so oft du willst</span>${credit}</div>
          ${q.prompt ? `<div class="exam-prompt" lang="ja">${jpHtml(q.prompt)}</div>` : ''}
          ${speak ? `<details class="exam-text-toggle"><summary class="small muted">Keine japanische Stimme? Text zeigen</summary><div class="exam-listen-text">${listenText(q)}</div></details>` : `<p class="small muted">Dieses Gerät kann nicht vorlesen – hier ist der Text:</p><div class="exam-listen-text">${listenText(q)}</div>`}`
       : `<div class="exam-prompt" lang="ja">${jpHtml(q.prompt)}</div>${['gpick', 'fill', 'gfill', 'order'].includes(q.kind) && q.de ?`<div class="small muted">${esc(q.de)}</div>` : ''}`;
@@ -206,6 +246,7 @@
       const pos = Math.min(run.pos, run.answers.length - 1);
       draw(questionHtml(run, pos));
       stage.dataset.pos = pos;
+      X.preload(L.flat(run).filter(isListen));
       // beim ersten Anzeigen einer Hörfrage gleich abspielen
       const q = L.flat(run)[pos];
       if (isListen(q) && run.answers[pos] === null) setTimeout(() => X.play(q), 250);

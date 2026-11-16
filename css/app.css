@@ -2600,7 +2600,8 @@ input.sp-has { padding-right: 40px; }
 .exam-opt.sel { border-color: var(--sec); background: var(--sec-soft); }
 .exam-n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--paper-2); color: var(--muted); font-size: 13px; font-weight: 800; display: grid; place-items: center; }
 .exam-opt.sel .exam-n { background: var(--sec); color: #fff; }
-.exam-listen { display: flex; align-items: center; gap: 12px; margin: 6px 0 10px; }
+.exam-listen { display: flex; align-items: center; gap: 12px; margin: 6px 0 10px; flex-wrap: wrap; }
+.exam-credit { margin-left: auto; font-size: 11px; }
 .exam-listen-text { background: var(--paper-2); border-radius: 10px; padding: 8px 12px; margin: 6px 0; line-height: 1.9; }
 .exam-nav { margin-top: 12px; }
 .exam-verdict { font-size: 30px; font-weight: 800; }

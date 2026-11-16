@@ -1,0 +1,14 @@
+Nihongo Techō – Tondateien der Hördialoge in den Prüfungen (audio/exam/)
+=========================================================================
+
+Erzeugt mit VOICEVOX (https://voicevox.hiroshiba.jp) durch tools/build/build-exam-audio.mjs.
+Stimmen: VOICEVOX:四国めたん, VOICEVOX:玄野武宏, VOICEVOX:青山龍星, VOICEVOX:No.7
+
+Es gelten die Nutzungsbedingungen von VOICEVOX und der jeweiligen Stimme:
+  四国めたん   https://zunko.jp/con_ongen_kiyaku.html
+  玄野武宏 / 青山龍星   https://virvoxproject.wixsite.com/official/voicevoxの利用規約
+  No.7        https://voiceseven.com/
+
+Wer diese Dateien weitergibt, muss die Angabe „VOICEVOX:Name“ beibehalten.
+Nicht erlaubt: die Dateien verkaufen oder damit Sprach-KI trainieren.
+Die Texte der Dialoge stammen aus js/exam-data.js (selbst verfasst, CC-BY-SA 4.0).
