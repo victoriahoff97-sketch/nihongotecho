@@ -67,6 +67,7 @@
     '/ueben': [
       { target: '#view a.mode-card[href^="#/ueben/heute"]', text: 'Das Wichtigste: alles, was heute fällig ist, in einer Runde.' },
       { target: '#view a.mode-card[href="#/ueben/einstufen"]', text: 'Neues erst einstufen, damit du nichts übst, was du schon kannst.' },
+      { target: '#view a.mode-card[href="#/pruefung"]', text: 'Kannst du eine Lektion zu 85 %, wartet hier ein kleiner Test – wie beim JLPT.' },
     ],
     // Karteikarten und „Jetzt wiederholen“ (Auswahl oder laufende Runde). heart: als Herzstück hervorgehoben.
     // Das Schreibfeld steht je nach Lage an drei Stellen – gezeigt wird immer nur einer der drei ersten Schritte.

@@ -362,7 +362,7 @@
     const packs = {};
     Object.entries(await App.packs.state()).forEach(([id, m]) => { if (m && (App.packById(id) || {}).kind === 'level') packs[id] = m; });
     const list = async (key) => ((await App.db.get('meta', key)) || {}).value || [];
-    return { srs: Array.from(S.srs.values()), settings: S.settings, packs, deletedPackItems: await list('deletedPackItems'), deletedSeeds: await list('deletedSeeds') };
+    return { srs: Array.from(S.srs.values()), settings: S.settings, packs, deletedPackItems: await list('deletedPackItems'), deletedSeeds: await list('deletedSeeds'), exams: ((await App.db.get('meta', 'exams')) || {}).value || null };
   };
   // Backup bzw. Teilen-Paket als Datei bauen → { blob, name }
   App.buildExport = async ({ withFiles = true, share = false, sections = null, sources = null } = {}) => {
@@ -385,6 +385,7 @@
       data.srs = p.srs; data.settings = p.settings; data.ink = await App.db.all('ink');
       data.packs = p.packs;
       data.deletedPackItems = p.deletedPackItems;
+      if (p.exams) data.exams = p.exams;
     }
     if (withFiles) {
       data.files = [];
@@ -423,6 +424,7 @@
         data.deletedPackItems.forEach((x) => del.add(x));
         await App.db.put('meta', { key: 'deletedPackItems', value: Array.from(del) });
       }
+      if (data.exams && App.exams) await App.exams.replace(data.exams);
     }
     // Teilen-Paket: Wörter, die es hier schon gibt, nicht doppelt anlegen
     const skip = data.share ? App.paketLogic.shareSkip(Array.from(S.items.values()), data.items, App.autofillLogic.dupes) : new Set();

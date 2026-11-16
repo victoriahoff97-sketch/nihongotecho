@@ -7,7 +7,7 @@
   B.SUBDIR = 'NihongoTecho-Sicherung';
   B.KEEP_DAYS = 14;
   B.KEEP_PRE = 3;
-  B.META_KEYS = ['settings', 'packs', 'deletedPackItems', 'deletedSeeds'];
+  B.META_KEYS = ['settings', 'packs', 'deletedPackItems', 'deletedSeeds', 'exams'];
   const DIR_FILES = 'anlagen', DIR_INK = 'stiftnotizen', DIR_VER = 'versionen';
 
   // ---------- Namen ----------
@@ -79,7 +79,7 @@
     app: B.APP, format: B.FORMAT,
     items: snap.items.map((i) => { const c = Object.assign({}, i); delete c._st; return c; }),
     srs: snap.srs, settings: snap.settings, packs: snap.packs || {},
-    deletedPackItems: snap.deletedPackItems || [], deletedSeeds: snap.deletedSeeds || [], files: snap.files,
+    deletedPackItems: snap.deletedPackItems || [], deletedSeeds: snap.deletedSeeds || [], exams: snap.exams || null, files: snap.files,
   });
 
   // Liegt im Ordner ein Stand eines anderen Geräts, den dieses Gerät weder geschrieben noch übernommen hat?

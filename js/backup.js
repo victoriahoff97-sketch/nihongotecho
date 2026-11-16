@@ -59,6 +59,8 @@
       { key: 'deletedSeeds', value: daten.deletedSeeds || [] },
     ];
     if (daten.settings) meta.push({ key: 'settings', value: daten.settings });
+    // Prüfungen (Abzeichen, angefangene Durchgänge): ältere Sicherungen ohne sie lassen den Stand hier stehen
+    if (daten.exams) meta.push({ key: 'exams', value: daten.exams });
     const ops = [{ store: 'items', clear: true, put: daten.items }, { store: 'srs', clear: true, put: daten.srs || [] }, { store: 'meta', put: meta }];
     if (files) ops.push({ store: 'files', clear: true, put: daten.files || [] });
     return ops;

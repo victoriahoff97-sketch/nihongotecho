@@ -129,6 +129,7 @@
     try { await App.wkKanjiMigrate(); } catch (e) { console.error(e); } // einmalig: WaniKani-Kanji nicht mehr zum Lesen (js/vocabcheck.js)
     try { await App.knownIvlMigrate(); } catch (e) { console.error(e); } // einmalig: schon gelernte Karten bleiben „Kann ich“, als die Grenze auf 2 Monate stieg (js/vocabcheck.js)
     try { await App.pause.tick({ quiet: true }); } catch (e) { console.error(e); } // Urlaubsmodus: verstrichene Urlaubstage nachholen (js/pause.js)
+    try { await App.exams.load(); } catch (e) { console.error(e); } // Prüfungen: Stand für die Lernstand-Karten (js/exam-store.js)
     if (App.store.settings.sidebarCollapsed) document.body.classList.add('sidebar-collapsed');
     App.applyTheme();
     App.initSearch();

@@ -55,6 +55,7 @@
         <a class="mode-card sec-grammar" href="#/ueben/luecken"><span class="k">助</span><h3>Lückensätze</h3><span class="muted">Welche Partikel gehört in die Lücke? Mehrere Sätze auf einer Seite, Partikeln aus der Wortbank hineinziehen.</span></a>
         <a class="mode-card sec-kanji" href="#/ueben/kanji"><span class="k">書</span><h3>Kanji-Quiz</h3><span class="muted">Bedeutung sehen → mit dem Stift schreiben, oder Lesungen erkennen.</span>${wDue ? `<span class="badge count">${wDue} zu schreiben</span>` : ''}</a>
         <a class="mode-card sec-kanji" href="#/ueben/kana"><span class="k">あ</span><h3>Kana schreiben</h3><span class="muted">Hiragana und Katakana: Strichfolge ansehen, nachspuren, dann aus dem Kopf schreiben.</span>${(() => { const n = App.kanaQueue().due.length; return n ? `<span class="badge count">${n} fällig</span>` : ''; })()}</a>
+        <a class="mode-card sec-practice" href="#/pruefung"><span class="k">試</span><h3>Prüfungen</h3><span class="muted">Wie ein kleiner JLPT: Vokabeln, Grammatik, Hören und Kanji – je Lektion und Stufe, frei ab 85 % „kann ich“.</span>${(() => { const n = App.examLogic.STAGES.filter((s) => App.exam.status(s.key).state === 'open').length; return n ? `<span class="badge count">${n} bereit</span>` : ''; })()}</a>
       </div></div>`;
   });
 

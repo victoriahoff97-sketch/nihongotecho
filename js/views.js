@@ -215,7 +215,7 @@
     const p = progOf(sets);
     return `${foldHead('jlpt', `JLPT ${lvl} – Lernstand`, `${p.pct} % kann ich`)}
       <div class="card${foldCls('jlpt')}">${pctHead(p, nextTxt, cardBtns(sets, `lvl=${lvl}`))}
-        ${progBar(p.tot)}${miniBars(p, `lvl=${lvl}`)}</div>`;
+        ${progBar(p.tot)}${miniBars(p, `lvl=${lvl}`)}${App.exam ? App.exam.cardLine([[lvl.toLowerCase(), `JLPT ${lvl}`]]) : ''}</div>`;
   };
 
   // ---------- Startseite: Genki-Lernstand ----------
@@ -237,7 +237,8 @@
     return `${foldHead('genki', `${GENKI} – Lernstand`, `${g.pct} % kann ich · ${p.doneLessons} von ${p.lessons.length} Lektionen`)}
       <div class="card${foldCls('genki')}">${pctHead(g, `${p.doneLessons} von ${p.lessons.length} Lektionen abgeschlossen`, cardBtns(sets, `src=${src}`))}
         ${progBar(g.tot)}
-        <div class="lesson-strip" style="margin-top:14px">${p.lessons.map(tile).join('')}</div></div>`;
+        <div class="lesson-strip" style="margin-top:14px">${p.lessons.map(tile).join('')}</div>
+        ${App.exam ? App.exam.cardLine([['genki1', 'Genki gesamt']].concat(p.lessons.map((x) => [`genki1-L${x.l}`, `L${x.l}`]))) : ''}</div>`;
   };
 
   // ---------- Startseite: Leisten anordnen und Schnellaktionen wählen ----------

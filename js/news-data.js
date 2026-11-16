@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-16-pruefungen', date: '16. November',
+      items: [
+        { t: 'Prüfungen 試験', d: 'Ab 85 % einer Genki-Lektion gibt es einen Minitest, für Genki gesamt und JLPT N5–N3 eine große Prüfung – unter Üben › Prüfungen und auf der Startseite.' },
+        { t: 'Wie beim JLPT', d: 'Vier Teile – Vokabeln, Grammatik, Hören und Kanji – mit je vier Antworten zum Antippen. Keine Uhr: Du kannst jederzeit pausieren, jede Antwort wird gespeichert.' },
+        { t: 'Abzeichen 合格', d: 'Ab 80 % (und mindestens 60 % in jedem Teil) bekommst du das Abzeichen. Am Ende fragt die App, ob deine Fehler zurück in die Lernschlange sollen.' },
+      ],
+    },
+    {
       id: '2026-11-16-kreuz-mitte', date: '16. November',
       items: [
         { t: 'Kreuz in der Strichfolge mittig', d: 'Die Hilfslinien hinter der Kanji- und Kana-Animation liegen jetzt genau in der Mitte – so lässt sich viel leichter nachzeichnen.' },
