@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-16-satzbau-kaestchen', date: '16. November',
+      items: [
+        { t: 'Satzbau-Aufgaben klarer', d: 'In den Prüfungen sind die Lücken bei ★-Aufgaben jetzt Kästchen statt Striche. Die vier Antworten kommen in die vier Kästchen – gesucht ist das ★-Kästchen.' },
+      ],
+    },
+    {
       id: '2026-11-16-pruefungen', date: '16. November',
       items: [
         { t: 'Prüfungen 試験', d: 'Ab 85 % einer Genki-Lektion gibt es einen Minitest, für Genki gesamt und JLPT N5–N3 eine große Prüfung – unter Üben › Prüfungen und auf der Startseite.' },

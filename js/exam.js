@@ -62,12 +62,14 @@
     gfill: ['（　）に何を入れますか。', 'Was passt in die Lücke?'],
     mean: ['正しい意味はどれですか。', 'Was bedeutet das Wort?'],
     gpick: ['この文の文法はどれですか。', 'Welcher Grammatikpunkt steckt in diesem Satz?'],
-    order: ['★に入るものはどれですか。', 'Welches Teil gehört an die Stelle ★?'],
+    order: ['★に入るものはどれですか。', 'Die vier Antworten kommen in die vier Kästchen. Welche gehört ins ★-Kästchen?'],
     hear: ['聞いて、正しい意味を選んでください。', 'Hör zu: Was bedeutet der Satz?'],
     dialog: ['会話を聞いて、答えを選んでください。', 'Hör dir das Gespräch an und wähle die Antwort.'],
   };
   // Furigana-Schreibweise → HTML; __x__ = unterstrichen
-  const jpHtml = (s) => JP.ruby(s || '').replace(/__(.+?)__/g, '<span class="exam-u">$1</span>');
+  // Satzbau: ＿＿ = leeres Kästchen für ein Teil, ★ = das gesuchte Kästchen (sonst sehen die Striche wie Schrift aus)
+  const jpHtml = (s) => JP.ruby(s || '').replace(/__(.+?)__/g, '<span class="exam-u">$1</span>')
+    .replace(/＿＿/g, '<span class="exam-slot" aria-label="Lücke"></span>').replace(/★/g, '<span class="exam-slot star" aria-label="gesuchte Lücke">★</span>');
   const listenText = (q) => (q.dialog ? q.dialog.map(([who, t]) => `<div><b>${esc(who)}:</b> <span lang="ja">${jpHtml(t)}</span></div>`).join('') : `<div lang="ja">${jpHtml(q.say || q.text || '')}</div>`);
   const isListen = (q) => q.part === 'listening';
 

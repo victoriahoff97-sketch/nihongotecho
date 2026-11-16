@@ -2630,3 +2630,5 @@ input.sp-has { padding-right: 40px; }
 .exam-cta.pass { background: color-mix(in srgb, var(--matcha) 18%, transparent); color: var(--matcha); }
 .exam-cta.run { background: var(--yamabuki-soft); color: var(--ink); }
 .exam-text-toggle summary { cursor: pointer; margin-top: 4px; }
+.exam-slot { display: inline-block; width: 3.2em; height: 1.35em; margin: 0 3px; vertical-align: -0.2em; border: 2px dashed var(--line-2, #c9c4b8); border-radius: 8px; background: var(--paper-2); }
+.exam-slot.star { border: 2px solid var(--sec); background: var(--sec-soft); color: var(--sec); font-size: 0.7em; line-height: 1.6em; height: 1.9em; width: 4.6em; text-align: center; vertical-align: 0.05em; }
