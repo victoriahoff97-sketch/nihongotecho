@@ -7,6 +7,21 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-16-verb-muster', date: '16. November',
+      items: [
+        { t: 'Verben mit Partikel – öfter gefunden', d: 'Eigene Verben bekommen ihr Partikel-Muster (人に会う) jetzt auch in der ます-Form, nur in Kana oder mit anderem Kanji aus den Paketen.' },
+        { t: 'Partikel selbst eintragen', d: 'Im Vokabel-Formular (Ausführlich) gibt es bei Verben wieder das Feld „Mit Partikel“, z. B. 人に会う = jemanden treffen.' },
+        { t: 'Filter „Verben ohne Partikel“', d: 'Vokabeln › Wortart › „Verben ohne Partikel“ zeigt, wo noch ein Muster fehlt.' },
+      ],
+    },
+    {
+      id: '2026-11-16-deutsch-auswahl', date: '16. November',
+      items: [
+        { t: 'Besseres Deutsch beim Ausfüllen', d: '„Automatisch ausfüllen“ im Vokabel-Formular wählt jetzt eine deutsche Bedeutung, die zur Wortart passt (練習 → Übung statt üben) und bevorzugt kurze Wörter.' },
+        { t: 'Andere Bedeutung antippen', d: 'Unter dem Feld „Deutsch“ stehen nach dem Ausfüllen die weiteren Bedeutungen aus dem Wörterbuch – ein Tipp, und sie steht im Feld.' },
+      ],
+    },
+    {
       id: '2026-11-16-forum-neueste', date: '16. November',
       items: [
         { t: 'Forum: Neuestes oben', d: 'Alle Beiträge der Gruppe in einer Liste: Was zuletzt geschrieben, beantwortet oder geändert wurde, steht oben. 💬/💡 steht nur noch im Beitrag.' },

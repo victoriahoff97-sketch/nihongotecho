@@ -247,6 +247,26 @@
     const show = (html) => { box.hidden = false; box.innerHTML = html; App.hydrateIcons(box); };
     const hide = () => { box.hidden = true; box.innerHTML = ''; };
     const set = (name, v) => { const el = root.querySelector(`[name="${name}"]`); if (el) el.value = v; };
+    // Weitere deutsche Bedeutungen unter dem Deutsch-Feld: alle außer der, die gerade drinsteht; Tippen tauscht
+    let deAlts = [];
+    const altBox = root.querySelector('[data-de-alts]');
+    const showAlts = () => {
+      if (!altBox) return;
+      const now = val(root, 'de'), rest = deAlts.filter((g) => g !== now);
+      altBox.hidden = !rest.length;
+      altBox.innerHTML = rest.length ? `<span class="small muted">Oder:</span>${rest.map((g) => `<button type="button" class="chip" data-de-alt="${esc(g)}">${esc(g)}</button>`).join('')}` : '';
+    };
+    if (altBox) {
+      altBox.addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-de-alt]');
+        if (!b) return;
+        const inp = root.querySelector('[name=de]');
+        inp.value = b.dataset.deAlt;
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        showAlts();
+      });
+      root.querySelector('[name=de]').addEventListener('input', showAlts);
+    }
 
     const apply = async (e) => {
       const my = ++run;
@@ -256,9 +276,13 @@
       const acc = App.accentOf({ type: 'vocab', kana: w.kana, kanji: w.kanji, pos: val(root, 'pos') || mp.pos });
       const cur = {};
       ['de', 'en', 'pos', 'vcls', 'accent'].forEach((n) => { cur[n] = val(root, n); });
-      const found = AL.fill(cur, { de: App.firstGloss(e.de), en: e.en || '', pos: mp.pos, vcls: mp.cls || '', accent: acc ? String(acc.main) : '' });
+      // Deutsch passend zur Wortart (Nomen → Übergang statt übergehen); die übrigen Bedeutungen zum Antippen
+      const ger = AL.pickGerman(e.de, cur.pos || mp.pos);
+      const found = AL.fill(cur, { de: ger.de, en: e.en || '', pos: mp.pos, vcls: mp.cls || '', accent: acc ? String(acc.main) : '' });
       set('kana', w.kana); set('kanji', w.kanji);
       Object.entries(found).forEach(([n, v]) => set(n, v));
+      deAlts = [ger.de].concat(ger.alts).filter(Boolean);
+      showAlts();
       root.querySelector('[name=pos]').dispatchEvent(new Event('change'));
       root.dispatchEvent(new Event('nt-autofilled')); // z. B. Kategorie neu raten
       const auto = root.querySelector('[name=jlpt] option[value=auto]');
@@ -492,6 +516,30 @@
 
   // ---------- Formulare je Typ ----------
   const FORMS = {};
+  // Partikel-Muster im Formular: als Klartext „人に会う = jemanden treffen“, eine Zeile je Muster
+  const useLine = (u) => `${JP.plain(JP.useText(u.jp))}${u.de ? ' = ' + u.de : ''}`;
+  const useLines = (it) => (Array.isArray(it.use) ? it.use : []).filter((u) => u && u.jp).map(useLine).join('\n');
+  // Lesung eines Nomens im Muster: aus den eigenen Vokabeln, sonst die üblichen Platzhalter
+  const useLookup = (w) => { const hit = App.itemsOf('vocab').find((x) => x.kanji === w && x.kana); return hit ? hit.kana.replace(/[〜～]/g, '') : ({ 人: 'ひと', 物: 'もの', 所: 'ところ', 何: 'なに' })[w] || ''; };
+  // Feld lesen: unveränderte Zeilen behalten ihre Notation, geänderte werden neu zerlegt. Geändert oder geleert = useHand,
+  // dann füllt die App (verb-logic) nichts mehr nach.
+  const readUse = (root, it) => {
+    const ta = root.querySelector('[name=vuse]');
+    if (!ta) return;
+    const old = (Array.isArray(it.use) ? it.use : []).filter((u) => u && u.jp);
+    const before = old.map(useLine).join('\n');
+    const now = ta.value.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (now.join('\n') === before.split('\n').map((l) => l.trim()).filter(Boolean).join('\n')) return; // nichts geändert
+    const verb = { kanji: it.kanji, kana: it.kana };
+    it.use = now.map((l) => {
+      const keep = old.find((u) => useLine(u).trim() === l);
+      if (keep) { const k = { jp: keep.jp, de: keep.de || '' }; return k; }
+      const i = l.indexOf('=');
+      const jp = (i < 0 ? l : l.slice(0, i)).trim(), de = i < 0 ? '' : l.slice(i + 1).trim();
+      return { jp: JP.useParse(jp, verb, useLookup), de };
+    }).filter((u) => u.jp);
+    it.useHand = true;
+  };
   FORMS.vocab = {
     html: (it) => {
       const short = formShort();
@@ -505,9 +553,12 @@
         <span class="small muted">Wort eintippen – das Wörterbuch füllt die leeren Felder aus.</span></div>
       <div class="sugg" data-af hidden></div>
       ${!it._existing ? '<div class="dupe-warn" data-dupe hidden></div>' : ''}
-      <div class="two"><div class="field"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}" placeholder="z. B. essen / die Schule"></div>
+      <div class="two"><div class="field"><label>Deutsch *</label><input class="input" name="de" value="${esc(it.de || '')}" placeholder="z. B. essen / die Schule"><div class="de-alts" data-de-alts hidden></div></div>
       <div class="field full-only"><label>Wortart</label><div class="row" style="gap:10px;flex-wrap:nowrap"><select class="input" name="pos" style="flex:1;min-width:0"><option value="">–</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${it.pos === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
         <label class="row small" style="gap:6px;flex-wrap:nowrap;white-space:nowrap;cursor:pointer" title="Zusätzlich zur Wortart: Lautwort wie ドキドキ, わくわく (オノマトペ). Hakt sich beim Eintippen von selbst an."><input type="checkbox" name="kategorie" ${App.ono && (it._existing ? App.ono.has(it) : App.onoIs && App.onoIs(it)) ? 'checked' : ''}> ＋ Onomatopoesie</label></div></div></div>
+      <div class="field full-only" data-vuse-field ${it.pos === 'verb' || (it.use && it.use.length) ? '' : 'hidden'}><label>Mit Partikel <small>eine Zeile je Muster: 人に会う = jemanden treffen · Lesungen ergänzt die App</small></label>
+        <textarea class="input jp-in" name="vuse" rows="2" placeholder="人に会う = jemanden treffen">${esc(useLines(it))}</textarea>
+        ${(it.use || []).some((u) => u && u.src === 'satz') ? '<div class="small muted">Aus deinem Beispielsatz übernommen – du kannst es ändern.</div>' : ''}</div>
       <div class="full-only">${enLevelFields(it)}</div>
       <div class="field full-only"><label>Pitch Accent <small>0 = flach, 1 = Abfall nach der 1. More … · leer = automatisch</small></label><input class="input" name="accent" inputmode="numeric" style="max-width:120px" value="${esc(it.accent ?? '')}" placeholder="auto"></div>
       ${exBlock(it.examples, true)}
@@ -543,6 +594,14 @@
         else if (/(る|う|く|ぐ|す|つ|ぬ|ぶ|む)$/.test(kana.value) && /^[a-zäöüß]+(en|n)$/.test(de)) pos.value = 'verb';
       });
       root.querySelector('[name=de]').addEventListener('blur', () => { if (!pos.value && /^(der|die|das) /i.test(val(root, 'de'))) pos.value = 'noun'; });
+      // „Mit Partikel“ nur bei Verben (oder wenn schon ein Muster drinsteht)
+      const vuse = root.querySelector('[data-vuse-field]');
+      if (vuse) {
+        const showUse = () => { vuse.hidden = !(pos.value === 'verb' || val(root, 'vuse')); };
+        pos.addEventListener('change', showUse);
+        kana.addEventListener('blur', showUse);
+        root.addEventListener('nt-autofilled', showUse);
+      }
       // Häkchen „＋ Onomatopoesie“ bei der Wortart: folgt dem eingetippten Wort, bis man es selbst umstellt
       const cat = root.querySelector('[name=kategorie]');
       if (cat && App.onoIs) {
@@ -564,6 +623,7 @@
       readEnLevel(root, it);
       if (!it.de && !it.en) throw new Error('Bitte die deutsche (oder englische) Bedeutung eingeben.');
       it.examples = readEx(root);
+      readUse(root, it);
       it.notes = val(root, 'notes');
       if (root.querySelector('[name=check]')) it._check = val(root, 'check');
       readCommon(root, it);

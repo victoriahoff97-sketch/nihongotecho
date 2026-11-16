@@ -120,6 +120,56 @@
     return out.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'same' ? -1 : 1));
   };
 
-  const P = { rank, sure, wordForms, fill, guessClass, sentenceData, dupes };
+  // ---------- Deutsch aus dem Wörterbuch wählen ----------
+  // Bedeutungen einzeln: am „;“ außerhalb von Klammern getrennt, aufgeräumt („(als Präfix) öffentliche …“ →
+  // „öffentliche“), ohne Doppelte. Kurze Klammern wie „(sich)“ und Wortanfänge wie „Handels…“ bleiben.
+  const cleanGloss = (g) => String(g || '').trim()
+    .replace(/^(\((?=[^)]*[\s.])[^)]*\)\s*)+/, '')
+    .replace(/\s+(…|\.\.\.)+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const glossList = (s) => {
+    const str = String(s || ''), parts = [];
+    let depth = 0, from = 0;
+    for (let i = 0; i <= str.length; i++) {
+      const c = str[i];
+      if (c === '(' || c === '（') depth++;
+      else if ((c === ')' || c === '）') && depth > 0) depth--;
+      else if (i === str.length || (c === ';' && depth === 0)) { parts.push(str.slice(from, i)); from = i + 1; }
+    }
+    const out = [];
+    for (const p of parts) { const g = cleanGloss(p); if (g && !out.includes(g)) out.push(g); }
+    return out;
+  };
+  // Kern einer Bedeutung: ohne Klammern und Artikel („der Lehrer“ → „Lehrer“, „ausfallen (Haare)“ → „ausfallen“)
+  const core = (g) => g.replace(/\([^)]*\)/g, ' ').replace(/^(der|die|das|ein|eine)\s+/i, '').replace(/\s+/g, ' ').trim();
+  // Nomen bzw. Nomengruppe („Stammgast“, „häufiger Besucher“): das letzte Wort ist groß geschrieben
+  const lastWord = (g) => core(g).split(' ').pop() || '';
+  const isNounish = (g) => /^[A-ZÄÖÜ]/.test(lastWord(g));
+  // Verb bzw. Wendung („üben“, „Vorwürfe machen“, „jmdn. ärgern“): endet auf ein klein geschriebenes 〜(e)n
+  const isVerbish = (g) => /^[a-zäöüß]+(e?n|ern|eln)$/.test(lastWord(g)) && !/^(ein|eine|kein|einen|keinen)$/.test(lastWord(g));
+  const NOUNS = ['noun', 'time', 'counter', 'pronoun'];
+  const ADJS = ['i-adj', 'na-adj', 'adverb'];
+  // passt die Bedeutung zur Wortart? (null = Wortart ohne Vorliebe)
+  const fitsPos = (g, pos) => {
+    if (NOUNS.includes(pos)) return isNounish(g);
+    if (pos === 'verb') return isVerbish(g);
+    if (ADJS.includes(pos)) return !isNounish(g) && !isVerbish(g) && !/\bsein$/.test(core(g));
+    return null;
+  };
+  // kurz = höchstens 4 Wörter ohne Klammern und 6 mit; „Handels…“ (nur ein Wortanfang) zählt nie als kurz
+  const isShort = (g) => core(g).split(' ').filter(Boolean).length <= 4 && g.split(' ').length <= 6 && !/…$/.test(g);
+
+  // Das Deutsch fürs Formular: zuerst eine kurze Bedeutung, die zur Wortart passt (Nomen → Übergang statt übergehen),
+  // dann irgendeine kurze, dann eine passende, sonst die erste. alts = die übrigen Bedeutungen zum Antippen.
+  const pickGerman = (de, pos) => {
+    const list = glossList(de);
+    if (!list.length) return { de: '', alts: [] };
+    const fit = (g) => fitsPos(g, pos) !== false;
+    const best = list.find((g) => fit(g) && isShort(g)) || list.find(isShort) || list.find(fit) || list[0];
+    return { de: best, alts: list.filter((g) => g !== best) };
+  };
+
+  const P = { rank, sure, wordForms, fill, guessClass, sentenceData, dupes, glossList, pickGerman };
   if (typeof module !== 'undefined' && module.exports) module.exports = P; else root.App.autofillLogic = P;
 })(typeof window !== 'undefined' ? window : globalThis);

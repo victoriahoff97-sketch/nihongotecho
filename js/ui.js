@@ -28,8 +28,8 @@
   };
   // Wortart-Filter (?pos=) für Vokabeln, Karteikarten und Einstufen. „ono“ = Onomatopoesie: Schlagwort statt Wortart,
   // denn Lautwörter sind mal Adverb, mal Verb (わくわくする) – js/ono.js
-  App.posMatch = (it, pos) => (!pos ? true : pos === 'ono' ? App.ono.has(it) : it.pos === pos);
-  App.posSelect = (active) => `<select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${active === k ? 'selected' : ''}>${l}</option>`).join('')}<option disabled>──────</option><option value="ono" title="${App.esc(App.ono.LABEL)}: ごろごろ, わくわく, ドキドキ …" ${active === 'ono' ? 'selected' : ''}>${App.ono.NAME}</option></select>`;
+  App.posMatch = (it, pos) => (!pos ? true : pos === 'ono' ? App.ono.has(it) : pos === 'verb-ohne' ? App.verbLogic.missing(it) : it.pos === pos);
+  App.posSelect = (active) => `<select class="input" data-q-select="pos"><option value="">Wortart</option>${Object.entries(App.POS).map(([k, l]) => `<option value="${k}" ${active === k ? 'selected' : ''}>${l}</option>`).join('')}<option disabled>──────</option><option value="ono" title="${App.esc(App.ono.LABEL)}: ごろごろ, わくわく, ドキドキ …" ${active === 'ono' ? 'selected' : ''}>${App.ono.NAME}</option><option value="verb-ohne" title="Verben, bei denen noch kein Partikel-Muster (人に会う) eingetragen ist" ${active === 'verb-ohne' ? 'selected' : ''}>Verben ohne Partikel</option></select>`;
   App.link = (it) => {
     if (!it) return '#/';
     if (it.type === 'kanji') return '#/kanji/' + encodeURIComponent(it.char || it.id);

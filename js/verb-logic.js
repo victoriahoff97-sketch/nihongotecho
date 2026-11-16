@@ -10,11 +10,71 @@
   const isVerb = (it) => !!it && it.type === 'vocab' && (!it.pos || it.pos === 'verb');
   const hasUse = (it) => Array.isArray(it.use) && it.use.some((u) => u && u.jp);
   const hasCls = (it) => !!(it.v && it.v.cls);
-  const needs = (it) => isVerb(it) && (!hasUse(it) || !hasCls(it));
+  // useHand: Muster im Formular selbst eingetragen oder bewusst geleert – dann ergänzt die App keins mehr
+  const needs = (it) => isVerb(it) && ((!hasUse(it) && !it.useHand) || !hasCls(it));
+  // Filter „Verben ohne Partikel“: als Verb markiert, aber kein Muster
+  const missing = (it) => !!it && it.type === 'vocab' && it.pos === 'verb' && !hasUse(it);
+
+  // ---------- Toleranter Abgleich mit dem Verb-Index ----------
+  const norm = (s) => String(s ?? '').replace(/[\s〜～~]/g, '');
+  const hira = (s) => String(s ?? '').replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  const reK = /[㐀-鿿豈-﫿々]/;
+  const okuri = (w) => w.replace(/^.*[㐀-鿿豈-﫿々]/, ''); // Endung nach dem letzten Kanji
+  // i-Reihe → u-Reihe (書き → 書く)
+  const I2U = { い: 'う', き: 'く', ぎ: 'ぐ', し: 'す', じ: 'ず', ち: 'つ', に: 'ぬ', び: 'ぶ', み: 'む', り: 'る' };
+  const MASU = /(ませんでした|ましょう|ました|ません|まして|ます)$/;
+  // Mögliche Wörterbuchformen einer ます-Form: 食べます → 食べる, 書きます → 書く/書きる, 勉強します → 勉強する/勉強す, 来ます → 来る
+  const dictForms = (w) => {
+    const s = norm(w);
+    if (!MASU.test(s)) return [];
+    const st = s.replace(MASU, '');
+    if (!st) return [];
+    const out = [];
+    if (st.endsWith('し')) out.push(st.slice(0, -1) + 'する');
+    if (st === 'き') out.push('くる');
+    const last = st.slice(-1);
+    if (I2U[last]) out.push(st.slice(0, -1) + I2U[last]);
+    out.push(st + 'る');
+    return [...new Set(out)];
+  };
+  const uniq = (keys) => { const u = [...new Set(keys.filter(Boolean))]; return u.length === 1 ? u[0] : null; };
+
+  // Schlüssel im Index: erst genau wie bei den Beispielsätzen, sonst
+  // 1. ます-Form → Wörterbuchform (nur wenn genau ein Verb passt),
+  // 2. andere Kanji-Schreibung mit derselben Lesung und Endung (逢う → 会う) – nur wenn auch das Deutsch passt (飼う ist nicht 買う).
+  const findKey = (index, it) => {
+    if (!index || !index.v || !it) return null;
+    const k0 = E.findKey(index, it);
+    if (k0) return k0;
+    const kanji = norm(it.kanji), kana = norm(it.kana);
+    const withK = !!kanji && reK.test(kanji);
+    // 1. ます-Form
+    const fk = withK ? dictForms(kanji) : [];
+    const fr = dictForms(kana || kanji);
+    if (fk.length || fr.length) {
+      const hits = [];
+      if (withK) for (const f of fk) {
+        const r = fr.find((x) => okuri(f) && x.endsWith(okuri(f))) || '';
+        hits.push(E.findKey(index, { type: 'vocab', kanji: f, kana: r, de: it.de }));
+      } else for (const f of fr) hits.push(E.findKey(index, { type: 'vocab', kana: f, de: it.de }));
+      const k = uniq(hits);
+      if (k) return k;
+    }
+    // 2. andere Kanji-Schreibung
+    if (withK && kana) {
+      const r = hira(kana), tail = okuri(kanji);
+      const c = Object.keys(index.v).filter((k) => {
+        const [w, rd] = k.split('|');
+        return rd === r && reK.test(w) && okuri(w) === tail && E.shares(it.de, index.v[k][2]);
+      });
+      if (c.length === 1) return c[0];
+    }
+    return null;
+  };
 
   // {cls, use} zum Wort oder null
   const find = (index, it) => {
-    const k = E.findKey(index, it);
+    const k = findKey(index, it);
     return k ? { cls: index.v[k][0], use: index.v[k][1] } : null;
   };
 
@@ -101,21 +161,21 @@
     const hit = index ? find(index, it) : null;
     let changed = false;
     if (hit) {
-      if (!hasUse(it) && hit.use && hit.use.length) { it.use = hit.use.map((u) => ({ jp: u.jp, de: u.de })); changed = true; }
+      if (!hasUse(it) && !it.useHand && hit.use && hit.use.length) { it.use = hit.use.map((u) => ({ jp: u.jp, de: u.de })); changed = true; }
       if (hit.cls && (!it.v || it.v.cls !== hit.cls)) { it.v = Object.assign({}, it.v, { cls: hit.cls }); changed = true; }
       return changed;
     }
     // nicht im Index: nur echte Verben (Wortart gesetzt), sonst wäre jedes Wort ohne Wortart ein Kandidat
     if (it.pos !== 'verb') return false;
     if (!hasCls(it) && (it.kana || it.kanji)) { it.v = Object.assign({}, it.v, { cls: A.guessClass(it.kana || it.kanji, it.kanji || '') }); changed = true; }
-    if (!hasUse(it)) {
+    if (!hasUse(it) && !it.useHand) {
       const u = fromExamples(it, opts.notate);
       if (u) { it.use = [u]; changed = true; }
     }
     return changed;
   };
 
-  const api = { needs, find, fill, fromSentence, fromExamples };
+  const api = { needs, missing, find, findKey, dictForms, fill, fromSentence, fromExamples };
   if (node) module.exports = api;
   else root.App.verbLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

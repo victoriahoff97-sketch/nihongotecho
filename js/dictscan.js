@@ -183,7 +183,10 @@
     const kanji = k.find((x) => fs.includes(x)) || k[0] || '';
     const kana = r.find((x) => fs.includes(x)) || r[0] || '';
     const mp = App.mapPos(entry.p || [], kanji || kana);
-    const d = { kanji, kana, de: App.firstGloss(entry.de), en: entry.en || '', pos: mp.pos };
+    // Deutsch passend zur Wortart (autofill-logic.js), ohne die Logik (Tests) wie bisher die erste Bedeutung
+    const AL = App.autofillLogic;
+    const de = AL ? AL.pickGerman(entry.de, mp.pos).de : App.firstGloss(entry.de);
+    const d = { kanji, kana, de, en: entry.en || '', pos: mp.pos };
     if (mp.cls) d.v = { cls: mp.cls };
     d.level = App.jlptOf({ type: 'vocab', kanji, kana });
     return d;

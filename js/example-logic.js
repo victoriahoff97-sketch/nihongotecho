@@ -83,7 +83,7 @@
     return changed;
   };
 
-  const api = { key, findKey, find, needs, fill, bare, addFuri };
+  const api = { key, findKey, find, needs, fill, bare, addFuri, shares };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.App.exampleLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);
