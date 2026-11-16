@@ -15,8 +15,8 @@
     {
       id: '2026-11-16-gullideckel', date: '16. November',
       items: [
-        { t: 'Gullideckel sammeln マンホール', d: 'Für jeden Meilenstein (z. B. 10 Kanji „Kann ich“) gibt es einen Gullideckel aus Japan. Die Kachel auf der Startseite zeigt, welcher als Nächstes kommt.' },
-        { t: 'Deine Japan-Karte', d: 'Die Kachel öffnet deine Japan-Karte: Gesammeltes ist bunt. Fahr über eine Präfektur oder tipp sie an – das Schild zeigt Deckel und was noch fehlt.' },
+        { t: 'Gullideckel sammeln マンホール', d: 'Für jeden Meilenstein (z. B. 10 Kanji „Kann ich“) gibt es einen Gullideckel aus Japan – einen für jede der 47 Präfekturen. Was du schon geschafft hast, zählt sofort.' },
+        { t: 'Deine Japan-Karte', d: 'Die Kachel unter den Schnellaktionen öffnet deine Japan-Karte. Darunter stehen alle Deckel mit ihrem Meilenstein.' },
       ],
     },
     {

@@ -22,7 +22,7 @@
     const done = Object.keys(snap.history || {}).filter((d) => String(snap.history[d]).includes('*'));
     const m = {
       words: snap.words || 0, kanji: snap.kanji || 0, grammar: snap.grammar || 0,
-      hiragana: snap.hiraganaAll ? 1 : 0, katakana: snap.katakanaAll ? 1 : 0,
+      phrases: snap.phrases || 0, counters: snap.counters || 0,
       diary: (snap.diaryTexts || []).reduce((n, t) => n + L.sentences(t), 0),
       ownVocab: snap.ownVocab || 0, nhk: snap.nhk || 0,
       dayAll: done.length,

@@ -16,6 +16,8 @@
     const { by } = C.assign(App.itemsOf('phrase').filter((i) => i.group === 'Zähler'), JP.plain);
     return new Map(C.ALL.map((c) => [c.id, C.known(c, S.settings.counters, by.get(c.id).map((it) => App.vocabStatus(it.id)))]));
   };
+  // Gullideckel (js/manhole.js): wie viele Zähler „Kann ich“ sind
+  App.countersKnown = () => { let n = 0; knownMap().forEach((v) => { if (v) n++; }); return n; };
   // Auffrischen: alle Zellen der Zähler, die man kann
   App.counterRefreshCards = () => { const k = knownMap(); return C.ALL.filter((c) => k.get(c.id)).flatMap(C.cards); };
 

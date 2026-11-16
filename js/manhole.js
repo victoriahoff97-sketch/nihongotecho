@@ -51,7 +51,6 @@
   const snapshot = () => {
     const S = App.store, set = S.settings, today = App.today();
     const vocab = App.itemsOf('vocab');
-    const kanaAll = (script) => { const l = App.kanaLogic.items(script); return l.length > 0 && l.every((it) => S.srs.has('w:' + it.id)); };
     const best = Object.values((App.exams && App.exams.cache && App.exams.cache.best) || {}).filter(Boolean);
     const plain = (html) => App.aLogic.plainText(html || '');
     const inked = new Set();
@@ -61,7 +60,8 @@
       words: vocab.filter((it) => App.wordState(it) === 'known').length,
       kanji: App.vocabCounts(App.itemsOf('kanji').filter((k) => k.char !== '々')).known,
       grammar: App.progressCounts(App.itemsOf('grammar')).known,
-      hiraganaAll: kanaAll('h'), katakanaAll: kanaAll('k'),
+      phrases: App.progressCounts(App.itemsOf('phrase')).known,
+      counters: App.countersKnown ? App.countersKnown() : 0,
       diaryTexts: App.itemsOf('journal').map((j) => plain(j.html)),
       ownVocab: vocab.filter(App.isOwn).length,
       nhk: vocab.filter((it) => it.sourceRef).length,
@@ -134,6 +134,7 @@
   // Einheit je Metrik [eins, viele] für „noch 3 Kanji“; Ja/Nein-Meilensteine (Schwelle 1) haben keinen Zähltext
   const UNITS = {
     words: ['Wort', 'Wörter'], kanji: ['Kanji', 'Kanji'], grammar: ['Grammatik-Eintrag', 'Grammatik-Einträge'],
+    phrases: ['Ausdruck', 'Ausdrücke'], counters: ['Zähler', 'Zähler'],
     reviews: ['Wiederholung', 'Wiederholungen'], kanjiWritten: ['Kanji schreiben', 'Kanji schreiben'],
     diary: ['Tagebuch-Satz', 'Tagebuch-Sätze'], translations: ['Übersetzung', 'Übersetzungen'],
     ownVocab: ['eigene Vokabel', 'eigene Vokabeln'], nhk: ['Wort aus NHK', 'Wörter aus NHK'],
@@ -165,11 +166,6 @@
       const have = st().manhole || {};
       return { have, m: L.metrics(snapshot()), n: PREFS.filter((d) => have[d.id]).length };
     };
-    const nextLine = (v) => {
-      const next = L.nearest(DEFS, v.m, v.have);
-      if (next) return `${next.name}: ${left(next, v.m) || next.text}`;
-      return v.n >= PREFS.length ? 'Ganz Japan gesammelt 🎉' : 'Nur noch geheime Deckel 🤫';
-    };
     const lead = (v) => newest(v.have) || L.nearest(DEFS, v.m, v.have) || PREFS[0];
 
     // ---------- Kachel ----------
@@ -177,16 +173,15 @@
       const v = view(), d = lead(v);
       return `<a class="card mh-tile" href="#/gullideckel" data-manhole-tile>
         <span class="mh-tile-cover">${cover(d, { size: 64, locked: !v.have[d.id] })}</span>
-        <span class="mh-tile-txt"><b><span lang="ja">マンホール</span> <span class="mh-count">${v.n}/${PREFS.length}</span></b>
-          <small>${esc(nextLine(v))}</small>
-          <span class="progress mh-bar"><i style="width:${(v.n / PREFS.length) * 100}%"></i></span></span>
+        <span class="mh-tile-txt"><b><span lang="ja">マンホール</span> Gullideckel <span class="mh-count">${v.n}/${PREFS.length}</span></b>
+</span>
         <span class="mh-go">Zur Sammlung ›</span></a>`;
     });
     // Handy-Startseite: eine schmale Zeile mit kleinem Deckel
     const tileHandy = () => safeHtml(() => {
       const v = view(), d = lead(v);
       return `<a class="hh-mh" href="#/gullideckel" data-hh-manhole>${cover(d, { size: 44, locked: !v.have[d.id] })}
-        <span class="hh-mh-txt"><b><span lang="ja">マンホール</span> ${v.n}/${PREFS.length}</b><small>${esc(nextLine(v))}</small></span><span class="hh-mh-go">›</span></a>`;
+        <span class="hh-mh-txt"><b><span lang="ja">マンホール</span> Gullideckel <span class="mh-count">${v.n}/${PREFS.length}</span></b></span><span class="hh-mh-go">›</span></a>`;
     });
     function safeHtml(fn) { try { return fn(); } catch (e) { console.error('Gullideckel:', e); return ''; } }
 
@@ -198,6 +193,19 @@
       const sub = got ? `gesammelt am ${dateDe(got)}` : d.secret ? '' : left(d, v.m) || 'noch nicht geschafft';
       return `${cover(d, { size: 72, locked: !got })}<div class="mh-tip-txt"><b><span lang="ja">${esc(d.kanji)}</span> ${esc(d.name)}</b>
         <span>${esc(goal)}</span>${sub ? `<small class="${got ? 'got' : ''}">${esc(sub)}</small>` : ''}</div>`;
+    };
+
+    // Alle Deckel als Liste unter der Karte, nach Kategorie wie in der Meilenstein-Tabelle
+    const gallery = (v) => {
+      const cats = [];
+      DEFS.forEach((d) => { const c = d.pref === null ? 'Bonus' : d.secret ? 'Geheim' : d.cat; let g = cats.find((x) => x.c === c); if (!g) cats.push(g = { c, list: [] }); g.list.push(d); });
+      const card = (d) => {
+        const got = v.have[d.id];
+        const goal = !got && d.secret ? 'Geheim 🤫' : d.text;
+        const sub = got ? `gesammelt am ${dateDe(got)}` : d.secret ? '' : left(d, v.m) || 'noch nicht geschafft';
+        return `<div class="mh-g-item${got ? ' got' : ''}">${cover(d, { size: 96, locked: !got && d.secret })}<b><span lang="ja">${esc(d.kanji)}</span> ${esc(d.name)}</b><span>${esc(goal)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
+      };
+      return `<h2 class="mh-g-title">Alle Deckel</h2>${cats.map((g) => `<div class="section-title">${esc(g.c)}</div><div class="mh-gallery">${g.list.map(card).join('')}</div>`).join('')}`;
     };
 
     App.route('/gullideckel', (root) => {
@@ -219,10 +227,11 @@
       const bonus = v.have[BONUS.id];
       root.innerHTML = `<div class="sec-home mh-page">
         <div class="page-head"><div class="titles"><h1><span><span lang="ja">日本</span> Sammlung</span><span class="mh-head-n">· ${v.n} von ${PREFS.length}</span>${bonus ? ' <span class="mh-head-bonus"><span lang="ja">日本</span>-Deckel ✓</span>' : ''}</h1>
-          <p>Jeder Meilenstein bringt einen Gullideckel. Fahr über eine Präfektur oder tipp sie an.</p></div></div>
+          <p>Jeder Meilenstein bringt einen Gullideckel. Fahr über eine Präfektur oder tipp sie an – unten stehen alle Deckel.</p></div></div>
         <div class="mh-wrap"><div class="card mh-mapcard"><svg class="mh-map" viewBox="${J.viewBox}" role="group" aria-label="Japan-Karte mit deinen Gullideckeln">
           <g class="mh-prefs">${paths}</g>${inset}</svg></div>
           ${bonus ? `<aside class="card mh-bonus">${cover(BONUS, { size: 140 })}<b><span lang="ja">${esc(BONUS.kanji)}</span> ${esc(BONUS.name)}</b><span>${esc(BONUS.text)}</span><small>gesammelt am ${dateDe(bonus)}</small></aside>` : ''}</div>
+        ${gallery(v)}
         <div class="mh-tip" role="tooltip" hidden></div></div>`;
       const svg = root.querySelector('.mh-map'), tip = root.querySelector('.mh-tip');
       let curId = null, lastType = 'mouse';
@@ -287,7 +296,7 @@
     const pending = [];
     let waitTimer = null;
     // Kartenrunde (hold) zählt auch als belegt: das Fenster wartet bis zum Rundenende/Verlassen, nie über einer Karte
-    const busy = () => !!document.querySelector('.modal-back') || !!(App.tour && App.tour.active && App.tour.active()) || App.manhole.held();
+    const busy = () => !!document.querySelector('.modal-back, .mh-show') || !!(App.tour && App.tour.active && App.tour.active()) || App.manhole.held();
     // Start: „Was ist neu“ (news.boot, 900 ms nach dem ersten Zeichnen) kommt zuerst – erst 1,2 s nach boot,
     // dann solange news noch auf seinen Auftritt wartet; liegt sein Fenster offen, wartet busy() wie sonst
     const newsFirst = () => !!(App.news && App.news.pending && App.news.pending());
@@ -300,30 +309,54 @@
       if (busy()) { waitTimer = setTimeout(tryOpen, 1500); return; }
       open(pending.splice(0));
     };
+    // Großer Auftritt wie bei Fitness-Medaillen: dunkler Grund mit drehenden Strahlen, der Deckel fliegt von links unten
+    // einmal über den Bildschirm, dreht sich wie eine Münze, landet groß in der Mitte und glänzt. Mehrere: der erste fliegt,
+    // darunter erscheinen alle. Bei „weniger Bewegung“ steht alles sofort still da (CSS).
     const open = (ids) => {
       const defs = ids.map((id) => DEFS.find((d) => d.id === id)).filter(Boolean);
       if (!defs.length) return;
       const one = defs.length === 1, d = defs[0];
       const total = PREFS.filter((x) => (st().manhole || {})[x.id]).length;
-      const body = one
-        ? `<div class="mh-pop"><div class="mh-stamp">${cover(d, { size: 200 })}</div>
-            <p class="mh-pop-title">Neuer Gullideckel: <b><span lang="ja">${esc(d.kanji)}</span> ${esc(d.name)}</b></p><p class="mh-pop-goal">${esc(d.text)}</p></div>`
-        : `<div class="mh-pop"><p class="mh-pop-title"><b>${defs.length === total ? `Du hast schon ${defs.length} Gullideckel!` : `${defs.length} neue Gullideckel!`}</b></p>
-            <div class="mh-pop-grid">${defs.map((x, i) => `<figure class="mh-stamp" style="animation-delay:${Math.min(i, 12) * 70}ms">${cover(x, { size: 96 })}<figcaption><span lang="ja">${esc(x.kanji)}</span> ${esc(x.name)}</figcaption></figure>`).join('')}</div></div>`;
+      const title = one ? `Neuer Gullideckel: <b><span lang="ja">${esc(d.kanji)}</span> ${esc(d.name)}</b>`
+        : `<b>${defs.length === total ? `Du hast schon ${defs.length} Gullideckel!` : `${defs.length} neue Gullideckel!`}</b>`;
+      const more = one ? `<p class="mh-show-goal">${esc(d.text)}</p>`
+        : `<div class="mh-show-grid">${defs.map((x, i) => `<figure style="animation-delay:${2300 + Math.min(i, 16) * 60}ms">${cover(x, { size: 72 })}<figcaption><span lang="ja">${esc(x.kanji)}</span> ${esc(x.name)}</figcaption></figure>`).join('')}</div>`;
       const back = document.activeElement;
-      const md = App.modal({
-        title: '<span class="jp">マンホール</span> Gullideckel', cls: 'mh-modal', body,
-        foot: '<button class="btn" data-mh-go>Zur Sammlung</button><button class="btn btn-primary" data-mh-ok autofocus>Weiter</button>',
-        onClose: () => {
+      const el = document.createElement('div');
+      el.className = 'mh-show' + (one ? '' : ' many');
+      el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Neuer Gullideckel');
+      el.innerHTML = `<div class="mh-show-rays" aria-hidden="true"></div>
+        <div class="mh-show-lid"><div class="mh-show-spin">${cover(d, { size: 220 })}<span class="mh-show-shine" aria-hidden="true"></span></div></div>
+        <div class="mh-show-txt"><p class="mh-show-title">${title}</p>${more}
+          <div class="mh-show-btns"><button class="btn" data-mh-go>Zur Sammlung</button><button class="btn btn-primary" data-mh-ok>Weiter</button></div></div>`;
+      document.body.appendChild(el);
+      let closed = false;
+      const close = (go) => {
+        if (closed) return; closed = true;
+        document.removeEventListener('keydown', onKey, true);
+        el.classList.add('out');
+        setTimeout(() => el.remove(), 250);
+        if (go && App.parseHash().path !== '/gullideckel') location.hash = '#/gullideckel';
+        else {
           if (back && back.isConnected && back.focus) try { back.focus(); } catch (e) { /* egal */ }
           const path = App.parseHash().path;
           if (path === '/' || path === '/gullideckel') App.render(true); // Kachel und Karte zeigen den neuen Deckel
-          tryOpen();
-        },
-      });
-      md.el.querySelector('[data-mh-ok]').onclick = md.close;
-      md.el.querySelector('[data-mh-go]').onclick = () => { md.close(); if (App.parseHash().path !== '/gullideckel') location.hash = '#/gullideckel'; };
-      if (App.matsuri) App.matsuri({ jp: 'マンホール！', de: one ? 'Neuer Gullideckel' : 'Neue Gullideckel' });
+        }
+        setTimeout(tryOpen, 300);
+      };
+      const onKey = (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(false); }
+        else if (e.key === 'Tab') { // Fokus bleibt bei den zwei Knöpfen
+          const b = el.querySelectorAll('button'); const i = Array.prototype.indexOf.call(b, document.activeElement);
+          e.preventDefault(); b[(i + (e.shiftKey ? b.length - 1 : 1)) % b.length].focus();
+        }
+      };
+      document.addEventListener('keydown', onKey, true);
+      el.querySelector('[data-mh-ok]').onclick = () => close(false);
+      el.querySelector('[data-mh-go]').onclick = () => close(true);
+      setTimeout(() => { const b = el.querySelector('[data-mh-ok]'); if (b && !closed) b.focus({ preventScroll: true }); }, 50);
+      // Konfetti, sobald der Deckel gelandet ist
+      setTimeout(() => { if (!closed && App.matsuri) App.matsuri({ jp: 'マンホール！', de: one ? 'Neuer Gullideckel' : 'Neue Gullideckel' }); }, 2100);
     };
     onShow((ids) => { pending.push(...ids); tryOpen(); });
 

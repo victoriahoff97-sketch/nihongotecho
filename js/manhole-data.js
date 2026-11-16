@@ -30,8 +30,8 @@
     d('fukui', 18, '福井', 'Fukui', '#f2e3c6', 'Schreiben', 'kanjiWritten', 50, '50 Kanji geschrieben'),
     d('hiroshima', 34, '広島', 'Hiroshima', '#d9534f', 'Schreiben', 'kanjiWritten', 500, '500 Kanji geschrieben'),
     // Kana geschrieben
-    d('yamaguchi', 35, '山口', 'Yamaguchi', '#4a90a4', 'Schreiben', 'hiragana', 1, 'Alle Hiragana geschrieben'),
-    d('tottori', 31, '鳥取', 'Tottori', '#e3c58a', 'Schreiben', 'katakana', 1, 'Alle Katakana geschrieben'),
+    d('yamaguchi', 35, '山口', 'Yamaguchi', '#4a90a4', 'Ausdrücke', 'phrases', 50, '50 Ausdrücke „Kann ich“'),
+    d('tottori', 31, '鳥取', 'Tottori', '#e3c58a', 'Ausdrücke', 'counters', 5, '5 Zähler „Kann ich“'),
     // Tagebuch-Sätze
     d('tochigi', 9, '栃木', 'Tochigi', '#b8312f', 'Tagebuch', 'diary', 1, 'Erster Tagebuch-Satz'),
     d('ishikawa', 17, '石川', 'Ishikawa', '#d4af37', 'Tagebuch', 'diary', 50, '50 Tagebuch-Sätze'),

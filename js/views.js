@@ -247,7 +247,7 @@
   const HO = App.homeOrderLogic;
   let homeEdit = false;
   window.addEventListener('hashchange', () => { homeEdit = false; });
-  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', manhole: 'Gullideckel', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert · 今日' };
+  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', manhole: 'Gullideckel', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert · 今日' };
   // Schnellaktionen: [Farbe, Attribute, Symbol, Titel, Untertitel] – die ersten drei stehen von Anfang an da
   const QUICK = {
     saetze: ['sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze zuordnen', 'Text einfügen, Vokabeln finden'],
@@ -517,10 +517,10 @@
         <div class="row">${due ? `<a class="btn solid" href="#/ueben/heute?auto=1">${icon('shuffle')} Jetzt wiederholen <span class="badge">${due}</span></a>` : `<a class="btn solid" href="${next ? next.href : '#/ueben/karten'}">${icon(next ? 'play' : 'practice')} ${next ? 'Neue Karten lernen' : 'Karteikarten'}</a>`}${kanaBtn}${App.refresh.button()}${App.grammarRefresh.button()}</div>
         <p class="small" style="margin-top:10px">${due ? 'Alles gemischt in einer Runde' : ''}${due && tomorrow ? ' · ' : ''}${tomorrow ? `morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu` : ''}<button class="fc-btn" data-forecast title="Prognose: die nächsten 7 Tage" aria-label="Prognose für die nächsten 7 Tage">${icon('chart')}</button>${App.pause.button()}</p></div>`}`,
       actions: quickHtml(),
+      manhole: App.manhole && App.manhole.tile ? App.manhole.tile() : '', // Gullideckel-Kachel (js/manhole.js)
       read: readStrip(),
       sammlung: `<div class="section-title">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>
       ${fitRow('stat-grid', [stat('grammar', count('grammar'), 'Grammatikpunkte'), stat('vocab', count('vocab'), 'Wörter'), stat('session', count('session'), count('session') === 1 ? 'Stunde mitgeschrieben' : 'Stunden mitgeschrieben'), stat('kanji', count('kanji'), 'Kanji'), stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')], 5)}`,
-      manhole: App.manhole && App.manhole.tile ? App.manhole.tile() : '', // Gullideckel-Kachel (js/manhole.js)
       vocab: (() => { // Jedes Wort zählt einmal: „kann ich“ erst, wenn Lesen und Deutsch → Japanisch sitzen – wie beim JLPT- und Genki-Lernstand
         const c = progOf({ vocab }).tot;
         const num = (n, color, label, st, title) => `<a href="#/vokabeln?st=${st}" style="text-decoration:none" title="${title}"><b style="font-size:26px;color:${color}">${n}</b> ${label}</a>`;
