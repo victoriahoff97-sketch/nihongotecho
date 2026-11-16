@@ -52,6 +52,23 @@
     return fresh;
   };
 
+  // Schwellen geändert (Rev. 2: Kanji ab 100 lesen / 500 schreiben): gesammelte Deckel dieser Metriken, die nach den
+  // neuen Schwellen noch nicht erreicht sind, fallen kommentarlos weg – ebenso der Bonus, wenn dann keine 47 mehr da sind.
+  // Tage mit der App: verschiedene Kalendertage aus allen Spuren (Tagesliste, Bewertungen, angelegte Einträge) + heute.
+  // Untere Grenze – die Tagesliste gibt es erst seit Oktober, also zählen auch Lern- und Speicher-Tage.
+  L.activeDays = (dates, today) => { const s = new Set((dates || []).filter((d) => /^\d{4}-\d\d-\d\d$/.test(d))); if (today) s.add(today); return s.size; };
+
+  // Rev. 3: Wörter ab 100, Grammatik 25/100, NHK 50
+  L.REV = 3;
+  L.REV_METRICS = ['kanji', 'kanjiWritten', 'words', 'grammar', 'nhk'];
+  L.prune = (defs, m, have) => {
+    const out = Object.assign({}, have || {});
+    defs.forEach((d) => { if (out[d.id] && L.REV_METRICS.includes(d.metric) && (m[d.metric] || 0) < d.n) delete out[d.id]; });
+    const prefs = defs.filter((d) => d.pref !== null && out[d.id]).length;
+    defs.forEach((d) => { if (d.pref === null && out[d.id] && prefs < d.n) delete out[d.id]; });
+    return out;
+  };
+
   L.progress = (def, m) => {
     const have = m[def.metric] || 0;
     return { have, need: def.n, left: Math.max(0, def.n - have) };

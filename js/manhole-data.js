@@ -9,26 +9,26 @@
 
   const DEFS = [
     // Wörter „Kann ich“
-    d('tokyo', 13, '東京', 'Tokio', '#e8a317', W, 'words', 10, '10 Wörter „Kann ich“'),
-    d('kanagawa', 14, '神奈川', 'Kanagawa', '#2f7fc1', W, 'words', 50, '50 Wörter „Kann ich“'),
-    d('saitama', 11, '埼玉', 'Saitama', '#e0679a', W, 'words', 100, '100 Wörter „Kann ich“'),
-    d('chiba', 12, '千葉', 'Chiba', '#f08a3c', W, 'words', 250, '250 Wörter „Kann ich“'),
-    d('aichi', 23, '愛知', 'Aichi', '#c9a227', W, 'words', 500, '500 Wörter „Kann ich“'),
-    d('hyogo', 28, '兵庫', 'Hyōgo', '#8fa9c4', W, 'words', 1000, '1000 Wörter „Kann ich“'),
-    d('wakayama', 30, '和歌山', 'Wakayama', '#5d8a5a', W, 'words', 2000, '2000 Wörter „Kann ich“'),
+    d('tokyo', 13, '東京', 'Tokio', '#e8a317', W, 'words', 100, '100 Wörter „Kann ich“'),
+    d('kanagawa', 14, '神奈川', 'Kanagawa', '#2f7fc1', W, 'words', 250, '250 Wörter „Kann ich“'),
+    d('saitama', 11, '埼玉', 'Saitama', '#e0679a', W, 'words', 500, '500 Wörter „Kann ich“'),
+    d('chiba', 12, '千葉', 'Chiba', '#f08a3c', W, 'words', 1000, '1000 Wörter „Kann ich“'),
+    d('aichi', 23, '愛知', 'Aichi', '#c9a227', W, 'words', 2000, '2000 Wörter „Kann ich“'),
+    d('hyogo', 28, '兵庫', 'Hyōgo', '#8fa9c4', W, 'words', 3500, '3500 Wörter „Kann ich“'),
+    d('wakayama', 30, '和歌山', 'Wakayama', '#5d8a5a', W, 'words', 5000, '5000 Wörter „Kann ich“'),
     // Kanji „Kann ich“
-    d('nara', 29, '奈良', 'Nara', '#b5835a', K, 'kanji', 10, '10 Kanji „Kann ich“'),
-    d('kyoto', 26, '京都', 'Kyōto', '#c8453b', K, 'kanji', 50, '50 Kanji „Kann ich“'),
-    d('shiga', 25, '滋賀', 'Shiga', '#3fa7c9', K, 'kanji', 100, '100 Kanji „Kann ich“'),
-    d('shimane', 32, '島根', 'Shimane', '#a0522d', K, 'kanji', 300, '300 Kanji „Kann ich“'),
+    d('nara', 29, '奈良', 'Nara', '#b5835a', K, 'kanji', 100, '100 Kanji „Kann ich“'),
+    d('kyoto', 26, '京都', 'Kyōto', '#c8453b', K, 'kanji', 500, '500 Kanji „Kann ich“'),
+    d('shiga', 25, '滋賀', 'Shiga', '#3fa7c9', K, 'kanji', 1000, '1000 Kanji „Kann ich“'),
+    d('shimane', 32, '島根', 'Shimane', '#a0522d', K, 'kanji', 2000, '2000 Kanji „Kann ich“ – Zeitung lesen'),
     // Grammatik „Kann ich“
-    d('gifu', 21, '岐阜', 'Gifu', '#3a6ea5', G, 'grammar', 10, '10 Grammatik-Einträge „Kann ich“'),
-    d('kagawa', 37, '香川', 'Kagawa', '#e6c07b', G, 'grammar', 50, '50 Grammatik-Einträge „Kann ich“'),
+    d('gifu', 21, '岐阜', 'Gifu', '#3a6ea5', G, 'grammar', 25, '25 Grammatik-Einträge „Kann ich“'),
+    d('kagawa', 37, '香川', 'Kagawa', '#e6c07b', G, 'grammar', 100, '100 Grammatik-Einträge „Kann ich“'),
     // Wiederholungen
     d('gunma', 10, '群馬', 'Gunma', '#d63b3b', 'Wiederholungen', 'reviews', 1000, '1000 Wiederholungen'),
     // Kanji geschrieben
-    d('fukui', 18, '福井', 'Fukui', '#f2e3c6', 'Schreiben', 'kanjiWritten', 50, '50 Kanji geschrieben'),
-    d('hiroshima', 34, '広島', 'Hiroshima', '#d9534f', 'Schreiben', 'kanjiWritten', 500, '500 Kanji geschrieben'),
+    d('fukui', 18, '福井', 'Fukui', '#f2e3c6', 'Schreiben', 'kanjiWritten', 500, '500 Kanji geschrieben'),
+    d('hiroshima', 34, '広島', 'Hiroshima', '#d9534f', 'Schreiben', 'kanjiWritten', 2000, '2000 Kanji geschrieben'),
     // Kana geschrieben
     d('yamaguchi', 35, '山口', 'Yamaguchi', '#4a90a4', 'Ausdrücke', 'phrases', 50, '50 Ausdrücke „Kann ich“'),
     d('tottori', 31, '鳥取', 'Tottori', '#e3c58a', 'Ausdrücke', 'counters', 5, '5 Zähler „Kann ich“'),
@@ -43,7 +43,7 @@
     d('niigata', 15, '新潟', 'Niigata', '#9bc34f', 'Eigene Wörter', 'ownVocab', 100, '100 eigene Vokabeln angelegt'),
     d('akita', 5, '秋田', 'Akita', '#e8892b', 'Eigene Wörter', 'ownVocab', 500, '500 eigene Vokabeln angelegt'),
     // Aus NHK / Erweiterung
-    d('miyagi', 4, '宮城', 'Miyagi', '#e86fa0', 'NHK', 'nhk', 10, '10 Wörter aus NHK/Erweiterung'),
+    d('miyagi', 4, '宮城', 'Miyagi', '#e86fa0', 'NHK', 'nhk', 50, '50 Wörter aus NHK/Erweiterung'),
     // Forum
     d('osaka', 27, '大阪', 'Ōsaka', '#e0482f', 'Forum', 'forumPosts', 1, 'Erster Forum-Beitrag'),
     d('fukuoka', 40, '福岡', 'Fukuoka', '#f0a03c', 'Forum', 'forumPosts', 50, '50 Forum-Beiträge'),

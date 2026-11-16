@@ -123,7 +123,24 @@
         s = L.bump(s, 'openDays');
         s.lastOpen = today;
       }
+      // einmalig: Öffnungstage aus allen Spuren nachzählen (vorher nur Tagesliste – viel zu wenig)
+      if (!(set.openDaysRev >= 1)) {
+        const pad = (x) => String(x).padStart(2, '0');
+        const day = (t) => { const d = new Date(t); return isNaN(d) ? '' : d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+        const dates = Object.keys(set.dayHistory || {});
+        (S.srs || new Map()).forEach((x) => { if (x.last) dates.push(day(x.last)); });
+        (S.items || new Map()).forEach((it) => { if (it.created) dates.push(day(it.created)); if (it.updated) dates.push(day(it.updated)); if (it.type === 'journal' && it.date) dates.push(String(it.date).slice(0, 10)); });
+        s = Object.assign({}, s, { openDays: Math.max(s.openDays || 0, L.activeDays(dates, today)) });
+        await App.saveSettings({ openDaysRev: 1 }, { silent: true });
+      }
       if (JSON.stringify(s) !== JSON.stringify(set.stats || {})) await App.saveSettings({ stats: s }, { silent: true });
+      // einmalig nach geänderten Schwellen: nicht mehr verdiente Deckel entfernen (L.prune)
+      if ((set.manholeRev || 0) < L.REV) {
+        const have = set.manhole || {}, kept = L.prune(DEFS, L.metrics(snapshot()), have);
+        const patch = { manholeRev: L.REV };
+        if (Object.keys(kept).length !== Object.keys(have).length) patch.manhole = kept;
+        await App.saveSettings(patch, { silent: true });
+      }
     } catch (e) { console.error('Gullideckel:', e); }
     ready = true;
     App.onChange(later);
