@@ -9,18 +9,19 @@
   const pickColor = () => COLORS[Math.floor(Math.random() * COLORS.length)];
 
   // Glückwunsch in der Mitte – auch die einzige Anzeige, wenn Bewegung abgeschaltet ist
-  const banner = () => {
+  const banner = (jp, de) => {
     const el = document.createElement('div');
     el.className = 'matsuri-banner';
     el.setAttribute('role', 'status');
-    el.innerHTML = '<b lang="ja">お疲れ様！</b><span>Wiederholt · angewendet · gehört</span>';
+    el.innerHTML = `<b lang="ja">${App.esc(jp)}</b><span>${App.esc(de)}</span>`;
     document.body.appendChild(el);
     setTimeout(() => el.classList.add('out'), 3800);
     setTimeout(() => el.remove(), 4600);
   };
 
-  App.matsuri = () => {
-    banner();
+  // jp/de: eigener Bannertext (z. B. neuer Gullideckel); ohne Angabe der Glückwunsch zur Tagesliste
+  App.matsuri = ({ jp = 'お疲れ様！', de = 'Wiederholt · angewendet · gehört' } = {}) => {
+    banner(jp, de);
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (document.querySelector('.matsuri-canvas')) return;
     const cv = document.createElement('canvas');

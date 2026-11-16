@@ -195,6 +195,7 @@
   // Als gelernt Eingestuftes bleibt beim freien Üben gelernt – außer es war falsch: dann zurück in den Übungsstapel
   App.gradeWrite = async (id, g) => {
     if (App.dayCheck) App.dayCheck.mark('kanji'); // Tagesliste: „Kanji geschrieben“
+    if (App.manhole) App.manhole.wrote(W.id(id)); // Gullideckel: Kanji geschrieben (ohne Kana)
     const s = App.store.srs.get(W.id(id));
     if (s && s.check === 'known') { if (g > 0) return s; delete s.check; }
     return App.grade(W.id(id), g);

@@ -15,15 +15,19 @@
     md.el.querySelector('[data-ok]').onclick = md.close;
   };
 
+  let waiting = false; // boot hat seinen Auftritt noch vor sich (das Gullideckel-Fenster wartet so lange)
   App.news = {
     // Beim Start: ungesehene Updates zeigen. Liegt schon ein Fenster oder die Tour offen, beim nächsten Start.
-    boot: () => setTimeout(() => {
-      if ($('.modal-back') || (App.tour && App.tour.active())) return;
-      const L = App.newsLogic;
-      const { show, seen } = L.pick({ news: App.NEWS || [], seen: L.parse(App.lsGet(KEY)), fresh: App.backup.isEmptyLocal() });
-      App.lsSet(KEY, JSON.stringify(seen));
-      open(show);
-    }, 900),
+    boot: () => { waiting = true; return setTimeout(() => {
+      try {
+        if ($('.modal-back') || (App.tour && App.tour.active())) return;
+        const L = App.newsLogic;
+        const { show, seen } = L.pick({ news: App.NEWS || [], seen: L.parse(App.lsGet(KEY)), fresh: App.backup.isEmptyLocal() });
+        App.lsSet(KEY, JSON.stringify(seen));
+        open(show);
+      } finally { waiting = false; }
+    }, 900); },
+    pending: () => waiting,
     open: () => open((App.NEWS || []).slice(0, App.newsLogic.MAX)),
   };
 

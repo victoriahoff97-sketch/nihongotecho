@@ -7,6 +7,19 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-16-satz-stimmen', date: '16. November',
+      items: [
+        { t: 'Genki-Beispielsätze mit echten Stimmen', d: 'Die Beispielsätze der Genki-Vokabeln werden jetzt mit denselben natürlichen Stimmen wie in den Prüfungen vorgelesen – auf der Vokabel-Seite und den Karteikarten.' },
+      ],
+    },
+    {
+      id: '2026-11-16-gullideckel', date: '16. November',
+      items: [
+        { t: 'Gullideckel sammeln マンホール', d: 'Für jeden Meilenstein (z. B. 10 Kanji „Kann ich“) gibt es einen Gullideckel aus Japan. Die Kachel auf der Startseite zeigt, welcher als Nächstes kommt.' },
+        { t: 'Deine Japan-Karte', d: 'Die Kachel öffnet deine Japan-Karte: Gesammeltes ist bunt. Fahr über eine Präfektur oder tipp sie an – das Schild zeigt Deckel und was noch fehlt.' },
+      ],
+    },
+    {
       id: '2026-11-16-pruefung-stimmen', date: '16. November',
       items: [
         { t: 'Natürliche Stimmen in den Prüfungen', d: 'Die Hörgespräche in den Prüfungen (試験) sprechen jetzt japanische KI-Stimmen mit richtigem Tonfall – mehrere Sprecher statt der Computerstimme.' },

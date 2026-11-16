@@ -61,6 +61,10 @@
     const graded = mode !== 'free';
     const qs = list.map((it) => ({ it, learn: mode === 'new' }));
     let i = 0, score = 0, last = null, pending = null;
+    // Gullideckel: neue Deckel (z. B. Uhrzeit-Deckel bei der ersten Bewertung) warten bis zum Rundenende oder Verlassen
+    const hold = (on) => { try { if (App.manhole) App.manhole.hold(on); } catch (e) { console.error('Gullideckel:', e); } };
+    hold(true);
+    App.onLeave(() => hold(false));
     const undoBtn = () => (last ? `<button class="btn btn-sm btn-ghost" data-kundo title="Letzte Bewertung zurücknehmen">${icon('undo')} Rückgängig</button>` : '');
     stage.addEventListener('click', async (e) => {
       if (!e.target.closest('[data-kundo]') || !last) return;
@@ -68,6 +72,7 @@
       if (l.snap) await App.srsRestore(l.snap);
       if (l.again) qs.splice(l.again, 1);
       ({ i, score } = l);
+      hold(true); // Rückgängig auf dem Endbildschirm: die Karte ist wieder da
       next();
     });
     const head = (cur) => `<div class="small muted">${undoBtn()} ${K.SCRIPTS[cur.it.script]} ${i + 1} / ${qs.length}${graded ? '' : ' · freies Üben'}${graded && W.isFirst(S.srs, cur.it.id) ? ' <span class="badge">erster Versuch</span>' : ''}</div>`;
@@ -116,6 +121,7 @@
       });
     };
     const end = () => {
+      hold(false);
       const q = kQueue(script), fresh = newOf(q);
       stage.innerHTML = `<div class="card pad-lg" style="text-align:center;max-width:640px;margin:0 auto"><div class="score-ring">${score} / ${qs.length}</div><h2>${score >= qs.length * 0.8 ? 'すごい！' : 'がんばって！'}</h2>
         <p class="muted">${qs.length > list.length ? 'Falsch Geschriebenes kam in dieser Runde gleich noch einmal dran.' : 'Alles auf Anhieb richtig geschrieben.'}${graded ? '' : ' Frei geübt – dein Lernstand bleibt, wie er ist.'}</p>

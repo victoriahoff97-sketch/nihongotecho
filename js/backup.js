@@ -19,6 +19,7 @@
   let running = null;   // laufender Durchlauf (Promise)
   let again = null;     // Auslöser während eines Durchlaufs: danach genau ein weiterer
   let restoring = false;
+  K.restoring = () => restoring; // Backup wird eingespielt: bis zum Neuladen nichts Altes zurückschreiben (Gullideckel-Zähler)
   // Sicherung von Hand (kein Ordner verbunden): Merker liegen im localStorage, Logik in remind-logic.js
   let handSaving = false;  // Backup-Datei wird gerade gebaut
   let startDirty = false;  // beim Start der App war noch etwas ungesichert

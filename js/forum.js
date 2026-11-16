@@ -42,7 +42,15 @@
   // alle Geräte der eigenen Person: eigene Beiträge gelten nicht als „neu“, man erwähnt sich nicht selbst …
   const mineIds = () => F.myUids(members, D.uid());
   let adminUid = null; // Admin (Gründer oder per Admin-Code) – darf wie der Autor „besprochen“ setzen; hier = eigene uid, wenn ich es bin
-  const stop = () => { gen++; if (unsub) unsub(); if (unsubM) unsubM(); unsub = unsubM = null; posts = []; members = {}; rawMembers = {}; adminUid = null; status = 'idle'; };
+  const stop = () => { gen++; if (unsub) unsub(); if (unsubM) unsubM(); unsub = unsubM = null; posts = []; postsLive = false; members = {}; rawMembers = {}; adminUid = null; status = 'idle'; };
+  // Gullideckel: einmal eigene Beiträge und Satz-des-Tages-Tage nachzählen – sobald Beiträge vom Server und der eigene Mitglied-Eintrag da sind
+  let postsLive = false;
+  const seedManhole = () => {
+    if (!App.manhole || !postsLive || !rawMembers[D.uid()]) return;
+    const days = ((rawMembers[D.uid()].streak || {}).days || []).length;
+    const me = mineIds(); // alle Geräte der Person
+    App.manhole.seedForum(posts.filter((p) => me.includes(p.uid)).length, days);
+  };
   const start = () => {
     if (!D.configured() || !st.code || unsub || status === 'loading') return;
     status = 'loading';
@@ -51,7 +59,7 @@
     D.load().then(mine(() => {
       unsub = D.watchPosts(st.code, mine(onPosts), mine(onError));
       if (!unsubM) unsubM = D.watchMembers(st.code, mine((m) => {
-        rawMembers = m; members = F.mergeMembers(m, App.today()); keepAvatar(); refreshDot();
+        rawMembers = m; members = F.mergeMembers(m, App.today()); keepAvatar(); refreshDot(); seedManhole();
         if (ui && ui.onMembers) ui.onMembers();
         askSamePerson();
       }));
@@ -119,7 +127,7 @@
   const forget = () => { rejoining = false; stop(); st = Object.assign(blank(), { name: st.name, drafts: st.drafts }); save(); refreshDot(); if (ui) showJoin(); };
   const onPosts = (list, meta = {}) => {
     posts = list;
-    if (!meta.fromCache) rejoining = false;
+    if (!meta.fromCache) { rejoining = false; postsLive = true; seedManhole(); }
     // offline gestartet: noch nie Antwort vom Server – nicht „Noch keine Gedanken“ zeigen
     status = meta.fromCache && !list.length ? 'offline' : 'live';
     // gerade beigetreten: was schon da war, gilt als gesehen

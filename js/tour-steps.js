@@ -30,6 +30,7 @@
     startHandy: [
       { target: '[data-hh-hero]', title: 'Heute wiederholen', heart: true, text: '„Jetzt wiederholen“ startet alles, was heute fällig ist. Der Ring zeigt, wie viel schon geschafft ist.' },
       { target: '#handy-bar', title: 'Deine Sammlungen', text: 'Unten kommst du zu Grammatik, Vokabeln, Kanji und Ausdrücken. Alles andere steht im Menü ☰.' },
+      { target: '[data-hh-manhole]', title: 'Gullideckel', text: 'Für jeden Meilenstein gibt es einen Gullideckel aus Japan. Ein Tipp zeigt deine Sammlung auf der Karte.' },
     ],
     // nach „Jetzt nicht“
     hinweis: [
@@ -37,9 +38,12 @@
     ],
 
     '/': [
-      { target: '#view .home-actions', text: 'Deine Schnellaktionen, z. B. ein Wort speichern oder eine Mitschrift beginnen.' },
+      { target: '#view .home-actions', text: 'Deine Schnellaktionen, z. B. ein Wort speichern oder eine Mitschrift beginnen. Weiter unten sammelst du Gullideckel マンホール für deine Meilensteine.' },
       { target: '#view a.btn[href*="einstufen"]', text: 'Beim Einstufen sagst du Wort für Wort, ob du es schon kennst. Der Rest kommt in die Lernschlange.' },
       { target: '[data-genki-card]', title: 'Genki I freischalten', text: 'Trage hier den Code ein, den du bekommen hast. Danach ist alles aus dem Buch da.' },
+    ],
+    '/gullideckel': [
+      { target: '#view .mh-mapcard', title: 'Deine Japan-Karte', text: 'Jede Präfektur ist ein Gullideckel. Fahr darüber oder tipp sie an: Das Schild zeigt den Deckel und was noch fehlt.' },
     ],
     '/grammatik': [
       { target: '#view h2', text: 'Nach Lektion geordnet. Ein Tipp öffnet Erklärung und Beispiele.' },

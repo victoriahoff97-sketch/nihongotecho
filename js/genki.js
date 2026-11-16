@@ -10,10 +10,13 @@
   let applied = false; // Einträge wurden in diesem Seitenaufruf schon an window.SEED angehängt
   let loading = null;
   let unlocking = null;
+  let openKey = null; // Schlüssel nach erfolgreichem Entschlüsseln – auch für die verschlüsselten Satz-Tondateien
 
   const fail = (code, msg) => Object.assign(new Error(msg), { code });
 
   G.present = () => !!window.GENKI_ENC;
+  // CryptoKey der Freischaltung oder null (gesperrt / keine verschlüsselten Daten)
+  G.key = async () => { await G.loadIfOpen(); return openKey; };
   G.state = () => state;
 
   // Einträge an window.SEED anhängen und SEED_MERGED mischen – höchstens einmal pro Seitenladung
@@ -46,6 +49,7 @@
           state = L().stateOf(enc, stored);
           if (state !== 'open') return;
           apply(await L().decrypt(enc, stored.key));
+          openKey = stored.key;
         } catch (e) {
           state = 'stale';
           console.error('Genki: gespeicherter Schlüssel nicht nutzbar', e && e.code ? e.code : e);
@@ -67,6 +71,7 @@
       await App.db.put('meta', { key: 'genkiKey', value: { salt: enc.salt, key } });
       apply(out);
       state = 'open';
+      openKey = key;
       const added = await App.reseed();
       return { added, total: out.items.length };
     })();

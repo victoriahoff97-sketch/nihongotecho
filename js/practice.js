@@ -93,7 +93,7 @@
     parked = null;
     nextRound = null;
     App.setOrigin(p.origin);
-    return r.entries.length ? Object.assign(r, { opts: p.opts }) : null;
+    return r.entries.length ? Object.assign(r, { opts: p.opts, run: p.run || 0 }) : null;
   };
   const resumeCards = (view, r) => { view.querySelector('[data-setup]').hidden = true; runCards(view.querySelector('[data-stage]'), r.entries, r.opts, r); };
   // mid: weiterer Knopf zwischen „Wiederholen“ und „Neue lernen“ (Karteikarten: „Lernschlange üben“)
@@ -416,6 +416,10 @@
     let ans = null, suggest = null, readingsOf = null; // Antwortfeld der Karte · vorgeschlagene Bewertung nach dem Prüfen
     let faces = null; // Kartenseiten der aktuellen Karte (bei Konjugieren mit Auswahl-Antworten und Lösung fürs Antwortfeld)
     let last = null; // zuletzt bewertete Karte – „Rückgängig“ holt sie mit ihrem alten Lernstand zurück
+    let run = resume ? resume.run || 0 : 0; // Gullideckel: richtige Antworten am Stück (auch über das Parken hinweg)
+    // Gullideckel: nach jeder Bewertung die Reihe fortschreiben; neue Deckel warten bis zum Ende der Runde
+    const tally = (g) => { run = g === 0 ? 0 : run + 1; if (App.manhole) App.manhole.max('bestRun', run); };
+    if (App.manhole) App.manhole.hold(true);
     // Vorlesen beim Aufdecken (wie bei WaniKani): Schalter „Auto“ neben dem Lautsprecher = dieselbe Einstellung wie unter Einstellungen › Persönlich
     const autoSay = () => S.settings.ttsAuto === 'on';
     const sayTitle = () => (autoSay() ? 'Wird beim Aufdecken vorgelesen – antippen zum Ausschalten' : 'Beim Aufdecken automatisch vorlesen');
@@ -436,6 +440,7 @@
       ans = null; suggest = null; faces = null;
       if (!cur) {
         if (opts.onEnd) opts.onEnd();
+        if (App.manhole) App.manhole.hold(false);
         const rest = left ? left() : 0; // Lernschlange in Häppchen: so viel ist noch nicht dran gewesen
         stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${cram ? `Frei geübt – an deinem Lernstand hat sich nichts geändert.${left && !rest ? ' Damit war alles einmal dran.' : ''}` : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>${opts.endHtml ? opts.endHtml() : ''}
           <div class="row" style="justify-content:center">${undoBtn()}${App.backBtn('Zur Übersicht')}${cram ? (rest ? `<button class="btn" data-again>Zur Auswahl</button><button class="btn btn-primary" data-next-chunk>${icon('play')} Nächste Runde (noch ${rest})</button>` : opts.noAgain ? '' : '<button class="btn btn-primary" data-again>Weitere Runde</button>') : roundEnd(more())}</div></div></div>`;
@@ -552,6 +557,7 @@
       if (!cram) await App.gradeWrite(cur.id, g);
       busy = false;
       done++; if (g > 0) right++;
+      tally(g);
       if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
       next();
     };
@@ -584,7 +590,7 @@
       flip();
     };
     // Konjugieren zählt eigene Treffer mit (onGrade) – dort gibt es kein Zurück
-    const remember = (keys, again) => { last = opts.onGrade ? null : { ent, snap: cram ? null : App.srsSnap(keys), done, right, total, again }; };
+    const remember = (keys, again) => { last = opts.onGrade ? null : { ent, snap: cram ? null : App.srsSnap(keys), done, right, total, run, again }; };
     const undo = async () => {
       if (!last || busy) return;
       busy = true;
@@ -594,8 +600,9 @@
       if (l.again) { const i = queue.indexOf(l.ent); if (i >= 0) queue.splice(i, 1); }
       if (ent && ent !== l.ent) queue.unshift(ent);
       queue.unshift(l.ent);
-      ({ done, right, total } = l);
+      ({ done, right, total, run } = l);
       busy = false;
+      if (App.manhole) App.manhole.hold(true); // Rückgängig auf dem Endbildschirm: die Runde läuft wieder
       next();
     };
     const markKnown = async () => {
@@ -605,6 +612,7 @@
       await App.setCheck(srsKey(), 'known');
       busy = false;
       done++; right++;
+      tally(1);
       next();
     };
     const grade = async (g) => {
@@ -614,6 +622,7 @@
       if (!cram) await (ent.kind === 'write' ? App.gradeWrite(cur.id, g) : App.grade(ent.kind === 'active' ? W.id(cur.id) : cur.id, g));
       busy = false;
       done++; if (g > 0) right++;
+      tally(g);
       if (opts.onGrade) opts.onGrade(ent, g);
       if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
       next();
@@ -667,7 +676,8 @@
       App.screenItem = null; App.parkHere = null;
       document.removeEventListener('keydown', onKey);
       if (ans && ans.pad) ans.pad.stop();
-      if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue).map((e) => Object.assign({}, e, { known: cardKnown(e) })), done, right, total, open: flipped };
+      if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue).map((e) => Object.assign({}, e, { known: cardKnown(e) })), done, right, total, run, open: flipped };
+      if (App.manhole) App.manhole.hold(false); // Runde verlassen (auch geparkt): Gesammeltes nicht länger zurückhalten
     });
     next();
     if (resume && resume.open && cur) { if (ent.pad) stage.querySelector('[data-show]').click(); else flip(true); }
@@ -764,11 +774,12 @@
 
   // o.onDone(wrong): einmal am Ende der Runde · o.endHtml(): Zeile unter der Wertung · o.endRow: eigene Knöpfe statt „Neue Runde“
   function runExercises(stage, exs, dirMode, o = {}) {
-    let i = 0, score = 0;
+    let i = 0, score = 0, skipped = 0;
     const wrong = [];
     const show = () => {
       if (i >= exs.length) {
         if (o.onDone) o.onDone(wrong);
+        if (App.manhole) { App.manhole.bump('translations', exs.length - skipped); App.manhole.check(); } // Gullideckel: fertige Übersetzungen
         stage.innerHTML = `<div class="ex-card"><div class="card pad-lg" style="text-align:center"><div class="score-ring">${score} / ${exs.length}</div><h2>${score === exs.length ? '完璧！ Perfekt!' : score > exs.length / 2 ? 'よくできました！' : 'がんばって！ Dranbleiben!'}</h2>
           ${wrong.length ? `<div class="section-title">Zum Wiederholen</div><div class="stack" style="text-align:left">${wrong.map((e) => `<div class="example"><div class="grow"><div class="jp-s" lang="ja">${JP.ruby(e.jp)}</div><div class="de-s">${esc(e.de)}</div><a class="small" href="${App.link(e.g)}">${esc(e.g.title || wordOf(e.g))}</a></div></div>`).join('')}</div>` : ''}
           ${o.endHtml ? o.endHtml() : ''}
@@ -828,7 +839,7 @@
         stage.querySelector('[data-check]').hidden = true;
       };
       stage.querySelector('[data-check]').onclick = check;
-      stage.querySelector('[data-skip]').onclick = () => { micStop(); if (field) field.lock(); wrong.push(e); i++; show(); };
+      stage.querySelector('[data-skip]').onclick = () => { micStop(); if (field) field.lock(); wrong.push(e); skipped++; i++; show(); };
       if (ta) ta.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enter(); } });
       stage.querySelector('[data-sol]').addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-res]'); if (!b) return;

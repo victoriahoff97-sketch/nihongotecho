@@ -363,8 +363,25 @@
   };
   if (window.speechSynthesis) { voiceSig = JP.voices().map((v) => v.voiceURI).join('|'); speechSynthesis.onvoiceschanged = voicesChanged; }
   JP.canSpeak = () => !!window.speechSynthesis;
+  // Vertonte Beispielsätze (VOICEVOX, js/sentence-audio.js): { url, enc } oder null
+  JP.sentenceAudio = (text) => {
+    const L = App.sentenceAudioLogic;
+    const id = L && window.SENTENCE_AUDIO && L.lookup(window.SENTENCE_AUDIO, text);
+    return id ? { url: L.url(id), enc: !!window.SENTENCE_AUDIO_ENC } : null;
+  };
+  // schon laden, wenn der Satz erscheint – dann startet „Vorlesen“ ohne Wartezeit
+  JP.preloadSentence = (text) => {
+    const a = App.voiceAudio && JP.sentenceAudio(text);
+    if (a) setTimeout(() => App.voiceAudio.preload(a.url, a.enc), 0);
+  };
   JP.speak = (text) => {
+    const audio = App.voiceAudio && JP.sentenceAudio(text);
+    if (audio) return App.voiceAudio.play(audio.url, { enc: audio.enc, onFail: () => speakTts(text) });
+    speakTts(text);
+  };
+  const speakTts = (text) => {
     if (!window.speechSynthesis) return App.toast('Sprachausgabe wird von diesem Browser nicht unterstützt');
+    if (App.voiceAudio) App.voiceAudio.stop();
     speechSynthesis.cancel();
     // Wo eine Lesung notiert ist, wird sie gesprochen – sonst rät die Stimme (開[あ]く würde „hiraku“)
     const u = new SpeechSynthesisUtterance(JP.kana(text));

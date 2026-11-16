@@ -134,6 +134,7 @@
     });
     images.forEach((src, i) => b.set(imgs(code, ref.id).doc(SLOTS()[i]), { data: src }));
     await b.commit();
+    if (App.manhole) App.manhole.bump('forumPosts'); // Gullideckel
   };
   // alle vier Plätze neu: belegte schreiben, übrige löschen
   D.editPost = async (code, id, { kind, text, images, refs, mentions }) => {
@@ -184,8 +185,10 @@
   };
   D.watchDaily = (code, date, onList, onError) => dailyCol(code, date)
     .onSnapshot((snap) => onList(snap.docs.map(dailyItem)), onError);
-  D.sendDaily = (code, date, { name, text, usedPrompt }) => dailyCol(code, date).doc(D.uid())
-    .set({ uid: D.uid(), name, text, usedPrompt: !!usedPrompt, createdAt: now(), editedAt: null, likes: [] });
+  D.sendDaily = async (code, date, { name, text, usedPrompt }) => {
+    await dailyCol(code, date).doc(D.uid()).set({ uid: D.uid(), name, text, usedPrompt: !!usedPrompt, createdAt: now(), editedAt: null, likes: [] });
+    if (App.manhole) App.manhole.bump('dailySentences'); // Gullideckel
+  };
   // furi: von Hand korrigierte Lesung, auf den neuen Text übertragen (undefined = Feld nicht anfassen)
   D.editDaily = (code, date, { text, usedPrompt, furi }) => dailyCol(code, date).doc(D.uid())
     .update(Object.assign({ text, usedPrompt: !!usedPrompt, editedAt: now() }, furi === undefined ? {} : { furi: furi || null }));
@@ -210,6 +213,7 @@
     more.forEach((src, i) => b.set(replyImgs(code, postId, ref.id).doc(SLOTS()[i + 1]), { data: src }));
     b.update(posts(code).doc(postId), { replyCount: FV().increment(1), lastActivityAt: now(), lastActivityUid: D.uid(), lastMentions: mentions || [] });
     await b.commit();
+    if (App.manhole) App.manhole.bump('forumPosts'); // Gullideckel
   };
   // had = wie viele weitere Bilder die Antwort bisher hatte (nur deren Plätze werden geleert)
   D.editReply = async (code, postId, rid, { text, images, refs, mentions }, had = 0) => {

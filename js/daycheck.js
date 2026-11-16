@@ -82,6 +82,7 @@
   const listened = async (sec) => {
     await closeDay();
     await App.saveSettings({ dayLog: L.addListen(log(), App.today(), sec) });
+    if (App.manhole) App.manhole.bump('listenSec', sec); // Gullideckel: Hörzeit auf Lebenszeit
     remember();
     check();
   };

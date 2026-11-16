@@ -76,41 +76,19 @@
   // Hören: Satz oder Gespräch nacheinander vorlesen; A und B mit zwei Stimmen, wenn das Gerät zwei japanische hat
   // Vertonte Dialoge (VOICEVOX, js/exam-audio.js); fehlt die Datei oder lädt sie nicht, liest die Browser-Stimme
   X.audioUrl = (q) => (q && (window.EXAM_AUDIO || {})[q.id]) || null;
-  let playing = null;
+  // Abspielen über js/voice-audio.js (gemeinsam mit den Genki-Beispielsätzen)
   X.stop = () => {
-    if (playing) { playing.pause(); playing = null; }
+    App.voiceAudio.stop();
     if (JP.canSpeak()) speechSynthesis.cancel();
   };
   X.play = (q) => {
     X.stop();
     const url = X.audioUrl(q);
     if (!url) return speakTts(q);
-    const a = new Audio();
-    playing = a;
-    let fellBack = false;
-    const fallback = () => { if (playing === a && !fellBack) { fellBack = true; playing = null; speakTts(q); } };
-    a.onerror = fallback;
-    // als Blob abspielen: kommt so aus dem Offline-Speicher, ohne Teil-Anfragen; im Tablet-ZIP (file://) direkt
-    const start = (src) => {
-      if (playing !== a) return;
-      a.src = src || url;
-      a.play().catch((e) => { if (!e || e.name !== 'NotAllowedError') fallback(); });
-    };
-    // schon vorgeladen: sofort (iPad-Safari lässt Ton nur direkt nach dem Tippen zu), sonst nach dem Laden
-    if (location.protocol === 'file:') start(url);
-    else if (ready.has(url)) start(ready.get(url));
-    else blobOf(url).then(start);
+    App.voiceAudio.play(url, { onFail: () => speakTts(q) });
   };
   // Tondateien einer Prüfung vorab holen (Web-App: landen im Offline-Speicher „nt-audio“)
-  const blobs = new Map(), ready = new Map();
-  const blobOf = (url) => {
-    if (!blobs.has(url)) {
-      blobs.set(url, fetch(url).then((r) => (r.ok ? r.blob() : null)).then((b) => (b ? URL.createObjectURL(b) : null))
-        .catch(() => null).then((u) => { if (u) ready.set(url, u); else blobs.delete(url); return u; }));
-    }
-    return blobs.get(url);
-  };
-  X.preload = (qs) => { if (location.protocol !== 'file:') qs.map(X.audioUrl).filter(Boolean).forEach(blobOf); };
+  X.preload = (qs) => qs.map(X.audioUrl).filter(Boolean).forEach((u) => App.voiceAudio.preload(u));
   window.addEventListener('hashchange', () => X.stop());
   const speakTts = (q) => {
     if (!JP.canSpeak()) return;

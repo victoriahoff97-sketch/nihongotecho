@@ -247,7 +247,7 @@
   const HO = App.homeOrderLogic;
   let homeEdit = false;
   window.addEventListener('hashchange', () => { homeEdit = false; });
-  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert · 今日' };
+  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', manhole: 'Gullideckel', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert · 今日' };
   // Schnellaktionen: [Farbe, Attribute, Symbol, Titel, Untertitel] – die ersten drei stehen von Anfang an da
   const QUICK = {
     saetze: ['sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze zuordnen', 'Text einfügen, Vokabeln finden'],
@@ -447,6 +447,7 @@
         <a class="hh-sc sec-practice" href="#/ueben"><span class="hh-bg" lang="ja">練</span>${icon('practice')}<b>Üben</b><span>Karten, Kanji, Übersetzen</span></a>
         <a class="hh-sc sec-apply" href="#/anwenden"><span class="hh-bg" lang="ja">使</span>${icon('edit')}<b>Anwenden</b><span>Tagebuch, Smalltalk</span></a>
       </div>
+      ${App.manhole && App.manhole.tileHandy ? App.manhole.tileHandy() : ''}
       <p class="hh-head">Heute lesen und hören</p>
       <div class="hh-tiles" data-hh-tiles>
         ${tile('news', NEWS_SVG, 'ニュース', { href: 'https://news.web.nhk/news/easy/' })}
@@ -519,6 +520,7 @@
       read: readStrip(),
       sammlung: `<div class="section-title">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>
       ${fitRow('stat-grid', [stat('grammar', count('grammar'), 'Grammatikpunkte'), stat('vocab', count('vocab'), 'Wörter'), stat('session', count('session'), count('session') === 1 ? 'Stunde mitgeschrieben' : 'Stunden mitgeschrieben'), stat('kanji', count('kanji'), 'Kanji'), stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')], 5)}`,
+      manhole: App.manhole && App.manhole.tile ? App.manhole.tile() : '', // Gullideckel-Kachel (js/manhole.js)
       vocab: (() => { // Jedes Wort zählt einmal: „kann ich“ erst, wenn Lesen und Deutsch → Japanisch sitzen – wie beim JLPT- und Genki-Lernstand
         const c = progOf({ vocab }).tot;
         const num = (n, color, label, st, title) => `<a href="#/vokabeln?st=${st}" style="text-decoration:none" title="${title}"><b style="font-size:26px;color:${color}">${n}</b> ${label}</a>`;

@@ -309,6 +309,8 @@ if (window.AbortController && window.AbortSignal && !AbortSignal.timeout) {
     inkPens: null, // Schreibblatt: Meine Stifte { list, def, last } (js/ink-pen.js normPens)
     libFolders: [], // Bibliothek: eigene Ordner [{ id, name }], Dateien merken sich f.folder (js/library-logic.js)
     importSource: '', // Vokabeln importieren: zuletzt benutzte Quelle, wird beim nächsten Import vorgeschlagen (js/vocabcheck.js)
+    manhole: null, // Gullideckel: gesammelte Deckel { <id>: 'JJJJ-MM-TT' } – einmal gesammelt bleibt gesammelt (js/manhole.js)
+    stats: null, // Gullideckel: Lebenszeit-Zähler { reviews, kanjiWritten, translations, listenSec, openDays, lastOpen, forumPosts, … } (js/manhole-logic.js)
   };
 
   App.onChange = (fn) => S.listeners.add(fn);
@@ -476,6 +478,7 @@ if (window.AbortController && window.AbortSignal && !AbortSignal.timeout) {
     await App.db.put('srs', s);
     if (App.backup && App.backup.noteChange) App.backup.noteChange(); // Üben zählt als Änderung (kein emit: die Runde soll nicht neu zeichnen)
     if (App.dayCheck) App.dayCheck.graded(id, wasNew);
+    if (App.manhole) App.manhole.graded(); // Gullideckel: Wiederholungen, Uhrzeit, Comeback (wirft nie)
     return s;
   };
   App.srsStage = (id) => { const s = S.srs.get(id); if (!s || !s.reps) return 0; return s.ivl >= App.writeLogic.KNOWN_IVL ? 2 : 1; };

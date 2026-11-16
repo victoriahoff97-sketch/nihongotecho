@@ -1,7 +1,8 @@
-Nihongo Techō – Tondateien der Hördialoge in den Prüfungen (audio/exam/)
-=========================================================================
+Nihongo Techō – Tondateien der Hördialoge in den Prüfungen (audio/exam/) und der Genki-Beispielsätze (audio/saetze/)
+===============================================================================================================
 
-Erzeugt mit VOICEVOX (https://voicevox.hiroshiba.jp) durch tools/build/build-exam-audio.mjs.
+Erzeugt mit VOICEVOX (https://voicevox.hiroshiba.jp) durch tools/build/build-exam-audio.mjs und build-sentence-audio.mjs.
+audio/saetze/ ist in der Web-Version verschlüsselt (Genki-Inhalte, Freischaltcode nötig).
 Stimmen: VOICEVOX:四国めたん, VOICEVOX:玄野武宏, VOICEVOX:青山龍星, VOICEVOX:No.7
 
 Es gelten die Nutzungsbedingungen von VOICEVOX und der jeweiligen Stimme:

@@ -2639,3 +2639,85 @@ input.sp-has { padding-right: 40px; }
 /* Vokabel-Formular: weitere deutsche Bedeutungen aus dem Wörterbuch zum Antippen (editors.js bindAutofill) */
 .de-alts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
 .de-alts .chip { min-height: 28px; padding: 3px 10px; font-size: 13px; font-weight: 600; white-space: normal; text-align: left; }
+/* ==========================================================
+   Gullideckel マンホール (js/manhole.js): Kachel, Japan-Karte mit Schild, Freischalt-Fenster
+   ========================================================== */
+:root { --mh-empty: #dcd8d0; --mh-border: #ffffff; --mh-sea: #eef3f5; }
+:root[data-theme="dark"] { --mh-empty: #3a3d47; --mh-border: #22242c; --mh-sea: #1c2229; }
+/* Kachel auf der Startseite */
+.mh-tile { display: flex; align-items: center; gap: 16px; padding: 12px 18px; text-decoration: none; color: var(--ink); --sec: var(--shu); }
+.mh-tile:hover { border-color: var(--line-2); }
+.mh-tile-cover { flex: none; display: flex; filter: drop-shadow(0 2px 3px rgba(0,0,0,.15)); }
+.mh-tile-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mh-tile-txt b { font-size: 17px; }
+.mh-tile-txt b [lang="ja"] { font-family: var(--font-jp); }
+.mh-count { color: var(--shu); font-weight: 800; }
+.mh-tile-txt small { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mh-bar { max-width: 360px; margin-top: 4px; height: 6px; }
+.mh-go { flex: none; font-weight: 800; color: var(--shu); font-size: 14px; }
+/* Handy-Startseite: schmale Zeile */
+.hh-mh { display: flex; align-items: center; gap: 12px; margin: 10px 0 0; padding: 8px 12px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+.hh-mh svg { flex: none; }
+.hh-mh-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.hh-mh-txt b { font-size: 15px; }
+.hh-mh-txt small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hh-mh-go { color: var(--muted); font-size: 20px; }
+/* Sammelseite */
+.mh-page .page-head h1 { flex-wrap: wrap; gap: 2px 12px; }
+.mh-head-n { font-weight: 700; color: var(--muted); font-size: 22px; }
+.mh-head-bonus { font-size: 14px; font-weight: 800; color: #8a6a12; background: #f7e7b0; padding: 3px 10px; border-radius: 99px; }
+:root[data-theme="dark"] .mh-head-bonus { color: #f0d77a; background: #3b3019; }
+.mh-wrap { display: flex; gap: 18px; align-items: flex-start; }
+.mh-mapcard { flex: 1; min-width: 0; padding: 10px; background: var(--mh-sea); }
+.mh-map { display: block; width: 100%; height: auto; max-height: calc(100vh - var(--topbar-h) - 190px); min-height: 320px; touch-action: manipulation; }
+.mh-pref { fill: var(--mh-empty); stroke: var(--mh-border); stroke-width: .8; vector-effect: non-scaling-stroke; cursor: pointer; transition: filter .12s; outline: none; }
+.mh-pref.mh-oki { cursor: default; pointer-events: none; }
+.mh-pref.on, .mh-pref:focus-visible { stroke: var(--ink); stroke-width: 2; filter: brightness(1.06); }
+.mh-inset { fill: rgba(0,0,0,0); stroke: var(--line-2); stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: pointer; outline: none; }
+.mh-inset.on, .mh-inset:focus-visible { stroke: var(--ink); stroke-width: 2.5; }
+.mh-inset-lbl { font-family: var(--font-kanji); font-size: 26px; fill: var(--muted); pointer-events: none; }
+.mh-bonus { flex: none; width: 200px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.mh-bonus span { color: var(--ink-2); font-size: 14px; }
+.mh-bonus small { color: var(--matcha); font-weight: 700; }
+/* Schild */
+.mh-tip { position: fixed; z-index: 60; display: flex; align-items: center; gap: 12px; max-width: min(360px, calc(100vw - 16px)); padding: 10px 14px 10px 10px; background: var(--card); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: var(--shadow-lg); pointer-events: none; }
+.mh-tip[hidden] { display: none; }
+.mh-tip svg { flex: none; }
+.mh-tip-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mh-tip-txt b { font-size: 16px; }
+.mh-tip-txt b [lang="ja"] { font-family: var(--font-kanji); font-size: 18px; margin-right: 2px; }
+.mh-tip-txt span { color: var(--ink-2); font-size: 14px; }
+.mh-tip-txt small { color: var(--muted); font-size: 13px; font-weight: 700; }
+.mh-tip-txt small.got { color: var(--matcha); }
+/* Freischalt-Fenster mit Stempel */
+.mh-modal { width: min(560px, 100%); }
+.mh-modal .modal-head h2 .jp { color: var(--shu); margin-right: 4px; }
+.mh-pop { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.mh-pop-title { margin: 8px 0 0; font-size: 18px; }
+.mh-pop-title [lang="ja"] { font-family: var(--font-kanji); }
+.mh-pop-goal { margin: 0; color: var(--muted); }
+.mh-pop-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 14px; max-height: 52vh; overflow: auto; padding: 6px; }
+.mh-pop-grid figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 104px; }
+.mh-pop-grid figcaption { font-size: 13px; font-weight: 700; color: var(--ink-2); }
+/* Feuerwerks-Banner (matsuri.js) über dem Fenster, nicht auf dem Deckel */
+body:has(.mh-modal) .matsuri-banner { top: 11%; }
+.mh-stamp { animation: mh-stamp .75s cubic-bezier(.2, .9, .3, 1.15) both; }
+.mh-stamp svg { display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,.2)); }
+@keyframes mh-stamp {
+  0% { opacity: 0; transform: translateY(-70px) scale(1.5) rotate(-14deg); }
+  50% { opacity: 1; transform: translateY(0) scale(.93) rotate(3deg); }
+  66% { transform: scale(1.03) rotate(-4deg); }
+  82% { transform: scale(1) rotate(2deg); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .mh-stamp { animation: none; } .mh-pref { transition: none; } }
+@media (max-width: 760px) {
+  .mh-wrap { flex-direction: column; align-items: stretch; }
+  .mh-bonus { width: auto; flex-direction: row; text-align: left; }
+  .mh-map { max-height: none; min-height: 0; }
+  .mh-tile-cover svg { width: 52px; height: 52px; }
+  .mh-go { display: none; }
+}
+body.view-handy .mh-wrap { flex-direction: column; align-items: stretch; }
+body.view-handy .mh-map { max-height: none; min-height: 0; }
+body.view-handy .mh-mapcard { padding: 4px; }

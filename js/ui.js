@@ -208,6 +208,7 @@
   App.exampleHtml = (ex, _i, _all, tools) => {
     const hasN = JP.hasNotation(ex.jp);
     const kana = ex.kana || (hasN ? JP.kana(ex.jp) : '');
+    JP.preloadSentence(ex.jp);
     return `<div class="example"><div class="grow"><div class="jp-s" lang="ja">${JP.ruby(ex.jp)}</div>
       ${kana && kana !== ex.jp && !hasN ? `<div class="kana-s">${esc(kana)}</div>` : ''}
       <div class="de-s">${esc(App.exMeaning(ex))}</div>${ex.src ? `<div class="small muted">Quelle: ${esc(ex.src)}</div>` : ''}</div>${typeof tools === 'string' ? tools : ''}${App.speakBtn(ex.jp)}</div>`;
