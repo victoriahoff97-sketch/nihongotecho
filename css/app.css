@@ -952,8 +952,8 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
 .kanji-stage { display: grid; grid-template-columns: 260px 1fr; gap: 20px; align-items: start; }
 .stroke-box { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 12px; box-shadow: var(--shadow); }
 .stroke-svg { width: 100%; aspect-ratio: 1; display: block; background:
-  linear-gradient(var(--line) 1px, transparent 1px) 0 50% / 100% 50% no-repeat,
-  linear-gradient(90deg, var(--line) 1px, transparent 1px) 50% 0 / 50% 100% no-repeat; border-radius: 10px; }
+  linear-gradient(var(--line), var(--line)) 0 50% / 100% 1px no-repeat,
+  linear-gradient(var(--line), var(--line)) 50% 0 / 1px 100% no-repeat; border-radius: 10px; }
 .stroke-svg .guide { stroke: var(--line-2); }
 .stroke-svg path.bg { stroke: var(--line-2); }
 .stroke-svg path.fg { stroke: var(--ink); }

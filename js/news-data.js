@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-16-kreuz-mitte', date: '16. November',
+      items: [
+        { t: 'Kreuz in der Strichfolge mittig', d: 'Die Hilfslinien hinter der Kanji- und Kana-Animation liegen jetzt genau in der Mitte – so lässt sich viel leichter nachzeichnen.' },
+      ],
+    },
+    {
       id: '2026-11-15-wk-eigene', date: '15. November',
       items: [
         { t: 'Eigene Bedeutungen aus WaniKani', d: 'Hast du bei WaniKani unter „User Synonyms“ eine eigene Bedeutung eingetragen, wird sie zum Deutsch der Vokabel – sofort mit Pakete › WaniKani › „Abgleichen“.' },
