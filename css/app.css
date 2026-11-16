@@ -2149,6 +2149,7 @@ body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbin
 .forum-chosen[hidden] { display: none; }
 /* Ungelesenes: Kästchen bzw. neue Antworten leicht hinterlegt */
 .forum-item.is-new { background: color-mix(in srgb, var(--shu-soft) 55%, var(--card)); }
+.forum-item.is-done:not(.is-new) .forum-item-text { color: var(--muted); }
 .forum-reply.is-new { border-color: var(--shu); background: color-mix(in srgb, var(--shu-soft) 45%, var(--card-2)); }
 /* Herzen, Erwähnungen, Zahnrad am Beispielsatz */
 .forum-acts { align-items: center; }
@@ -2552,6 +2553,8 @@ mark.cmp-diff { background: var(--hl); color: inherit; padding: 0 1px; border-ra
 input.sp-has { padding-right: 40px; }
 .sp-btn.icon-btn.sm { flex: none; width: 30px; height: 30px; margin-left: -36px; position: relative; z-index: 1; color: var(--muted); }
 .search-wrap .sp-btn + kbd { right: 46px; }
+/* Forum-Leiste hat gap 10px: Stift sonst halb auf dem Rahmen */
+.forum-bar .sp-btn.icon-btn.sm { margin-left: -46px; }
 #topbar .search-wrap input.sp-has { padding-right: 104px; }
 .search-wrap.sp-open > .search-pop { top: calc(52px + var(--sp-h, 0px)); }
 .sp-panel { position: fixed; z-index: 300; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 8px; }

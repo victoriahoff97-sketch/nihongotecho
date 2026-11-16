@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-16-forum-neueste', date: '16. November',
+      items: [
+        { t: 'Forum: Neuestes oben', d: 'Alle Beiträge der Gruppe in einer Liste: Was zuletzt geschrieben, beantwortet oder geändert wurde, steht oben. 💬/💡 steht nur noch im Beitrag.' },
+      ],
+    },
+    {
       id: '2026-11-16-satzbau-kaestchen', date: '16. November',
       items: [
         { t: 'Satzbau-Aufgaben klarer', d: 'In den Prüfungen sind die Lücken bei ★-Aufgaben jetzt Kästchen statt Striche. Die vier Antworten kommen in die vier Kästchen – gesucht ist das ★-Kästchen.' },

@@ -287,17 +287,11 @@
   };
 
   // ---------- Liste ----------
-  // Offene 💬 zuerst, dann offene 💡, alle besprochenen (💬 und 💡) getrennt – jeweils neueste Aktivität zuerst.
+  // Eine Liste ohne Vorfilter: neueste Änderung zuerst (neuer Beitrag, Antwort, bearbeitet oder „besprochen“).
+  // 💬/💡 und „besprochen“ stehen nur noch im Beitrag selbst.
   // Ein gerade abgeschickter Beitrag hat evtl. noch keinen Server-Zeitstempel: zählt als „jetzt“.
-  F.sections = (posts, now) => {
-    const at = (p) => p.lastActivityAt ?? now;
-    const sorted = Array.from(posts).sort((a, b) => at(b) - at(a));
-    return {
-      open: sorted.filter((p) => p.kind === 'rede' && !p.done),
-      show: sorted.filter((p) => p.kind !== 'rede' && !p.done),
-      done: sorted.filter((p) => p.done),
-    };
-  };
+  F.changedAt = (p, now) => Math.max(p.lastActivityAt ?? now, p.editedAt || 0, p.doneAt || 0);
+  F.recent = (posts, now) => Array.from(posts).sort((a, b) => F.changedAt(b, now) - F.changedAt(a, now));
 
   // Neu = jemand anderes hat zuletzt etwas geschrieben, und das ist nach dem letzten Ansehen auf diesem Gerät passiert
   F.isNew = (post, seen, myUid) => {

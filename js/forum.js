@@ -919,7 +919,7 @@
     const likes = p.likes.length ? `<span class="badge forum-likes" title="${esc(F.likeNames(p.likes, members).join(', '))}">♥ ${p.likes.length}</span>` : '';
     const foot = refChips(p.refs) + replies + likes;
     const atMe = F.mentionsMe(p, st.seen, mineIds());
-    return `<button class="forum-item ${fresh ? 'is-new' : ''}" data-open="${esc(p.id)}">${dateCol(p.createdAt)}
+    return `<button class="forum-item ${fresh ? 'is-new' : ''}${p.done ? ' is-done' : ''}" data-open="${esc(p.id)}">${dateCol(p.createdAt)}
       <span class="forum-item-body">
         <span class="forum-item-head"><span class="forum-kind k-${esc(p.kind)}">${KIND[p.kind] || ''}</span> ${meta(p)}${p.hasImage ? ` ${icon('image')}` : ''}
           <span class="grow"></span>${atMe ? '<span class="badge forum-atme">@ dich</span>' : ''}${fresh ? '<span class="badge forum-new">neu</span>' : ''}${p.done ? '<span class="badge">besprochen</span>' : ''}</span>
@@ -927,8 +927,6 @@
         ${foot ? `<span class="forum-item-foot">${foot}</span>` : ''}
       </span></button>`;
   };
-  // Abschnitte statt Auswahl: offener Redebedarf, Zum Zeigen, Besprochen (zugeklappt, solange das Fenster offen ist)
-  const SECTION = [['open', 'chat', 'Redebedarf', 'offen', 'k-rede'], ['show', 'bulb', 'Zum Zeigen', '', 'k-zeigen']];
   const showList = () => {
     if (ui.cleanup) ui.cleanup();
     ui.view = 'list';
@@ -960,22 +958,15 @@
     askSamePerson();
     const tabs = r.querySelector('[data-tabs]');
     const list = r.querySelector('[data-list]');
-    const head = (ico, label, n, extra, cls, toggle) => `<${toggle ? 'button type="button" data-donetoggle' : 'div'} class="forum-sec ${cls}">${icon(ico)}<b>${label}</b><span>· ${n}${extra ? ' ' + extra : ''}</span></${toggle ? 'button' : 'div'}>`;
     ui.onPosts = () => {
       if (status === 'offline') { list.innerHTML = offlineNote(); return; }
       if (status !== 'live') { list.innerHTML = '<p class="muted">Lade Beiträge …</p>'; return; }
       if (!posts.length) { list.innerHTML = '<p class="muted forum-empty">Noch keine Gedanken. Teil den ersten!</p>'; return; }
-      const s = F.sections(posts, Date.now());
-      // Suche: über alle Themen, auch besprochene, als eine Liste
+      // eine Liste, neueste Änderung oben; Suche über alle Beiträge
       const q = ui.q.trim();
-      if (q) {
-        const hit = s.open.concat(s.show, s.done).filter((p) => F.matchPost(p, q));
-        list.innerHTML = hit.length ? hit.map(row).join('') : `<p class="muted forum-empty">Nichts gefunden zu „${esc(q)}“.</p>`;
-      } else {
-        list.innerHTML = SECTION.filter(([k]) => s[k].length).map(([k, ico, label, extra, cls]) => head(ico, label, s[k].length, extra, cls) + s[k].map(row).join('')).join('')
-          + (s.open.length || s.show.length ? '' : '<p class="muted forum-empty">Gerade ist nichts offen.</p>')
-          + (s.done.length ? head(ui.doneOpen ? 'chevD' : 'chevR', 'Besprochen', s.done.length, '', 'k-done', true) + (ui.doneOpen ? s.done.map(row).join('') : '') : '');
-      }
+      const all = F.recent(posts, Date.now());
+      const hit = q ? all.filter((p) => F.matchPost(p, q)) : all;
+      list.innerHTML = hit.length ? hit.map(row).join('') : `<p class="muted forum-empty">Nichts gefunden zu „${esc(q)}“.</p>`;
       App.hydrateIcons(list);
       FD.check();
     };
@@ -983,7 +974,6 @@
     const search = tabs.querySelector('.forum-search');
     search.oninput = App.debounce(() => { ui.q = search.value; ui.onPosts(); }, 150);
     list.onclick = (e) => {
-      if (e.target.closest('[data-donetoggle]')) { ui.doneOpen = !ui.doneOpen; ui.onPosts(); return; }
       const b = e.target.closest('[data-open]'); if (b) showPost(b.dataset.open);
     };
     ui.onPosts();
