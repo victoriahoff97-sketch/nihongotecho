@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-18-heute-leiste', date: '18. November',
+      items: [
+        { t: '今日 jetzt oben im Startkasten', d: 'Deine Tages-To-dos stehen als schmale Leiste unten im blauen Begrüßungskasten. Antippen führt zur Übung, der Stift rechts öffnet „Meine To-dos“.' },
+        { t: 'Neues Zeichen für den Joker', d: 'Rettet der Wochen-Joker deine Reihe, steht in der Woche jetzt eine eingefrorene Flamme. Urlaubstage behalten die Schneeflocke ❄️.' },
+        { t: 'Genki-Prüfungen kürzer', d: 'Unter dem Genki-Lernstand stehen die Prüfungen nur noch als L1, L2 … – grün mit Haken heißt bestanden. ∞ ist die Gesamtprüfung, Details beim Darüberfahren.' },
+      ],
+    },
+    {
       id: '2026-11-18-einstufen-aktiv', date: '18. November',
       items: [
         { t: 'Ausdrücke auch aktiv einstufen', d: 'Der Einstufen-Knopf bei Ausdrücken und Vokabeln zählt jetzt beide Richtungen. Ist das Lesen fertig, öffnet er gleich „DE → JP“.' },

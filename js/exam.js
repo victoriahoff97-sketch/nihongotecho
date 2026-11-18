@@ -47,6 +47,20 @@
     if (s.state === 'open') return `<a class="exam-cta" href="${href(key)}" title="Ab ${L.UNLOCK} % freigeschaltet">${pre}${what}</a>`;
     return '';
   };
+  // Kurzform für die Genki-Karte: nur das Kürzel (L1, ∞ = gesamt), der Stand steckt in Farbe + Zeichen,
+  // die Einzelheiten (合格 %, 7/20) im Tooltip
+  X.chipShort = (key, label, long) => {
+    const s = X.status(key), st = L.stage(key), what = st.kind === 'mini' ? 'Minitest' : 'Prüfung';
+    const name = `${what} ${long || label}`, cls = label === '∞' ? ' inf' : '';
+    if (s.state === 'running') return `<a class="exam-cta short run${cls}" href="${href(key)}" title="${esc(name)} fortsetzen – ${answered(s.run)}/${s.run.answers.length}">${esc(label)}${icon('play')}</a>`;
+    if (s.state === 'passed') return `<a class="exam-cta short pass${cls}" href="${href(key)}" title="${esc(name)}: 合格 ${s.best.pct} % am ${fmtDate(s.best.date)} – noch einmal machen?">${esc(label)}${icon('check')}</a>`;
+    if (s.state === 'open') return `<a class="exam-cta short${cls}" href="${href(key)}" title="${esc(name)} – ab ${L.UNLOCK} % freigeschaltet">${esc(label)}</a>`;
+    return '';
+  };
+  X.cardLineShort = (triples) => {
+    const chips = triples.map(([key, label, long]) => X.chipShort(key, label, long)).filter(Boolean);
+    return chips.length ? `<div class="exam-line"><a class="exam-line-k" href="#/pruefung" title="Alle Prüfungen">試 Prüfungen</a>${chips.join('')}</div>` : '';
+  };
   // Zeile „試 Prüfungen“ für eine Lernstand-Karte; '' wenn noch nichts freigeschaltet ist
   X.cardLine = (pairs) => {
     const chips = pairs.map(([key, label]) => X.chip(key, label)).filter(Boolean);

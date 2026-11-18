@@ -51,13 +51,13 @@
   const ddmm = (d) => d.slice(8) + '.' + d.slice(5, 7) + '.';
   const flame = (info) => {
     if (!info || info.n < 2) return '';
-    const tip = [info.n + ' Tage in Folge'].concat(info.jokers.map((d) => '❄️ Joker am ' + ddmm(d))).join(String.fromCharCode(10));
+    const tip = [info.n + ' Tage in Folge'].concat(info.jokers.map((d) => 'Joker am ' + ddmm(d))).join(String.fromCharCode(10));
     return ` <span class="day-flame" title="${esc(tip)}">${App.streakLogic.MARK}${info.n}</span>`;
   };
   // Gesamt-Flamme (Tage in Folge mit allen To-dos) und Wochenzeile Mo–So darunter
   const offDays = () => App.streakLogic.offDays(S.settings.vacationLog, App.pause && App.pause.vacation ? App.pause.vacation() : S.settings.vacation, App.today());
-  const DAY_ICON = { done: App.streakLogic.MARK, joker: '❄️', off: '❄️' };
-  const DAY_TIP = { done: 'alles geschafft', joker: 'Joker – die Reihe bleibt', off: 'Urlaub – die Reihe bleibt', open: 'heute noch offen', future: '', missed: '' };
+  const DAY_ICON = { done: App.streakLogic.MARK, joker: App.streakLogic.JOKER, off: '❄️' };
+  const DAY_TIP = { done: 'alles geschafft', joker: 'Wochen-Joker – die Reihe bleibt', off: 'Urlaub – die Reihe bleibt', open: 'heute noch offen', future: '', missed: '' };
   const totalFlame = (wk) => (wk.n ? ` <span class="day-total" title="${wk.n} ${wk.n === 1 ? 'Tag' : 'Tage'} in Folge alle To-dos geschafft">${App.streakLogic.MARK}${wk.n}</span>` : '');
   const weekRow = (wk, doneTip = 'alles geschafft') => `<div class="day-week" aria-label="Diese Woche">${wk.days.map((d) => `<span class="day-wd is-${d.state}${d.today ? ' is-today' : ''}" title="${esc(ddmm(d.date) + (d.state === 'done' ? ' · ' + doneTip : DAY_TIP[d.state] ? ' · ' + DAY_TIP[d.state] : ''))}"><small>${d.label}</small><i>${DAY_ICON[d.state] || ''}</i></span>`).join('')}</div>`;
   const forumHintShown =() => L.forumHint(cfg()) && !!(App.forum && App.forum.inGroup && App.forum.inGroup()) && !L.isDone(log(), App.today(), 'forum');
@@ -185,8 +185,59 @@
     </div>`;
   };
 
+  // ---------- Schmale Leiste unten im dunkelblauen Startkasten (Startseite, Standard-Ansicht) ----------
+  // Pro To-do eine Pille: Kästchen (selbst abhaken, wo das geht) + Name mit Stand, Antippen führt zur passenden Übung.
+  // Rechts die Woche Mo–So und der Stift; Bearbeiten öffnet die Karte „Meine To-dos“ direkt unter dem Kasten.
+  const SHORT = { review: 'Wiederholungen', apply: 'Japanisch angewendet', listen: 'Listening', new: 'Neue Wörter', kanji: 'Kanji geschrieben', conj: 'Konjugieren', nhk: 'NHK Easy' };
+  const GO = {
+    review: 'href="#/ueben/heute?auto=1" title="Jetzt wiederholen"',
+    apply: 'data-day-journal title="Tagebuch schreiben"',
+    listen: 'href="#/hoeren" title="Hör-Kette oder Shun"',
+    new: 'href="#/ueben/einstufen" title="Einstufen"',
+    kanji: 'href="#/ueben/kanji" title="Kanji schreiben"',
+    conj: 'href="#/ueben/konjugieren" title="Konjugieren üben"',
+    nhk: `href="${NHK_URL}" target="_blank" rel="noopener" data-read-out title="NHK Easy öffnen"`,
+  };
+  const pillText = (x, on, g) => {
+    const t = x.own ? esc(x.title) : SHORT[x.key];
+    if (on) return t;
+    if (x.key === 'review') return `${t} <em>${Math.min((L.today(log(), App.today()).reviews || 0), g.reviews)}/${g.reviews}</em>`;
+    if (x.key === 'listen') { const m = Math.floor((g.listenMin * 60 - listenNeed()) / 60); return `${t} <em>${m}/${g.listenMin} Min.</em>`; }
+    return t;
+  };
+  const pill = (x, on, g) => {
+    const b = manual(x, on)
+      ? `<button type="button" class="ds-b" data-day-toggle="${esc(x.key)}" aria-pressed="${on}" title="${tip(x, on)}">${icon('check')}</button>`
+      : `<span class="ds-b" title="${on ? 'Geschafft' : 'Hakt sich von selbst ab'}">${icon('check')}</span>`;
+    const go = GO[x.key];
+    const label = on || !go
+      ? (x.own && !on ? `<button type="button" class="ds-l" data-day-toggle="${esc(x.key)}" aria-pressed="false" title="Abhaken">${pillText(x, on, g)}</button>` : `<span class="ds-l">${pillText(x, on, g)}</span>`)
+      : `<${go.startsWith('href') ? 'a' : 'button type="button"'} class="ds-l" ${go}>${pillText(x, on, g)}</${go.startsWith('href') ? 'a' : 'button'}>`;
+    return `<span class="ds-i${on ? ' on' : ''}">${b}${label}</span>`;
+  };
+  const strip = () => {
+    if (!S.settings) return '';
+    const g = goals(), st = state(), main = L.list(cfg()).filter((x) => x.level === 'goal');
+    const all = L.allMain(st, cfg());
+    const wk = main.length ? L.week(S.settings.dayHistory, offDays(), App.today()) : null;
+    const days = wk ? `<span class="ds-wk" aria-label="Diese Woche">${wk.days.map((d) => `<span class="is-${d.state}${d.today ? ' is-today' : ''}" title="${esc(d.label + ' ' + ddmm(d.date) + (d.state === 'done' ? ' · alles geschafft' : DAY_TIP[d.state] ? ' · ' + DAY_TIP[d.state] : ''))}">${DAY_ICON[d.state] || d.label.charAt(0)}</span>`).join('')}</span>` : '';
+    return `<div class="day-strip" data-day-strip>
+      <b class="ds-k" lang="ja">今日</b>${wk ? totalFlame(wk) : ''}
+      ${main.map((x) => pill(x, st[x.key], g)).join('') || '<span class="ds-empty">Tippe auf den Stift und stell dir deine To-dos zusammen.</span>'}
+      ${forumHintShown() ? '<button type="button" class="ds-i ds-forum" data-day-forum>✎ Forum-Satz</button>' : ''}
+      ${all ? '<span class="ds-all" lang="ja">お疲れ様！</span>' : ''}
+      <span class="ds-grow"></span>${days}
+      <button type="button" class="ds-ed${editing ? ' on' : ''}" data-day-edit title="To-dos bearbeiten" aria-label="To-dos bearbeiten">${icon('edit')}</button>
+    </div>`;
+  };
+  const editCard = () => (editing ? editView() : '');
+
   const card = () => (editing ? editView() : view());
-  const redraw = () => { const el = document.querySelector('[data-day-check]'); if (el) el.outerHTML = card(); };
+  // In der Leiste: neu zeichnen über die ganze Startseite (die Bearbeiten-Karte steht dann unter dem Kasten)
+  const redraw = () => {
+    if (document.querySelector('[data-day-strip]')) { App.render(true); return; }
+    const el = document.querySelector('[data-day-check]'); if (el) el.outerHTML = card();
+  };
   const saveGoals = (g) => App.saveSettings({ dayGoals: g }); // die Startseite zeichnet sich danach selbst neu (js/main.js)
 
   const addOwn = async () => {
@@ -228,5 +279,5 @@
 
   // Wochenleiste der Handy-Startseite (js/views.js): Wiederholen-Reihe Mo–So
   const reviewWeek = () => { if (!S.settings) return ''; const wk = L.week(S.settings.dayHistory, offDays(), App.today(), 'review'); return weekRow(wk, 'wiederholt') + `<p class="day-week-n">${wk.n ? `${App.streakLogic.MARK} <b>${wk.n}</b> ${wk.n === 1 ? 'Tag' : 'Tage'} wiederholt in Folge` : 'Heute wiederholen – deine Reihe startet'}</p>`; };
-  App.dayCheck = { card, mark, graded, listened, listenNeed, check, closeDay, reviewWeek };
+  App.dayCheck = { card, strip, editCard, mark, graded, listened, listenNeed, check, closeDay, reviewWeek };
 })(window.App);

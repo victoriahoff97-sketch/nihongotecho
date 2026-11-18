@@ -5,6 +5,8 @@
   const MAX_BACK = 400, MAX_AHEAD = 60;
   // Zeichen vor der Zahl („🔥12“) – überall in der App nur über K.MARK, damit es an einer Stelle tauschbar bleibt
   K.MARK = '🔥';
+  // Wöchentlicher Joker: eine eingefrorene Flamme (eisblau mit Schneestern) – Urlaub bleibt ❄️
+  K.JOKER = '<svg class="joker-ico" viewBox="0 0 24 24" aria-label="Joker" role="img"><path d="M12 1.8c.9 3.3 5.6 5.9 5.6 11.4a5.6 5.6 0 0 1-11.2 0c0-2.9 1.5-4.7 2.6-6 .3 1.8 1.1 2.9 2.2 3.3-.4-3.1-.1-5.8.8-8.7z" fill="#a9dcf7" stroke="#3a8cc4" stroke-width="1.3" stroke-linejoin="round"/><path d="M12.3 12.2c.6 1.5 2.4 2.4 2.4 4.5a2.7 2.7 0 0 1-5.4 0c0-1.3.7-2.1 1.3-2.7.2.8.5 1.2 1 1.4-.1-1.2.2-2.3.7-3.2z" fill="#eef9ff"/><path d="M9.6 15.6l1.4-1.2M13.4 18.4l1.2-1.6" stroke="#7fbfe6" stroke-width=".9" stroke-linecap="round"/><g stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" opacity=".9"><path d="M19 1v8M15 5h8M16.2 2.2l5.6 5.6M21.8 2.2l-5.6 5.6"/></g><g stroke="#2f7fb8" stroke-width="1.5" stroke-linecap="round"><path d="M19 1v8M15 5h8M16.2 2.2l5.6 5.6M21.8 2.2l-5.6 5.6"/></g></svg>';
 
   const pad = (x) => String(x).padStart(2, '0');
   const fmt = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());

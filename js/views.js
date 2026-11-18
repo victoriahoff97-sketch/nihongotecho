@@ -238,7 +238,7 @@
       <div class="card${foldCls('genki')}">${pctHead(g, `${p.doneLessons} von ${p.lessons.length} Lektionen abgeschlossen`, cardBtns(sets, `src=${src}`))}
         ${progBar(g.tot)}
         <div class="lesson-strip" style="margin-top:14px">${p.lessons.map(tile).join('')}</div>
-        ${App.exam ? App.exam.cardLine([['genki1', 'Genki gesamt']].concat(p.lessons.map((x) => [`genki1-L${x.l}`, `L${x.l}`]))) : ''}</div>`;
+        ${App.exam ? App.exam.cardLineShort([['genki1', '∞', 'Genki gesamt']].concat(p.lessons.map((x) => [`genki1-L${x.l}`, `L${x.l}`, `Lektion ${x.l}`]))) : ''}</div>`;
   };
 
   // ---------- Startseite: Leisten anordnen und Schnellaktionen wählen ----------
@@ -247,7 +247,7 @@
   const HO = App.homeOrderLogic;
   let homeEdit = false;
   window.addEventListener('hashchange', () => { homeEdit = false; });
-  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen', actions: 'Schnellaktionen', manhole: 'Gullideckel', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert · 今日' };
+  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen · 今日',actions: 'Schnellaktionen', manhole: 'Gullideckel', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert' };
   // Schnellaktionen: [Farbe, Attribute, Symbol, Titel, Untertitel] – die ersten drei stehen von Anfang an da
   const QUICK = {
     saetze: ['sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze zuordnen', 'Text einfügen, Vokabeln finden'],
@@ -509,13 +509,15 @@
     // Genki-Freischaltung: auf der Startseite nur, solange sie noch aussteht (nicht bei none/open)
     const genkiCard = App.genki && ['locked', 'stale'].includes(App.genki.state()) ? `<div style="margin-bottom:18px">${App.genki.card()}</div>` : '';
     if (document.body.classList.contains('view-handy')) { view.innerHTML = homeHandy({ due, next, vacation, genkiCard, kanaOn: !!kanaBtn }); App.forum && App.forum.refreshDot && App.forum.refreshDot(); return; }
+    // 今日-Leiste unten im Startkasten (js/daycheck.js) – früher eine eigene Karte unten rechts
+    const dayStrip = App.dayCheck.strip();
     const blocks = {
       hero: `<div class="hero"><div class="big-jp">日本語</div>
         <h1 lang="ja">${greet}${name ? '、' + esc(name) + 'さん' : ''}！</h1>
         ${vacation ? `<p>${App.pause.heroText()}</p>
-        <div class="row">${App.pause.heroButton()}<a class="btn" href="#/ueben/karten">${icon('practice')} Karteikarten</a>${kanaBtn}</div></div>` : `<p>${due ? `Heute: <b>${due} ${due === 1 ? 'Karte' : 'Karten'}</b> – ${dueQ.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : `Für heute ist alles wiederholt${next ? ' – wenn du magst, ist Zeit für neue Karten.' : '.'}`}</p>
+        <div class="row">${App.pause.heroButton()}<a class="btn" href="#/ueben/karten">${icon('practice')} Karteikarten</a>${kanaBtn}</div>${dayStrip}</div>` : `<p>${due ? `Heute: <b>${due} ${due === 1 ? 'Karte' : 'Karten'}</b> – ${dueQ.map((x) => `${x.n} ${x.n === 1 ? x.one : x.label}`).join(' · ')}` : `Für heute ist alles wiederholt${next ? ' – wenn du magst, ist Zeit für neue Karten.' : '.'}`}</p>
         <div class="row">${due ? `<a class="btn solid" href="#/ueben/heute?auto=1">${icon('shuffle')} Jetzt wiederholen <span class="badge">${due}</span></a>` : `<a class="btn solid" href="${next ? next.href : '#/ueben/karten'}">${icon(next ? 'play' : 'practice')} ${next ? 'Neue Karten lernen' : 'Karteikarten'}</a>`}${kanaBtn}${App.refresh.button()}${App.grammarRefresh.button()}</div>
-        <p class="small" style="margin-top:10px">${due ? 'Alles gemischt in einer Runde' : ''}${due && tomorrow ? ' · ' : ''}${tomorrow ? `morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu` : ''}<button class="fc-btn" data-forecast title="Prognose: die nächsten 7 Tage" aria-label="Prognose für die nächsten 7 Tage">${icon('chart')}</button>${App.pause.button()}</p></div>`}`,
+        <p class="small" style="margin-top:10px">${due ? 'Alles gemischt in einer Runde' : ''}${due && tomorrow ? ' · ' : ''}${tomorrow ? `morgen ${tomorrow === 1 ? 'kommt 1 Karte' : `kommen ${tomorrow} Karten`} dazu` : ''}<button class="fc-btn" data-forecast title="Prognose: die nächsten 7 Tage" aria-label="Prognose für die nächsten 7 Tage">${icon('chart')}</button>${App.pause.button()}</p>${dayStrip}</div>`}${App.dayCheck.editCard()}`,
       actions: quickHtml(),
       manhole: App.manhole && App.manhole.tile ? App.manhole.tile() : '', // Gullideckel-Kachel (js/manhole.js)
       read: readStrip(),
@@ -549,8 +551,7 @@
       bottom: fitRow('home-bottom', [`<div class="card sec-session"><div class="row between"><h3>授業 Letzte Unterrichtsstunden</h3><a class="btn btn-sm" href="#/unterricht">Alle</a></div>
           <div class="rel-list">${sessions.slice(0, 4).map(App.relItem).join('') || '<p class="muted">Noch keine Stunde angelegt.</p>'}</div></div>`,
         `<div class="card"><div class="row between"><h3>Zuletzt gespeichert</h3></div>
-          <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>`,
-        App.dayCheck.card()], 3),
+          <div class="rel-list">${recent.map(App.relItem).join('') || '<p class="muted">Hier erscheinen deine eigenen Einträge – z. B. neue Wörter aus NHK Easy. Tippe oben auf <b>Speichern</b>.</p>'}</div></div>`], 2),
     };
     view.innerHTML = `<div class="sec-home${homeEdit ? ' home-editing' : ''}">
       ${App.welcome.card()}
