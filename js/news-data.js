@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-18-einstufen-aktiv', date: '18. November',
+      items: [
+        { t: 'Ausdrücke auch aktiv einstufen', d: 'Der Einstufen-Knopf bei Ausdrücken und Vokabeln zählt jetzt beide Richtungen. Ist das Lesen fertig, öffnet er gleich „DE → JP“.' },
+      ],
+    },
+    {
       id: '2026-11-16-satz-stimmen', date: '16. November',
       items: [
         { t: 'Genki-Beispielsätze mit echten Stimmen', d: 'Die Beispielsätze der Genki-Vokabeln werden jetzt mit denselben natürlichen Stimmen wie in den Prüfungen vorgelesen – auf der Vokabel-Seite und den Karteikarten.' },

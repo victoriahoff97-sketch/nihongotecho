@@ -583,9 +583,9 @@
     const mode = q.view || (App.lsGet('vocabView') || 'cards');
     const files = App.filesFor({ section: 'vocab', source: q.src || undefined, lesson: q.l || undefined });
     const cardsQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'vocab', src: q.src, l: q.l, lvl: q.lvl, pos: q.pos }).filter(([, v]) => v))).toString();
-    const unchecked = App.vocabCounts(filterItems(all, { src: q.src, l: q.l, lvl: q.lvl }).filter((i) => App.posMatch(i, q.pos))).unchecked;
+    const vOpen = App.checkOpen(filterItems(all, { src: q.src, l: q.l, lvl: q.lvl }).filter((i) => App.posMatch(i, q.pos))), unchecked = vOpen.n;
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Alle Wörter mit Lesung, Kanji, Übersetzung und Beispielsätzen – nach Quelle und Lektion sortiert.',
-      `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>${pageMore(`<button class="btn" data-action="import-vocab">${icon('upload')} Wortliste importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a>`)}`)}
+      `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${cardsQs.replace(/type=vocab&?/, '')}${vOpen.dir ? '&dir=de' : ''}">${icon('check')} Einstufen${unchecked ? ` <span class="badge">${unchecked}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${cardsQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="vocab">${icon('plus')} Vokabel</button>${pageMore(`<button class="btn" data-action="import-vocab">${icon('upload')} Wortliste importieren</button><a class="btn" href="#/saetze">${icon('sparkle')} Sätze zuordnen</a>`)}`)}
       ${tabsHtml(q, items.length, files.length, App.GK_TAB(false) + App.GB_TAB(false))}
       <div class="toolbar">${filterInput(q, 'In Vokabeln suchen …')}
         <div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
@@ -871,13 +871,13 @@
     let items = filterItems(all, q);
     if (q.g) items = items.filter((i) => i.group === q.g);
     if (q.st) items = items.filter((i) => App.vocabStatus(i.id) === q.st);
-    const unchecked = App.vocabCounts(q.g ? all.filter((i) => i.group === q.g) : all).unchecked;
+    const pOpen = App.checkOpen(onoG ? onoAll : q.g ? all.filter((i) => i.group === q.g) : all);
     const files = App.filesFor({ section: 'phrase', source: q.src || undefined });
     // im Reiter Onomatopoesie gehen Einstufen/Karteikarten auf diese Vokabeln
     const roundQ = onoG ? 'type=vocab&pos=ono' : 'type=phrase' + (q.g ? '&g=' + encodeURIComponent(q.g) : '');
-    const uncheckedN = onoG ? App.vocabCounts(onoAll).unchecked : unchecked;
+    const uncheckedN = pOpen.n;
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Floskeln, Zeitangaben, Zahlen, Zähler & Satzbausteine – alles, was man einfach auswendig lernen muss.',
-      `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${roundQ}">${icon('check')} Einstufen${uncheckedN ? ` <span class="badge">${uncheckedN}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${roundQ}">${icon('practice')} Karteikarten</a><button class="btn" data-new-group>${icon('plus')} Neue Gruppe</button><button class="btn btn-sec" data-new="phrase">${icon('plus')} Ausdruck</button>`)}
+      `${App.checkOn() ? `<a class="btn" href="#/ueben/einstufen?${roundQ}${pOpen.dir ? '&dir=de' : ''}">${icon('check')} Einstufen${uncheckedN ? ` <span class="badge">${uncheckedN}</span>` : ''}</a>` : ''}<a class="btn" href="#/ueben/karten?${roundQ}">${icon('practice')} Karteikarten</a><button class="btn" data-new-group>${icon('plus')} Neue Gruppe</button><button class="btn btn-sec" data-new="phrase">${icon('plus')} Ausdruck</button>`)}
       ${tabsHtml(q, onoG ? onoList.length : items.length, files.length)}
       <div class="toolbar">${filterInput(q, 'Suchen, z. B. Montag, 3 Uhr, ひとつ …')}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusFilter(q.st, 'phrase')}</select></div>
       <div class="chips scroll" data-g-row style="margin-bottom:16px"><button class="chip ${!q.g ? 'on' : ''}" data-q-g="">Alle Gruppen</button>${groupsOrder.map((g) => `<button class="chip ${q.g === g ? 'on' : ''}" data-q-g="${esc(g)}">${esc(g)}</button>`).join('')}<button class="chip ${onoG ? 'on' : ''}" data-q-g="${esc(ONO)}" title="${esc(App.ono.LABEL)}: Lautwörter wie ドキドキ, わくわく – aus deinen Vokabeln">${esc(ONO)}</button><button class="chip" data-new-group>${icon('plus')} Gruppe</button></div>

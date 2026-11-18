@@ -129,6 +129,13 @@
     if (list.length && App.backup && App.backup.noteChange) App.backup.noteChange();
     return list.length;
   };
+  // Einstufen-Knopf auf den Listen-Seiten: zählt beide Richtungen. Ist das Lesen fertig, öffnet er gleich Deutsch → Japanisch –
+  // sonst stünde dort „Alles eingestuft“, obwohl aktiv noch alles ungeprüft ist (Genki-Ausdrücke vor dem 6.11.).
+  App.checkOpen = (items) => {
+    const read = App.vocabCounts(items).unchecked;
+    const act = items.filter((i) => App.writeLogic.direct(i.type) && App.activeStatus(i) === 'unchecked').length;
+    return { n: read + act, read, act, dir: !read && act ? 'de' : '' };
+  };
   App.vocabCounts = (items = App.itemsOf('vocab')) => {
     const c = { unchecked: 0, learn: 0, known: 0, total: items.length };
     items.forEach((v) => c[App.vocabStatus(v.id)]++);
@@ -262,7 +269,8 @@
     // Richtung: lesen, aktiv oder beide gemischt (mix: beide Richtungen in einer Runde – siehe writeLogic.lessonRound);
     // ohne Vorgabe pro Lektion gemischt, sonst lesen.
     const perLesson = type === 'vocab' && !!q.l;
-    const dir = isK ? 'jp' : ['jp', 'de', 'mix'].includes(q.dir) ? q.dir : perLesson ? 'mix' : 'jp';
+    // ohne Vorgabe: ist beim Lesen nichts mehr offen, aktiv aber schon, gleich Deutsch → Japanisch
+    const dir = isK ? 'jp' : ['jp', 'de', 'mix'].includes(q.dir) ? q.dir : perLesson ? 'mix' : App.checkOpen(items).dir || 'jp';
     const mix = dir === 'mix', active = dir === 'de';
     const W = App.writeLogic;
     const statusOf = active ? App.activeStatus : (v) => App.vocabStatus(v.id);
