@@ -24,6 +24,28 @@ if (window.AbortController && window.AbortSignal && !AbortSignal.timeout) {
   const today = (d = new Date()) => new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   Object.assign(App, { $, $$, esc, uid, debounce, clamp, fmtDate, fmtSize, shuffle, pick, today });
 
+  // ---------- iPad/iPhone: Bildschirmtastatur ----------
+  // Safari schiebt beim Antwortfeld die ganze Seite für die Tastatur nach oben und lässt sie danach oft so stehen –
+  // Bild und Eingabezeile rutschen weg, die Seite lässt sich weiter scrollen als sie lang ist. Daher: kein automatisches
+  // Antippen des Felds auf iPad/iPhone (Tastatur kommt erst beim eigenen Tippen) und nach dem Schließen zurückrücken.
+  const nav = typeof navigator === 'undefined' ? {} : navigator, ua = nav.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1);
+  const autoFocus = (el) => { if (el && el.isConnected && !isIOS) el.focus({ preventScroll: true }); };
+  Object.assign(App, { isIOS, autoFocus });
+  if (isIOS && typeof document !== 'undefined') {
+    const typing = () => { const a = document.activeElement; return !!a && (a.matches('input, textarea, select') || a.isContentEditable); };
+    const settle = () => {
+      if (typing()) return;
+      const se = document.scrollingElement || document.documentElement;
+      const max = Math.max(0, se.scrollHeight - window.innerHeight);
+      if (window.scrollY > max) window.scrollTo(window.scrollX, max);
+      else window.scrollTo(window.scrollX, window.scrollY); // stößt Safari an, die verschobene Ansicht neu auszurichten
+    };
+    document.addEventListener('focusout', () => setTimeout(settle, 150));
+    const vv = window.visualViewport;
+    if (vv) vv.addEventListener('resize', () => { if (vv.height >= window.innerHeight - 2) setTimeout(settle, 50); });
+  }
+
   // ---------- Icons (Linien-Icons, 24er Raster) ----------
   const P = {
     home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',

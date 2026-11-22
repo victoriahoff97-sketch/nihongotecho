@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-ipad-tastatur', date: '22. November',
+      items: [
+        { t: 'iPad: Seite rutscht nicht mehr weg', d: 'Beim Eintippen der Antwort in der Lernschlange blieb die Seite oft nach oben verschoben. Jetzt rückt sie zurück; die Tastatur kommt erst beim Tippen ins Feld.' },
+      ],
+    },
+    {
       id: '2026-11-18-heute-leiste', date: '18. November',
       items: [
         { t: '今日 jetzt oben im Startkasten', d: 'Deine Tages-To-dos stehen als schmale Leiste unten im blauen Begrüßungskasten. Antippen führt zur Übung, der Stift rechts öffnet „Meine To-dos“.' },

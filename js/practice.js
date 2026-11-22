@@ -478,7 +478,7 @@
         ${mode === 'pen' ? '<div class="ans-cands" hidden></div>' : ''}<div data-averdict></div>`;
       const inp = box.querySelector('.ans-in'), cands = box.querySelector('.ans-cands');
       ans = { mode, inp, cands, list: [], checked: false };
-      if (mode === 'key') { App.bindRomaji(inp); setTimeout(() => { if (inp.isConnected && !flipped) inp.focus(); }, 50); }
+      if (mode === 'key') { App.bindRomaji(inp); setTimeout(() => { if (!flipped) App.autoFocus(inp); }, 50); }
       else {
         const msg = (t) => { cands.innerHTML = `<span class="muted small">${esc(t)}</span>`; cands.hidden = false; };
         ans.pad = App.hwPad(box.querySelector('[data-hwpad]'), {
@@ -812,7 +812,7 @@
       // Prüfen und Überspringen beenden ein laufendes Diktat: was im Feld steht, gilt
       const micStop = () => App.dictate.stopFor(inp(), { now: true });
       if (mic) mic.onclick = () => App.dictate.toggle(inp(), mic, mic.dataset.mic, { long: true });
-      if (ta) setTimeout(() => ta.focus(), 50);
+      if (ta) setTimeout(() => App.autoFocus(ta), 50);
       const check = async () => {
         if (checked || waiting) return;
         micStop();

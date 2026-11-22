@@ -99,7 +99,7 @@
         ${m === 'pen' ? '<div class="ans-cands" hidden></div>' : ''}`;
       const inp = box.querySelector('.ans-in'), cands = box.querySelector('.ans-cands');
       st = { mode: m, inp, cands, list: [] };
-      if (m === 'key') { App.bindRomaji(inp); setTimeout(() => { if (inp.isConnected && !locked) inp.focus(); }, 50); }
+      if (m === 'key') { App.bindRomaji(inp); setTimeout(() => { if (!locked) App.autoFocus(inp); }, 50); }
       else {
         const s = st;
         s.pad = App.hwPad(box.querySelector('[data-hwpad]'), {
