@@ -269,10 +269,18 @@
   // ---------- Satzgenerator ----------
   // pool: Vokabeln, die bis zum gewählten Niveau erlaubt sind
   const posOk = (it, pos) => pos === 'adj' ? (it.pos === 'i-adj' || it.pos === 'na-adj') : it.pos === pos;
+  // Deutsch eines Adjektivs für „… ist {A}“: Nomen mit Artikel taugen nicht (ばか „der Dummkopf; dumm“ → „dumm“)
+  const NOUNISH = /^(der|die|das|den|dem|ein|eine|einen)\s/i;
+  JP.adjDe = (it) => {
+    const a = it.a && String(it.a.de || '').trim();
+    if (a && !NOUNISH.test(a)) return a;
+    const alt = String(it.de || '').split(/[,;]/).map((s) => s.replace(/\(.*?\)/g, '').trim()).find((s) => s && !NOUNISH.test(s));
+    return alt || '';
+  };
   const usable = (it, pos) => {
     if (!it.kana) return false;
     if (pos === 'verb') return it.v && it.v.cls && it.v.inf;
-    if (pos === 'adj' || pos === 'i-adj' || pos === 'na-adj') return it.a && it.a.de;
+    if (pos === 'adj' || pos === 'i-adj' || pos === 'na-adj') return !!(it.a && JP.adjDe(it));
     if (pos === 'time') return it.t && it.t.adv;
     if (pos === 'noun') return !!JP.nounDe(it).w;
     return true;
@@ -329,9 +337,15 @@
       if (it.pos === 'verb') {
         const v = it.v;
         if (form === 'ich') { if (v.sep) seps.push(v.sep); return v.ich; }
+        if (form === 'zu') { // zu-Infinitiv: „aufzustehen“, „spazieren zu gehen“, „da zu sein“
+          const w = v.inf.split(' '); let last = w.pop();
+          const sp = (v.sep || '').split(' ').pop(); // „eine Stelle an“ → „an“
+          last = (sp && last.length > sp.length && last.startsWith(sp)) ? sp + 'zu' + last.slice(sp.length) : 'zu ' + last;
+          return w.concat(last).join(' ').replace(/^sich /, 'mich '); // Sätze stehen in der ich-Form
+        }
         return v[form] || v.inf;
       }
-      if (it.pos === 'i-adj' || it.pos === 'na-adj') return it.a.de;
+      if (it.pos === 'i-adj' || it.pos === 'na-adj') return JP.adjDe(it);
       if (it.pos === 'time') return form === 'w' ? JP.nounDe(it).w : it.t.adv;
       // großgeschriebene Form ({N:Einen}) = Satzanfang in Anführungszeichen
       if (form && /^[A-Z]/.test(form)) { const s = JP.deNoun(it, form.toLowerCase()); return s.charAt(0).toUpperCase() + s.slice(1); }

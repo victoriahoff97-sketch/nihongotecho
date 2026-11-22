@@ -93,7 +93,10 @@
     } else if (/adj/.test(it.pos || '')) {
       const a = o('a');
       it.cat = ['beschreibung'];
-      it.a = { de: a.de || first, subj: a.subj && a.subj.length ? a.subj : ['ding', 'ort', 'person', 'essen'] };
+      // Nomen mit Artikel überspringen: ばか „der Dummkopf; dumm“ → „dumm“
+      const adjFirst = String(it.de || '').split(/[,;]/).map((s) => s.replace(/\(.*?\)/g, '').trim())
+        .find((s) => s && !/^(der|die|das|den|dem|ein|eine|einen)\s/i.test(s)) || first;
+      it.a = { de: a.de || adjFirst, subj: a.subj && a.subj.length ? a.subj : ['ding', 'ort', 'person', 'essen'] };
     } else if (it.pos === 'time') {
       it.cat = ['zeitpunkt'];
       it.t = { adv: o('t').adv || first };

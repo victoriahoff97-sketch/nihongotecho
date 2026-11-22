@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-23-uebersetzen-saetze', date: '23. November',
+      items: [
+        { t: 'Übersetzen: klarere deutsche Sätze', d: 'Die deutschen Sätze zeigen jetzt eindeutiger, welche Grammatik gemeint ist – z. B. „Ich habe vor, … zu …“ für 〜つもり statt „ich will“ (das wäre 〜たい).' },
+        { t: 'Keine „Dummkopf“-Sätze mehr', d: 'Steht bei einem Adjektiv zuerst ein Nomen wie „der Dummkopf“, nimmt die Übung jetzt das passende Adjektiv („dumm“).' },
+      ],
+    },
+    {
       id: '2026-11-23-uebersetzen-form', date: '23. November',
       items: [
         { t: 'Übersetzen: höflich oder schlicht?', d: 'Über jedem deutschen Satz steht jetzt, ob die Lösung höflich (です/ます) oder schlicht (Wörterbuch-/た-Form) ist – kein Raten mehr zwischen 置きました und 置いた.' },
