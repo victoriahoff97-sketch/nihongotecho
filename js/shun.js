@@ -24,7 +24,7 @@
     if (!list.length) return '';
     const done = list.filter((e) => isHeard(e.id)).length;
     return `<details class="shun-fold" data-shun-lesson="${lesson}" ${openLessons.has(lesson) ? 'open' : ''}><summary>${icon('listen')} Zum Hören <span class="muted">· Shun, ${list.length} ${list.length === 1 ? 'Folge' : 'Folgen'}${done ? `, ${done} gehört` : ''}</span></summary>
-      <div class="shun-fold-rows">${list.map(U.row).join('')}<a class="small" href="#/hoeren?zu=shun">Alle Folgen</a></div></details>`;
+      <div class="shun-fold-rows">${list.map(U.row).join('')}<a class="small" href="#/hoeren?zu=shun">Alle Folgen</a>${App.readAloudGenkiBtn ? App.readAloudGenkiBtn(lesson) : ''}</div></details>`;
   };
   // „toggle“ steigt nicht auf – darum in der Capture-Phase mithören
   document.addEventListener('toggle', (ev) => {

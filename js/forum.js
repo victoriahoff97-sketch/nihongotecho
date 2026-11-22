@@ -386,7 +386,9 @@
     let kind = init.kind || 'rede';
     let images = (init.images || []).slice(0, F.MAX_IMAGES);
     let busy = false;
-    ta.value = key ? draft(key) : (init.text || '');
+    // init.text (z. B. aus „Im Forum teilen“) kommt unter einen schon vorhandenen Entwurf, damit der nicht verloren geht
+    const old = key ? draft(key) : '';
+    ta.value = init.text ? (old ? old + '\n\n' + init.text : init.text) : old;
     const setClosed = (on) => el.classList.toggle('is-closed', !!closed && on);
     setClosed(!ta.value);
     ['focus', 'pointerdown', 'input'].forEach((ev) => ta.addEventListener(ev, () => setClosed(false)));
@@ -645,7 +647,8 @@
   const offlineNote = () => `<div class="forum-note">${esc(OFFLINE)}</div>`;
 
   // daily: aus der 今日-Karte – gleich zur Karte „Satz des Tages“
-  const open = ({ daily = false } = {}) => {
+  // share: aus Anwenden „Im Forum teilen“ – { text, images, items, kind, onShared }: „Neues Thema“ ist gleich vorausgefüllt offen
+  const open = ({ daily = false, share = null } = {}) => {
     if (ui) {
       // schon offen: in einem Beitrag (oder beim Beitreten) erst zurück zur Liste, dort hängt die Karte
       if (daily && st.code && ui.view !== 'list') { ui.wantDaily = true; showList(); } else if (daily) App.forumDaily.focus();
@@ -663,7 +666,7 @@
     more.className = 'forum-more';
     more.innerHTML = `<button class="icon-btn" data-more title="Mehr" aria-label="Mehr">${icon('more')}</button>`;
     md.el.querySelector('.modal-head [data-x]').before(more);
-    ui = { md, root: md.body.querySelector('.forum'), wantDaily: daily };
+    ui = { md, root: md.body.querySelector('.forum'), wantDaily: daily, share };
     more.querySelector('[data-more]').onclick = (e) => { e.stopPropagation(); toggleMenu(more); };
     if (!st.code) showJoin();
     else { if (status !== 'live' && !rejoining) { stop(); start(); } showList(); }
@@ -951,12 +954,20 @@
     const newBtn = r.querySelector('[data-newtopic]');
     // von einem Eintrag oder aus „Sätze zuordnen“ geöffnet (oder Entwurf da): gleich offen, sonst erst nach „Neues Thema“
     const openNew = (on) => { slot.hidden = !on; newBtn.hidden = on; if (on) { const ta = slot.querySelector('textarea'); if (ta) setTimeout(() => ta.focus(), 30); } };
+    // aus Anwenden „Im Forum teilen“: Text, Blatt-Bild und Wörter stehen schon drin (einmalig)
+    const share = ui.share;
+    ui.share = null;
     slot.appendChild(composer({
       key: 'new', kinds: true, closed: false, label: 'Teilen', placeholder: 'Neuer Gedanke … was ist dir aufgefallen?',
-      onSubmit: async (v) => { await D.addPost(st.code, Object.assign({ name: st.name }, v)); setTimeout(() => openNew(false)); },
+      init: share ? { kind: share.kind || 'zeigen', text: share.text, images: share.images || [], refs: (share.items || []).filter(Boolean).map(toRef) } : {},
+      onSubmit: async (v) => {
+        await D.addPost(st.code, Object.assign({ name: st.name }, v));
+        setTimeout(() => openNew(false));
+        if (share && share.onShared) { const cb = share.onShared; share.onShared = null; cb(); }
+      },
       onCancel: () => openNew(false),
     }));
-    slot.hidden = !(pageItem() || App.sentencesOpen().length || draft('new'));
+    slot.hidden = !(share || pageItem() || App.sentencesOpen().length || draft('new'));
     newBtn.hidden = !slot.hidden;
     newBtn.onclick = () => openNew(true);
     App.hydrateIcons(r);
@@ -1159,7 +1170,7 @@
     markSeen(id);
   };
 
-  App.forum = { open, close: () => { if (ui) ui.md.close(); }, state: () => st, inGroup: () => !!st.code, avatar: avatarOf, flame: flameOf, refreshDot }; // refreshDot: auch das „neu“ auf der Handy-Startseite
+  App.forum = { open, shrinkImage, close: () => { if (ui) ui.md.close(); }, state: () => st, inGroup: () => !!st.code, avatar: avatarOf, flame: flameOf, refreshDot }; // refreshDot: auch das „neu“ auf der Handy-Startseite
 
   // Im Hintergrund verbinden, damit der rote Punkt auch ohne Öffnen erscheint – nie, wenn das Gerät in keiner Gruppe ist
   if (typeof document !== 'undefined') window.addEventListener('load', () => { if (st.code && D.configured()) setTimeout(start, 3000); });

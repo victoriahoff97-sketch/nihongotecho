@@ -161,9 +161,28 @@
     return { days, journalCount, answerCount };
   };
 
+  // „Im Forum teilen“: Text für den Beitrag. Kopfzeile sagt, woher er kommt (Tagebuch mit Tag, Smalltalk mit Frage),
+  // darunter der eigene Text. dayLabel kommt fertig (z. B. „Sa 22.11.“), question als reiner Text ohne Furigana.
+  const shareText = ({ type, dayLabel = '', title = '', question = '', text = '' }) => {
+    const head = type === 'answer'
+      ? '🗨️ Smalltalk' + (question ? ': ' + question.trim() : '')
+      : '📓 Tagebuch' + (dayLabel ? ' · ' + dayLabel : '') + (title.trim() ? ' – ' + title.trim() : '');
+    const body = String(text || '').trim();
+    return body ? head + '\n\n' + body : head;
+  };
+  // Verknüpfungen für den Beitrag: erst die hier neu gelernten Wörter, dann die angewendeten; je Art in der
+  // Reihenfolge Vokabel, Ausdruck, Grammatik, Kanji; ohne Doppelte, höchstens max
+  const shareRefIds = (item, max = 5) => {
+    const it = item || {};
+    const all = [].concat(it.vocabIds || [], it.phraseIds || [], it.grammarIds || [], it.kanjiIds || []);
+    const fresh = new Set(it.newIds || []);
+    const order = all.filter((id) => fresh.has(id)).concat(all.filter((id) => !fresh.has(id)));
+    return Array.from(new Set(order)).slice(0, max);
+  };
+
   const L = {
     plainText, countSentences, answerStats, daysBetween, filterPrompts, pickRandom,
-    diffAnswers, highlightTerms, monthGrid, shiftMonth, monthMarks,
+    diffAnswers, highlightTerms, monthGrid, shiftMonth, monthMarks, shareText, shareRefIds,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = L; else root.App.aLogic = L;
 })(this);

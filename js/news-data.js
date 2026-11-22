@@ -7,6 +7,20 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-nachsprechen', date: '22. November',
+      items: [
+        { t: 'Sätze nachsprechen 声', d: 'Neben jedem Beispielsatz sitzt ein Mikrofon: Satz anhören (auch langsam), dreimal laut mitsprechen, dann selbst vorlesen – die App zeigt farbig, was sie verstanden hat.' },
+        { t: 'Ganze Genki-Lektion', d: 'Grammatik › „Zum Hören“ unter einer Genki-Lektion › „Sätze nachsprechen“ geht alle Beispielsätze der Lektion nacheinander durch.' },
+      ],
+    },
+    {
+      id: '2026-11-22-im-forum-teilen', date: '22. November',
+      items: [
+        { t: 'Tagebuch im Forum teilen', d: 'Anwenden › Tagebuch-Eintrag oder Smalltalk-Antwort öffnen, oben „Im Forum teilen“ tippen: Text, Handschrift als Bild und deine neuen Wörter stehen gleich im Beitrag.' },
+        { t: 'Wörter übernehmen', d: 'Die anderen sehen deinen Eintrag in der Gruppe und können die angehängten Wörter mit einem Tipp in ihre eigene Sammlung übernehmen.' },
+      ],
+    },
+    {
       id: '2026-11-22-pruefung-schnell', date: '22. November',
       items: [
         { t: 'Prüfungen starten sofort', d: 'Minitests und große Prüfungen (Üben › Prüfungen) brauchten mit vielen Wörtern teils über eine Minute zum Starten – jetzt geht es in etwa einer Sekunde.' },

@@ -211,7 +211,7 @@
     JP.preloadSentence(ex.jp);
     return `<div class="example"><div class="grow"><div class="jp-s" lang="ja">${JP.ruby(ex.jp)}</div>
       ${kana && kana !== ex.jp && !hasN ? `<div class="kana-s">${esc(kana)}</div>` : ''}
-      <div class="de-s">${esc(App.exMeaning(ex))}</div>${ex.src ? `<div class="small muted">Quelle: ${esc(ex.src)}</div>` : ''}</div>${typeof tools === 'string' ? tools : ''}${App.speakBtn(ex.jp)}</div>`;
+      <div class="de-s">${esc(App.exMeaning(ex))}</div>${ex.src ? `<div class="small muted">Quelle: ${esc(ex.src)}</div>` : ''}</div>${typeof tools === 'string' ? tools : ''}${App.readAloudBtn ? App.readAloudBtn(ex.jp, App.exMeaning(ex)) : ''}${App.speakBtn(ex.jp)}</div>`;
   };
   // Beispielsatz einer Vokabel als Ausdruck übernehmen: Formular schon ausgefüllt, die Gruppe wählt man dort.
   // Gibt es den Satz schon als Ausdruck, öffnet sich der vorhandene.

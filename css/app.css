@@ -1320,6 +1320,8 @@ body.ink-fit #view { padding-bottom: 16px; }
 .prompt-more[open] summary { margin-bottom: 4px; }
 .prompt-more > div { padding: 6px 12px; border-left: 3px solid var(--yamabuki-soft); }
 .apply-menu { position: relative; flex: none; }
+.w-share { flex: none; margin-right: 4px; white-space: nowrap; }
+.w-share.is-shared { color: var(--muted); }
 .apply-menu > summary { list-style: none; }
 .apply-menu > summary::-webkit-details-marker { display: none; }
 .apply-menu-pop { position: absolute; right: 0; top: 48px; z-index: 20; padding: 6px; display: flex; flex-direction: column; align-items: stretch; min-width: 180px; box-shadow: var(--shadow-lg); }
@@ -2868,3 +2870,20 @@ a.etym-part:hover { outline: 2px solid var(--sec, var(--momo)); }
   .etym-form .g { font-size: 34px; }
   .etym-form .l { font-size: 11px; }
 }
+
+/* ---------- Nachsprechen (js/readaloud.js) ---------- */
+.ra { display: flex; flex-direction: column; gap: 12px; }
+.ra-sent { font-size: 28px; line-height: 2.1; text-align: center; font-family: var(--font-kanji); }
+.ra-sent.ra-hidden { filter: blur(9px); cursor: pointer; user-select: none; }
+.ra-de { text-align: center; }
+.ra-tools { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ra-tools .btn.active { background: var(--sora-soft, #dff3f1); }
+.ra-say { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.ra-heard { font-size: 18px; }
+.ra-heard b { font-family: var(--font-kanji); color: var(--ink); }
+.ra-verdict { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ra-tip { text-align: center; margin: 0; }
+.ra-ok { color: var(--matcha); }
+.ra-part { color: var(--yamabuki); }
+.ra-miss { color: var(--shu); background: var(--shu-soft); border-radius: 4px; }
+.shun-fold-rows .ra-genki { align-self: flex-start; margin-top: 6px; }

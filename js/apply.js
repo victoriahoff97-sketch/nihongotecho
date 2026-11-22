@@ -496,7 +496,10 @@
     const hasText = !!AL.plainText(item.html);
     const back = isAnswer ? (prompt ? App.link(prompt) : '#/anwenden?tab=smalltalk') : '#/anwenden?m=' + String(item.date || App.today()).slice(0, 7);
     const dateField = `<label class="row small muted write-date-l">${isAnswer ? 'Antwort vom' : 'Datum'} <input class="input write-date" type="date" data-w-date value="${esc(item.date || '')}"></label>`;
-    const menu = `<details class="apply-menu"><summary class="icon-btn" title="Menü">${icon('menu')}</summary><div class="apply-menu-pop card">
+    // „Im Forum teilen“ nur, wenn dieses Gerät in einer Gruppe ist
+    const canShare = !!(App.forum && App.forum.inGroup());
+    const shareBtn = canShare ? `<button class="btn btn-sm w-share ${item.sharedAt ? 'is-shared' : ''}" data-w-share title="${item.sharedAt ? 'Schon im Forum geteilt – nochmal teilen' : 'Mit deiner Gruppe teilen: Text, Handschrift als Bild und die Wörter dazu'}">${icon('thought')}<span class="w-share-l">${item.sharedAt ? 'Geteilt ✓' : 'Im Forum teilen'}</span></button>` : '';
+    const menu = shareBtn + `<details class="apply-menu"><summary class="icon-btn" title="Menü">${icon('menu')}</summary><div class="apply-menu-pop card">
       <button class="btn btn-ghost btn-sm btn-danger" data-w-del>${icon('trash')} Löschen</button></div></details>`;
     let head;
     if (isAnswer) {
@@ -599,6 +602,42 @@
       const sheet = notebookOf(item);
       if (sheet) { sheet.name = (isAnswer ? 'Antwort ' : 'Tagebuch ') + App.uLogic.jpDate(item.date); await App.updateFile(sheet); }
       App.render(true);
+    };
+    // Im Forum teilen: Text (getippt), Blatt als Bild (Handschrift, bis zu 4 Seiten), neu gelernte Wörter als Verknüpfungen
+    const shareEl = view.querySelector('[data-w-share]');
+    if (shareEl) shareEl.onclick = async () => {
+      if (shareEl.disabled) return;
+      shareEl.disabled = true;
+      try {
+        const html = typedEd ? typedEd.innerHTML : item.html;
+        const m = /^\d{4}-(\d{2})-(\d{2})/.exec(item.date || '');
+        const dayLabel = m ? `${weekdayAbbr(item.date)} ${+m[2]}.${+m[1]}.` : '';
+        const text = AL.shareText({
+          type: item.type, dayLabel, title: titleInput ? titleInput.value : item.title || '',
+          question: prompt ? App.jp.plain(prompt.jp || '') : '', text: AL.plainText(html),
+        });
+        const images = [];
+        const sheet = notebookOf(item);
+        if (sheet && App.store.inkCount.get(sheet.id)) {
+          // Geschrieben wird im Vollbild, das beim Schließen speichert – hier liegt alles schon in der Datenbank.
+          // Je Seite ein Bild, abgeschnitten nach der letzten beschriebenen Zeile; leere Seiten zählen nicht
+          for (let page = 0; page < Math.min(sheet.pages || 1, 8) && images.length < App.forumLogic.MAX_IMAGES; page += 1) {
+            const cv = document.createElement('canvas');
+            cv.width = 1000;
+            if (!(await App.ink.preview(cv, sheet.id, { page, maxH: Infinity }))) continue;
+            try { images.push(await App.forum.shrinkImage(cv)); } catch (e) { /* zu groß: Seite auslassen */ }
+          }
+        }
+        const items = AL.shareRefIds(item, App.forumLogic.MAX_REFS).map(App.item).filter(Boolean);
+        App.forum.open({ share: { kind: 'zeigen', text, images, items, onShared: async () => {
+          const cur = App.item(item.id);
+          if (!cur) return;
+          cur.sharedAt = Date.now();
+          await App.saveItem(cur, { silent: true });
+          shareEl.classList.add('is-shared');
+          shareEl.querySelector('.w-share-l').textContent = 'Geteilt ✓';
+        } } });
+      } finally { shareEl.disabled = false; }
     };
     const titleEl = titleInput = view.querySelector('[data-w-title]');
     if (titleEl) titleEl.onchange = async () => { if (!App.item(item.id)) return; item.title = titleEl.value.trim(); await App.saveItem(item, { silent: true }); };

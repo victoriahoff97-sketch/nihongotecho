@@ -374,12 +374,13 @@
     const a = App.voiceAudio && JP.sentenceAudio(text);
     if (a) setTimeout(() => App.voiceAudio.preload(a.url, a.enc), 0);
   };
-  JP.speak = (text) => {
+  // opts: { rate: Tempo-Faktor (0.7 = langsam), onEnd: wenn fertig gesprochen }
+  JP.speak = (text, opts = {}) => {
     const audio = App.voiceAudio && JP.sentenceAudio(text);
-    if (audio) return App.voiceAudio.play(audio.url, { enc: audio.enc, onFail: () => speakTts(text) });
-    speakTts(text);
+    if (audio) return App.voiceAudio.play(audio.url, { enc: audio.enc, rate: opts.rate || 1, onEnd: opts.onEnd, onFail: () => speakTts(text, opts) });
+    speakTts(text, opts);
   };
-  const speakTts = (text) => {
+  const speakTts = (text, opts = {}) => {
     if (!window.speechSynthesis) return App.toast('Sprachausgabe wird von diesem Browser nicht unterstützt');
     if (App.voiceAudio) App.voiceAudio.stop();
     speechSynthesis.cancel();
@@ -388,7 +389,8 @@
     u.lang = 'ja-JP';
     const voice = JP.voice();
     if (voice) u.voice = voice;
-    u.rate = (App.store.settings && App.store.settings.ttsRate) || 0.9;
+    u.rate = ((App.store.settings && App.store.settings.ttsRate) || 0.9) * (opts.rate || 1);
+    if (opts.onEnd) u.onend = opts.onEnd;
     speechSynthesis.speak(u);
     if (!voice) setTimeout(() => { if (!JP.voice()) App.toast('Tipp: Installiere in Windows eine japanische Stimme (Einstellungen › Zeit & Sprache › Sprache).'); }, 400);
   };

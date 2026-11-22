@@ -32,7 +32,8 @@
   };
   V.preload = (url, enc) => { if (url && !isFile()) blobOf(url, enc); };
   // Vorgeladenes startet sofort (iPad-Safari lässt Ton nur direkt nach dem Tippen zu), sonst nach dem Laden
-  V.play = (url, { enc = false, onFail = () => {} } = {}) => {
+  // rate: Tempo (0.7 = langsamer, gleiche Tonhöhe) · onEnd: nach dem letzten Ton (Mitsprechen: nächste Runde)
+  V.play = (url, { enc = false, onFail = () => {}, rate = 1, onEnd } = {}) => {
     V.stop();
     if (window.speechSynthesis) speechSynthesis.cancel();
     const a = new Audio();
@@ -40,10 +41,12 @@
     let failed = false;
     const fail = () => { if (playing === a && !failed) { failed = true; playing = null; onFail(); } };
     a.onerror = fail;
+    a.onended = () => { if (playing === a) playing = null; if (onEnd) onEnd(); };
     const start = (src) => {
       if (playing !== a) return;
       if (!src) return fail();
       a.src = src;
+      a.playbackRate = rate;
       a.play().catch((e) => { if (!e || e.name !== 'NotAllowedError') fail(); });
     };
     if (isFile()) start(url);
