@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-verpasste-tage', date: '22. November',
+      items: [
+        { t: 'Ein paar Tage Pause gemacht?', d: 'Hast du Tage verpasst, fragt die App beim Öffnen gleich, ob du sie überspringen willst – mit beiden Zahlen: was jetzt fällig ist und wie viel danach übrig bleibt.' },
+      ],
+    },
+    {
       id: '2026-11-22-kanji-herkunft', date: '22. November',
       items: [
         { t: 'Woher kommt ein Kanji? 字源', d: 'Jede Kanji-Seite zeigt jetzt „Herkunft“: wie das Zeichen früher aussah, aus welchen Teilen es besteht (Sinn- oder Klangteil) und was dahintersteckt.' },

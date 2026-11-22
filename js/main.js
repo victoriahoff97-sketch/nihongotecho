@@ -144,6 +144,8 @@
     if (App.hallo) App.hallo.boot();
     // nach einem Update kurz zeigen, was neu ist (js/news.js)
     if (App.news) App.news.boot();
+    // ein paar Tage nicht wiederholt: gleich anbieten, die verpassten Tage zu überspringen (js/pause.js)
+    if (App.pause) App.pause.boot();
     // angefangene Wortliste (Vokabeln importieren) noch im Zwischenspeicher: Hinweis zum Weitermachen (js/vocabcheck.js)
     if (App.importDraftBoot) setTimeout(App.importDraftBoot, 1500);
     // eigene Vokabeln ohne Beispielsatz aus dem Satz-Index der Pakete auffüllen (einmal je Index-Version)

@@ -12,7 +12,7 @@
   const recs = () => Array.from(S.srs.values());
   const focus = () => W.focus(S.settings);
   const dueBy = (map) => (t) => W.dueCount(map, S.items, focus(), t);
-  const vac = () => S.settings.vacation;
+  const vac = () => (S.settings || {}).vacation; // settings fehlt kurz vor dem Laden (visibilitychange beim Neuladen)
 
   const pause = App.pause = {};
   pause.vacation = () => (P.active(vac()) ? vac() : null);
@@ -38,9 +38,10 @@
     return `<button class="fc-btn skip-btn" data-skipdays title="${t}" aria-label="${t}">${icon('rewind')}<span class="skip-dot"></span></button>`;
   };
 
-  pause.skipModal = () => {
+  // auto: von selbst beim Öffnen der App angeboten (pause.boot) – sonst über das Rückspul-Symbol
+  pause.skipModal = ({ auto } = {}) => {
     const now = Date.now(), m = pause.missed(now);
-    if (!m.n) { App.toast('Du hast keinen Tag verpasst.'); return; }
+    if (!m.n) { if (!auto) App.toast('Du hast keinen Tag verpasst.'); return; }
     const changed = P.shift(recs(), m.n, now);
     const after = new Map(S.srs); changed.forEach((s) => after.set(s.id, s));
     const end = P.dayEnd(now);
@@ -49,11 +50,13 @@
     const left = Math.max(0, heroDue - less);
     const since = m.n === 1 ? 'gestern' : `seit ${WD[new Date(m.from).getDay()]}`;
     const like = WD[new Date(m.from).getDay()];
+    if (auto && left >= heroDue) return; // Überspringen brächte nichts – dann gar nicht erst fragen
     const md = App.modal({
-      title: 'Verpasste Tage überspringen?',
-      body: `<p>Du hast ${since} nicht wiederholt (${dayWord(m.n)}). Alles rückt ${dayWord(m.n)} nach hinten – heute ist dann wie ${m.n === 1 ? 'gestern' : like}: <b>${cardWord(left)}</b> statt ${heroDue}.</p>
-        <p class="muted small">Was du heute schon wiederholt hast, bleibt, wie es ist. Danach kannst du es 8 Sekunden lang rückgängig machen.</p>`,
-      foot: `<button class="btn" data-no>Abbrechen</button><button class="btn btn-primary" data-ok>${dayWord(m.n)} überspringen</button>`,
+      title: auto ? `Willkommen zurück – ${dayWord(m.n)} Pause` : 'Verpasste Tage überspringen?',
+      body: `<p>Du hast ${since} nicht wiederholt (${dayWord(m.n)}). Gerade sind <b>${cardWord(heroDue)}</b> fällig.</p>
+        <p>Überspringst du die verpassten Tage, rückt alles ${dayWord(m.n)} nach hinten – heute ist dann wie ${m.n === 1 ? 'gestern' : like} und es sind nur noch <b>${cardWord(left)}</b>.</p>
+        <p class="muted small">Was du heute schon wiederholt hast, bleibt, wie es ist. Danach kannst du es 8 Sekunden lang rückgängig machen${auto ? ' – und später geht es jederzeit über das Rückspul-Symbol im blauen Kasten' : ''}.</p>`,
+      foot: `<button class="btn" data-no>${auto ? `Nein, alle ${heroDue} machen` : 'Abbrechen'}</button><button class="btn btn-primary" data-ok>${dayWord(m.n)} überspringen</button>`,
     });
     md.el.querySelector('[data-no]').onclick = () => md.close();
     md.el.querySelector('[data-ok]').onclick = async () => {
@@ -69,6 +72,24 @@
     };
   };
   document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-skipdays]')) pause.skipModal(); });
+
+  // Beim Öffnen der App (und wenn sie über Nacht offen war): verpasste Tage von selbst anbieten – einmal am Tag,
+  // nur auf der Startseite und erst, wenn kein anderes Fenster (Willkommensbrief, Neuigkeiten, Tour) offen ist.
+  const dayKey = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  let bootTimer = 0;
+  pause.boot = (delay = 2500, tries = 15) => {
+    clearTimeout(bootTimer);
+    bootTimer = setTimeout(() => {
+      if (!S.settings || App.lsGet('skipAsked') === dayKey()) return;
+      if (!pause.missed().n) return;
+      const home = !location.hash || location.hash === '#' || location.hash === '#/';
+      const busy = document.querySelector('.modal-back, .viewer, .mh-show, .flash-stage') || (App.tour && App.tour.active && App.tour.active());
+      if (!home || busy) { if (tries > 1) pause.boot(2000, tries - 1); return; }
+      App.lsSet('skipAsked', dayKey());
+      pause.skipModal({ auto: true });
+    }, delay);
+  };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pause.boot(); });
 
   // ---------- Urlaubsmodus ----------
   // Beim Öffnen (und wenn die App über Nacht offen war) die Urlaubstage nachholen; endet am Rückkehrtag von selbst
