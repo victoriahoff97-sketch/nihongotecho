@@ -2803,9 +2803,7 @@ body.view-handy .mh-map { max-height: none; min-height: 0; }
 body.view-handy .mh-mapcard { padding: 4px; }
 
 /* ---------- 鬼門 Kimon (js/kimon.js) ---------- */
-.kimon-ico { width: 1em; height: 1em; display: inline-block; vertical-align: -0.12em; }
-.mode-card.kimon-card .k { color: var(--shu); height: 40px; }
-.kimon-head-ico { color: var(--shu); margin-right: 10px; }
+.mode-card.kimon-card .k { color: var(--shu); }
 .kimon-empty-ico { color: var(--shu); }
 .kimon { --oo: var(--shu); --oni: var(--daidai); --ko: var(--yamabuki); }
 .kimon-chip.oo { --sec: var(--oo); } .kimon-chip.oni { --sec: var(--oni); } .kimon-chip.ko { --sec: var(--ko); } .kimon-chip.beaten { --sec: var(--matcha); }
