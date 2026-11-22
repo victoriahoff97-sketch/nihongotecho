@@ -247,7 +247,7 @@
   const HO = App.homeOrderLogic;
   let homeEdit = false;
   window.addEventListener('hashchange', () => { homeEdit = false; });
-  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen · 今日',actions: 'Schnellaktionen', manhole: 'Gullideckel', read: 'Heute lesen und hören', sammlung: 'Deine Sammlung', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert' };
+  const BLOCK_LABEL = { hero: 'Begrüßung · Wiederholen · 今日',actions: 'Schnellaktionen', manhole: 'Gullideckel', read: 'Heute lesen und hören', waage: 'Wochen-Waage', sammlung: 'Deine Sammlung', vocab: 'Vokabel-Lernstand', jlpt: 'JLPT-Lernstand', genki: 'Genki-Lernstand', kanji: 'Kanji-Lernstand', bottom: 'Unterricht · Zuletzt gespeichert' };
   // Schnellaktionen: [Farbe, Attribute, Symbol, Titel, Untertitel] – die ersten drei stehen von Anfang an da
   const QUICK = {
     saetze: ['sec-vocab', 'href="#/saetze"', 'sparkle', 'Sätze zuordnen', 'Text einfügen, Vokabeln finden'],
@@ -521,6 +521,7 @@
       actions: quickHtml(),
       manhole: App.manhole && App.manhole.tile ? App.manhole.tile() : '', // Gullideckel-Kachel (js/manhole.js)
       read: readStrip(),
+      waage: App.skillTime ? App.skillTime.card() : '', // Lesen · Schreiben · Hören · Sprechen pro Woche (js/compass.js)
       sammlung: `<div class="section-title">Deine Sammlung <span style="text-transform:none;letter-spacing:0;font-weight:600">· alles, was in der App steht</span></div>
       ${fitRow('stat-grid', [stat('grammar', count('grammar'), 'Grammatikpunkte'), stat('vocab', count('vocab'), 'Wörter'), stat('session', count('session'), count('session') === 1 ? 'Stunde mitgeschrieben' : 'Stunden mitgeschrieben'), stat('kanji', count('kanji'), 'Kanji'), stat('phrase', count('phrase'), 'Ausdrücke & Bausteine')], 5)}`,
       vocab: (() => { // Jedes Wort zählt einmal: „kann ich“ erst, wenn Lesen und Deutsch → Japanisch sitzen – wie beim JLPT- und Genki-Lernstand
@@ -747,7 +748,7 @@
     const files = App.filesFor({ section: 'grammar', source: q.src || undefined, lesson: q.l || undefined });
     const cardQs = new URLSearchParams(Object.fromEntries(Object.entries({ type: 'grammar', src: q.src, l: q.l, lvl: q.lvl }).filter(([, v]) => v)));
     view.innerHTML = `<div class="${sec.cls} ${App.furiClass()}">${pageHead(sec, 'Jeder Grammatikpunkt mit Aufbau, Erklärung, Beispielen – und wo du ihn gelernt hast.',
-      `<a class="btn" href="#/ueben/karten?${cardQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="grammar">${icon('plus')} Grammatik</button>`)}
+      `<a class="btn" href="#/kompass" title="Welche N4-Grammatik kannst du schon selbst bilden?"><span lang="ja">羅</span> N4-Kompass</a><a class="btn" href="#/ueben/karten?${cardQs}">${icon('practice')} Karteikarten</a><button class="btn btn-sec" data-new="grammar">${icon('plus')} Grammatik</button>`)}
       ${tabsHtml(q, items.length, files.length)}
       <div class="toolbar">${filterInput(q, 'Grammatik suchen, z. B. て-Form, Vergleich …')}<div class="filter-row">${App.sourceSelect(all, q.src)}${App.lessonSelect(all.filter((i) => App.srcMatch(i, q.src)), q.l)}
       ${App.levelSelect(q.lvl)}<select class="input" data-q-select="st"><option value="">Lernstand</option>${App.statusChoices({ type: 'grammar' }).map(([k, s]) => `<option value="${k}" ${q.st === k ? 'selected' : ''}>${s.dot} ${s.label}</option>`).join('')}</select>

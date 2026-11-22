@@ -85,7 +85,7 @@
       const field = App.answerField(stage.querySelector('[data-ansfield]'), { onEnter: () => { if (!done) check(); else { const b = stage.querySelectorAll('[data-res]'); if (b.length === 1) b[0].click(); } } });
       // Werten: richtig zählt nur beim ersten Versuch, falsch kommt am Ende genau einmal wieder
       const grade = (ok) => {
-        if (ok && !retry) right++;
+        if (ok && !retry) { right++; if (g && App.compass) App.compass.made(g.id); } // Kompass: selbst gebildet
         if (!ok) { if (!missed.includes(t)) missed.push(t); if (!retry) list.push({ t, retry: true }); }
         i++; show();
       };

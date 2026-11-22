@@ -778,10 +778,13 @@
       if (['1', '2', '3', '4'].includes(e.key) && ent && !ent.pad) grade(+e.key - 1);
     };
     document.addEventListener('keydown', onKey);
+    // Wochen-Waage: welche Fertigkeit die offene Karte übt
+    if (App.skillTime) App.skillTime.setCardSource(() => { if (!cur || !ent) return null; const m = answerable(ent) ? modeFor(ent) : 'off'; if (ent.pad || ent.kind === 'conj') return m === 'say' ? 'p' : 's'; return App.compassLogic.cardSkill(ent.dir, m); });
     App.screenItem = () => cur; // fürs Forum: „Diese Karte anhängen“
     App.parkHere = () => { wantPark = true; }; // „Eintrag öffnen“ außerhalb der Karte (Vergleichen-Fenster) parkt die Runde ebenso
     App.onLeave(() => {
       App.screenItem = null; App.parkHere = null;
+      if (App.skillTime) App.skillTime.setCardSource(null);
       document.removeEventListener('keydown', onKey);
       if (ans && ans.pad) ans.pad.stop();
       if (ans && ans.rec) ans.rec.stop(true);
@@ -962,7 +965,7 @@
       if (ta) ta.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enter(); } });
       stage.querySelector('[data-sol]').addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-res]'); if (!b) return;
-        if (b.dataset.res === '1') score++; else wrong.push(e);
+        if (b.dataset.res === '1') { score++; if (dir === 'de' && e.g && e.g.type === 'grammar' && App.compass) App.compass.made(e.g.id); } else wrong.push(e); // Kompass: selbst gebildet
         i++; show();
       });
     };

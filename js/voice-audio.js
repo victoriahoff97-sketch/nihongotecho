@@ -30,6 +30,7 @@
   V.stop = () => {
     if (playing) { playing.pause(); playing = null; }
   };
+  V.isPlaying = () => !!playing && !playing.paused;
   V.preload = (url, enc) => { if (url && !isFile()) blobOf(url, enc); };
   // Vorgeladenes startet sofort (iPad-Safari lässt Ton nur direkt nach dem Tippen zu), sonst nach dem Laden
   // rate: Tempo (0.7 = langsamer, gleiche Tonhöhe) · onEnd: nach dem letzten Ton (Mitsprechen: nächste Runde)

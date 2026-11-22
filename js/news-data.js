@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-kompass-waage', date: '22. November',
+      items: [
+        { t: 'N4-Kompass 羅針盤', d: 'Grammatik › „N4-Kompass“ zeigt, welche Grammatik du selbst bilden kannst: ein ● pro richtigem Übersetzen, Umformen oder eigenem Satz, ab 3 sicher.' },
+        { t: 'Wochen-Waage 天秤', d: 'Neuer Block auf der Startseite: wie viele Minuten du diese Woche gelesen, geschrieben, gehört und gesprochen hast – mit Tipp, was zu kurz kommt.' },
+      ],
+    },
+    {
       id: '2026-11-22-durchsagen', date: '22. November',
       items: [
         { t: 'Durchsagen verstehen 案内', d: 'Hören › Reiter „Durchsagen“: echte Ansagen und Gespräche von YouTube – Bahnsteig, Shinkansen, Flughafen, Hotel. Hören, Fragen beantworten, Lösung zeigen.' },
