@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-23-kompass-n5', date: '23. November',
+      items: [
+        { t: 'Kompass jetzt auch für N5', d: 'Grammatik › „Kompass“ zeigt oben N5 und N4 nebeneinander mit Fortschritt – antippen wechselt die Stufe. Die Wochen-Waage steht jetzt unter „Deine Sammlung“.' },
+      ],
+    },
+    {
       id: '2026-11-22-satz-75', date: '22. November',
       items: [
         { t: 'Satz des Tages: noch mehr Platz', d: 'Dein Satz in der Gruppen-Challenge darf jetzt bis zu 75 Zeichen lang sein statt 60.' },

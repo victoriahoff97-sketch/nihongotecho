@@ -1,4 +1,4 @@
-/* Nihongo Techō – N4-Kompass (#/kompass) und Wochen-Waage (Block auf der Startseite) samt Zeitmessung */
+/* Nihongo Techō – Grammatik-Kompass N5/N4 (#/kompass) und Wochen-Waage (Block auf der Startseite) samt Zeitmessung */
 'use strict';
 (function (App) {
   const { esc, icon } = App;
@@ -20,10 +20,23 @@
   };
 
   App.route('/kompass', (view, p, q) => {
-    const level = q.lv === 'N5' ? 'N5' : 'N4';
+    // Stufe: aus der Adresse, sonst die zuletzt angesehene (pro Gerät), sonst N5
+    const LV = ['N5', 'N4'];
+    const level = LV.includes(q.lv) ? q.lv : LV.includes(App.lsGet('kompassLv')) ? App.lsGet('kompassLv') : 'N5';
+    App.lsSet('kompassLv', level);
     const show = ['0', '1', '2'].includes(q.st) ? +q.st : null;
-    const rows = rowsFor(level);
+    const all = {};
+    LV.forEach((l) => { all[l] = rowsFor(l); });
+    const rows = all[level];
     const s = C.summary(rows);
+    // Beide Stufen nebeneinander, die gewählte hervorgehoben – antippen wechselt
+    const tile = (l) => {
+      const t = C.summary(all[l]);
+      const w = (n) => (t.total ? (n / t.total) * 100 : 0);
+      return `<a class="kp-level${l === level ? ' on' : ''}" href="#/kompass?${new URLSearchParams(Object.assign({}, q, { lv: l })).toString()}">
+        <b>${l}</b><span>${t.total ? `<b style="color:var(--matcha)">${t.safe}</b> / ${t.total} sicher` : '<span class="muted">nicht in der Sammlung</span>'}</span>
+        <div class="progress kp-bar"><i style="width:${w(t.safe)}%;background:var(--matcha)"></i><i style="width:${w(t.started)}%;background:var(--matcha-soft)"></i></div></a>`;
+    };
     const pct = (n) => (s.total ? (n / s.total) * 100 : 0);
     const dots = (n) => (n ? `<span class="kp-dots">${'●'.repeat(Math.min(n, C.SAFE))}${n > C.SAFE ? '<small>+' + (n - C.SAFE) + '</small>' : ''}</span>` : '');
     const chip = (r) => `<a class="kp-chip kp-s${r.stage}" href="${App.link(r.it)}" title="${esc(r.it.title)}${r.n ? ` – ${r.ex}× geübt, ${r.own}× in eigenen Sätzen` : ' – noch nicht selbst gebildet'}"><span lang="ja">${App.jp.ruby(r.it.jp || r.it.title)}</span>${dots(r.n)}</a>`;
@@ -31,11 +44,11 @@
     const list = rows.filter((r) => show === null || r.stage === show);
     view.innerHTML = `<div class="sec-grammar">
       <div class="crumbs">${App.backCrumb()} › Kompass</div>
-      <div class="page-head"><div class="titles"><h1>${level}-Kompass <span class="jp-title">羅針盤</span></h1>
+      <div class="page-head"><div class="titles"><h1>Grammatik-Kompass <span class="jp-title">羅針盤</span></h1>
         <p>Welche Grammatik kannst du schon <b>selbst bilden</b>? Ein ● für jedes Mal: richtig übersetzt (Deutsch → Japanisch), richtig umgeformt oder in einem eigenen Satz im Tagebuch bzw. Smalltalk benutzt. Ab ${C.SAFE} gilt ein Punkt als sicher.</p></div></div>
+      <div class="kp-levels">${LV.map(tile).join('')}</div>
       ${s.total ? `<div class="card">
-        <div class="row between" style="flex-wrap:wrap;gap:8px"><div><b style="font-size:22px;color:var(--matcha)">${s.safe}</b> von ${s.total} sicher · <b>${s.started}</b> angefangen · <span class="muted">${s.none} noch nicht selbst gebildet</span></div>
-          <span class="seg">${seg('lv', 'N5', 'N5')}${seg('lv', '', 'N4')}</span></div>
+        <div><b style="font-size:22px;color:var(--matcha)">${s.safe}</b> von ${s.total} ${level}-Punkten sicher · <b>${s.started}</b> angefangen · <span class="muted">${s.none} noch nicht selbst gebildet</span></div>
         <div class="progress kp-bar"><i style="width:${pct(s.safe)}%;background:var(--matcha)"></i><i style="width:${pct(s.started)}%;background:var(--matcha-soft)"></i></div>
         <div class="row" style="margin-top:12px;gap:6px;flex-wrap:wrap"><span class="seg">${seg('st', '', 'Alle')}${seg('st', '0', 'Noch nicht')}${seg('st', '1', 'Angefangen')}${seg('st', '2', 'Sicher')}</span>
           <a class="btn btn-sm" href="#/ueben/saetze">${icon('edit')} Übersetzen üben</a></div>
@@ -111,4 +124,17 @@
     const box = b.closest('.waage');
     if (box) box.outerHTML = App.skillTime.card();
   });
+  // Einmalig: Wer die Startseite schon umsortiert hatte, bekommt die Waage ebenfalls unter „Deine Sammlung“ (vorher stand sie darüber)
+  try {
+    const raw = localStorage.getItem('nt-homeOrder');
+    if (raw && !localStorage.getItem('nt-waageMoved')) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list) && list.includes('waage') && list.includes('sammlung')) {
+        const out = list.filter((k) => k !== 'waage');
+        out.splice(out.indexOf('sammlung') + 1, 0, 'waage');
+        localStorage.setItem('nt-homeOrder', JSON.stringify(out));
+      }
+      localStorage.setItem('nt-waageMoved', '1');
+    }
+  } catch (e) { /* egal */ }
 })(window.App);
