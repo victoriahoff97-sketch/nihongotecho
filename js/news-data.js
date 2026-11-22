@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-23-waage-sprechen', date: '23. November',
+      items: [
+        { t: 'Wochen-Waage genauer', d: 'Als „Sprechen“ zählt nur noch, wenn das Mikrofon Japanisch hört – deutsches Diktieren (z. B. beim Übersetzen ins Deutsche) zählt wie die Übung selbst.' },
+      ],
+    },
+    {
       id: '2026-11-23-kompass-n5', date: '23. November',
       items: [
         { t: 'Kompass jetzt auch für N5', d: 'Grammatik › „Kompass“ zeigt oben N5 und N4 nebeneinander mit Fortschritt – antippen wechselt die Stufe. Die Wochen-Waage steht jetzt unter „Deine Sammlung“.' },

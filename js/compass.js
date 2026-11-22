@@ -72,7 +72,7 @@
     const path = (location.hash || '').replace(/^#/, '').split('?')[0];
     const card = cardSrc && /^\/ueben\/(karten|heute|kimon|auffrischen|grammatik-auffrischen)/.test(path) ? cardSrc() : null;
     const playing = mediaOn();
-    const ctx = { path, override: playing ? 'h' : card, readAloud: !!document.querySelector('.ra-modal'), micOn: !!document.querySelector('.mic.active') };
+    const ctx = { path, override: playing ? 'h' : card, readAloud: !!document.querySelector('.ra-modal'), micOn: !!(App.dictate && App.dictate.japaneseOn && App.dictate.japaneseOn()) };
     return { skill: C.skillOf(ctx), playing };
   };
   const flush = () => {

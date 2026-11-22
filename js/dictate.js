@@ -71,9 +71,11 @@
     if (homeScreenIos()) { if (onFail) onFail('In der App vom Home-Bildschirm kann das iPad hier nicht zuhören – bitte im Safari öffnen.'); return null; }
     const rec = new (SR())();
     let done = false, cut = false, timer = 0, best = [];
+    const ja = /^ja/.test(lang);
     const finish = () => {
       if (done) return;
       done = true;
+      if (ja) jaListening--;
       clearTimeout(timer);
       if (!cut && onDone) onDone(best);
     };
@@ -106,14 +108,18 @@
       if (e.error !== 'no-speech' && onFail) { cut = true; onFail(MSG[e.error] || 'Zuhören hat nicht geklappt (' + e.error + ').'); }
     };
     rec.onend = finish;
-    try { rec.start(); } catch (err) { console.error(err); if (onFail) onFail('Das Mikrofon ließ sich nicht starten.'); return null; }
+    try { rec.start(); } catch (err) { console.error(err); done = true; if (onFail) onFail('Das Mikrofon ließ sich nicht starten.'); return null; }
+    if (ja) jaListening++;
     timer = setTimeout(stop, NO_SPEECH);
     return { stop };
   };
 
+  let jaListening = 0; // laufende listen()-Runden auf Japanisch
   App.dictate = {
     joined,
     listen,
+    // Hört gerade ein Mikrofon auf Japanisch zu? (Wochen-Waage: nur das zählt als Sprechen, deutsches Diktieren nicht)
+    japaneseOn: () => jaListening > 0 || !!(active && /^ja/.test(active.lang || '')),
     supported: () => !!SR(),
     // Läuft gerade ein Diktat in dieses Feld, beenden (z. B. beim Verlassen der Seite).
     // now: was gerade im Feld steht, gilt – Nachzügler der Erkennung schreiben nicht mehr hinein (Prüfen, Absenden)
@@ -202,7 +208,7 @@
         if (!long) timer = setTimeout(() => { App.toast(MSG['no-speech']); stop(); }, NO_SPEECH);
       };
 
-      active = { input, stop: stopAll };
+      active = { input, stop: stopAll, lang };
       btn.classList.add('active');
       if (label) label.textContent = 'Fertig';
       round();
