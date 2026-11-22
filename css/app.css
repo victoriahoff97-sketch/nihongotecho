@@ -697,7 +697,7 @@ a.ref[href^="#/ausdruecke/"] { --sec: var(--matcha); --sec-soft: var(--matcha-so
   .hoeren .hr-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) { .hoeren .hr-row { flex-wrap: wrap; } .hoeren .hr-row .grow { flex-basis: calc(100% - 50px); } }
-.listen-modal .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--sora); text-decoration: underline; cursor: pointer; }
+.listen-modal .linklike, .ds-modal .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--sora); text-decoration: underline; cursor: pointer; }
 .read-tile:hover { transform: translateY(-2px) rotate(-.4deg); box-shadow: var(--shadow); }
 .read-tile .art { flex: none; width: 92px; height: 84px; align-self: center; }
 .read-tile .art svg { width: 100%; height: 100%; }
@@ -2871,6 +2871,30 @@ a.etym-part:hover { outline: 2px solid var(--sec, var(--momo)); }
   .etym-form .l { font-size: 11px; }
 }
 
+/* ---------- Hören › Durchsagen verstehen (js/durchsagen.js) ---------- */
+.ds-sec .ds-score { display: inline-block; margin-left: 4px; padding: 1px 9px; border-radius: 99px; background: var(--sora-soft); color: var(--sora); font-weight: 700; }
+.ds-row .ds-name { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ds-row .ds-name:hover { color: var(--sora); }
+.ds-row .ds-meta { white-space: nowrap; }
+.ds-st { flex: none; font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 99px; background: var(--line); color: var(--muted); white-space: nowrap; }
+.ds-st.richtig { background: var(--matcha-soft); color: var(--matcha); }
+.ds-st.nochmal { background: var(--yamabuki-soft, #f6e7c4); color: var(--yamabuki, #a8740c); }
+.ds-modal .ds-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.ds-modal .ds-body p { margin: 6px 0 0; }
+.ds-video iframe { transition: filter .25s; }
+.ds-video.blur iframe { filter: blur(16px) saturate(.6); }
+.ds-video .ds-veil { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); display: none; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 99px; background: rgba(0,0,0,.55); color: #fff; font-size: 13px; pointer-events: none; }
+.ds-video.blur .ds-veil { display: inline-flex; }
+.ds-video .ds-veil svg, .ds-tools svg { width: 15px; height: 15px; vertical-align: -3px; }
+.ds-tools .linklike { display: inline-flex; align-items: center; gap: 3px; }
+.ds-qs { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+.ds-qs li { line-height: 1.45; }
+.ds-qs .ds-a { display: block; margin-top: 2px; color: var(--sora); font-weight: 700; }
+.ds-sol { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--sora-soft); }
+.ds-sol .ds-ja { font-size: 15px; line-height: 1.7; margin: 0; }
+.ds-file { padding: 14px; border: 1px dashed var(--line); border-radius: 12px; }
+@media (max-width: 760px) { .ds-modal .ds-body { grid-template-columns: 1fr; } .ds-row { flex-wrap: wrap; } .ds-row .ds-name { flex-basis: calc(100% - 50px); } }
+@media (max-width: 560px) { .hoeren .hr-tabs .tab-kanji { display: none; } }
 /* ---------- Nachsprechen (js/readaloud.js) ---------- */
 .ra { display: flex; flex-direction: column; gap: 12px; }
 .ra-sent { font-size: 28px; line-height: 2.1; text-align: center; font-family: var(--font-kanji); }

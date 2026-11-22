@@ -74,6 +74,7 @@ if (window.AbortController && window.AbortSignal && !AbortSignal.timeout) {
     close: '<path d="M18 6L6 18M6 6l12 12"/>',
     mini: '<rect x="3" y="4" width="18" height="16" rx="2"/><rect x="12" y="12" width="7" height="6" rx="1" fill="currentColor" stroke="none"/>',
     expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
+    announce: '<path d="M3 10v4a1 1 0 001 1h3l6 5V4L7 9H4a1 1 0 00-1 1z"/><path d="M16.5 8.5a5 5 0 010 7"/><path d="M19.5 5.5a9 9 0 010 13"/>',
     mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',
     back: '<path d="M15 18l-6-6 6-6"/>',
     next: '<path d="M9 18l6-6-6-6"/>',
@@ -326,6 +327,7 @@ if (window.AbortController && window.AbortSignal && !AbortSignal.timeout) {
     counters: null, // Zähler-Tabellen in den Ausdrücken: selbst gesetztes „Kann ich“ je Zähler { <id>: true/false } (js/counter-data.js)
     listenAt: null, // 今日のリスニング: gemerkte Stelle im offenen Stück { pos, t } (Sekunde)
     shunHeard: [], // Seite „Hören“: gehörte Folgen von Japanese with Shun (Folgen-IDs, js/shun-logic.js)
+    durchsagen: null, // Seite „Hören“ › Durchsagen: selbst eingestuft { <id>: { ok, n, at } } (js/durchsagen-logic.js)
     shunAt: null, // Seite „Hören“: gemerkte Stelle in der zuletzt offenen Shun-Folge { id, t } (Sekunde)
     inkPen: null, // Schreibblatt, alt: zuletzt gewählter Stift { tool, wIdx, widths, color, mcolor } – nur noch Vorlage für die ersten eigenen Stifte
     inkPens: null, // Schreibblatt: Meine Stifte { list, def, last } (js/ink-pen.js normPens)

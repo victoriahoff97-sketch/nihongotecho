@@ -1,4 +1,4 @@
-/* Nihongo Techō – Seite „Hören“ (#/hoeren): die ganze Hör-Kette (Chienowa → Teppei) und Japanese with Shun */
+/* Nihongo Techō – Seite „Hören“ (#/hoeren): die ganze Hör-Kette (Chienowa → Teppei), Japanese with Shun und Durchsagen (js/durchsagen.js) */
 'use strict';
 (function (App) {
   const { esc, icon } = App;
@@ -91,7 +91,7 @@
       <div class="hr-foot"><span class="muted small">Genki-Lektionen</span>${lessonGrid(heard)}</div></section>`;
   };
   const halves = () => `<div class="hr-halves">${chainHalf()}${shunHalf()}</div>`;
-  const tabs = (tab) => `<div class="tabs hr-tabs">${[['', `${icon('listen')} Hör-Kette`], ['shun', 'Japanese with Shun']].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-q-zu="${k}">${l}</button>`).join('')}</div>`;
+  const tabs = (tab) => `<div class="tabs hr-tabs">${[['', `${icon('listen')} Hör-Kette`], ['shun', 'Japanese with Shun'], ['durchsagen', `${icon('announce')} Durchsagen <span class="tab-kanji" lang="ja">案内</span>`]].map(([k, l]) => `<button class="tab ${tab === k ? 'on' : ''}" data-q-zu="${k}">${l}</button>`).join('')}</div>`;
 
   // ---------- Hör-Kette ----------
   const chainRow = (p, i, pos) => `<div class="shun-row hr-row ${i < pos ? 'heard' : ''} ${i === pos ? 'now' : ''}">
@@ -162,9 +162,9 @@
 
   // Beim Neuzeichnen (z. B. „Ab hier“, Haken) klappen Blöcke zu oder auf – damit nichts unter dem Finger wegrutscht,
   // bleibt die oberste sichtbare Zeile bzw. Block-Überschrift an derselben Stelle im Fenster
-  const ANCHORS = '[data-pos], [data-shun-heard], details[data-fold] > summary';
+  const ANCHORS = '[data-pos], [data-shun-heard], [data-ds-row], details[data-fold] > summary';
   const selOf = (el) => (el.matches('summary') ? `details[data-fold="${el.parentElement.dataset.fold}"] > summary`
-    : el.dataset.pos != null ? `[data-pos="${el.dataset.pos}"]` : `[data-shun-heard="${el.dataset.shunHeard}"]`);
+    : el.dataset.pos != null ? `[data-pos="${el.dataset.pos}"]` : el.dataset.dsRow != null ? `[data-ds-row="${el.dataset.dsRow}"]` : `[data-shun-heard="${el.dataset.shunHeard}"]`);
   const visibleAnchors = (view) => {
     const out = [];
     for (const el of view.querySelectorAll(ANCHORS)) {
@@ -189,8 +189,12 @@
     const first = fresh;
     fresh = false;
     const anchors = first ? [] : visibleAnchors(view);
-    const tab = ((q && q.zu) || App.parseHash().query.zu) === 'shun' ? 'shun' : '';
-    view.innerHTML = `<div class="${SEC.cls} hoeren">${App.pageHead(SEC, 'Deine Hör-Kette für jeden Tag und Shuns Podcast zur Genki-Grammatik.')}${halves()}${tabs(tab)}${tab ? shun() : chain()}</div>`;
+    const zu = (q && q.zu) || App.parseHash().query.zu;
+    const tab = zu === 'shun' || zu === 'durchsagen' ? zu : '';
+    view.innerHTML = `<div class="${SEC.cls} hoeren">${App.pageHead(SEC, 'Deine Hör-Kette für jeden Tag, Shuns Podcast zur Genki-Grammatik und echte Durchsagen für die Reise.')}${halves()}${tabs(tab)}${tab === 'shun' ? shun() : tab === 'durchsagen' ? App.durchsagen.section() : chain()}</div>`;
+    // Handy: Reiter laufen seitlich über – den gewählten ins Bild holen
+    const onTab = view.querySelector('.hr-tabs .tab.on');
+    if (onTab) onTab.parentElement.scrollLeft = Math.max(0, onTab.offsetLeft - onTab.parentElement.offsetLeft - 8);
     view.querySelectorAll('details[data-fold]').forEach((d) => d.addEventListener('toggle', () => {
       const key = d.dataset.fold;
       // „toggle“ kommt auch für Blöcke, die schon offen gezeichnet wurden – nur echtes Auf-/Zuklappen merken

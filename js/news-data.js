@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-durchsagen', date: '22. November',
+      items: [
+        { t: 'Durchsagen verstehen 案内', d: 'Hören › Reiter „Durchsagen“: echte Ansagen und Gespräche von YouTube – Bahnsteig, Shinkansen, Flughafen, Hotel. Hören, Fragen beantworten, Lösung zeigen.' },
+        { t: 'Nur hören, nicht mitlesen', d: 'Das Video ist anfangs verschwommen, weil im Bild oft die Antworten stehen. „Bild zeigen“ macht es scharf; danach stufst du dich selbst ein: richtig oder nochmal.' },
+      ],
+    },
+    {
       id: '2026-11-22-nachsprechen', date: '22. November',
       items: [
         { t: 'Sätze nachsprechen 声', d: 'Neben jedem Beispielsatz sitzt ein Mikrofon: Satz anhören (auch langsam), dreimal laut mitsprechen, dann selbst vorlesen – die App zeigt farbig, was sie verstanden hat.' },
