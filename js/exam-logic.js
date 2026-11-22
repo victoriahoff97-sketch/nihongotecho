@@ -139,8 +139,19 @@
     return out;
   };
   const firstMeaning = (de) => String(de || '').split(/[;；]/)[0].replace(/\s*\([^)]*\)\s*$/, '').trim();
-  const wordNotation = (it) => (it.kanji ? JP.notate(it.kanji, it.kana) : it.kana);
+  const notationCache = new WeakMap(); // wird je Frage für alle Wörter gebraucht
+  const wordNotation = (it) => {
+    if (!notationCache.has(it)) notationCache.set(it, it.kanji ? JP.notate(it.kanji, it.kana) : it.kana);
+    return notationCache.get(it);
+  };
   const exOf = (it) => (it.examples || []).find((e) => e && e.jp) || null;
+  // Schlüssel → Wortart des ersten Eintrags damit (wie list.find, aber einmal statt je Kandidat: sonst bei
+  // Tausenden Wörtern Millionen Vergleiche je Frage und der Prüfungsstart hängt sekundenlang)
+  const firstPos = (list, keyFn) => {
+    const m = new Map();
+    list.forEach((v) => { const k = keyFn(v); if (!m.has(k)) m.set(k, v.pos); });
+    return m;
+  };
 
   // ---------- Automatische Fragen je Teil ----------
   // Jede Art liefert für einen Eintrag höchstens eine Frage (oder null). Gemischt wird reihum über die Arten.
@@ -164,7 +175,8 @@
         if (at < 0) return null;
         const prompt = markSpan(ex.jp, w, '（　　）');
         const others = pool.filter((v) => v.id !== it.id && firstMeaning(v.de) !== firstMeaning(it.de));
-        const wrong = L.distractors(wordNotation(it), others.map(wordNotation), 3, (x) => JP.plain(x), (x) => (others.find((v) => wordNotation(v) === x) || {}).pos === it.pos ? 2 : 0, rng);
+        const posOf = firstPos(others, wordNotation);
+        const wrong = L.distractors(wordNotation(it), others.map(wordNotation), 3, (x) => JP.plain(x), (x) => (posOf.get(x) === it.pos ? 2 : 0), rng);
         return make(rng, { prompt, de: ex.de }, wordNotation(it), wrong);
       },
       // Japanisches Wort → deutsche Bedeutung
@@ -172,7 +184,8 @@
         const ans = firstMeaning(it.de);
         if (!ans) return null;
         const others = pool.filter((v) => v.id !== it.id && JP.toHira(v.kana) !== JP.toHira(it.kana));
-        const wrong = L.distractors(ans, others.map((v) => firstMeaning(v.de)).filter(Boolean), 3, (x) => x.toLowerCase(), (x) => ((others.find((v) => firstMeaning(v.de) === x) || {}).pos === it.pos ? 2 : 0), rng);
+        const posOf = firstPos(others, (v) => firstMeaning(v.de));
+        const wrong = L.distractors(ans, others.map((v) => firstMeaning(v.de)).filter(Boolean), 3, (x) => x.toLowerCase(), (x) => (posOf.get(x) === it.pos ? 2 : 0), rng);
         return make(rng, { prompt: wordNotation(it) }, ans, wrong);
       },
     },

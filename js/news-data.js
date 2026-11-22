@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-pruefung-schnell', date: '22. November',
+      items: [
+        { t: 'Prüfungen starten sofort', d: 'Minitests und große Prüfungen (Üben › Prüfungen) brauchten mit vielen Wörtern teils über eine Minute zum Starten – jetzt geht es in etwa einer Sekunde.' },
+      ],
+    },
+    {
       id: '2026-11-22-antwort-sprechen', date: '22. November',
       items: [
         { t: 'Antwort sprechen 🎤', d: 'Karteikarten Deutsch → Japanisch: Unter der Karte das Mikrofon wählen, dann hört die App gleich zu und prüft, was du sagst – gleich ausgesprochene Wörter zählen auch.' },
