@@ -154,7 +154,12 @@
       const opts = {
         cram: true,
         left: () => entries.length,
-        onGrade: (ent, g) => { C.tally(stats, ent.form, g > 0, !ent.again); ent.again = true; App.dayCheck.mark('conj'); },
+        // gibt das Zurücknehmen für „Rückgängig“ zurück: Auswertung je Form wie vorher
+        onGrade: (ent, g) => {
+          const was = ent.again, s = stats, old = s[ent.form] && Object.assign({}, s[ent.form]);
+          C.tally(s, ent.form, g > 0, !ent.again); ent.again = true; App.dayCheck.mark('conj');
+          return () => { ent.again = was; if (old) s[ent.form] = old; else delete s[ent.form]; };
+        },
         endHtml: () => { const rows = C.summary(stats); return rows.length ? `<div class="conj-summary">${rows.map((r) => { const f = F.form(r.form); return `<div style="--c:${lineColor(f)}"><b>${esc(f.label)}</b><span>${r.right}/${r.asked}</span></div>`; }).join('')}</div>` : ''; },
       };
       opts.nextChunk = () => {

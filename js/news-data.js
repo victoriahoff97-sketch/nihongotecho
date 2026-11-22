@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-konjugieren-zurueck', date: '22. November',
+      items: [
+        { t: 'Konjugieren: Rückgängig', d: 'Verklickt? Unter Üben › Konjugieren steht nach jeder Bewertung oben „↶ Rückgängig“ (oder Strg+Z) – die letzte Karte kommt zurück, auch die Auswertung am Ende.' },
+      ],
+    },
+    {
       id: '2026-11-22-torii', date: '22. November',
       items: [
         { t: 'Torii statt Flammen ⛩', d: 'In der Wochenleiste im Startkasten steht für jeden geschafften Tag jetzt ein rotes Torii mit kleinen goldenen Funken. Der Wochen-Joker ist ein eisblaues Torii.' },

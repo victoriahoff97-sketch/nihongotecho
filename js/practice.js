@@ -589,14 +589,15 @@
       if (!ok) { const b = stage.querySelector(`[data-mci="${i}"]`); if (b) b.classList.add('no'); }
       flip();
     };
-    // Konjugieren zählt eigene Treffer mit (onGrade) – dort gibt es kein Zurück
-    const remember = (keys, again) => { last = opts.onGrade ? null : { ent, snap: cram ? null : App.srsSnap(keys), done, right, total, run, again }; };
+    // Eigene Zählung der Seite (onGrade, z. B. Konjugieren): onGrade gibt eine Funktion zurück, die sie wieder zurücknimmt
+    const remember = (keys, again) => { last = { ent, snap: cram ? null : App.srsSnap(keys), done, right, total, run, again }; };
     const undo = async () => {
       if (!last || busy) return;
       busy = true;
       const l = last;
       last = null;
       if (l.snap) await App.srsRestore(l.snap);
+      if (l.revert) l.revert();
       if (l.again) { const i = queue.indexOf(l.ent); if (i >= 0) queue.splice(i, 1); }
       if (ent && ent !== l.ent) queue.unshift(ent);
       queue.unshift(l.ent);
@@ -623,7 +624,7 @@
       busy = false;
       done++; if (g > 0) right++;
       tally(g);
-      if (opts.onGrade) opts.onGrade(ent, g);
+      if (opts.onGrade) { const r = opts.onGrade(ent, g); if (last) { if (typeof r === 'function') last.revert = r; else last = null; } }
       if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
       next();
     };
