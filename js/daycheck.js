@@ -52,14 +52,14 @@
   const flame = (info) => {
     if (!info || info.n < 2) return '';
     const tip = [info.n + ' Tage in Folge'].concat(info.jokers.map((d) => 'Joker am ' + ddmm(d))).join(String.fromCharCode(10));
-    return ` <span class="day-flame" title="${esc(tip)}">${App.streakLogic.MARK}${info.n}</span>`;
+    return ` <span class="day-flame" title="${esc(tip)}">${App.streakLogic.TORII}${info.n}</span>`;
   };
   // Gesamt-Flamme (Tage in Folge mit allen To-dos) und Wochenzeile Mo–So darunter
   const offDays = () => App.streakLogic.offDays(S.settings.vacationLog, App.pause && App.pause.vacation ? App.pause.vacation() : S.settings.vacation, App.today());
-  const DAY_ICON = { done: App.streakLogic.MARK, joker: App.streakLogic.JOKER, off: '❄️' };
+  const DAY_ICON = { done: App.streakLogic.TORII, joker: App.streakLogic.JOKER, off: '❄️' };
   const DAY_TIP = { done: 'alles geschafft', joker: 'Wochen-Joker – die Reihe bleibt', off: 'Urlaub – die Reihe bleibt', open: 'heute noch offen', future: '', missed: '' };
-  const totalFlame = (wk) => (wk.n ? ` <span class="day-total" title="${wk.n} ${wk.n === 1 ? 'Tag' : 'Tage'} in Folge alle To-dos geschafft">${App.streakLogic.MARK}${wk.n}</span>` : '');
-  const weekRow = (wk, doneTip = 'alles geschafft') => `<div class="day-week" aria-label="Diese Woche">${wk.days.map((d) => `<span class="day-wd is-${d.state}${d.today ? ' is-today' : ''}" title="${esc(ddmm(d.date) + (d.state === 'done' ? ' · ' + doneTip : DAY_TIP[d.state] ? ' · ' + DAY_TIP[d.state] : ''))}"><small>${d.label}</small><i>${DAY_ICON[d.state] || ''}</i></span>`).join('')}</div>`;
+  const totalFlame = (wk) => (wk.n ? ` <span class="day-total" title="${wk.n} ${wk.n === 1 ? 'Tag' : 'Tage'} in Folge alle To-dos geschafft">${App.streakLogic.TORII}${wk.n}</span>` : '');
+  const weekRow = (wk, doneTip = 'alles geschafft') => `<div class="day-week" aria-label="Diese Woche">${wk.days.map((d) => `<span class="day-wd is-${d.state}${d.today ? ' is-today' : ''}" title="${esc(ddmm(d.date) + (d.state === 'done' ? ' · ' + doneTip : DAY_TIP[d.state] ? ' · ' + DAY_TIP[d.state] : ''))}"><small>${d.label}</small><i>${DAY_ICON[d.state] || (d.state === 'open' ? App.streakLogic.TORII_OPEN : '')}</i></span>`).join('')}</div>`;
   const forumHintShown =() => L.forumHint(cfg()) && !!(App.forum && App.forum.inGroup && App.forum.inGroup()) && !L.isDone(log(), App.today(), 'forum');
 
   const openJournal = () => {
@@ -278,6 +278,6 @@
   });
 
   // Wochenleiste der Handy-Startseite (js/views.js): Wiederholen-Reihe Mo–So
-  const reviewWeek = () => { if (!S.settings) return ''; const wk = L.week(S.settings.dayHistory, offDays(), App.today(), 'review'); return weekRow(wk, 'wiederholt') + `<p class="day-week-n">${wk.n ? `${App.streakLogic.MARK} <b>${wk.n}</b> ${wk.n === 1 ? 'Tag' : 'Tage'} wiederholt in Folge` : 'Heute wiederholen – deine Reihe startet'}</p>`; };
+  const reviewWeek = () => { if (!S.settings) return ''; const wk = L.week(S.settings.dayHistory, offDays(), App.today(), 'review'); return weekRow(wk, 'wiederholt') + `<p class="day-week-n">${wk.n ? `${App.streakLogic.TORII} <b>${wk.n}</b> ${wk.n === 1 ? 'Tag' : 'Tage'} wiederholt in Folge` : 'Heute wiederholen – deine Reihe startet'}</p>`; };
   App.dayCheck = { card, strip, editCard, mark, graded, listened, listenNeed, check, closeDay, reviewWeek };
 })(window.App);

@@ -292,6 +292,14 @@
   // Ein gerade abgeschickter Beitrag hat evtl. noch keinen Server-Zeitstempel: zählt als „jetzt“.
   F.changedAt = (p, now) => Math.max(p.lastActivityAt ?? now, p.editedAt || 0, p.doneAt || 0);
   F.recent = (posts, now) => Array.from(posts).sort((a, b) => F.changedAt(b, now) - F.changedAt(a, now));
+  // Auswahl in der Leiste: 'neu' = neueste zuerst · 'offen' = noch nicht besprochene oben · 'nur' = nur nicht besprochene
+  F.SORTS = ['neu', 'offen', 'nur'];
+  F.ordered = (posts, now, mode) => {
+    const r = F.recent(posts, now);
+    if (mode === 'nur') return r.filter((p) => !p.done);
+    if (mode === 'offen') return r.filter((p) => !p.done).concat(r.filter((p) => p.done));
+    return r;
+  };
 
   // Neu = jemand anderes hat zuletzt etwas geschrieben, und das ist nach dem letzten Ansehen auf diesem Gerät passiert
   F.isNew = (post, seen, myUid) => {

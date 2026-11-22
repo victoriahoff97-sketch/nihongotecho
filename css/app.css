@@ -2428,6 +2428,18 @@ body.has-handy-bar .tour-resume { bottom: calc(72px + env(safe-area-inset-bottom
 /* Wöchentlicher Joker: eingefrorene Flamme (App.streakLogic.JOKER) */
 .joker-ico { width: 1em; height: 1em; display: inline-block; vertical-align: -0.12em; }
 .day-wd i .joker-ico { width: 20px; height: 20px; vertical-align: -4px; }
+/* Torii mit zwei goldenen Funken (App.streakLogic.TORII) statt 🔥; Funken glitzern leise in der Wochenleiste */
+.torii-ico { width: 1.15em; height: 1.15em; display: inline-block; vertical-align: -0.2em; margin-right: 1px; }
+.day-wd i .torii-ico, .day-wd i .joker-ico { width: 25px; height: 25px; vertical-align: 0; margin: 0; }
+.torii-ghost { opacity: .22; }
+.torii-ghost .sp { display: none; }
+.ds-wk .torii-ico { width: 22px; height: 22px; vertical-align: 0; margin: 0; }
+.ds-wk .torii-ico .tk, .day-strip .torii-ico .tk { fill: #f4ece6; }
+.torii-ico .sp { transform-box: fill-box; transform-origin: center; }
+@keyframes torii-spark { 0%, 100% { opacity: 1; scale: 1; } 50% { opacity: .25; scale: .55; } }
+.day-wd .torii-ico .sp1, .ds-wk .torii-ico .sp1 { animation: torii-spark 2.4s ease-in-out infinite; }
+.day-wd .torii-ico .sp2, .ds-wk .torii-ico .sp2 { animation: torii-spark 2.4s ease-in-out 1.2s infinite; }
+@media (prefers-reduced-motion: reduce) { .torii-ico .sp { animation: none !important; } }
 /* 今日-Leiste unten im dunkelblauen Startkasten (js/daycheck.js strip) */
 .day-strip { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px -32px -30px; padding: 11px 32px; background: rgba(150,175,255,.13); border-top: 1px solid rgba(255,255,255,.14); }
 .day-strip .ds-k { font-size: 15px; margin-right: 2px; }
@@ -2518,6 +2530,7 @@ a.ds-l:hover, button.ds-l:hover { text-decoration: underline; text-underline-off
 /* Themenliste: Abschnitte und eine Zeile pro Thema (js/forum.js showList) */
 .forum-bar .grow { flex: 1; }
 .forum-bar .forum-search { max-width: 220px; }
+.forum-bar select.forum-sort { min-width: 0; width: auto; }
 .forum-newpost[hidden], .forum-bar [hidden] { display: none; }
 .forum-list { grid-template-columns: minmax(0, 1fr); }
 .forum-list > .forum-item { min-width: 0; }

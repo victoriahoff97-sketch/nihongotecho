@@ -7,6 +7,18 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-torii', date: '22. November',
+      items: [
+        { t: 'Torii statt Flammen ⛩', d: 'In der Wochenleiste im Startkasten steht für jeden geschafften Tag jetzt ein rotes Torii mit kleinen goldenen Funken. Der Wochen-Joker ist ein eisblaues Torii.' },
+      ],
+    },
+    {
+      id: '2026-11-22-forum-offen', date: '22. November',
+      items: [
+        { t: 'Forum: offene Themen zuerst', d: 'In der Gruppe (Gedankenwolke oben) gibt es neben der Suche eine Auswahl: „Offene zuerst“ zeigt noch nicht besprochene Themen oben, „Nur offene“ blendet Besprochenes aus.' },
+      ],
+    },
+    {
       id: '2026-11-22-ipad-tastatur', date: '22. November',
       items: [
         { t: 'iPad: Seite rutscht nicht mehr weg', d: 'Beim Eintippen der Antwort in der Lernschlange blieb die Seite oft nach oben verschoben. Jetzt rückt sie zurück; die Tastatur kommt erst beim Tippen ins Feld.' },

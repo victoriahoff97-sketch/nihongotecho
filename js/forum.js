@@ -942,6 +942,8 @@
     const r = ui.root;
     ui.q = ui.q || '';
     r.innerHTML = `<div data-daily></div><div class="forum-bar" data-tabs><b>Eure Themen</b><span class="grow"></span>
+      <select class="input forum-sort" aria-label="Reihenfolge der Themen">
+        <option value="neu">Neueste zuerst</option><option value="offen">Offene zuerst</option><option value="nur">Nur offene</option></select>
       <input class="input forum-search" type="search" placeholder="Suchen …" aria-label="Im Forum suchen" value="${esc(ui.q)}">
       <button type="button" class="btn btn-sm btn-primary" data-newtopic>${icon('plus')} Neues Thema</button></div>
       <div data-newpost class="forum-newpost"></div><div data-list class="forum-list"></div>`;
@@ -970,17 +972,21 @@
       if (status === 'offline') { list.innerHTML = offlineNote(); return; }
       if (status !== 'live') { list.innerHTML = '<p class="muted">Lade Beiträge …</p>'; return; }
       if (!posts.length) { list.innerHTML = '<p class="muted forum-empty">Noch keine Gedanken. Teil den ersten!</p>'; return; }
-      // eine Liste, neueste Änderung oben; Suche über alle Beiträge
+      // eine Liste, neueste Änderung oben (oder offene zuerst / nur offene); Suche über alle Beiträge
       const q = ui.q.trim();
-      const all = F.recent(posts, Date.now());
+      const all = F.ordered(posts, Date.now(), st.sort);
       const hit = q ? all.filter((p) => F.matchPost(p, q)) : all;
-      list.innerHTML = hit.length ? hit.map(row).join('') : `<p class="muted forum-empty">Nichts gefunden zu „${esc(q)}“.</p>`;
+      const none = q ? `Nichts gefunden zu „${esc(q)}“.` : 'Alles besprochen – keine offenen Themen. 🎉';
+      list.innerHTML = hit.length ? hit.map(row).join('') : `<p class="muted forum-empty">${none}</p>`;
       App.hydrateIcons(list);
       FD.check();
     };
     ui.onMembers = () => { FD.members(members); ui.onPosts(); };
     const search = tabs.querySelector('.forum-search');
     search.oninput = App.debounce(() => { ui.q = search.value; ui.onPosts(); }, 150);
+    const sort = tabs.querySelector('.forum-sort');
+    sort.value = F.SORTS.includes(st.sort) ? st.sort : 'neu';
+    sort.onchange = () => { st.sort = sort.value; save(); ui.onPosts(); };
     list.onclick = (e) => {
       const b = e.target.closest('[data-open]'); if (b) showPost(b.dataset.open);
     };
