@@ -40,6 +40,17 @@ Kanjium (mifunetoshiro)
   "The pitch accent notation, verb particle data, phonetics, homonyms and
   other additions or modifications to EDICT, KANJIDIC or KRADFILE were
   provided by Uros O. through his free database."
+  Seit 2026-11-22 außerdem: Einordnung (type) und Lautteil (phonetic) aus
+  kanjidict.txt als Vergleichsquelle für packs/etym-index.js.
+
+Wiktionary (englisch und japanisch)
+  Lizenz: CC-BY-SA 4.0
+  Link:   https://en.wiktionary.org · https://ja.wiktionary.org (Abschnitte
+          „Glyph origin“ und „字源“), abgerufen 2026-11-22.
+  Verwendet für: Herkunft der Kanji (packs/etym-index.js). Die deutschen Texte
+  sind eigene Zusammenfassungen nach diesen Quellen (gegeneinander geprüft).
+  Bilder alter Schriftformen (Orakelknochen, Bronze, Siegel) werden nicht
+  mitgeliefert, sondern online von Wikimedia Commons angezeigt.
 
 KanjiVG
   Lizenz: CC-BY-SA 3.0

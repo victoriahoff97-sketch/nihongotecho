@@ -2830,3 +2830,37 @@ body.view-handy .mh-mapcard { padding: 4px; }
   .kimon-row { grid-template-columns: 26px minmax(0, 1fr) auto; }
   .kimon-bar, .kimon-stage { display: none; }
 }
+
+/* ---------- Herkunft 字源 (Kanji-Seite) ---------- */
+.etym { display: flex; flex-direction: column; gap: 12px; }
+.etym-forms { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.etym-form { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 92px; }
+.etym-form img, .etym-form .g { width: 64px; height: 64px; border-radius: 12px; background: #fff; border: 1px solid var(--line); padding: 6px; box-sizing: border-box; object-fit: contain; }
+.etym-form .g { display: flex; align-items: center; justify-content: center; font-family: var(--font-kanji); font-size: 40px; color: #23262f; border-color: var(--sec, var(--momo)); }
+.etym-form .l { font-size: 12px; font-weight: 800; }
+.etym-form .s { font-size: 11px; color: var(--muted); text-align: center; }
+.etym-arrow { color: var(--muted); margin-bottom: 30px; }
+.etym-type { align-items: center; gap: 8px; flex-wrap: wrap; }
+.badge.etym-t { background: var(--sec-soft, var(--momo-soft)); color: var(--sec, var(--momo)); }
+.badge.etym-sure { background: var(--paper-2); color: var(--muted); font-weight: 700; }
+.etym-parts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.etym-plus { color: var(--muted); font-weight: 800; }
+.etym-part { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border-radius: 10px; background: var(--paper-2); color: var(--ink); text-decoration: none; }
+a.etym-part:hover { outline: 2px solid var(--sec, var(--momo)); }
+.etym-part .c { font-family: var(--font-kanji); font-size: 24px; line-height: 1; min-width: 26px; text-align: center; }
+.etym-part .d { font-size: 14px; }
+.etym-part .rl { font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 99px; }
+.etym-part .rl.b { background: var(--momo-soft); color: var(--momo); }
+.etym-part .rl.l { background: var(--ai-soft); color: var(--ai); }
+.etym-part .rl.f { background: var(--paper); color: var(--muted); border: 1px solid var(--line); }
+.etym-x { margin: 0; font-size: 15px; line-height: 1.55; }
+.etym-n { margin: 0; color: var(--ink-2); border-left: 3px solid var(--line); padding-left: 10px; }
+.etym-src { font-size: 11px; }
+@media (max-width: 600px) {
+  .etym-forms { flex-wrap: nowrap; justify-content: space-between; gap: 2px; }
+  .etym-arrow { display: none; }
+  .etym-form { width: auto; flex: 1 1 0; min-width: 0; }
+  .etym-form img, .etym-form .g { width: 54px; height: 54px; }
+  .etym-form .g { font-size: 34px; }
+  .etym-form .l { font-size: 11px; }
+}

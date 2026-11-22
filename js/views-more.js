@@ -115,9 +115,10 @@
     const it = App.kanjiByChar(ch) || App.item(ch);
     const sec = App.SECTIONS.kanji;
     if (!it) {
-      view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/kanji">Kanji</a></div><div class="card pad-lg"><div class="kanji-stage"><div data-anim></div><div><h2>${esc(ch)} ist noch nicht in deiner Sammlung</h2><p class="muted">Du kannst es trotzdem üben – oder als Eintrag speichern.</p><button class="btn btn-sec" data-add-k>${icon('plus')} Als Kanji speichern</button></div></div><div class="section-title">Schreiben üben</div><div data-pad></div></div></div>`;
+      view.innerHTML = `<div class="${sec.cls}"><div class="crumbs"><a href="#/kanji">Kanji</a></div><div class="card pad-lg"><div class="kanji-stage"><div data-anim></div><div><h2>${esc(ch)} ist noch nicht in deiner Sammlung</h2><p class="muted">Du kannst es trotzdem üben – oder als Eintrag speichern.</p><button class="btn btn-sec" data-add-k>${icon('plus')} Als Kanji speichern</button></div></div><div data-etym></div><div class="section-title">Schreiben üben</div><div data-pad></div></div></div>`;
       App.stroke.animator(view.querySelector('[data-anim]'), ch);
       App.stroke.pad(view.querySelector('[data-pad]'), ch);
+      App.etymMount(view.querySelector('[data-etym]'), ch);
       view.querySelector('[data-add-k]').onclick = () => App.editItem({ type: 'kanji', defaults: { char: ch } });
       return;
     }
@@ -149,6 +150,7 @@
           </div>
           ${it.mnemonic ? `<div class="pitfall" style="background:var(--murasaki-soft);border-color:var(--murasaki)">💡 ${JP.ruby(it.mnemonic)}</div>` : ''}
           </div></div></div>
+        <div data-etym></div>
         ${(it.words || []).length ? `<div class="section-title">Wörter</div><div class="grid cols-3">${it.words.map((w) => { const v = wordEntry(w), inner = `<div lang="ja" style="font-size:22px">${JP.ruby(w.jp)}</div><div class="muted">${App.meaningHtml(w)}</div>`; return `<div class="card row between kw-card${v ? ' kw-link' : ''}" style="padding:12px 16px">${v ? `<a class="kw-go" href="${App.link(v)}" title="Vokabel öffnen">${inner}</a>` : `<div>${inner}</div>`}${App.speakBtn(w.jp)}</div>`; }).join('')}</div>` : ''}
         <div class="section-title">Schreiben üben</div><div data-pad></div>
         <div class="section-title">Eigene Strichfolge-Videos & GIFs</div>
@@ -158,6 +160,7 @@
       </div>${App.sideAside(App.relatedHtml(it))}</div></div>`;
     App.stroke.animator(view.querySelector('[data-anim]'), it.char);
     App.stroke.pad(view.querySelector('[data-pad]'), it.char);
+    App.etymMount(view.querySelector('[data-etym]'), it.char);
     // Schreib-Stand: eigener Lernstand, entsteht beim Schreiben im Kanji-Quiz
     const wst = () => {
       const W = App.writeLogic, ws = App.srsOf(W.id(it.id));

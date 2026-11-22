@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-kanji-herkunft', date: '22. November',
+      items: [
+        { t: 'Woher kommt ein Kanji? 字源', d: 'Jede Kanji-Seite zeigt jetzt „Herkunft“: wie das Zeichen früher aussah, aus welchen Teilen es besteht (Sinn- oder Klangteil) und was dahintersteckt.' },
+        { t: 'Sorgfältig geprüft', d: 'Die Erklärungen stützen sich auf mehrere Quellen; N5 bis N3 und Genki wurden doppelt geprüft. Unsichere Deutungen sind als „umstritten“ markiert.' },
+      ],
+    },
+    {
       id: '2026-11-22-sprechtempo', date: '22. November',
       items: [
         { t: 'Sprechtempo verständlich', d: 'Einstellungen › Persönlich › Sprechtempo zeigt jetzt „langsam“, „normal“ oder „schnell“ statt nur einer Zahl – 1,0 ist das normale Tempo.' },
