@@ -51,7 +51,7 @@
         <div><b style="font-size:22px;color:var(--matcha)">${s.safe}</b> von ${s.total} ${level}-Punkten sicher · <b>${s.started}</b> angefangen · <span class="muted">${s.none} noch nicht selbst gebildet</span></div>
         <div class="progress kp-bar"><i style="width:${pct(s.safe)}%;background:var(--matcha)"></i><i style="width:${pct(s.started)}%;background:var(--matcha-soft)"></i></div>
         <div class="row" style="margin-top:12px;gap:6px;flex-wrap:wrap"><span class="seg">${seg('st', '', 'Alle')}${seg('st', '0', 'Noch nicht')}${seg('st', '1', 'Angefangen')}${seg('st', '2', 'Sicher')}</span>
-          <a class="btn btn-sm" href="#/ueben/saetze">${icon('edit')} Übersetzen üben</a></div>
+          ${list.length ? `<a class="btn btn-sm" href="#/ueben/saetze?${new URLSearchParams({ gs: list.map((r) => r.it.id).join(','), gsl: level + ' · ' + ({ 0: 'Noch nicht', 1: 'Angefangen', 2: 'Sicher' }[show] || 'Alle') }).toString()}" title="Übt genau die ${list.length} Punkte dieser Auswahl">${icon('edit')} Übersetzen üben (${list.length})</a>` : ''}</div>
         <div class="kp-grid">${list.map(chip).join('') || '<p class="muted small">Nichts in dieser Auswahl.</p>'}</div>
         <p class="small muted" style="margin:10px 0 0">Antippen öffnet den Grammatikpunkt – dort gibt es „Übersetzungsübung zu diesem Thema“. Gezählt wird ab dem 22. November 2026; eigene Sätze auch von früher.</p></div>`
       : `<div class="card"><p>Noch keine ${level}-Grammatik in deiner Sammlung.</p><a class="btn" href="#/pakete">${icon('download')} JLPT-${level}-Paket holen</a></div>`}

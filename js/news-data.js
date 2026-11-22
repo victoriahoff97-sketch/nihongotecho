@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-23-uebersetzen-form', date: '23. November',
+      items: [
+        { t: 'Übersetzen: höflich oder schlicht?', d: 'Über jedem deutschen Satz steht jetzt, ob die Lösung höflich (です/ます) oder schlicht (Wörterbuch-/た-Form) ist – kein Raten mehr zwischen 置きました und 置いた.' },
+        { t: 'Kompass: genau deine Auswahl üben', d: 'Wählst du im Kompass „Noch nicht“, „Angefangen“ oder „Sicher“, übt „Übersetzen üben“ genau diese Grammatikpunkte.' },
+      ],
+    },
+    {
       id: '2026-11-23-waage-sprechen', date: '23. November',
       items: [
         { t: 'Wochen-Waage genauer', d: 'Als „Sprechen“ zählt nur noch, wenn das Mikrofon Japanisch hört – deutsches Diktieren (z. B. beim Übersetzen ins Deutsche) zählt wie die Übung selbst.' },

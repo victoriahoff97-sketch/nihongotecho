@@ -61,7 +61,24 @@
     return d.shuffle(out);
   };
 
-  const api = { patternWord, ownSentence, queuePot, build };
+  // Höflich oder schlicht? Am Satzende der Lösung ablesen, damit die Aufgabe sagen kann, welche Form gemeint ist
+  // („Sie stellte die Teller …“ = 置きました oder 置いた). 'polite' | 'plain' | null (kein Prädikat erkennbar, z. B. nur ein Nomen).
+  // plain: entfernt Furigana-Klammern (JP.plain)
+  const register = (jp, plain = (s) => s) => {
+    let s = String(plain(String(jp ?? '')) ?? '').trim().replace(/[。．.、，,！!？?」』）)\s…〜~]+$/u, '');
+    for (let k = 0; k < 2; k++) s = s.replace(/(よね|よ|ね|か|な|わ|の)$/u, '');
+    if (!s) return null;
+    if (/(ます|ました|ません|ましょう|です|でした|でしょう|ください|下さい)$/u.test(s)) return 'polite';
+    if (/(だ|だった|だろう|[うくぐすつぬぶむるいたて])$/u.test(s)) return 'plain';
+    return null;
+  };
+  // Hinweis für eine Aufgabe: nur wenn alle richtigen Lösungen (jp + alt) dieselbe Form haben
+  const registerOf = (e, plain) => {
+    const regs = [e.jp].concat(e.alt || []).map((x) => register(typeof x === 'string' ? x : (x && x.kanji) || '', plain));
+    return regs.every((r) => r && r === regs[0]) ? regs[0] : null;
+  };
+
+  const api = { patternWord, ownSentence, queuePot, build, register, registerOf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.App.translateLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

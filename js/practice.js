@@ -825,18 +825,22 @@
     if (!maxL || isNaN(maxL)) maxL = 12;
     const byLesson = (a, b) => (lessonNum(a) || 0) - (lessonNum(b) || 0);
     const allG = App.itemsOf('grammar').sort(byLesson);
-    let preset = q.g ? [q.g] : session ? (session.grammarIds || []) : null;
+    // Aus dem Kompass (gs = Ids der gewählten Stufe, gsl = Name der Auswahl): genau diese Punkte
+    const gsIds = q.gs ? String(q.gs).split(',').filter((id) => App.item(id)) : null;
+    let preset = gsIds && gsIds.length ? gsIds : q.g ? [q.g] : session ? (session.grammarIds || []) : null;
     // Ohne Thema und ohne Stunde kommt die Übung aus der Lernschlange; „Niveau“ = alles bis zur gewählten Lektion
-    const fixed = !!(q.g || session);
+    const fixed = !!(q.g || session || (gsIds && gsIds.length));
     const byQueue = !fixed && q.src !== 'niveau';
     const words = genWords();
     const pot = byQueue ? T.queuePot(words, allG, App.wordState, canRead) : null;
-    const listG = byQueue ? pot.grammar.concat(pot.grammarKnown).sort(byLesson) : allG.filter((g) => g.source !== 'Genki I' || (lessonNum(g) || 0) <= maxL);
+    const listG = byQueue ? pot.grammar.concat(pot.grammarKnown).sort(byLesson)
+      : gsIds && gsIds.length ? allG.filter((g) => gsIds.includes(g.id))
+      : allG.filter((g) => g.source !== 'Genki I' || (lessonNum(g) || 0) <= maxL);
     const selected = new Set(byQueue ? (pot.grammar.length ? pot.grammar : pot.grammarKnown).map((g) => g.id) : preset && preset.length ? preset : listG.map((g) => g.id));
     const dir = q.dir || 'de';
     const srcSeg = fixed ? '' : `<div class="seg">${[['', 'Lernschlange'], ['niveau', 'Niveau']].map(([k, l]) => `<button class="${(byQueue ? '' : 'niveau') === k ? 'on' : ''}" data-q-src="${k}">${l}</button>`).join('')}</div>`;
     const head = `<div class="crumbs">${App.backCrumb()} › Übersetzen</div>
-      <div class="page-head"><div class="titles"><h1>Übersetzen <span class="jp-title">翻訳</span></h1><p>${session ? `Zur Stunde „${esc(session.title || session.number)}“ – ` : ''}${byQueue ? 'Sätze aus dem, was gerade in deiner Lernschlange ist.' : 'Sätze nur aus Grammatik & Vokabeln bis zu deinem Niveau.'}</p></div></div>`;
+      <div class="page-head"><div class="titles"><h1>Übersetzen <span class="jp-title">翻訳</span></h1><p>${gsIds && gsIds.length ? `Aus dem Kompass: ${esc(q.gsl || 'Auswahl')} (${gsIds.length} ${gsIds.length === 1 ? 'Punkt' : 'Punkte'}) – ` : ''}${session ? `Zur Stunde „${esc(session.title || session.number)}“ – ` : ''}${byQueue ? 'Sätze aus dem, was gerade in deiner Lernschlange ist.' : 'Sätze nur aus Grammatik & Vokabeln bis zu deinem Niveau.'}</p></div></div>`;
     if (byQueue && !pot.queue.size) {
       view.innerHTML = `<div class="${sec.cls}">${head}
         <div class="card" data-setup><div class="stack"><div class="row">${srcSeg}</div>
@@ -913,12 +917,15 @@
       const e = exs[i];
       const dir = e.sit ? 'de' : dirMode === 'mix' ? (Math.random() < 0.5 ? 'de' : 'jp') : dirMode;
       const kanaSol = e.kana || JP.kana(e.jp);
+      // Höflich oder schlicht? Sonst ist 置きました/置いた geraten
+      const reg = dir === 'de' ? App.translateLogic.registerOf(e, JP.plain) : null;
+      const regChip = reg ? ` <span class="badge" style="margin-left:6px;${reg === 'polite' ? 'background:var(--fuji-soft);color:var(--fuji)' : 'background:var(--matcha-soft);color:var(--matcha)'}" title="${reg === 'polite' ? 'Satzende mit です/ます (〜ます, 〜ました, 〜ません …)' : 'Satzende in der schlichten Form (Wörterbuchform, 〜た, 〜ない, だ …)'}">${reg === 'polite' ? 'höflich · です/ます' : 'schlicht · Wörterbuch-/た-Form'}</span>` : '';
       stage.innerHTML = `<div class="ex-card ${App.furiClass()}"><div class="row between small muted" style="margin-bottom:8px"><span>Satz ${i + 1} / ${exs.length}</span>${exBadge(e.g)}</div>
         <div class="progress" style="margin-bottom:14px"><i style="width:${(i / exs.length) * 100}%"></i></div>
         <div class="card pad-lg">
-          ${e.sit ? `<div class="small muted">Antworte auf Japanisch:</div>
+          ${e.sit ? `<div class="small muted">Antworte auf Japanisch:${regChip}</div>
           <div class="ex-prompt jp" lang="ja">${JP.ruby(e.q)} ${App.speakBtn(e.q)}</div><div class="muted" style="margin:-4px 0 8px">Hinweis: ${esc(e.de)}</div>`
-          : `<div class="small muted">${dir === 'de' ? 'Übersetze ins Japanische:' : 'Übersetze ins Deutsche:'}</div>
+          : `<div class="small muted">${dir === 'de' ? 'Übersetze ins Japanische:' : 'Übersetze ins Deutsche:'}${regChip}</div>
           <div class="ex-prompt ${dir === 'jp' ? 'jp' : ''}" ${dir === 'jp' ? 'lang="ja"' : ''}>${dir === 'de' ? esc(e.de) : JP.ruby(e.jp)} ${dir === 'jp' ? App.speakBtn(e.jp) : ''}</div>`}
           ${dir === 'de' ? '<div data-ansfield></div>'
           : `<textarea class="input" style="width:100%;font-size:19px" rows="2" placeholder="Deine Übersetzung …"></textarea>${App.dictate.supported() ? `<div class="row" style="margin-top:8px">${micBtn('de-DE', 'Auf Deutsch sprechen – der Text erscheint im Antwortfeld')}</div>` : ''}`}
