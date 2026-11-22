@@ -524,6 +524,12 @@
   };
 
   // Einstellungen > Lernen: woher neue Kanji zum Schreiben kommen (die WaniKani-Level selbst stehen unter Pakete)
+  // Sprechtempo als Wort, damit man sieht, wo „normal“ liegt (1,0 = normales Tempo).
+  const rateText = (r) => {
+    const v = Math.round((+r || 0.9) * 10) / 10;
+    const w = v <= 0.6 ? 'langsam' : v < 1 ? 'etwas langsamer' : v === 1 ? 'normal' : v <= 1.1 ? 'etwas schneller' : 'schnell';
+    return `${w} (${v.toFixed(1).replace('.', ',')})`;
+  };
   // Bausteine der Einstellungen: eine Zeile je Einstellung – Name links, Schalter rechts
   const setRow = (label, ctrl, hint = '', attrs = '') => `<div class="set-row" ${attrs}><div class="set-l">${label}${hint ? `<small>${hint}</small>` : ''}</div><div class="set-c">${ctrl}</div></div>`;
   const setSeg = (key, cur, opts) => `<div class="seg seg-sm">${opts.map(([k, l]) => `<button type="button" class="${cur === k ? 'on' : ''}" data-sv="${key}" data-v="${k}">${l}</button>`).join('')}</div>`;
@@ -591,7 +597,7 @@
         ${setRow('Design', setSeg('theme', st.theme || 'auto', [['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']]))}
         ${setRow('Furigana', setSeg('furigana', st.furigana === 'hover' ? 'hover' : 'on', [['on', 'Immer'], ['hover', 'Beim Antippen']]))}
         ${voiceField()}
-        ${setRow(`Sprechtempo <b class="set-val">${String(st.ttsRate).replace('.', ',')}</b>`, `<input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}">${App.speakBtn('こんにちは、日本語を勉強しています。')}`)}
+        ${setRow(`Sprechtempo <b class="set-val">${rateText(st.ttsRate)}</b>`, `<input type="range" min="0.5" max="1.3" step="0.1" data-s="ttsRate" value="${st.ttsRate}" list="tts-rate-ticks"><datalist id="tts-rate-ticks"><option value="1"></option></datalist>${App.speakBtn('こんにちは、日本語を勉強しています。')}`, '1,0 = normales Tempo, darunter langsamer')}
         ${setRow('Beim Aufdecken vorlesen', setTgl('ttsAuto', st.ttsAuto === 'on', 'on', '', 'Beim Aufdecken vorlesen'), 'Karteikarten lesen das Wort beim Umdrehen einmal vor – wie bei WaniKani. Auch in der Runde mit „Auto“ umschaltbar')}
       </div></div>
       <div class="card"><h3 class="row between">Lernen <a class="btn btn-sm btn-ghost" href="#/lernweg" title="Wo neue Einträge landen und wann etwas als „kann ich“ gilt">${icon('map')} So läuft das Lernen</a></h3><div class="set-list">
@@ -626,7 +632,7 @@
     const root = view.firstElementChild;
     root.addEventListener('input', (e) => {
       const r = e.target.closest('[data-s="ttsRate"]');
-      if (r) { const v = r.closest('.set-row').querySelector('.set-val'); if (v) v.textContent = String(r.value).replace('.', ','); }
+      if (r) { const v = r.closest('.set-row').querySelector('.set-val'); if (v) v.textContent = rateText(r.value); }
     });
     root.addEventListener('change', async (e) => {
       const vo = e.target.closest('[data-voice]');

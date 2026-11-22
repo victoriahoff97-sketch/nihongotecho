@@ -7,6 +7,18 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-sprechtempo', date: '22. November',
+      items: [
+        { t: 'Sprechtempo verständlich', d: 'Einstellungen › Persönlich › Sprechtempo zeigt jetzt „langsam“, „normal“ oder „schnell“ statt nur einer Zahl – 1,0 ist das normale Tempo.' },
+      ],
+    },
+    {
+      id: '2026-11-22-kimon', date: '22. November',
+      items: [
+        { t: '鬼門 Kimon – deine Sorgenwörter', d: 'Üben › Kimon zeigt die Wörter, die du am häufigsten nicht gewusst hast (ab 15 Fehlern). „Diese üben“ startet eine Runde nur mit ihnen.' },
+      ],
+    },
+    {
       id: '2026-11-22-runde-zaehlen', date: '22. November',
       items: [
         { t: 'Runden zählen Karten, nicht Durchgänge', d: 'Oben steht „Karte 6 von 20“. Nicht Gewusstes kommt als „Wiederholung“ zurück, statt die Gesamtzahl wachsen zu lassen.' },

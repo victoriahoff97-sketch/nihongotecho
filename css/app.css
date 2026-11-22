@@ -2801,3 +2801,32 @@ body:has(.mh-show) .matsuri-banner { display: none; }
 body.view-handy .mh-wrap { flex-direction: column; align-items: stretch; }
 body.view-handy .mh-map { max-height: none; min-height: 0; }
 body.view-handy .mh-mapcard { padding: 4px; }
+
+/* ---------- 鬼門 Kimon (js/kimon.js) ---------- */
+.kimon-ico { width: 1em; height: 1em; display: inline-block; vertical-align: -0.12em; }
+.mode-card.kimon-card .k { color: var(--shu); height: 40px; }
+.kimon-head-ico { color: var(--shu); margin-right: 10px; }
+.kimon-empty-ico { color: var(--shu); }
+.kimon { --oo: var(--shu); --oni: var(--daidai); --ko: var(--yamabuki); }
+.kimon-chip.oo { --sec: var(--oo); } .kimon-chip.oni { --sec: var(--oni); } .kimon-chip.ko { --sec: var(--ko); } .kimon-chip.beaten { --sec: var(--matcha); }
+.kimon-chip b { font-family: var(--font-kanji); font-weight: 400; }
+.kimon-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.kimon-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) minmax(80px, 170px) 130px 110px; gap: 12px; align-items: center; padding: 10px 6px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; --t: var(--ko); }
+.kimon-row:hover { background: color-mix(in srgb, var(--t) 7%, transparent); }
+.kimon-row.tier-oo { --t: var(--oo); } .kimon-row.tier-oni { --t: var(--oni); } .kimon-row.beaten { --t: var(--matcha); }
+.kimon-rank { font-weight: 800; color: var(--t); text-align: center; font-size: 17px; }
+.kimon-word { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.kimon-word b { font-family: var(--font-jp); font-size: 20px; font-weight: 500; }
+.kimon-de { color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.kimon-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.kimon-bar i { display: block; height: 100%; background: var(--t); border-radius: 4px; }
+.kimon-n { display: flex; flex-direction: column; line-height: 1.2; }
+.kimon-n b { color: var(--t); }
+.kimon-n small { color: var(--muted); font-size: 12px; }
+.kimon-stage { font-size: 12px; text-align: center; padding: 3px 8px; border-radius: 99px; background: var(--fuji-soft); color: var(--fuji); white-space: nowrap; }
+.kimon-stage.beaten { background: var(--matcha-soft); color: var(--matcha); }
+.kimon-row.beaten .kimon-word b { opacity: .75; }
+@media (max-width: 640px) {
+  .kimon-row { grid-template-columns: 26px minmax(0, 1fr) auto; }
+  .kimon-bar, .kimon-stage { display: none; }
+}
