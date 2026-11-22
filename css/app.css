@@ -1087,6 +1087,12 @@ body.ink-fit #view { padding-bottom: 16px; }
 .ans-box { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .ans-box.done { flex-direction: row; flex-wrap: wrap; align-items: center; } /* nach dem Prüfen: Antwort und Ergebnis in einer Zeile */
 .ans-line { display: flex; gap: 8px; }
+/* Antwort sprechen: Mikrofon-Knopf und was die Erkennung gehört hat in einer Zeile */
+.flash-stage:has(.ans-box:not([hidden]) .say-line) .flash { min-height: 180px; }
+.say-line { display: flex; gap: 12px; align-items: center; justify-content: center; min-height: 40px; }
+.say-heard { font-size: 20px; }
+.say-heard b { font-family: var(--font-kanji); color: var(--ink); }
+.ans-box.done .say-line { flex: 1 1 220px; justify-content: flex-start; }
 .ans-box.done .ans-line { flex: 1 1 220px; }
 .ans-line .ans-in { flex: 1; min-width: 0; font-size: 20px; }
 .ans-cands { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: thin; }

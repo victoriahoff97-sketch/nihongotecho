@@ -122,6 +122,24 @@
     const target = reKanji.test(ans) ? f.kanji : f.kana;
     return { ok: false, exact: false, missing: [], answer: ans, target, diff: A.diff(ans, target) };
   };
+  // Gesprochen: Die Spracherkennung schreibt, was sie für am wahrscheinlichsten hält – oft andere Kanji für dieselbe Aussprache
+  // (箸 → 橋) oder Kana statt Kanji. Darum zählt jede ihrer Lesarten, und passt keine, die Aussprache:
+  // readings(Lesart) → Kana-Lesungen aus Wörterbuch und eigener Sammlung. Richtig = { ok, exact, missing: [], answer, heard, sound }
+  A.checkSpoken = (alts, forms, readings) => {
+    const list = (alts || []).map(A.clean).filter(Boolean);
+    if (!list.length || !forms.length) return null;
+    for (const c of list) { const r = A.check(c, forms); if (r && r.ok) return Object.assign(r, { exact: true, missing: [], heard: c }); }
+    const kanaOf = (f) => hira(f.kana) + '';
+    for (const c of list) {
+      const rs = [hira(c)].concat((readings ? readings(c) || [] : []).map((x) => hira(A.clean(x))));
+      for (const f of forms) {
+        const k = kanaOf(f);
+        if (rs.some((x) => x === k || (f.na && x === k + 'な'))) return { ok: true, exact: true, missing: [], answer: f.kanji, heard: c, sound: true };
+      }
+    }
+    const r = A.check(list[0], forms);
+    return Object.assign(r, { heard: list[0] });
+  };
   // Stift: Vorschläge der Erkennung, bester zuerst. Passt einer der ersten drei, gilt er – sonst zählt der beste
   A.CANDS = 3;
   A.checkAny = (cands, forms) => {

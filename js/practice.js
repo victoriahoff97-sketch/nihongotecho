@@ -369,8 +369,10 @@
   const againTxt = (id, g) => { const l = ivlLabel(id, g, true); return l === KANN ? l : 'wieder in ' + l; };
   // ---------- Antwort auf Japanisch (Deutsch → Japanisch): aus · mit dem Stift · getippt – pro Gerät gemerkt ----------
   const AL = App.answerLogic;
-  const AMODES = [['off', 'eyeOff', 'Nur umdrehen, nichts schreiben'], ['pen', 'pen', 'Antwort mit dem Stift schreiben'], ['key', 'keyboard', 'Antwort tippen']];
-  const answerMode = () => { const m = App.lsGet('answerMode'); return AMODES.some(([k]) => k === m) ? m : 'off'; };
+  // say = Antwort sprechen: die App hört zu und prüft, was die Spracherkennung verstanden hat (nur wo der Browser das kann)
+  const AMODES = [['off', 'eyeOff', 'Nur umdrehen, nichts schreiben'], ['pen', 'pen', 'Antwort mit dem Stift schreiben'], ['key', 'keyboard', 'Antwort tippen'], ['say', 'mic', 'Antwort sprechen – die App hört zu']];
+  const canSay = () => App.dictate.supported();
+  const answerMode = () => { const m = App.lsGet('answerMode'); return AMODES.some(([k]) => k === m) && (m !== 'say' || canSay()) ? m : 'off'; };
   // Konjugieren mit „Schreiben“: immer ein Antwortfeld (Stift oder Tastatur, „aus“ gibt es dort nicht)
   const conjWrite = (ent) => ent.kind === 'conj' && ent.answer === 'write';
   const answerable = (ent) => !ent.pad && (conjWrite(ent) || (ent.kind !== 'conj' && ent.dir === 'de' && (ent.it.type === 'vocab' || ent.it.type === 'phrase')));
@@ -459,6 +461,7 @@
       flipped = false;
       wantPark = false;
       if (ans && ans.pad) ans.pad.stop();
+      if (ans && ans.rec) ans.rec.stop(true);
       ans = null; suggest = null; faces = null; picked = null;
       if (!cur) {
         if (opts.onEnd) opts.onEnd();
@@ -482,19 +485,27 @@
         ${mc ? `<div class="conj-mc" data-mc>${mc.list.map((s, i) => `<button class="conj-opt" data-mci="${i}" lang="ja"><kbd>${i + 1}</kbd>${JP.ruby(s)}</button>`).join('')}</div>` : ''}
         ${answerable(ent) ? '<div class="ans-box" data-answer></div>' : ''}
         <div class="grade-row"${cram ? ' style="grid-template-columns:repeat(2,1fr)"' : ''} hidden>${cram ? '<button class="g0" data-g="0">Nicht gewusst<small>kommt gleich noch einmal</small></button><button class="g2" data-g="2">Gewusst</button>' : [['g0', 'Nochmal', 0], ['g1', 'Schwer', 1], ['g2', 'Gut', 2], ['g3', 'Leicht', 3]].map(([c, l, g]) => `<button class="${c}" data-g="${g}">${l}<small>${ivlLabel(cur.id, g, own())}</small></button>`).join('')}</div>
-        <div class="row" style="justify-content:center;margin-top:10px">${mc ? `<button class="btn btn-primary" data-g-mc hidden>Weiter ${icon('next')}</button>` : ''}${canSkip() ? `<button class="btn btn-sm check-known" data-known hidden title="Gilt als gelernt und wird in dieser Richtung nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-sm btn-ghost" href="${App.link(cur)}" data-park>${icon('info')} Eintrag öffnen</a>${f.speak && JP.canSpeak() ? sayBtns(f.speak) : ''}${answerable(ent) ? `<span class="seg ans-mode" title="Antwort aufschreiben?">${AMODES.filter(([k]) => !conjWrite(ent) || k !== 'off').map(([k, ic, t]) => `<button data-amode="${k}" title="${t}" aria-label="${t}">${icon(ic)}</button>`).join('')}</span>` : ''}</div></div>`;
+        <div class="row" style="justify-content:center;margin-top:10px">${mc ? `<button class="btn btn-primary" data-g-mc hidden>Weiter ${icon('next')}</button>` : ''}${canSkip() ? `<button class="btn btn-sm check-known" data-known hidden title="Gilt als gelernt und wird in dieser Richtung nicht mehr abgefragt">${icon('check')} Kann ich schon</button>` : ''}<a class="btn btn-sm btn-ghost" href="${App.link(cur)}" data-park>${icon('info')} Eintrag öffnen</a>${f.speak && JP.canSpeak() ? sayBtns(f.speak) : ''}${answerable(ent) ? `<span class="seg ans-mode" title="Wie möchtest du antworten?">${AMODES.filter(([k]) => (!conjWrite(ent) || k !== 'off') && (k !== 'say' || canSay())).map(([k, ic, t]) => `<button data-amode="${k}" title="${t}" aria-label="${t}">${icon(ic)}</button>`).join('')}</span>` : ''}</div></div>`;
       if (answerable(ent)) answerBox();
     };
     // Antwortfeld unter der Karte: Stift (Schreibfeld + Vorschläge) oder Tastatur (Romaji wird zu かな); Prüfen deckt die Karte auf
     const answerBox = () => {
       const box = stage.querySelector('[data-answer]'), mode = modeFor(ent);
       if (ans && ans.pad) ans.pad.stop();
+      if (ans && ans.rec) ans.rec.stop(true);
       if (ans) App.dictate.stopFor(ans.inp, { now: true });
       stage.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b.dataset.amode === mode));
       ans = null;
       box.hidden = mode === 'off';
       if (box.hidden) { box.innerHTML = ''; return; }
       loadKanjiIndex();
+      if (mode === 'say') {
+        box.innerHTML = `<div class="say-line"><button class="btn mic say-btn" data-asay>${icon('mic')} <span class="mic-label">Sprechen</span></button><span class="say-heard muted" lang="ja"></span></div><div data-averdict></div>`;
+        ans = { mode, tries: 0, checked: false, rec: null };
+        const a = ans;
+        setTimeout(() => { if (ans === a && !flipped && !a.rec && !a.tries) sayListen(); }, 250); // gleich zuhören
+        return;
+      }
       box.innerHTML = `${mode === 'pen' ? '<div data-hwpad></div>' : ''}
         <div class="ans-line"><input class="input ans-in" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${mode === 'pen' ? 'Erkannt wird hier eingetragen' : 'Auf Japanisch (Romaji wird zu かな)'}">${App.dictate.supported() ? `<button class="btn btn-ghost mic" data-amic title="Antwort auf Japanisch sprechen – sie erscheint im Feld" aria-label="Antwort diktieren">${icon('mic')}</button>` : ''}<button class="btn btn-primary" data-acheck>${icon('check')} Prüfen</button></div>
         ${mode === 'pen' ? '<div class="ans-cands" hidden></div>' : ''}<div data-averdict></div>`;
@@ -518,6 +529,7 @@
     // true = geprüft (die Karte ist damit aufgedeckt) oder Stift-Erkennung wird noch abgewartet; false = nichts geschrieben
     const checkAnswer = () => {
       if (!ans || ans.checked || flipped) return false;
+      if (ans.mode === 'say') { if (ans.rec) ans.rec.stop(true); return false; } // ohne Antwort umgedreht
       App.dictate.stopFor(ans.inp, { now: true }); // Prüfen beendet ein laufendes Diktat, das bisher Erkannte steht schon im Feld
       // Stift: Schreibpause bzw. Erkennung noch nicht vorbei – erst abwarten, sonst wäre das Feld noch leer
       if (ans.waiting) return true;
@@ -554,6 +566,76 @@
       flip();
       const sb = stage.querySelector(`.grade-row [data-g="${suggest}"]`); if (sb) sb.classList.add('suggest');
       return true;
+    };
+    // ---------- Antwort sprechen ----------
+    // Lesungen dessen, was die Erkennung gehört hat – aus der eigenen Sammlung und dem Wörterbuch (gleich ausgesprochen zählt)
+    const spokenReadings = async (list) => {
+      const map = new Map();
+      const add = (k, r) => { if (!k || !r) return; if (!map.has(k)) map.set(k, []); map.get(k).push(r); };
+      const want = new Set(list);
+      ['vocab', 'phrase'].forEach((t) => App.itemsOf(t).forEach((it) => {
+        const k = t === 'phrase' ? AL.clean(JP.plain(it.jp || '')) : AL.clean(it.kanji || '');
+        if (want.has(k)) add(k, t === 'phrase' ? JP.kana(it.jp || '') : it.kana);
+      }));
+      if (App.dict && App.dict.installed()) {
+        try { (await App.dict.lookup(list)).forEach((ents, k) => ents.forEach((e) => (e.r || []).forEach((r) => add(k, r)))); } catch (e) { console.error(e); }
+      }
+      return (c) => map.get(c) || [];
+    };
+    const sayUi = () => { const box = stage.querySelector('[data-answer]'); return { btn: box.querySelector('[data-asay]'), heard: box.querySelector('.say-heard'), verdict: box.querySelector('[data-averdict]') }; };
+    const sayIdle = (u) => { if (!u.btn) return; u.btn.classList.remove('active'); u.btn.querySelector('.mic-label').textContent = 'Sprechen'; };
+    // Antippen startet das Zuhören, noch einmal antippen = fertig gesprochen
+    const sayListen = () => {
+      const a = ans;
+      if (!a || a.mode !== 'say' || a.checked || flipped) return;
+      if (a.rec) { a.rec.stop(); return; }
+      const u = sayUi();
+      u.btn.classList.add('active'); u.btn.querySelector('.mic-label').textContent = 'Fertig';
+      u.heard.textContent = 'Ich höre zu …'; u.verdict.innerHTML = '';
+      a.rec = App.dictate.listen({
+        onInterim: (t) => { if (ans === a) u.heard.textContent = t; },
+        onFail: (msg) => { a.rec = null; if (ans !== a) return; sayIdle(u); u.heard.textContent = msg; },
+        onDone: (list) => {
+          a.rec = null;
+          if (ans !== a || flipped) return;
+          sayIdle(u);
+          if (!list.length) { u.heard.textContent = 'Nichts gehört – tippe auf „Sprechen“.'; return; }
+          sayCheck(a, list.map(AL.clean).filter(Boolean), u);
+        },
+      });
+      if (!a.rec) sayIdle(u);
+    };
+    const saySuggest = (g) => { if (g === 1 && !stage.querySelector('.grade-row [data-g="1"]')) g = 2; suggest = g; const sb = stage.querySelector(`.grade-row [data-g="${g}"]`); if (sb) sb.classList.add('suggest'); };
+    const sayCheck = async (a, list, u) => {
+      if (!readingsOf) readingsOf = kanjiReadings();
+      const forms = AL.forms(ent.kind === 'conj' ? faces.check : shownForCheck(shown || cur), readingsOf);
+      const r = AL.checkSpoken(list, forms, await spokenReadings(list));
+      if (ans !== a || flipped || a.checked || !r) return;
+      const heardHtml = `<span class="small" lang="de">Gehört:</span> <b lang="ja">${esc(r.heard)}</b>`;
+      u.heard.innerHTML = heardHtml;
+      if (r.ok) {
+        a.checked = true;
+        u.verdict.innerHTML = `<div class="verdict ok">✓ Richtig${r.sound ? ' – gleich ausgesprochen' : ''}${a.tries ? ' (im zweiten Anlauf)' : ''}</div>`;
+        stage.querySelector('[data-answer]').classList.add('done');
+        u.btn.hidden = true;
+        flip();
+        saySuggest(a.tries ? 1 : 2);
+        return;
+      }
+      // Passt nicht: Die Erkennung kann auch danebenliegen – noch einmal sprechen oder aufdecken
+      a.tries++;
+      u.verdict.innerHTML = `<div class="verdict no">✗ Passt nicht</div><div class="row" style="gap:8px;margin-top:6px"><button class="btn btn-sm" data-asay-again>${icon('mic')} Nochmal sprechen</button><button class="btn btn-sm btn-ghost" data-asay-show>${icon('eye')} Aufdecken</button></div>`;
+    };
+    const sayReveal = () => {
+      const a = ans;
+      if (!a || a.mode !== 'say' || flipped) return;
+      if (a.rec) a.rec.stop(true);
+      a.checked = true;
+      const u = sayUi();
+      u.btn.hidden = true;
+      u.verdict.innerHTML = '';
+      flip();
+      saySuggest(0);
     };
     // Kanji schreiben in der gemischten Runde: mit dem Stift schreiben, auflösen, selbst bewerten – wie im Kanji-Quiz
     const padCard = () => {
@@ -668,6 +750,8 @@
       const am = e.target.closest('[data-amode]');
       if (am) { App.lsSet('answerMode', am.dataset.amode); if (!flipped) answerBox(); else stage.querySelectorAll('[data-amode]').forEach((b) => b.classList.toggle('on', b === am)); return; }
       if (e.target.closest('[data-acheck]')) { if (!checkAnswer()) flip(); return; }
+      if (e.target.closest('[data-asay]') || e.target.closest('[data-asay-again]')) { sayListen(); return; }
+      if (e.target.closest('[data-asay-show]')) { sayReveal(); return; }
       const mic = e.target.closest('[data-amic]');
       if (mic) { if (ans && !ans.checked && !flipped) App.dictate.toggle(ans.inp, mic, 'ja-JP'); return; }
       const ac = e.target.closest('[data-acand]');
@@ -700,6 +784,7 @@
       App.screenItem = null; App.parkHere = null;
       document.removeEventListener('keydown', onKey);
       if (ans && ans.pad) ans.pad.stop();
+      if (ans && ans.rec) ans.rec.stop(true);
       if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue).map((e) => Object.assign({}, e, { known: cardKnown(e) })), done, right, total, run, cnt: RC.copy(cnt), open: flipped, suggest: flipped ? suggest : null, picked };
       if (App.manhole) App.manhole.hold(false); // Runde verlassen (auch geparkt): Gesammeltes nicht länger zurückhalten
     });

@@ -7,6 +7,13 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-antwort-sprechen', date: '22. November',
+      items: [
+        { t: 'Antwort sprechen 🎤', d: 'Karteikarten Deutsch → Japanisch: Unter der Karte das Mikrofon wählen, dann hört die App gleich zu und prüft, was du sagst – gleich ausgesprochene Wörter zählen auch.' },
+        { t: 'Nicht erkannt?', d: 'Liegt die Erkennung daneben, sprichst du einfach nochmal oder deckst auf. Braucht Chrome oder Edge mit Internet und Mikrofon.' },
+      ],
+    },
+    {
       id: '2026-11-22-verpasste-tage', date: '22. November',
       items: [
         { t: 'Ein paar Tage Pause gemacht?', d: 'Hast du Tage verpasst, fragt die App beim Öffnen gleich, ob du sie überspringen willst – mit beiden Zahlen: was jetzt fällig ist und wie viel danach übrig bleibt.' },

@@ -63,8 +63,57 @@
     };
   };
 
+  // Einmal zuhören, ohne Eingabefeld (Antwort sprechen auf den Karten): onInterim(Text) zeigt den Zwischenstand,
+  // onDone(Vorschläge) bekommt alle Lesarten der Erkennung (beste zuerst; leer = nichts gehört), onFail(Text) bei Fehlern.
+  // Rückgabe { stop(now) }: now = abbrechen, ohne dass onDone noch kommt; null, wenn es hier nicht geht.
+  const listen = ({ lang = 'ja-JP', alts = 5, onInterim, onDone, onFail }) => {
+    if (!SR()) { if (onFail) onFail('Spracherkennung gibt es in diesem Browser nicht (Chrome oder Edge nehmen).'); return null; }
+    if (homeScreenIos()) { if (onFail) onFail('In der App vom Home-Bildschirm kann das iPad hier nicht zuhören – bitte im Safari öffnen.'); return null; }
+    const rec = new (SR())();
+    let done = false, cut = false, timer = 0, best = [];
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (!cut && onDone) onDone(best);
+    };
+    const stop = (now) => {
+      if (done) return;
+      if (now) cut = true;
+      clearTimeout(timer);
+      try { rec.stop(); } catch (e) { /* schon beendet */ }
+      timer = setTimeout(() => { try { rec.abort(); } catch (e) { /* egal */ } finish(); }, END_WAIT);
+    };
+    rec.lang = lang;
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = alts;
+    rec.onresult = (e) => {
+      if (done || cut) return;
+      const last = e.results[e.results.length - 1];
+      const list = [];
+      for (let i = 0; i < last.length; i++) { const t = String(last[i].transcript || '').replace(/\s+/g, ''); if (t && !list.includes(t)) list.push(t); }
+      // mehrere Stücke (Safari trennt): vorne zusammensetzen, die Lesarten gelten fürs letzte Stück
+      let head = '';
+      for (let i = 0; i < e.results.length - 1; i++) head += String(e.results[i][0].transcript || '').replace(/\s+/g, '');
+      best = list.map((t) => head + t);
+      if (onInterim && best[0]) onInterim(best[0]);
+      clearTimeout(timer);
+      timer = setTimeout(stop, last.isFinal ? 300 : PAUSE); // Safari meldet das Ende nicht immer von selbst
+    };
+    rec.onerror = (e) => {
+      if (done || e.error === 'aborted') return;
+      if (e.error !== 'no-speech' && onFail) { cut = true; onFail(MSG[e.error] || 'Zuhören hat nicht geklappt (' + e.error + ').'); }
+    };
+    rec.onend = finish;
+    try { rec.start(); } catch (err) { console.error(err); if (onFail) onFail('Das Mikrofon ließ sich nicht starten.'); return null; }
+    timer = setTimeout(stop, NO_SPEECH);
+    return { stop };
+  };
+
   App.dictate = {
     joined,
+    listen,
     supported: () => !!SR(),
     // Läuft gerade ein Diktat in dieses Feld, beenden (z. B. beim Verlassen der Seite).
     // now: was gerade im Feld steht, gilt – Nachzügler der Erkennung schreiben nicht mehr hinein (Prüfen, Absenden)
