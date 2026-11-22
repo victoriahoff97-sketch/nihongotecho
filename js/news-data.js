@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-satz-75', date: '22. November',
+      items: [
+        { t: 'Satz des Tages: noch mehr Platz', d: 'Dein Satz in der Gruppen-Challenge darf jetzt bis zu 75 Zeichen lang sein statt 60.' },
+      ],
+    },
+    {
       id: '2026-11-22-kompass-waage', date: '22. November',
       items: [
         { t: 'N4-Kompass 羅針盤', d: 'Grammatik › „N4-Kompass“ zeigt, welche Grammatik du selbst bilden kannst: ein ● pro richtigem Übersetzen, Umformen oder eigenem Satz, ab 3 sicher.' },
