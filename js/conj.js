@@ -154,13 +154,14 @@
       const opts = {
         cram: true,
         left: () => entries.length,
+        missLabel: (e) => `${App.jp.plain(e.it.jp || e.it.kana || '')} → ${F.form(e.form) ? F.form(e.form).label : ''}`,
         // gibt das Zurücknehmen für „Rückgängig“ zurück: Auswertung je Form wie vorher
         onGrade: (ent, g) => {
           const was = ent.again, s = stats, old = s[ent.form] && Object.assign({}, s[ent.form]);
           C.tally(s, ent.form, g > 0, !ent.again); ent.again = true; App.dayCheck.mark('conj');
           return () => { ent.again = was; if (old) s[ent.form] = old; else delete s[ent.form]; };
         },
-        endHtml: () => { const rows = C.summary(stats); return rows.length ? `<div class="conj-summary">${rows.map((r) => { const f = F.form(r.form); return `<div style="--c:${lineColor(f)}"><b>${esc(f.label)}</b><span>${r.right}/${r.asked}</span></div>`; }).join('')}</div>` : ''; },
+        endHtml: () => { const rows = C.summary(stats); return rows.length ? `<div class="small muted">Auf Anhieb gewusst, je Form</div><div class="conj-summary">${rows.map((r) => { const f = F.form(r.form); return `<div style="--c:${lineColor(f)}"><b>${esc(f.label)}</b><span>${r.right}/${r.asked}</span></div>`; }).join('')}</div>` : ''; },
       };
       opts.nextChunk = () => {
         stats = {};
@@ -177,9 +178,10 @@
     if (r) {
       const open = r.entries[0];
       const entries = r.entries.filter((e) => { const f = F.form(e.form); return f && C.applies(f, e.it); });
+      const unseen = (list) => list.filter((e) => !e.rep).length;
       if (entries.length) {
         setup.hidden = true;
-        App.cards.run(view.querySelector('[data-stage]'), entries, r.opts, Object.assign({}, r, { total: r.total - (r.entries.length - entries.length), open: r.open && entries[0] === open }));
+        App.cards.run(view.querySelector('[data-stage]'), entries, r.opts, Object.assign({}, r, { total: r.total - (r.entries.length - entries.length), cnt: r.cnt && App.roundCount.drop(r.cnt, unseen(r.entries) - unseen(entries)), open: r.open && entries[0] === open }));
       }
     }
   });

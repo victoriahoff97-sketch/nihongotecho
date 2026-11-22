@@ -7,6 +7,14 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-22-runde-zaehlen', date: '22. November',
+      items: [
+        { t: 'Runden zählen Karten, nicht Durchgänge', d: 'Oben steht „Karte 6 von 20“. Nicht Gewusstes kommt als „Wiederholung“ zurück, statt die Gesamtzahl wachsen zu lassen.' },
+        { t: 'Klarer Abschluss', d: 'Am Ende siehst du, wie viele Karten du auf Anhieb wusstest, wie viele erst beim Wiederholen – und welche daneben gingen.' },
+        { t: 'Konjugieren zählt richtig', d: 'Wer bei „Auswahl“ über „Eintrag öffnen“ kurz rausging, bekam die Karte danach fälschlich als falsch gezählt. Behoben.' },
+      ],
+    },
+    {
       id: '2026-11-22-konjugieren-zurueck', date: '22. November',
       items: [
         { t: 'Konjugieren: Rückgängig', d: 'Verklickt? Unter Üben › Konjugieren steht nach jeder Bewertung oben „↶ Rückgängig“ (oder Strg+Z) – die letzte Karte kommt zurück, auch die Auswertung am Ende.' },

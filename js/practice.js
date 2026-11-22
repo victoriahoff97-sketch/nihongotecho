@@ -7,6 +7,7 @@
 
   const W = App.writeLogic;
   const P = App.parkLogic;
+  const RC = App.roundCount;
   const kanjiFocus = () => W.focus(S.settings);
   App.dueCount = () => W.dueCount(S.srs, S.items, kanjiFocus(), W.dayEnd(Date.now()));
   const lessonNum = (it) => (it.lesson === '' || it.lesson == null || isNaN(+it.lesson)) ? null : +it.lesson;
@@ -87,13 +88,14 @@
   // Lernstand der Karte in ihrer Richtung; Konjugieren übt Formen und hängt nicht am „Kann ich“ des Worts
   const cardKnown = (e) => e.kind !== 'conj' && W.isKnown(S.srs.get(e.kind === 'read' ? e.it.id : W.id(e.it.id)));
   // Auf der Seite der geparkten Runde: Herkunft wiederherstellen und den Stand zum Fortsetzen liefern
+  const unseen = (list) => list.filter((e) => !e.rep).length; // noch nicht dran gewesene Karten (für die Zählung beim Fortsetzen)
   const takeParked = () => {
     if (!P.same(parked, location.hash)) return null;
     const p = parked, r = P.revive(p, (id) => App.item(id) || App.kanaLogic.item(id), cardKnown); // Kana stehen nicht in der Sammlung
     parked = null;
     nextRound = null;
     App.setOrigin(p.origin);
-    return r.entries.length ? Object.assign(r, { opts: p.opts, run: p.run || 0 }) : null;
+    return r.entries.length ? Object.assign(r, { opts: p.opts, run: p.run || 0, cnt: p.cnt && RC.drop(p.cnt, unseen(p.entries) - unseen(r.entries)) }, r.open ? { suggest: p.suggest, picked: p.picked } : {}) : null;
   };
   const resumeCards = (view, r) => { view.querySelector('[data-setup]').hidden = true; runCards(view.querySelector('[data-stage]'), r.entries, r.opts, r); };
   // mid: weiterer Knopf zwischen „Wiederholen“ und „Neue lernen“ (Karteikarten: „Lernschlange üben“)
@@ -410,10 +412,14 @@
     parked = null;
     queue = queue.map((x) => (x.it ? x : { it: x, kind: write ? 'write' : active ? 'active' : 'read', dir }));
     let total = resume ? resume.total : queue.length; // wächst, wenn nicht Gewusstes in derselben Runde noch einmal kommt
+    // Angezeigt wird in Karten der Runde, nicht in Durchgängen: Nicht Gewusstes kommt als „Wiederholung“ zurück (js/round-count-logic.js)
+    let cnt = resume && resume.cnt ? RC.copy(resume.cnt) : RC.start(queue.length);
+    if (!resume) queue.forEach((e) => { delete e.rep; }); // frische Runde: Wiederholungs-Merker einer früheren Runde gelten nicht
     let done = resume ? resume.done : 0, right = resume ? resume.right : 0, flipped = false, cur = null, ent = null;
     let shown = null; // Karte, wie sie gezeigt wird: Platzhalter getauscht oder Verb-Muster (sonst = cur)
     let wantPark = false; // „Eintrag öffnen“ angetippt: beim Verlassen der Seite wird die Runde geparkt
     let ans = null, suggest = null, readingsOf = null; // Antwortfeld der Karte · vorgeschlagene Bewertung nach dem Prüfen
+    let picked = null; // Auswahl: angetippte Antwort – bleibt beim Parken erhalten, damit „Weiter“ danach richtig zählt
     let faces = null; // Kartenseiten der aktuellen Karte (bei Konjugieren mit Auswahl-Antworten und Lösung fürs Antwortfeld)
     let last = null; // zuletzt bewertete Karte – „Rückgängig“ holt sie mit ihrem alten Lernstand zurück
     let run = resume ? resume.run || 0 : 0; // Gullideckel: richtige Antworten am Stück (auch über das Parken hinweg)
@@ -429,20 +435,35 @@
     // „neue lernen“ bei Vokabeln und Ausdrücken: beim ersten Zeigen lässt sich Bekanntes gleich aussortieren – danach nicht mehr
     const canSkip = () => !cram && ent.kind !== 'write' && W.direct(cur.type) && W.firstShow(S.srs.get(srsKey()));
     const undoBtn = () => (last ? ` <button class="btn btn-sm btn-ghost" data-undo-card title="Letzte Bewertung zurücknehmen (Strg+Z)">${icon('undo')} Rückgängig</button>` : '');
-    const head = () => `<div class="row between small muted" style="margin-bottom:8px"><span>${done + 1} / ${total}${opts.label ? ' · ' + esc(opts.label) : cram ? ' · freies Üben' : ''}${undoBtn()}</span><span>${App.srcBadge(cur)}</span></div>
-        <div class="progress" style="margin-bottom:10px"><i style="width:${(done / Math.max(1, total)) * 100}%"></i></div>`;
+    const repBadge = () => {
+      const k = RC.open(ent, queue);
+      if (!k) return '';
+      return ent.rep ? ` <span class="rep-badge" title="Diese Karte war vorhin daneben und kommt noch einmal">${icon('replay')} Wiederholung${k > 1 ? ` · noch ${k}` : ''}</span>`
+        : ` <span class="rep-badge quiet" title="Nicht gewusste Karten kommen in dieser Runde noch einmal">${icon('replay')} ${k} zum Wiederholen</span>`;
+    };
+    const head = () => `<div class="row between small muted" style="margin-bottom:8px"><span>${RC.head(cnt, ent)}${opts.label ? ' · ' + esc(opts.label) : cram ? ' · freies Üben' : ''}${repBadge()}${undoBtn()}</span><span>${App.srcBadge(cur)}</span></div>
+        <div class="progress" style="margin-bottom:10px"><i style="width:${RC.progress(cnt) * 100}%"></i></div>`;
+    // Abschluss: Karten der Runde, davon auf Anhieb gewusst bzw. erst beim Wiederholen – die danebengegangenen stehen gleich dabei
+    const missLabel = opts.missLabel || ((e) => e.it.char || JP.plain(e.it.jp || '') || e.it.kana || '');
+    const sumHtml = () => {
+      const s = RC.summary(cnt);
+      const miss = cnt.missed.map(missLabel).filter(Boolean);
+      return `<h2>${s.words} ${s.words === 1 ? 'Karte' : 'Karten'} geübt</h2>
+        <div class="round-sum"><div class="ok"><b>${s.first}</b>auf Anhieb</div>${s.later ? `<div class="later"><b>${s.later}</b>mit Wiederholung</div>` : ''}</div>
+        ${miss.length ? `<p class="round-miss" lang="ja"><span class="muted" lang="de">Daneben:</span> ${miss.slice(0, 12).map(esc).join(' · ')}${miss.length > 12 ? ` <span class="muted" lang="de">und ${miss.length - 12} weitere</span>` : ''}</p>` : ''}`;
+    };
     const next = () => {
       ent = queue.shift();
       cur = ent ? ent.it : null;
       flipped = false;
       wantPark = false;
       if (ans && ans.pad) ans.pad.stop();
-      ans = null; suggest = null; faces = null;
+      ans = null; suggest = null; faces = null; picked = null;
       if (!cur) {
         if (opts.onEnd) opts.onEnd();
         if (App.manhole) App.manhole.hold(false);
         const rest = left ? left() : 0; // Lernschlange in Häppchen: so viel ist noch nicht dran gewesen
-        stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div><h2>${done} Karten geschafft</h2><p class="muted">${right} davon gewusst. ${cram ? `Frei geübt – an deinem Lernstand hat sich nichts geändert.${left && !rest ? ' Damit war alles einmal dran.' : ''}` : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>${opts.endHtml ? opts.endHtml() : ''}
+        stage.innerHTML = `<div class="flash-stage"><div class="flash" style="cursor:default"><div class="score-ring">お疲れ様！</div>${sumHtml()}<p class="muted">${cram ? `Frei geübt – an deinem Lernstand hat sich nichts geändert.${left && !rest ? ' Damit war alles einmal dran.' : ''}` : App.dueCount() ? App.dueCount() + ' Karten sind insgesamt noch fällig.' : 'Für heute ist alles wiederholt.'}</p>${opts.endHtml ? opts.endHtml() : ''}
           <div class="row" style="justify-content:center">${undoBtn()}${App.backBtn('Zur Übersicht')}${cram ? (rest ? `<button class="btn" data-again>Zur Auswahl</button><button class="btn btn-primary" data-next-chunk>${icon('play')} Nächste Runde (noch ${rest})</button>` : opts.noAgain ? '' : '<button class="btn btn-primary" data-again>Weitere Runde</button>') : roundEnd(more())}</div></div></div>`;
         const again = stage.querySelector('[data-again]');
         if (cram && again) again.onclick = () => App.render();
@@ -556,7 +577,7 @@
       remember([W.id(cur.id)], g === 0);
       if (!cram) await App.gradeWrite(cur.id, g);
       busy = false;
-      done++; if (g > 0) right++;
+      done++; if (g > 0) right++; RC.grade(cnt, ent, g > 0);
       tally(g);
       if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
       next();
@@ -585,12 +606,13 @@
     const choose = (i) => {
       if (flipped || !faces || !faces.choices) return;
       const ok = faces.choices.list[i] === faces.choices.answer;
+      picked = faces.choices.list[i];
       suggest = ok ? 2 : 0;
       if (!ok) { const b = stage.querySelector(`[data-mci="${i}"]`); if (b) b.classList.add('no'); }
       flip();
     };
     // Eigene Zählung der Seite (onGrade, z. B. Konjugieren): onGrade gibt eine Funktion zurück, die sie wieder zurücknimmt
-    const remember = (keys, again) => { last = { ent, snap: cram ? null : App.srsSnap(keys), done, right, total, run, again }; };
+    const remember = (keys, again) => { last = { ent, snap: cram ? null : App.srsSnap(keys), done, right, total, run, again, cnt: RC.copy(cnt), rep: ent.rep }; };
     const undo = async () => {
       if (!last || busy) return;
       busy = true;
@@ -601,7 +623,7 @@
       if (l.again) { const i = queue.indexOf(l.ent); if (i >= 0) queue.splice(i, 1); }
       if (ent && ent !== l.ent) queue.unshift(ent);
       queue.unshift(l.ent);
-      ({ done, right, total, run } = l);
+      ({ done, right, total, run } = l); cnt = l.cnt; l.ent.rep = l.rep;
       busy = false;
       if (App.manhole) App.manhole.hold(true); // Rückgängig auf dem Endbildschirm: die Runde läuft wieder
       next();
@@ -612,7 +634,7 @@
       remember([srsKey()], false);
       await App.setCheck(srsKey(), 'known');
       busy = false;
-      done++; right++;
+      done++; right++; RC.grade(cnt, ent, true);
       tally(1);
       next();
     };
@@ -622,7 +644,7 @@
       remember([ent.kind === 'read' || ent.kind === 'conj' ? cur.id : W.id(cur.id)], g === 0);
       if (!cram) await (ent.kind === 'write' ? App.gradeWrite(cur.id, g) : App.grade(ent.kind === 'active' ? W.id(cur.id) : cur.id, g));
       busy = false;
-      done++; if (g > 0) right++;
+      done++; if (g > 0) right++; RC.grade(cnt, ent, g > 0);
       tally(g);
       if (opts.onGrade) { const r = opts.onGrade(ent, g); if (last) { if (typeof r === 'function') last.revert = r; else last = null; } }
       if (g === 0) { queue.splice(Math.min(3, queue.length), 0, ent); total++; }
@@ -677,11 +699,21 @@
       App.screenItem = null; App.parkHere = null;
       document.removeEventListener('keydown', onKey);
       if (ans && ans.pad) ans.pad.stop();
-      if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue).map((e) => Object.assign({}, e, { known: cardKnown(e) })), done, right, total, run, open: flipped };
+      if (wantPark && cur) parked = { hash: home, origin: from, opts, entries: [ent].concat(queue).map((e) => Object.assign({}, e, { known: cardKnown(e) })), done, right, total, run, cnt: RC.copy(cnt), open: flipped, suggest: flipped ? suggest : null, picked };
       if (App.manhole) App.manhole.hold(false); // Runde verlassen (auch geparkt): Gesammeltes nicht länger zurückhalten
     });
     next();
-    if (resume && resume.open && cur) { if (ent.pad) stage.querySelector('[data-show]').click(); else flip(true); }
+    // Zurück aus „Eintrag öffnen“ mit schon aufgedeckter Karte: die eigene Antwort gilt weiter (sonst zählte „Weiter“ bei der Auswahl als nicht gewusst)
+    if (resume && resume.open && cur) {
+      if (ent.pad) stage.querySelector('[data-show]').click();
+      else {
+        if (resume.suggest != null) suggest = resume.suggest;
+        if (resume.picked != null) picked = resume.picked;
+        flip(true);
+        if (faces && faces.choices && picked != null && picked !== faces.choices.answer) stage.querySelectorAll('[data-mci]').forEach((b) => { if (faces.choices.list[+b.dataset.mci] === picked) b.classList.add('no'); });
+        const sb = suggest !== null && !(faces && faces.choices) && stage.querySelector(`.grade-row [data-g="${suggest}"]`); if (sb) sb.classList.add('suggest');
+      }
+    }
   }
 
   // =========================================================

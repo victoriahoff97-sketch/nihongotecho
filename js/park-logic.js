@@ -4,7 +4,8 @@
   const P = App.parkLogic = {};
   // Steht man auf der Seite der geparkten Runde? Dort wird fortgesetzt, überall sonst zeigt die Leiste den Weg zurück
   P.same = (parked, hash) => !!parked && parked.hash === hash;
-  P.label = (parked) => `Karte ${parked.done + 1} / ${parked.total}`;
+  // Karten der Runde wie in der Runde selbst (js/round-count-logic.js); alte geparkte Runden ohne Zählung: Durchgänge
+  P.label = (parked) => (parked.cnt && App.roundCount ? App.roundCount.head(parked.cnt, parked.entries && parked.entries[0]) : `Karte ${parked.done + 1} / ${parked.total}`);
   // Fortsetzen: Einträge frisch aus dem Bestand holen (inzwischen bearbeitet oder gelöscht); entries[0] ist die offene Karte
   // known(e): steht die Karte jetzt auf „Kann ich“? Wer das im Eintrag gesetzt hat, will sie nicht mehr sehen.
   // Was schon beim Parken so stand (e.known), bleibt: freies Üben und Auffrischen fragen bewusst Gekonntes ab.
