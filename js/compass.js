@@ -65,14 +65,42 @@
     setCardSource: (fn) => { cardSrc = fn; },
   };
   ['pointerdown', 'keydown', 'input', 'wheel'].forEach((t) => document.addEventListener(t, () => { lastAct = Date.now(); }, { capture: true, passive: true }));
+  // Schreiben = selbst schreiben: eigene Eingabe in ein japanisches Feld (isTrusted – Diktiertes setzt das Programm ein
+  // und zählt nicht) oder Striche im Schreibfeld, auf dem Schreibblatt, im Kanji-/Kana-Feld
+  let lastWrite = 0;
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (!t || !(t.matches && (t.matches('input, textarea') || t.isContentEditable))) return;
+    const host = t.isContentEditable ? (t.closest('[contenteditable="true"]') || t) : t;
+    const langEl = t.closest('[lang]');
+    if (C.typedJa({ trusted: e.isTrusted, lang: langEl ? langEl.lang : '', text: 'value' in host && host.value != null ? host.value : host.textContent, search: t.type === 'search' || !!t.closest('.search-wrap') })) lastWrite = Date.now();
+  }, true);
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.isTrusted || !e.target || e.target.tagName !== 'CANVAS') return;
+    const c = e.target;
+    // Schreibblatt: nur Stift und Maus – mit dem Finger wird dort geblättert
+    if (c.closest('.hw-pad, .lk-pad, .pad-wrap') || (c.closest('.vpage') && e.pointerType !== 'touch')) lastWrite = Date.now();
+  }, true);
+  window.addEventListener('hashchange', () => { lastWrite = 0; }); // neue Seite: das Schreiben von eben zählt dort nicht weiter
   const mediaOn = () => Array.from(document.querySelectorAll('audio, video')).some((m) => !m.paused && !m.ended)
     || (App.voiceAudio && App.voiceAudio.isPlaying && App.voiceAudio.isPlaying())
+    || (window.speechSynthesis && speechSynthesis.speaking)
     || !!document.querySelector('.modal iframe[src*="youtube"], .mini-back iframe[src*="youtube"]');
   const current = () => {
-    const path = (location.hash || '').replace(/^#/, '').split('?')[0];
-    const card = cardSrc && /^\/ueben\/(karten|heute|kimon|auffrischen|grammatik-auffrischen)/.test(path) ? cardSrc() : null;
+    const hash = (location.hash || '').replace(/^#/, '');
+    const path = hash.split('?')[0], qs = new URLSearchParams(hash.split('?')[1] || '');
+    const inRound = cardSrc && /^\/ueben\/(karten|heute|kimon|auffrischen|grammatik-auffrischen)/.test(path);
     const playing = mediaOn();
-    const ctx = { path, override: playing ? 'h' : card, readAloud: !!document.querySelector('.ra-modal'), micOn: !!(App.dictate && App.dictate.japaneseOn && App.dictate.japaneseOn()) };
+    const ctx = {
+      path,
+      jaMic: !!(App.dictate && App.dictate.japaneseOn && App.dictate.japaneseOn()),
+      readAloud: !!document.querySelector('.ra-modal'),
+      playing,
+      wrote: (Date.now() - lastWrite) / 1000 <= C.IDLE,
+      card: inRound ? cardSrc() : undefined,
+      jpPrompt: !!document.querySelector('.ex-card .ex-prompt.jp'),
+      einstufenDe: qs.get('dir') === 'de',
+    };
     return { skill: C.skillOf(ctx), playing };
   };
   const flush = () => {

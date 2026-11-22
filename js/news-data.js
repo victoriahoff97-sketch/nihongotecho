@@ -7,6 +7,12 @@
 (function (App) {
   App.NEWS = [
     {
+      id: '2026-11-23-waage-ehrlich', date: '23. November',
+      items: [
+        { t: 'Wochen-Waage zählt ehrlicher', d: 'Schreiben zählt nur noch, wenn du selbst Japanisch tippst oder mit Stift schreibst – nicht beim Diktieren oder Durchlesen. Hören zählt nur, solange etwas läuft.' },
+      ],
+    },
+    {
       id: '2026-11-23-uebersetzen-saetze', date: '23. November',
       items: [
         { t: 'Übersetzen: klarere deutsche Sätze', d: 'Die deutschen Sätze zeigen jetzt eindeutiger, welche Grammatik gemeint ist – z. B. „Ich habe vor, … zu …“ für 〜つもり statt „ich will“ (das wäre 〜たい).' },

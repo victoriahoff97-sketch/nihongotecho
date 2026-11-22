@@ -33,18 +33,33 @@
 
   // Welche Fertigkeit gerade läuft – aus der Seite (Route) und dem, was offen ist; null = zählt nicht
   // ctx: { path, override, readAloud, micOn, cardDir, cardMode }
+  // ctx: { path, jaMic: Mikrofon hört Japanisch, readAloud: Nachsprechen-Fenster offen, playing: Ton/Video läuft,
+  //        wrote: in der letzten Minute selbst getippt (Japanisch) oder mit Stift/Finger geschrieben,
+  //        card: Karteikarten-Runde offen → 'l' | 'p' | null, jpPrompt: Übersetzen zeigt einen japanischen Satz, einstufenDe: Einstufen Deutsch → Japanisch }
+  // Reihenfolge: Sprechen vor Hören vor Schreiben vor dem, was Karte oder Seite zeigen
   C.skillOf = (ctx) => {
-    if (ctx.micOn || ctx.readAloud) return 'p';
-    if (ctx.override) return ctx.override;
+    if (ctx.jaMic || ctx.readAloud) return 'p';      // nur Japanisch – deutsches Diktieren zählt hier nicht
+    if (ctx.playing) return 'h';
+    if (ctx.wrote) return 's';                       // Schreiben = selbst tippen oder schreiben, nie Diktiertes
+    if (ctx.card !== undefined) return ctx.card;
     const p = ctx.path || '';
-    if (/^\/hoeren/.test(p)) return 'h';
-    if (/^\/ueben\/(kanji|kana|saetze|umformen|konjugieren)/.test(p)) return 's';
-    if (/^\/anwenden/.test(p)) return 's';
-    if (/^\/(eingang|ueben\/luecken|ueben\/einstufen|pruefung|saetze)/.test(p)) return 'l';
-    return null;
+    if (/^\/ueben\/saetze/.test(p)) return ctx.jpPrompt ? 'l' : null;
+    if (/^\/ueben\/einstufen/.test(p)) return ctx.einstufenDe ? null : 'l';
+    // Seiten, auf denen man japanischen Text vor sich hat und liest (das Schreiben darauf zählt oben über wrote)
+    if (/^\/(eingang|saetze|pruefung|anwenden|ueben\/(luecken|kanji|umformen|konjugieren))/.test(p)) return 'l';
+    return null; // Hören-Seite ohne laufenden Ton, Listen, Erklärungen, Kana schreiben ohne Striche …
   };
-  // Karteikarte: Japanisch → Deutsch = Lesen; Deutsch → Japanisch: Mikrofon = Sprechen, sonst Schreiben
-  C.cardSkill = (dir, mode, pad) => (pad ? 's' : dir === 'de' ? (mode === 'say' ? 'p' : 's') : 'l');
+  // Karteikarte (ohne selbst zu schreiben): Japanisch → Deutsch = Lesen, Mikrofon-Antwort = Sprechen,
+  // Deutsch → Japanisch ohne Antwortfeld = nichts; Konjugieren mit Auswahl oder „im Kopf“ = Lesen
+  C.cardSkill = (dir, mode, kind) => {
+    if (mode === 'say') return 'p';
+    if (kind === 'pad' || kind === 'write') return null;
+    if (kind === 'conj') return 'l';
+    return dir === 'de' ? null : 'l';
+  };
+  // Zählt eine Eingabe als Schreiben? Eigene Eingabe (kein Diktat) in ein japanisches Feld
+  C.JA = /[\u3040-\u30ff\u3400-\u9fff]/;
+  C.typedJa = ({ trusted, lang, text, search }) => !!trusted && !search && (/^ja/.test(lang || '') || C.JA.test(text || ''));
 
   // Sekunden auf einen Tag buchen; alte Tage fallen weg
   C.add = (log, date, skill, sec) => {

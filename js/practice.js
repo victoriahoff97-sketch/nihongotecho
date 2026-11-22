@@ -779,7 +779,7 @@
     };
     document.addEventListener('keydown', onKey);
     // Wochen-Waage: welche Fertigkeit die offene Karte übt
-    if (App.skillTime) App.skillTime.setCardSource(() => { if (!cur || !ent) return null; const m = answerable(ent) ? modeFor(ent) : 'off'; if (ent.pad || ent.kind === 'conj') return m === 'say' ? 'p' : 's'; return App.compassLogic.cardSkill(ent.dir, m); });
+    if (App.skillTime) App.skillTime.setCardSource(() => { if (!cur || !ent) return null; const m = answerable(ent) ? modeFor(ent) : 'off'; return App.compassLogic.cardSkill(ent.dir, m, ent.pad ? 'pad' : conjWrite(ent) ? 'write' : ent.kind === 'conj' ? 'conj' : ''); });
     App.screenItem = () => cur; // fürs Forum: „Diese Karte anhängen“
     App.parkHere = () => { wantPark = true; }; // „Eintrag öffnen“ außerhalb der Karte (Vergleichen-Fenster) parkt die Runde ebenso
     App.onLeave(() => {
